@@ -1,0 +1,8 @@
+# BigCompute repo runtime rules
+state/
+logs/
+.codely-cli/
+*.local.json
+.env
+.env.*
+__pycache__/
