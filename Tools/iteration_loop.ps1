@@ -33,14 +33,40 @@ function Beat([string]$m) {
     Add-Content -Path $heart -Value "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') os-loop: $m" -Encoding UTF8
 }
 
-# ---- single-instance guard ----
+# ---- single-instance guard v2 (group standard D-20260925-03:
+# lock holds PID, liveness probe before takeover, CreateNew atomic grab) ----
 $lock = Join-Path $logDir 'round.lock'
-if (Test-Path $lock) {
-    $age = ((Get-Date) - (Get-Item $lock).LastWriteTime).TotalMinutes
-    if ($age -lt $LockMaxAgeMinutes) { Log "skip: previous round still running (age=$([int]$age)min)"; Beat 'skip (round in flight)'; exit 0 }
-    Log "stale round lock expired (age=$([int]$age)min) - taking over"
+$lockProcPattern = 'powershell|pwsh|codely|node|python'
+function Test-RoundPidAlive([int]$procId) {
+    $p = Get-Process -Id $procId -ErrorAction SilentlyContinue
+    if (-not $p) { return $false }
+    return ($p.ProcessName -match $lockProcPattern)
 }
-Set-Content -Path $lock -Value $stamp -Encoding UTF8
+if (Test-Path $lock) {
+    $raw = ''
+    try { $raw = (Get-Content -Raw $lock -ErrorAction Stop).Trim() } catch {}
+    $oldPid = 0
+    if ([int]::TryParse($raw, [ref]$oldPid) -and $oldPid -gt 0) {
+        if (Test-RoundPidAlive $oldPid) {
+            Log "skip: previous round still running (pid=$oldPid alive)"; Beat 'skip (round in flight)'; exit 0
+        }
+        Log "stale lock pid=$oldPid not alive - taking over"
+    } else {
+        # legacy timestamp-format lock (pre-v2): age fallback only for the transition
+        $age = ((Get-Date) - (Get-Item $lock).LastWriteTime).TotalMinutes
+        if ($age -lt $LockMaxAgeMinutes) { Log "skip: legacy lock fresh (age=$([int]$age)min)"; Beat 'skip (round in flight)'; exit 0 }
+        Log "legacy lock expired (age=$([int]$age)min) - taking over"
+    }
+    Remove-Item -Path $lock -Force -ErrorAction SilentlyContinue
+}
+try {
+    $fs = New-Object System.IO.FileStream($lock, [System.IO.FileMode]::CreateNew, [System.IO.FileAccess]::Write, [System.IO.FileShare]::None)
+    $sw = New-Object System.IO.StreamWriter($fs)
+    $sw.Write($PID.ToString())
+    $sw.Dispose()
+} catch {
+    Log "skip: lock atomically grabbed by a concurrent launcher (CreateNew lost)"; Beat 'skip (round in flight)'; exit 0
+}
 
 try {
     Log "BigCompute os-loop round start $stamp"
@@ -55,6 +81,9 @@ try {
     Log "spawning headless round (budget ${RoundTimeoutMinutes}min, prompt_chars=$($prompt.Length))"
     $p = Start-Process -FilePath $codelyPath -ArgumentList $argLine -WorkingDirectory $Project -PassThru -NoNewWindow -RedirectStandardOutput $roundOut -RedirectStandardError $roundErr
     $null = $p.Handle
+    # hold the worker pid in the lock: if this launcher is hard-killed, an
+    # orphaned worker is still detected as alive by the next tick (D-20260925-03)
+    try { Set-Content -Path $lock -Value $p.Id -Encoding ASCII } catch {}
     if (-not $p.WaitForExit($RoundTimeoutMinutes * 60 * 1000)) {
         Log "ROUND TIMEOUT after ${RoundTimeoutMinutes}min - killing headless process tree"
         try {
