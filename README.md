@@ -28,6 +28,13 @@
 
 BigCompute-OSLoop **日轮 22:43**（静默 VBS+单实例锁+mandate 外置=`Tools/iteration_prompt.txt`·cadence 总账在册）——计划态收敛期日频即达（10min 禁空转律：无营收对价的无人值守高频=纯 token 成本）；Phase 1 开店后按业务量升频。
 
+## 技能（P-20260926-01 集团技能动员令·源=`Tools/skills/`·安装副本 gitignored）
+
+| 技能 | 用途 | 触发场景 |
+|---|---|---|
+| `bigcompute-verify-official-source` | 法务/风控官方原文核验工作流（导航壳判定/原文级回填/复抓日志/三抓止损/⬜ 如实不造） | T-13 核验批执行、Phase 1 法务终审前依据链补强、官方原文 vs 第三方转述判别 |
+| 会话内置即用（不建源） | codely-guide=Codely 平台问答／skill-creator=技能创建／tuanjie-cli=团结引擎管理 | 按需触发 |
+
 ## 与兄弟司分工（一句话）
 
 BigDomain=平台产品运营（价目目录正典=其 §四·店内闭环）；BigStream=内容引流；**BigCompute=外部成交通道+定价与算力成本核算+直播带货运营+风控法务**。
