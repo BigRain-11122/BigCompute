@@ -35,6 +35,18 @@ docs/ops/empowerment-catalog-v1.md section 3 + BC-F-20260925-01):
       --amount-mtok 0.8 --unit-cost-b 1.23 --reason "llm pipeline"
   python Tools/cost_ledger.py quota-summary [--month 2026-09]
 
+Token-count face (T-20260926-23 metering; adopted candidate openai/tiktoken
+via OSS harvest OH-20260927-bigcompute, MIT license, five gates PASS):
+- estimation caliber ONLY: OpenAI BPE encodings are NOT the Qwen vocab;
+  exact Qwen token counts come from Ollama eval_count. tiktoken counts
+  feed the quota rail (caliber B accounting) as estimates, never as a
+  claim of exact model tokens.
+- offline cache: the tool pins TIKTOKEN_CACHE_DIR to state/tiktoken-cache
+  and prefetches the BPE file on first use of an encoding (adoption round
+  prefetched cl100k_base), so counting afterwards runs without network.
+  python Tools/cost_ledger.py count --text "hello world"
+  python Tools/cost_ledger.py count --file notes.md --encoding cl100k_base
+
 Encoding rule: this file stays PURE ASCII (group coding law).
 """
 import argparse
@@ -130,6 +142,41 @@ def summary(args, path=LEDGER):
         "tokens_api": sum(r.get("tokens_api", 0) for r in rows),
     }
     return out
+
+
+# ------------------------------------------------------------ token count
+
+TIKTOKEN_CACHE = os.path.join(HERE, "..", "state", "tiktoken-cache")
+COUNT_NOTE = ("estimation caliber: openai BPE != qwen vocab; "
+              "exact qwen counting = ollama eval_count")
+
+
+def count_tokens(args):
+    text = args.text
+    if args.file:
+        with open(args.file, "r", encoding="utf-8") as fh:
+            text = fh.read()
+    if not text:
+        return {"status": "error_empty_input",
+                "note": "provide --text or --file"}
+    _ensure_state(TIKTOKEN_CACHE)
+    os.environ["TIKTOKEN_CACHE_DIR"] = TIKTOKEN_CACHE
+    try:
+        import tiktoken  # adopted dep (MIT, OH-20260927-bigcompute)
+        enc = tiktoken.get_encoding(args.encoding)
+    except ImportError:
+        return {"status": "error_unavailable",
+                "note": "tiktoken not installed: pip install tiktoken"}
+    n = len(enc.encode(text))
+    return {
+        "status": "ok",
+        "tokens": n,
+        "amount_mtok": round(n / 1000000.0, 6),
+        "encoding": args.encoding,
+        "counter": "openai/tiktoken",
+        "note": COUNT_NOTE,
+        "cache_dir": "state/tiktoken-cache",
+    }
 
 
 # ---------------------------------------------------------------- quota rail
@@ -380,6 +427,28 @@ def _selftest():
         quota_results.append((quota_ok, qrows, summ))
         for p in (tmp, qtmp, qbtmp):
             os.remove(p)
+    # token-count face: estimation caliber; absence is visible, not a math fail
+    class C:
+        pass
+    cface = []
+    for run in (1, 2):
+        c = C()
+        c.text = "BigCompute quota rail token counting selftest 0123456789."
+        c.file = None
+        c.encoding = "cl100k_base"
+        cface.append(count_tokens(c))
+    if cface[0]["status"] == "error_unavailable":
+        count_status, count_ok = "skip_no_tiktoken", True
+    else:
+        count_ok = (
+            cface[0]["status"] == "ok"
+            and cface[1]["status"] == "ok"
+            and cface[0]["tokens"] == cface[1]["tokens"]
+            and cface[0]["tokens"] > 0
+            and abs(cface[0]["amount_mtok"]
+                    - cface[0]["tokens"] / 1000000.0) < 1e-9
+        )
+        count_status = "ok" if count_ok else "fail"
     same = (
         json.dumps(
             {k: v for k, v in order_results[0][1].items() if k != "order_id"},
@@ -394,9 +463,10 @@ def _selftest():
     )  # order_id differs by design; determinism = identical math on all else
     math_ok = (order_results[0][0] and order_results[1][0]
                and quota_results[0][0] and quota_results[1][0])
-    print("selftest: math=%s determinism=%s (orders+quota-gate) -> %s"
-          % (math_ok, same, "PASS" if (math_ok and same) else "FAIL"))
-    return 0 if (math_ok and same) else 1
+    print("selftest: math=%s determinism=%s count=%s (orders+quota-gate+count) -> %s"
+          % (math_ok, same, count_status,
+             "PASS" if (math_ok and same and count_ok) else "FAIL"))
+    return 0 if (math_ok and same and count_ok) else 1
 
 
 def main():
@@ -446,6 +516,10 @@ def main():
     qsu = sub.add_parser("quota-summary")
     qsu.add_argument("--month", default=None)
     qsu.add_argument("--consumer", default=None)
+    ct = sub.add_parser("count")
+    ct.add_argument("--text", default=None)
+    ct.add_argument("--file", default=None)
+    ct.add_argument("--encoding", default="cl100k_base")
     sub.add_parser("selftest")
     args = p.parse_args()
     if getattr(args, "date", None) is None and args.cmd in ("add", "quota-issue", "quota-consume"):
@@ -465,6 +539,8 @@ def main():
         out = quota_consume(args)
     elif args.cmd == "quota-summary":
         out = quota_summary(args)
+    elif args.cmd == "count":
+        out = count_tokens(args)
     else:
         sys.exit(_selftest())
     print(json.dumps(out, sort_keys=True, ensure_ascii=True, indent=2))

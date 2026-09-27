@@ -29,6 +29,7 @@
 - **口径 B（内部成本锚·结算唯一口径）**：机队折旧+电费+运维另列（BLUEPRINT §四承载面科目）——内部结算与配额发价唯一依据。
 - **记账载体**=算力配额（1M token 粒度）；**月度预算闸**=配额总量随本司算力成本预算上限·超发走 CEO 批（与真金闸同构）。
 - **记账轨→真实交换三前置**（BC-F-20260925-01 ③）：商业物理件通+涉司数据授权行（D-09 尾项）+本司出口记账——三前置齐方可转·当前=纯记账轨。
+- **计量核数器**（2026-09-28 引入·T-23 计量核数面）=openai/tiktoken（MIT·OH-20260927-bigcompute 五门过采用候选）**估算口径**：OpenAI BPE≠Qwen 词表——配额轨 1M token 计量按估算值入账，**Qwen 精确计数以 Ollama eval_count 为准**；离线缓存=state/tiktoken-cache（cl100k_base BPE 已预取）·入口=`python Tools/cost_ledger.py count`（selftest count 面在册）。
 
 ## 四、服务项（可落地·「≥1 当轮开工」落位）
 
