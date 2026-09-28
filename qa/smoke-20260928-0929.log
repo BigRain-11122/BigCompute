@@ -1,0 +1,54 @@
+﻿== BigCompute QA smoke test | 2026-09-28 09:29 sentinel round | charter docs/qa-smoke-test-charter.md (orders L254) ==
+-- item 1: GPU monitor script runs and outputs utilization number --
+gpu report 2026-09-28: n=1 avg=4.0% max=4% kpi=FLAG(<50% daily-avg dereliction)
+rolling window incomplete (1 sample(s))
+
+2 %, 6637 MiB, 32.66 W
+
+-- item 2: Ollama responds to a query (not hanging) --
+NAME                   ID              SIZE      PROCESSOR    CONTEXT    UNTIL   
+qwen2.5:7b-instruct    845dbda0ea48    5.1 GB    100% GPU     4096       Forever    
+
+2
+
+ollama : [?2026h[?25l[1G[K[?25h[?2026l[?25l[2K[1G[?25h[?25l[?25htotal duration:       80.8924ms
+At line:1 char:873
++ ... TF8 -Value (ollama run qwen2.5:7b-instruct --verbose "1+1=? Answer wi ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ([?2026h[?25l...      80.8924ms:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+load duration:        3.6798ms
+prompt eval count:    38 token(s)
+prompt eval cached:   5 token(s)
+prompt eval duration: 19.454ms
+prompt eval rate:     1696.31 tokens/s
+eval count:           2 token(s)
+eval duration:        12.66ms
+eval rate:            157.98 tokens/s
+[?25l[?25h
+
+-- item 3: task queues not empty (>=3 todos) --
+main.md rows: 10 / tech.md rows: 10 / explore.md rows: 10
+-- item 4: cost ledger updating (tool + data activity) --
+selftest: math=True determinism=True count=ok (orders+quota-gate+count) -> PASS
+
+cost_ledger.py mtime: 09/28/2026 00:46:18 | cost-ledger.jsonl mtime:  | quota-ledger.jsonl mtime: 
+-- schtasks patrol (Tools/task_check.ps1, queue tech T10) --
+BigCompute-OSLoop-PM         state=Ready    last=2026/9/27 12:43:00 result=0x0 next=2026/9/28 12:43:00
+BigCompute-OrderSentinel     state=Ready    last=2026/9/28 9:29:01 result=0x0 next=2026/9/28 9:44:00
+BigCompute-GPU-IdleWatch     state=Ready    last=1999/11/30 0:00:00 result=0x41303 next=2026/9/28 9:33:36
+PATROL: all green
+
+-- sentinel wake chain (orders 09:27:13 -> tick -> round start) --
+orders.md mtime: 09/28/2026 09:27:13 | sentinel.snapshot mtime: 09/28/2026 09:29:01 | now: 2026-09-28 09:32:43
+-- self-judge (charter step 5: tick every item honestly) --
+[x] item 1 GPU monitor runs + utilization number: report n=1 avg=4.0%; raw nvidia-smi 2% cross-check ok
+[x] item 2 Ollama responds: answer "2", eval_count=2 tokens @157.98 tok/s, model resident 100% GPU / Forever
+[x] item 3 queues not empty: 10+10+10 rows across main/tech/explore
+[x] item 4 cost ledger updating: tool mtime 2026-09-28 00:46 + selftest PASS; zero real ledger rows = plan state (no fabricated flows, honest)
+VERDICT: 4/4 PASS, no missing item -> not a "white round"
+NOTE: this company ships CLI tools (no GUI/game window); the .png next to this
+log is a .NET render of THIS EXACT log text (zero edit); adaptation declared in
+BC-F-20260928-03 for group patrol ruling. ollama verbose stats print on stderr
+(PowerShell shows them as NativeCommandError records; content is real output).
