@@ -1,0 +1,20 @@
+BigCompute QA smoke test 20260928-1347 (orders L254 / charter v1)
+
+[gpu collector] PASS -> gpu collector
+gpu report 2026-09-28: n=20 avg=9.6% max=100% kpi=FLAG(<50% daily-avg dereliction)
+rolling 30-min window: n=2 avg=6.0% -> IDLE
+
+[ollama response] PASS -> ollama response
+answer='1+1 equals 2.' eval_count=8 101.03 tok/s
+NAME                   ID              SIZE      PROCESSOR    CONTEXT    UNTIL   
+qwen2.5:7b-instruct    845dbda0ea48    5.1 GB    100% GPU     4096       Forever
+
+[queue rows] PASS -> queue rows
+main.md: 13 rows
+tech.md: 15 rows
+explore.md: 14 rows
+
+[cost ledger] PASS -> cost ledger
+selftest: math=True determinism=True count=ok (orders+quota-gate+count) -> PASS
+
+smoke verdict: 4/4 PASS
