@@ -10,6 +10,7 @@ Scenarios (task acceptance list):
   D  stale pending order: rights-first refund flag, zero compute spent
   E  unconfirmed orders never enter fulfillment (confirm gate)
   G  ledger hook idempotency units
+  H  blind-box draw tx idempotency + subscription monthly rails
 
 Run:  python test_pipeline.py
 Zero network, zero secrets, zero popups. Exit code 0 = PASS, 1 = FAIL.
@@ -248,6 +249,48 @@ def scenario_g(base: str) -> None:
           "rows=%d" % len(rows))
 
 
+def scenario_h(base: str) -> None:
+    print("\n[scenario] H: blind-box draw tx idempotency + subscription rails")
+    state = os.path.join(base, "h_lottery_subscription")
+    draw = Order("MO-DRAW-0001", "LOTTERY-RESIDENT-CARD", 1,
+                 created_at=iso(utc_now()))
+    pipeline = build_pipeline(state, [draw])
+    report = pipeline.run_once()
+    rows = len(ledger_hook.read_rows(pipeline.ledger_path))
+    replay = build_pipeline(state, [draw])
+    report_re = replay.run_once()
+    rows_re = len(ledger_hook.read_rows(replay.ledger_path))
+    check("H1 blind-box draw fulfills (2 rows) and tx replay adds zero",
+          report.delivered == 1 and rows == 2
+          and report_re.new_orders == 0 and report_re.delivered == 0
+          and rows_re == 2,
+          "delivered=%d rows=%d / new=%d delivered=%d rows=%d"
+          % (report.delivered, rows, report_re.new_orders,
+             report_re.delivered, rows_re))
+
+    sub = Order("MO-SUB-0001", "SUB-GROWTH-ARCHIVE", 1,
+                created_at=iso(utc_now()))
+    renewal = Order("MO-SUB-0002", "SUB-GROWTH-ARCHIVE", 1,
+                    created_at=iso(utc_now()))
+    pipeline2 = build_pipeline(state, [sub, renewal])
+    report2 = pipeline2.run_once()
+    rows2 = ledger_hook.read_rows(pipeline2.ledger_path)
+    per_order = {}
+    for row in rows2:
+        per_order.setdefault(row["order_id"], set()).add(row["cost_item"])
+    check("H2 subscription rails: monthly renewal lands as its own rows",
+          report2.new_orders == 2 and report2.delivered == 2
+          and len(rows2) == 6
+          and per_order == {
+              "MO-DRAW-0001": set(["tokens", "cost"]),
+              "MO-SUB-0001": set(["tokens", "cost"]),
+              "MO-SUB-0002": set(["tokens", "cost"]),
+          },
+          "new=%d delivered=%d rows=%d per_order=%s"
+          % (report2.new_orders, report2.delivered, len(rows2),
+             {k: sorted(v) for k, v in per_order.items()}))
+
+
 def main() -> int:
     print("=" * 72)
     print("fulfillment MVP skeleton - local end-to-end test")
@@ -260,6 +303,7 @@ def main() -> int:
         scenario_d(base)
         scenario_e(base)
         scenario_g(base)
+        scenario_h(base)
     finally:
         shutil.rmtree(base, ignore_errors=True)
 
