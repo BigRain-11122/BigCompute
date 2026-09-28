@@ -85,10 +85,25 @@ try {
     # orphaned worker is still detected as alive by the next tick (D-20260925-03)
     try { Set-Content -Path $lock -Value $p.Id -Encoding ASCII } catch {}
     if (-not $p.WaitForExit($RoundTimeoutMinutes * 60 * 1000)) {
-        Log "ROUND TIMEOUT after ${RoundTimeoutMinutes}min - killing headless process tree"
+        Log "ROUND TIMEOUT after ${RoundTimeoutMinutes}min - killing headless process tree (v3 full-tree)"
         try {
-            Get-CimInstance Win32_Process -Filter "ParentProcessId=$($p.Id)" -ErrorAction SilentlyContinue |
-                ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+            # v3 hardening (tech T3, 2026-09-28): taskkill /T walks the whole
+            # descendant chain; the old one-level CIM kill could leak
+            # grandchildren (e.g. node->python VRAM holders) past a timeout.
+            $null = & taskkill.exe /PID $p.Id /T /F 2>&1
+            # belt-and-braces: recursive CIM sweep for anything taskkill missed
+            $frontier = @($p.Id)
+            $guard = 0
+            while ($frontier.Count -gt 0 -and $guard -lt 20) {
+                $next = @()
+                foreach ($pp in $frontier) {
+                    Get-CimInstance Win32_Process -Filter "ParentProcessId=$pp" -ErrorAction SilentlyContinue |
+                        ForEach-Object { $next += [int]$_.ProcessId }
+                }
+                foreach ($pp in $next) { Stop-Process -Id $pp -Force -ErrorAction SilentlyContinue }
+                $frontier = $next
+                $guard++
+            }
             Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
         } catch { Log "kill failed: $_" }
         Beat "round timeout killed (age over ${RoundTimeoutMinutes}min)"
