@@ -18,22 +18,22 @@ v1=口径 B 单位成本（元/1M token·月末归集回溯唯一口径·⬜ 待
 
 ## 二、价值感判据线（Q_min = 1.5 × E_单包）
 
-- E_单包=19.9 单包单次交付记账轨 token 量（Qwen 精确计数 Ollama eval_count 累计口径）——**⬜ 实测待 BC-P-01 批处理池 dry-run 首单回填**（派活件 DRY-RUN 观察期至 10-05）。
-- 产能窗设计锚（实测自洽证）：本机 qwen2.5:7b 实测 157.98 tok/s（qa/smoke-20260928-0929.log）×「一句话→策略→回测 ≤3min MVP 判据」=180s → **E_单包 ≈ 0.028 Mtok**；代入 v1=0.30 → 单包 B 成本 ≈¥0.0085·与在册边际成本带 ¥0.005-0.007/包同量级 ✓（两锚互证）。
-- 价值感下限：**Q_min ≈ 1.5 × 0.028 = 0.042 Mtok/月**（≥1.5×19.9 单包·委员会配额设计律）。
-- 头寸：v1=0.30/g=70% 行 Q_max=29.9 Mtok ≈ Q_min 的 712× → **约束面=毛利线闸（上界）而非价值感线（下界）**；全 v1 扫描带最保守行（0.80/70%）Q_max=11.2 仍 ≫ Q_min。
+- E_单包=19.9 单包单次交付记账轨 token 量（Qwen 精确计数 Ollama eval_count 累计口径）——**✅ 2026-09-28 22:43 夜窗 dry-run 首单实测回填：E_单包=243 tokens（0.000243 Mtok）**（v0 两调用面口径=策略蓝图生成 149+报告解说 94·回测引擎与报告页渲染=确定性计算零 token 不计·探针 Tools/e12_package_anchor_probe.py·原始档 state/e12-anchor-20260928-2243.json·常驻 7b keep_alive:-1 零 VRAM 影响·批处理池派活面 DRY-RUN 观察期维持·本锚=人工 dry-run 首单口径·SKU 终稿后复测）。
+- 产能窗设计锚（保守上界·实测对照）：本机 qwen2.5:7b 实测 157.98 tok/s（qa/smoke-20260928-0929.log）×「一句话→策略→回测 ≤3min MVP 判据」=180s → 代理 E≈0.028 Mtok——**实测锚 0.000243 Mtok=代理的 1/115**（代理=产能窗满载假设上界·非单包足迹估计·两锚分工定谳：代理守 SLA 产能窗·实测锚供记账与价值感线）。
+- 价值感下限：**Q_min = 1.5 × 243 = 365 tokens/月 ≈ 0.000365 Mtok/月**（≥1.5×19.9 单包·委员会配额设计律·实测锚代入）。
+- 头寸与约束面定谳：v1=0.30/g=70% 行 Q_max=29.9 Mtok ≈ Q_min 的 81,900× → **价值感线（下界）在实测锚下退化为非约束·约束面=毛利线闸（上界）唯一**；全 v1 扫描带最保守行（0.80/70%→11.2 Mtok）仍 ≫ Q_min。
 
 ## 三、落值窗建议（设计值·呈商品运营部+CEO 批）
 
-- 营销可感口径=单包等效次数 N=Q÷E_单包：判据线下限 N≥1.5（强制）；建议设计窗 **N=15~30 次/月**（「每月 15-30 次生成」可感话术）→ Q ≈ **0.42~0.85 Mtok/月**（E=0.028 代入）。
-- 建议窗 vs 闸头寸：0.85 Mtok 在全 v1 带最保守行（0.80/70%→11.2）下方仍余 ≥13× → 建议窗全带可行；E/v1 实测回填后按同式重代。
+- 营销可感口径=单包等效次数 N=Q÷E_单包：判据线下限 N≥1.5（强制）；建议设计窗 **N=15~30 次/月**（「每月 15-30 次生成」可感话术）→ **E=243 实测锚代入 Q ≈ 0.0036~0.0073 Mtok/月**（v0 两调用面口径·SKU 终稿复测后按同式重代）。
+- 建议窗 vs 闸头寸：0.0073 Mtok 在全 v1 带最保守行（0.80/70%→11.2）下方仍余 ≥1,530× → 建议窗全带可行（实测锚后代数关系不变·仍为毛利线闸约束）；E/v1 复测后按同式重代。
 - enforcement 承接：落值后 `python Tools/cost_ledger.py quota-budget --month <月> --cap-mtok <Q落值>` 录入=月度预算闸（超发 blocked_over_budget·--ceo-approved 例外口=CEO 直批保留）。
 
-## 四、落值流程（三步·全 ⬜ 回填面如实）
+## 四、落值流程（三步·回填面如实）
 
-1. v1 首月末归集（R-20260928-compute-cost-economics Q5 结算式：月口径 B 成本合计 ÷ 月 token 消耗合计·记账轨 count 累计+eval_count 精确）。
-2. E_单包 dry-run 首单实测回填 → 代入 §一/§二 → 得 Q_max 行与 Q_min 线。
-3. 随 CEO 定价确认批落值（商品运营部执行律·与承接包 §三 呈送同窗）→ quota-budget 录入执行。
+1. v1 首月末归集（R-20260928-compute-cost-economics Q5 结算式：月口径 B 成本合计 ÷ 月 token 消耗合计·记账轨 count 累计+eval_count 精确）——⬜ 维持。
+2. E_单包 dry-run 首单实测回填 → 代入 §一/§二 → 得 Q_max 行与 Q_min 线——**✅ done 2026-09-28 22:43 夜窗（E12 探针·§二/§三 已重代）**。
+3. 随 CEO 定价确认批落值（商品运营部执行律·与承接包 §三 呈送同窗）→ quota-budget 录入执行——⬜ 维持。
 
 ## 五、预注册判据
 
@@ -48,4 +48,4 @@ v1=口径 B 单位成本（元/1M token·月末归集回溯唯一口径·⬜ 待
 
 ## 七、证据指针
 
-pricing-confirmation-package-29.9-v1.md（§二 核心式+§四 回填面）｜BC-F-20260927-03（配额设计律 ≥1.5×19.9 单包）｜R-20260928-compute-cost-economics（Q5 结算式+Q6 判据）｜qa/smoke-20260928-0929.log（157.98 tok/s 实测）｜docs/ops/paypoint-alignment-matrix-v1.md L17（19.9 B 边际成本带）｜Tools/cost_ledger.py（quota-budget/issue/consume/summary+blocked_over_budget）
+pricing-confirmation-package-29.9-v1.md（§二 核心式+§四 回填面）｜BC-F-20260927-03（配额设计律 ≥1.5×19.9 单包）｜R-20260928-compute-cost-economics（Q5 结算式+Q6 判据）｜qa/smoke-20260928-0929.log（157.98 tok/s 实测）｜docs/ops/paypoint-alignment-matrix-v1.md L17（19.9 B 边际成本带）｜Tools/cost_ledger.py（quota-budget/issue/consume/summary+blocked_over_budget）｜**Tools/e12_package_anchor_probe.py+state/e12-anchor-20260928-2243.json（E_单包=243 tokens dry-run 首单实测锚·2026-09-28 22:43 夜窗·E12）**
