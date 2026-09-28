@@ -47,6 +47,17 @@ via OSS harvest OH-20260927-bigcompute, MIT license, five gates PASS):
   python Tools/cost_ledger.py count --text "hello world"
   python Tools/cost_ledger.py count --file notes.md --encoding cl100k_base
 
+Cloud-cost collection lane (BC-P-10 / R-36; predesign =
+docs/ops/cloud-cost-lane-predesign-v1.md; separate rail file per the
+split-file rule; wiring window = first real paid cloud bill (J4); unit
+price enters ONLY via month-end bill backfill (J2), never at entry time):
+  python Tools/cost_ledger.py cloud-budget --month 2026-10 --cap-mtok 500
+  python Tools/cost_ledger.py cloud-entry --tx-id CL-0001 --consumer bigcompute \
+      --lane openrouter --task-ref TASK-7 --amount-mtok 1.2 --reason "city3d"
+  python Tools/cost_ledger.py cloud-bill --month 2026-10 --lane openrouter \
+      --unit-cost-b 2.5 --ref BILL-202610-001
+  python Tools/cost_ledger.py cloud-summary [--month 2026-10]
+
 Encoding rule: this file stays PURE ASCII (group coding law).
 """
 import argparse
@@ -59,6 +70,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 LEDGER = os.path.join(HERE, "..", "state", "cost-ledger.jsonl")
 QLEDGER = os.path.join(HERE, "..", "state", "quota-ledger.jsonl")
 QBUDGET = os.path.join(HERE, "..", "state", "quota-budget.json")
+CLEDGER = os.path.join(HERE, "..", "state", "cloud-cost-ledger.jsonl")
+CBUDGET = os.path.join(HERE, "..", "state", "cloud-budget.json")
 FUND_ACCRUAL_DEFAULT = 10.0
 FUND_TARGET_DEFAULT = 3500.0
 
@@ -343,13 +356,156 @@ def quota_summary(args, ledger=QLEDGER, budget=QBUDGET):
     }
 
 
+# ------------------------------------------------------- cloud-cost lane
+# Cloud-cost collection rail (BC-P-10 / R-36; predesign =
+# docs/ops/cloud-cost-lane-predesign-v1.md). Separate rail file
+# (split-file rule, R-34/M7 parity). J2: unit price is ONLY legal from the
+# month-end paid bill backfill; cloud-entry structurally exposes no
+# unit-price flag so nothing can be fabricated at entry time. J4: no real
+# wiring before the first paid cloud bill receipt exists.
+
+def cloud_budget(args, path=CBUDGET):
+    data = _load_budget(path)
+    prev = data.get(args.month)
+    data[args.month] = args.cap_mtok
+    _save_budget(data, path)
+    return {"status": "ok", "month": args.month,
+            "cap_mtok": args.cap_mtok, "prev_cap_mtok": prev}
+
+
+def cloud_entry(args, ledger=CLEDGER, budget=CBUDGET):
+    rows = _load_rows(ledger)
+    for r in rows:
+        if r.get("tx_id") == args.tx_id:
+            return {"status": "duplicate", "tx_id": args.tx_id, "row": r}
+    month = _month_of(args.date)
+    used_mtd = round(sum(r.get("amount_mtok", 0.0) for r in rows
+                         if r.get("month") == month), 6)
+    cap = _load_budget(budget).get(month)
+    over = cap is not None and (used_mtd + args.amount_mtok) > cap
+    if over and not args.ceo_approved:
+        return {"status": "blocked_over_cloud_budget", "month": month,
+                "cap_mtok": cap, "used_mtd_mtok": used_mtd,
+                "attempt_mtok": args.amount_mtok,
+                "note": "monthly cloud-lane budget gate: over-cap entry "
+                        "needs --ceo-approved (cloud-cost-lane-predesign s4)"}
+    row = {
+        "tx_id": args.tx_id,
+        "date": args.date,
+        "month": month,
+        "type": "cloud",
+        "consumer": args.consumer,
+        "lane": args.lane,
+        "task_ref": args.task_ref,
+        "amount_mtok": round(args.amount_mtok, 6),
+        "unit_cost_b_cny": None,       # J2: filled only by cloud-bill
+        "cost_b_cny": None,
+        "receipt_status": "pending_bill",
+        "settlement_caliber": "B",
+        "reason": args.reason,
+        "ref": None,                   # bill pointer, set by cloud-bill
+        "ceo_approved": bool(args.ceo_approved),
+        "tokens_local": args.tokens_local,
+        "tokens_api": args.tokens_api,
+        "api_reason": args.api_reason,
+    }
+    _append_row(ledger, row)
+    return {"status": "ok_ceo_approved_over_cap" if over else "ok", "row": row,
+            "month_used_mtok": round(used_mtd + args.amount_mtok, 6),
+            "month_cap_mtok": cap}
+
+
+def cloud_bill(args, ledger=CLEDGER):
+    """Month-end backfill: the real paid bill is the ONLY legal unit-price
+    source (J2); flips pending_bill -> billed for month+lane in place."""
+    rows = _load_rows(ledger)
+    hit = 0
+    for r in rows:
+        if (r.get("type") == "cloud" and r.get("month") == args.month
+                and r.get("lane") == args.lane
+                and r.get("receipt_status") == "pending_bill"):
+            r["unit_cost_b_cny"] = round(args.unit_cost_b, 6)
+            r["cost_b_cny"] = round(r.get("amount_mtok", 0.0)
+                                    * args.unit_cost_b, 4)
+            r["receipt_status"] = "billed"
+            r["ref"] = args.ref
+            hit += 1
+    if hit:
+        _ensure_state(ledger)
+        with open(ledger, "w", encoding="utf-8") as fh:
+            for r in rows:
+                fh.write(json.dumps(r, sort_keys=True, ensure_ascii=True) + "\n")
+    return {"status": "ok" if hit else "no_pending_rows",
+            "month": args.month, "lane": args.lane,
+            "unit_cost_b_cny": round(args.unit_cost_b, 6),
+            "ref": args.ref, "billed_rows": hit}
+
+
+def cloud_summary(args, ledger=CLEDGER, budget=CBUDGET):
+    rows = _load_rows(ledger)
+    if args.month:
+        rows = [r for r in rows if r.get("month") == args.month]
+    per = {}
+    for r in rows:
+        if r.get("type") != "cloud":
+            continue
+        key = (r.get("consumer", "-"), r.get("lane", "-"))
+        c = per.setdefault(key, {"amount_mtok": 0.0, "billed_mtok": 0.0,
+                                  "cost_b_cny": 0.0, "pending_rows": 0,
+                                  "billed_rows": 0})
+        amt = r.get("amount_mtok", 0.0)
+        c["amount_mtok"] += amt
+        if r.get("receipt_status") == "billed":
+            c["billed_mtok"] += amt
+            c["cost_b_cny"] += r.get("cost_b_cny") or 0.0
+            c["billed_rows"] += 1
+        else:
+            c["pending_rows"] += 1
+    face = {}
+    for key, c in per.items():
+        face["%s|%s" % key] = {
+            "amount_mtok": round(c["amount_mtok"], 6),
+            "billed_mtok": round(c["billed_mtok"], 6),
+            "cost_b_cny": round(c["cost_b_cny"], 4),
+            "pending_rows": c["pending_rows"],
+            "billed_rows": c["billed_rows"],
+        }
+    month_face = {}
+    if args.month:
+        cap = _load_budget(budget).get(args.month)
+        used = round(sum(r.get("amount_mtok", 0.0) for r in rows
+                         if r.get("type") == "cloud"), 6)
+        month_face = {
+            "month": args.month,
+            "cap_mtok": cap,
+            "used_mtok": used,
+            "remaining_mtok": None if cap is None else round(cap - used, 6),
+        }
+    return {
+        "consumer_lane": face,
+        "totals": {
+            "rows": len([r for r in rows if r.get("type") == "cloud"]),
+            "amount_mtok": round(sum(c["amount_mtok"] for c in per.values()), 6),
+            "cost_billed_b_cny": round(sum(c["cost_b_cny"]
+                                           for c in per.values()), 4),
+            "pending_bill_rows": sum(c["pending_rows"] for c in per.values()),
+        },
+        "month_face": month_face,
+        "settlement_caliber": "B_only (unit price via month-end paid bill only, J2)",
+        "wiring": "accounting rail only; real cloud entry waits for the "
+                  "first paid bill receipt (J4)",
+    }
+
+
 def _selftest():
-    order_results, quota_results = [], []
+    order_results, quota_results, cloud_results = [], [], []
     for run in (1, 2):
         tmp = os.path.join(tempfile.gettempdir(), "bc_ledger_selftest_%d.jsonl" % run)
         qtmp = os.path.join(tempfile.gettempdir(), "bc_quota_selftest_%d.jsonl" % run)
         qbtmp = os.path.join(tempfile.gettempdir(), "bc_quota_budget_%d.json" % run)
-        for p in (tmp, qtmp, qbtmp):
+        ctmp = os.path.join(tempfile.gettempdir(), "bc_cloud_selftest_%d.jsonl" % run)
+        cbtmp = os.path.join(tempfile.gettempdir(), "bc_cloud_budget_%d.json" % run)
+        for p in (tmp, qtmp, qbtmp, ctmp, cbtmp):
             if os.path.isfile(p):
                 os.remove(p)
 
@@ -425,7 +581,65 @@ def _selftest():
             and summ["month_face"]["over_cap_ceo_approved_tx"] == 1
         )
         quota_results.append((quota_ok, qrows, summ))
-        for p in (tmp, qtmp, qbtmp):
+
+        # cloud lane synthetic dry-run (predesign J1-J3: additive, unit
+        # price only via bill backfill, tx_id replay zero-new)
+        cb = Q()
+        cb.month, cb.cap_mtok = "2026-09", 10.0
+        cloud_budget(cb, path=cbtmp)
+
+        def centry(tx, amt, approved=False):
+            qq = Q()
+            qq.tx_id, qq.date, qq.consumer = tx, "2026-09-28", "bigcompute"
+            qq.lane, qq.task_ref = "openrouter", "TASK-1"
+            qq.amount_mtok = amt
+            qq.reason = "selftest"
+            qq.ceo_approved = approved
+            qq.tokens_local, qq.tokens_api, qq.api_reason = 0, 500, "cloud trial"
+            return cloud_entry(qq, ledger=ctmp, budget=cbtmp)
+
+        e1 = centry("C1", 6.0)                   # within cap -> ok
+        e2 = centry("C2", 3.0)                   # 9 <= 10 -> ok
+        e3 = centry("C3", 2.0)                   # 11 > 10 -> budget gate blocks
+        e4 = centry("C3", 2.0, approved=True)    # over cap, CEO approved
+        e5 = centry("C1", 6.0)                   # duplicate tx_id -> no new row
+        crows_pre = _load_rows(ctmp)
+        j2_ok = all(r.get("unit_cost_b_cny") is None
+                    and r.get("cost_b_cny") is None
+                    and r.get("receipt_status") == "pending_bill"
+                    for r in crows_pre)
+        cbill = Q()
+        cbill.month, cbill.lane = "2026-09", "openrouter"
+        cbill.unit_cost_b, cbill.ref = 2.0, "BILL-202609-001"
+        b1 = cloud_bill(cbill, ledger=ctmp)
+        crows = _load_rows(ctmp)
+        csargs = Q()
+        csargs.month = "2026-09"
+        csumm = cloud_summary(csargs, ledger=ctmp, budget=cbtmp)
+        cl = csumm["consumer_lane"]["bigcompute|openrouter"]
+        cloud_ok = (
+            e1["status"] == "ok"
+            and e2["status"] == "ok"
+            and e3["status"] == "blocked_over_cloud_budget"
+            and e4["status"] == "ok_ceo_approved_over_cap"
+            and e5["status"] == "duplicate"
+            and len(crows_pre) == 3
+            and j2_ok
+            and b1["billed_rows"] == 3
+            and all(r.get("receipt_status") == "billed" for r in crows)
+            and all(r.get("ref") == "BILL-202609-001" for r in crows)
+            and abs(crows[0]["cost_b_cny"] - 12.0) < 0.0001
+            and abs(cl["amount_mtok"] - 11.0) < 1e-6
+            and abs(cl["cost_b_cny"] - 22.0) < 0.0001
+            and cl["pending_rows"] == 0 and cl["billed_rows"] == 3
+            and abs(csumm["totals"]["amount_mtok"] - 11.0) < 1e-6
+            and abs(csumm["totals"]["cost_billed_b_cny"] - 22.0) < 0.0001
+            and csumm["totals"]["pending_bill_rows"] == 0
+            and csumm["month_face"]["cap_mtok"] == 10.0
+            and abs(csumm["month_face"]["used_mtok"] - 11.0) < 1e-6
+        )
+        cloud_results.append((cloud_ok, crows, csumm))
+        for p in (tmp, qtmp, qbtmp, ctmp, cbtmp):
             os.remove(p)
     # token-count face: estimation caliber; absence is visible, not a math fail
     class C:
@@ -460,10 +674,15 @@ def _selftest():
         == json.dumps(quota_results[1][1], sort_keys=True)
         and json.dumps(quota_results[0][2], sort_keys=True)
         == json.dumps(quota_results[1][2], sort_keys=True)
+        and json.dumps(cloud_results[0][1], sort_keys=True)
+        == json.dumps(cloud_results[1][1], sort_keys=True)
+        and json.dumps(cloud_results[0][2], sort_keys=True)
+        == json.dumps(cloud_results[1][2], sort_keys=True)
     )  # order_id differs by design; determinism = identical math on all else
     math_ok = (order_results[0][0] and order_results[1][0]
-               and quota_results[0][0] and quota_results[1][0])
-    print("selftest: math=%s determinism=%s count=%s (orders+quota-gate+count) -> %s"
+               and quota_results[0][0] and quota_results[1][0]
+               and cloud_results[0][0] and cloud_results[1][0])
+    print("selftest: math=%s determinism=%s count=%s (orders+quota-gate+count+cloud) -> %s"
           % (math_ok, same, count_status,
              "PASS" if (math_ok and same and count_ok) else "FAIL"))
     return 0 if (math_ok and same and count_ok) else 1
@@ -516,13 +735,35 @@ def main():
     qsu = sub.add_parser("quota-summary")
     qsu.add_argument("--month", default=None)
     qsu.add_argument("--consumer", default=None)
+    cbp = sub.add_parser("cloud-budget")
+    cbp.add_argument("--month", required=True)
+    cbp.add_argument("--cap-mtok", dest="cap_mtok", type=float, required=True)
+    ce = sub.add_parser("cloud-entry")
+    ce.add_argument("--tx-id", dest="tx_id", required=True)
+    ce.add_argument("--consumer", required=True)
+    ce.add_argument("--lane", required=True)
+    ce.add_argument("--task-ref", dest="task_ref", default="-")
+    ce.add_argument("--amount-mtok", dest="amount_mtok", type=float, required=True)
+    ce.add_argument("--reason", default="-")
+    ce.add_argument("--date", default=None)
+    ce.add_argument("--ceo-approved", dest="ceo_approved", action="store_true")
+    ce.add_argument("--tokens-local", dest="tokens_local", type=int, default=0)
+    ce.add_argument("--tokens-api", dest="tokens_api", type=int, default=0)
+    ce.add_argument("--api-reason", dest="api_reason", default="-")
+    cb2 = sub.add_parser("cloud-bill")
+    cb2.add_argument("--month", required=True)
+    cb2.add_argument("--lane", required=True)
+    cb2.add_argument("--unit-cost-b", dest="unit_cost_b", type=float, required=True)
+    cb2.add_argument("--ref", required=True)
+    csu = sub.add_parser("cloud-summary")
+    csu.add_argument("--month", default=None)
     ct = sub.add_parser("count")
     ct.add_argument("--text", default=None)
     ct.add_argument("--file", default=None)
     ct.add_argument("--encoding", default="cl100k_base")
     sub.add_parser("selftest")
     args = p.parse_args()
-    if getattr(args, "date", None) is None and args.cmd in ("add", "quota-issue", "quota-consume"):
+    if getattr(args, "date", None) is None and args.cmd in ("add", "quota-issue", "quota-consume", "cloud-entry"):
         import datetime
         args.date = datetime.date.today().isoformat()
     if args.cmd == "add":
@@ -539,6 +780,14 @@ def main():
         out = quota_consume(args)
     elif args.cmd == "quota-summary":
         out = quota_summary(args)
+    elif args.cmd == "cloud-budget":
+        out = cloud_budget(args)
+    elif args.cmd == "cloud-entry":
+        out = cloud_entry(args)
+    elif args.cmd == "cloud-bill":
+        out = cloud_bill(args)
+    elif args.cmd == "cloud-summary":
+        out = cloud_summary(args)
     elif args.cmd == "count":
         out = count_tokens(args)
     else:
