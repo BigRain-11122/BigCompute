@@ -2,6 +2,7 @@
 state/
 logs/
 .codely-cli/
+docs/_trash/
 *.local.json
 .env
 .env.*

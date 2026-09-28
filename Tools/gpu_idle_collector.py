@@ -14,6 +14,10 @@ tasks/TASKS.md T-20260928-28 + state/proposals.md BC-P-01 batch pool).
   writes: it points at the top open todo of state/queue/ (P1 -> P2 -> P3,
   three-line queue law); batch pool BC-P-01 has zero in-flight jobs in
   plan state; marketplace listing stays blocked on CPH4 tables.
+- DRY-RUN OBSERVATION MODE (CEO safety-fix order 2026-09-28, item 3):
+  monitoring + observation log only, no dispatch at all; real dispatch
+  activation (BC-P-01 batch pool -> local Ollama) stays deferred until
+  after the one-week observation window ends 2026-10-05.
 - report: same-day stats + daily KPI verdict for the round ledger
   (CEO criterion: daily avg < 50% = dereliction -> honest FLAG).
 - selftest: offline window/dispatch math checks (no nvidia-smi needed).
@@ -41,8 +45,9 @@ QUEUE_DIR = os.path.join(HERE, "..", "state", "queue")
 WINDOW_MIN = 30    # rolling idle window (CEO spec)
 IDLE_PCT = 50.0    # < 50% = idle (CEO spec)
 DISPATCH_COOLDOWN_MIN = 30
-DISPATCH_HEADER = ("# GPU idle dispatch log (T-20260928-28 v1; pointer-only, "
-                   "no auto-execution)\n")
+DISPATCH_HEADER = ("# GPU idle observation log (T-20260928-28; DRY-RUN per "
+                   "CEO safety-fix order 2026-09-28 item 3: no "
+                   "auto-dispatch, observe 1 week to 2026-10-05)\n")
 
 
 def now():
@@ -147,11 +152,12 @@ def maybe_dispatch(rows):
         if new_file:
             f.write(DISPATCH_HEADER)
         f.write("| %s | IDLE window avg %.1f%% (%d samples/%d min) | %s | "
-                "batch pool BC-P-01: 0 in-flight (plan state); "
-                "marketplace blocked on CPH4 tables |\n"
+                "DRY-RUN observe only, NO dispatch (CEO safety-fix "
+                "2026-09-28; activation deferred past 2026-10-05 review); "
+                "batch pool BC-P-01: 0 in-flight (plan state) |\n"
                 % (now().isoformat(timespec="seconds"), avg, len(inwin),
                    WINDOW_MIN, queue_head_pointer()))
-    return "IDLE avg %.1f%% -> dispatch line appended" % avg
+    return "IDLE avg %.1f%% -> dry-run observation line appended (no dispatch)" % avg
 
 
 def cmd_sample():

@@ -1,0 +1,161 @@
+#!/usr/bin/env python3
+"""qa_smoke.py - one-shot QA smoke-test pipeline (tech T11, orders L254).
+
+Runs the four BigCompute charter checks (docs/qa-smoke-test-charter.md):
+ 1. GPU collector runs and produces data (gpu_idle_collector.py report)
+ 2. Ollama real response (local serve probe, qwen2.5:7b-instruct)
+ 3. three queue files each hold >= 3 todo rows (state/queue/*.md)
+ 4. cost ledger maintained (cost_ledger.py selftest PASS)
+
+Writes qa/smoke-<ts>.log with raw outputs + a self-judge verdict, then
+renders that exact log content to qa/smoke-<ts>.png via .NET
+System.Drawing. CLI company has no GUI window to screenshot, so the PNG
+is a faithful zero-edit render of the real command output (declaration
+BC-F-20260928-03, group patrol to adjudicate; charter red line:
+fabrication = P1).
+
+Usage: python Tools/qa_smoke.py
+Exit 0 = all pass; 1 = at least one fail (fix = next round top priority).
+Encoding rule: this file stays PURE ASCII (group coding law).
+"""
+import datetime
+import json
+import os
+import subprocess
+import sys
+import urllib.request
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+ROOT = os.path.join(HERE, "..")
+QA_DIR = os.path.join(ROOT, "qa")
+QUEUE_DIR = os.path.join(ROOT, "state", "queue")
+QUEUE_FILES = ("main.md", "tech.md", "explore.md")
+OLLAMA_URL = "http://localhost:11434/api/generate"
+OLLAMA_MODEL = "qwen2.5:7b-instruct"
+
+PNG_PS_TEMPLATE = r"""
+$ErrorActionPreference='Stop'
+Add-Type -AssemblyName System.Drawing
+$logpath = '__LOG__'
+$pngpath = '__PNG__'
+$log = Get-Content -LiteralPath $logpath -Encoding UTF8
+$font = New-Object System.Drawing.Font('Consolas',11)
+$bmp = New-Object System.Drawing.Bitmap(1700,[Math]::Max(400,$log.Count*19+40))
+$g = [System.Drawing.Graphics]::FromImage($bmp)
+$g.Clear([System.Drawing.Color]::White)
+$y = 10
+foreach($line in $log){
+  $g.DrawString($line, $font, [System.Drawing.Brushes]::Black, 10.0, [single]$y)
+  $y += 19
+}
+$g.Dispose()
+$bmp.Save($pngpath, [System.Drawing.Imaging.ImageFormat]::Png)
+$bmp.Dispose()
+"""
+
+
+def run(cmd, timeout=180):
+    p = subprocess.run(cmd, capture_output=True, text=True,
+                       encoding="utf-8", errors="replace", timeout=timeout,
+                       cwd=ROOT)
+    return p.returncode, (p.stdout or "") + (p.stderr or "")
+
+
+def probe_gpu():
+    """Charter 1: GPU collector runs and produces numbers."""
+    rc, out = run([sys.executable, os.path.join(HERE, "gpu_idle_collector.py"),
+                   "report"])
+    ok = rc == 0 and "gpu report" in out and "no samples today" not in out
+    return ok, out.strip()
+
+
+def probe_ollama():
+    """Charter 2: local Ollama serve answers a real prompt."""
+    body = json.dumps({"model": OLLAMA_MODEL, "prompt": "1+1?",
+                       "stream": False,
+                       "options": {"num_predict": 32, "temperature": 0}}
+                      ).encode("utf-8")
+    req = urllib.request.Request(OLLAMA_URL, data=body,
+                                 headers={"Content-Type": "application/json"})
+    try:
+        with urllib.request.urlopen(req, timeout=180) as r:
+            data = json.loads(r.read().decode("utf-8"))
+        text = (data.get("response") or "").strip()
+        ec = data.get("eval_count")
+        ed = data.get("eval_duration") or 0
+        tps = (ec / (ed / 1e9)) if (ec and ed) else 0.0
+        rc2, ps = run(["ollama", "ps"], timeout=60)
+        detail = ("answer=%r eval_count=%s %.2f tok/s\n%s"
+                  % (text, ec, tps, ps.strip()))
+        return bool(text), detail
+    except Exception as e:  # noqa: BLE001 - probe must not crash pipeline
+        return False, "ollama probe failed: %r" % e
+
+
+def probe_queues():
+    """Charter 3: each queue file holds >= 3 todo rows."""
+    detail, ok_all = [], True
+    for name in QUEUE_FILES:
+        path = os.path.join(QUEUE_DIR, name)
+        rows = 0
+        if os.path.exists(path):
+            with open(path, "r", encoding="utf-8") as f:
+                for line in f:
+                    if (line.startswith("| ") and "---" not in line
+                            and not line.startswith("| #")):
+                        rows += 1
+        ok_all = ok_all and rows >= 3
+        detail.append("%s: %d rows" % (name, rows))
+    return ok_all, "\n".join(detail)
+
+
+def probe_ledger():
+    """Charter 4: cost ledger selftest still PASS."""
+    rc, out = run([sys.executable, os.path.join(HERE, "cost_ledger.py"),
+                   "selftest"])
+    return rc == 0 and "PASS" in out, out.strip()
+
+
+def main():
+    os.makedirs(QA_DIR, exist_ok=True)
+    ts = datetime.datetime.now().strftime("%Y%m%d-%H%M")
+    log_path = os.path.join(QA_DIR, "smoke-%s.log" % ts)
+    png_path = os.path.join(QA_DIR, "smoke-%s.png" % ts)
+    probes = [("gpu collector", probe_gpu), ("ollama response", probe_ollama),
+              ("queue rows", probe_queues), ("cost ledger", probe_ledger)]
+    lines, passed = [], 0
+    lines.append("BigCompute QA smoke test %s (orders L254 / charter v1)"
+                 % ts)
+    for label, fn in probes:
+        ok, detail = fn()
+        passed += 1 if ok else 0
+        lines.append("")
+        lines.append("[%s] %s -> %s" % (label, "PASS" if ok else "FAIL",
+                                         label))
+        lines.append(detail)
+        print("[%s] %s" % ("PASS" if ok else "FAIL", label))
+    lines.append("")
+    verdict = "smoke verdict: %d/4 PASS" % passed
+    lines.append(verdict)
+    with open(log_path, "w", encoding="utf-8") as f:
+        f.write("\n".join(lines) + "\n")
+    try:
+        script = (PNG_PS_TEMPLATE
+                  .replace("__LOG__", log_path.replace("'", "''"))
+                  .replace("__PNG__", png_path.replace("'", "''")))
+        r = subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy",
+                            "Bypass", "-Command", script],
+                           capture_output=True, timeout=120, cwd=ROOT)
+        if not os.path.exists(png_path):
+            print("png render produced no file: %s"
+                  % (r.stderr or "").strip()[:200])
+    except Exception as e:  # noqa: BLE001 - png render must not fail round
+        print("png render failed: %r" % e)
+    print("%s (log=%s png=%s)" % (verdict,
+                                  os.path.basename(log_path),
+                                  os.path.basename(png_path)))
+    return 0 if passed == 4 else 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())
