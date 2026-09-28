@@ -69,10 +69,31 @@ def probe_gpu():
     return ok, out.strip()
 
 
+def parse_residency(ps_text):
+    """T15: classify model residency from `ollama ps` output.
+
+    FOREVER = loaded with indefinite keep_alive (U240 standard state);
+    PRESENT = loaded but on a finite timer; LOST = not resident.
+    """
+    for line in (ps_text or "").splitlines():
+        if line.startswith(OLLAMA_MODEL):
+            return "FOREVER" if "Forever" in line else "PRESENT"
+    return "LOST"
+
+
 def probe_ollama():
-    """Charter 2: local Ollama serve answers a real prompt."""
+    """Charter 2: local Ollama serve answers a real prompt.
+
+    T15 (R-20260928-inference-serving-standard Q3 item 3): the probe is a
+    resident-serving call, so it carries keep_alive=-1 explicitly and
+    records residency before/after. If residency was lost, the generate
+    call itself reloads the model (auto-load) and the log line records
+    the restore; residency no longer depends on default keep_alive.
+    """
+    rc0, ps_pre = run(["ollama", "ps"], timeout=60)
+    pre = parse_residency(ps_pre)
     body = json.dumps({"model": OLLAMA_MODEL, "prompt": "1+1?",
-                       "stream": False,
+                       "stream": False, "keep_alive": -1,
                        "options": {"num_predict": 32, "temperature": 0}}
                       ).encode("utf-8")
     req = urllib.request.Request(OLLAMA_URL, data=body,
@@ -84,9 +105,21 @@ def probe_ollama():
         ec = data.get("eval_count")
         ed = data.get("eval_duration") or 0
         tps = (ec / (ed / 1e9)) if (ec and ed) else 0.0
-        rc2, ps = run(["ollama", "ps"], timeout=60)
-        detail = ("answer=%r eval_count=%s %.2f tok/s\n%s"
-                  % (text, ec, tps, ps.strip()))
+        rc2, ps_post = run(["ollama", "ps"], timeout=60)
+        post = parse_residency(ps_post)
+        if post == "LOST":
+            res = ("residency: pre=%s post=LOST (anomaly: not loaded "
+                   "after generate)" % pre)
+        elif pre == "LOST":
+            res = ("residency: pre=LOST post=%s (auto-loaded via "
+                   "keep_alive=-1)" % post)
+        elif pre == "FOREVER":
+            res = "residency: pre=FOREVER post=%s (maintained)" % post
+        else:
+            res = ("residency: pre=%s post=%s (keep_alive=-1 reapplied)"
+                   % (pre, post))
+        detail = ("answer=%r eval_count=%s %.2f tok/s\n%s\n%s\n%s"
+                  % (text, ec, tps, res, ps_pre.strip(), ps_post.strip()))
         return bool(text), detail
     except Exception as e:  # noqa: BLE001 - probe must not crash pipeline
         return False, "ollama probe failed: %r" % e
