@@ -1,7 +1,7 @@
 {
   "company": "BigCompute",
-  "updated_at": "2026-09-29 19:1x",
-  "current_activity": "批处理池备货承接收口（O-20260929-007/O-013/O-019 三令派单 ack·storm 占用轮滞后 ~2h 补承接毕）+值守 N1 前夜",
-  "latest_artifact": "Tools/batch_pool.py + docs/ops/batch-pool-stock-v1.jsonl（2026-09-29 19:0x）·6 批卡 4 lane 备货登记簿+selftest PASS+validate 实跑 POOL_GREEN（T-20260929-32/M23）",
-  "next_milestone": "09-30 22:43 首月末归集 N1 必跑（一命令 python Tools/month_end_collect.py run → 月末行入轮账本·E25 N1 判据·漏跑=下下轮第一优先）·窗 ≤48h"
+  "updated_at": "2026-09-29 19:4x",
+  "current_activity": "O-20260929-029 机队并行令承接：City3D 室内烘焙批预备性探针毕（探针+R- 件·夜窗实弹步 M25 候选）+O-030 排满探针合规补货毕",
+  "latest_artifact": "Tools/city3d_bake_readiness_probe.py + docs/research/R-20260929-city3d-interior-bake-lane（2026-09-29 19:4x）·selftest 4/4 PASS+实跑 ASSETS_READY_FOR_BAKE_SPIKE（室内四包 23,821 件/0.50GB·T-20260929-33/M24）",
+  "next_milestone": "09-29 22:43 夜窗：室内烘焙 labbench 样板间实弹步（M25·GPU/CPU 双路三指标）+09-30 22:43 首月末归集 N1 必跑（E25 判据·漏跑=下下轮第一优先）·窗 ≤48h"
 }
