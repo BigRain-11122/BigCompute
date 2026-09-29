@@ -1,7 +1,7 @@
 {
   "company": "BigCompute",
-  "updated_at": "2026-09-29 14:1x",
-  "current_activity": "M21 席7 附款合规硬门落地：付费点×合规义务映射表+机检门（产品优先律在役·A 档上线前未过表不得开单收款）",
-  "latest_artifact": "docs/ops/paypoint-compliance-map-v1.md + Tools/compliance_gate_check.py（2026-09-29 14:10·机检 53/53 锚全绿+3 ⬜ 随批·selftest PASS·报告 state/compliance-gate-20260929-1410.txt）",
-  "next_milestone": "09-30 22:43 首月末归集 N1 必跑（月末行落·month-end-cost-collection-sheet-v1 预注册·窗内 ≤48h）"
+  "updated_at": "2026-09-29 14:2x",
+  "current_activity": "算力议程四轮循环族 A：常驻吞吐 SLA 基线工具化（R-39 工程化·净窗基线 93.93 tok/s 双态机械分类在册）",
+  "latest_artifact": "Tools/serve_sla_baseline.py + state/serve-sla-baseline-20260929-1419.json（2026-09-29 14:19·selftest 6/6 PASS·38 点实跑·净窗 n=9 mean=93.93 tok/s CV 5.8%·竞争带 min 29.69 与 R-39 交叉自证）",
+  "next_milestone": "09-30 22:43 首月末归集 N1 必跑（month-end-cost-collection-sheet-v1 五源机械链·SLA 基线工具直供产能窗基线·窗 ≤48h）"
 }
