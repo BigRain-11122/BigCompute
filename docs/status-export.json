@@ -1,7 +1,7 @@
 {
   "company": "BigCompute",
-  "updated_at": "2026-09-29 18:5x",
-  "current_activity": "同步风暴恢复收口+值守 N1 前夜：提案面 canonical 复活+冲突垃圾清零+风暴遗留自检件落地（gitignored state/ 盲区填补·O-20260929-1830-HQ 承接）·N1 机械链就绪待跑",
-  "latest_artifact": "Tools/storm_leftover_check.py（2026-09-29 18:5x）·selftest 9/9 PASS+check 实跑 clean（tech T23·风暴遗留检测件）",
+  "updated_at": "2026-09-29 19:1x",
+  "current_activity": "批处理池备货承接收口（O-20260929-007/O-013/O-019 三令派单 ack·storm 占用轮滞后 ~2h 补承接毕）+值守 N1 前夜",
+  "latest_artifact": "Tools/batch_pool.py + docs/ops/batch-pool-stock-v1.jsonl（2026-09-29 19:0x）·6 批卡 4 lane 备货登记簿+selftest PASS+validate 实跑 POOL_GREEN（T-20260929-32/M23）",
   "next_milestone": "09-30 22:43 首月末归集 N1 必跑（一命令 python Tools/month_end_collect.py run → 月末行入轮账本·E25 N1 判据·漏跑=下下轮第一优先）·窗 ≤48h"
 }
