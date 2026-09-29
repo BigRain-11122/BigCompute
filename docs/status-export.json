@@ -1,7 +1,7 @@
 {
   "company": "BigCompute",
-  "updated_at": "2026-09-29 19:4x",
-  "current_activity": "O-20260929-029 机队并行令承接：City3D 室内烘焙批预备性探针毕（探针+R- 件·夜窗实弹步 M25 候选）+O-030 排满探针合规补货毕",
-  "latest_artifact": "Tools/city3d_bake_readiness_probe.py + docs/research/R-20260929-city3d-interior-bake-lane（2026-09-29 19:4x）·selftest 4/4 PASS+实跑 ASSETS_READY_FOR_BAKE_SPIKE（室内四包 23,821 件/0.50GB·T-20260929-33/M24）",
-  "next_milestone": "09-29 22:43 夜窗：室内烘焙 labbench 样板间实弹步（M25·GPU/CPU 双路三指标）+09-30 22:43 首月末归集 N1 必跑（E25 判据·漏跑=下下轮第一优先）·窗 ≤48h"
+  "updated_at": "2026-09-29 20:1x",
+  "current_activity": "哨兵轮：O-031/032/033 三令收讫回执（BC-F-20260929-05）+月末归集 N1 预演毕（M26·selftest 9/9+run 参数面·链路就绪）+rounds.log 编码修复毕（T24）",
+  "latest_artifact": "state/rounds.log L70 GBK→UTF-8 保全转码修复（strict decode 全过·备份 rounds.log.bak-20260929-200205·2026-09-29 20:02）+HQ-FEEDBACK BC-F-20260929-05 三令回执行",
+  "next_milestone": "09-29 22:43 夜窗：M25 室内烘焙 labbench 样板间实弹（GPU/CPU 双路三指标）；09-30 22:43 首月末归集 N1 必跑（一命令 run·E25 判据·漏跑=下下轮第一优先）·窗 ≤48h"
 }
