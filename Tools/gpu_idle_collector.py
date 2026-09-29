@@ -18,8 +18,10 @@ tasks/TASKS.md T-20260928-28 + state/proposals.md BC-P-01 batch pool).
   monitoring + observation log only, no dispatch at all; real dispatch
   activation (BC-P-01 batch pool -> local Ollama) stays deferred until
   after the one-week observation window ends 2026-10-05.
-- report: same-day stats + daily KPI verdict for the round ledger
-  (CEO criterion: daily avg < 50% = dereliction -> honest FLAG).
+- report: same-day stats with machine tag (weekly ledger per-machine row,
+  C-20260929-02 7.1) + daily KPI verdict: sole call-out threshold = 30%
+  daily avg (C-20260929-02; the 70% target stays a directional reference
+  only) -> honest FLAG below 30%.
 - selftest: offline window/dispatch math checks (no nvidia-smi needed).
 
 Usage (run from repo root):
@@ -43,7 +45,9 @@ DISPATCH = os.path.join(UTIL_DIR, "dispatch-log.md")
 QUEUE_DIR = os.path.join(HERE, "..", "state", "queue")
 
 WINDOW_MIN = 30    # rolling idle window (CEO spec)
-IDLE_PCT = 50.0    # < 50% = idle (CEO spec)
+IDLE_PCT = 50.0    # rolling-window idle verdict (CEO spec, unchanged)
+CALL_PCT = 30.0    # C-20260929-02 7.1: SOLE call-out threshold for daily KPI
+MACHINE = "bm-a"   # local machine tag -> weekly per-machine ledger row
 DISPATCH_COOLDOWN_MIN = 30
 DISPATCH_HEADER = ("# GPU idle observation log (T-20260928-28; DRY-RUN per "
                    "CEO safety-fix order 2026-09-28 item 3: no "
@@ -180,13 +184,14 @@ def cmd_report():
     today = now().date().isoformat()
     day = [r for r in rows if r["ts"].startswith(today)]
     if not day:
-        print("gpu report %s: no samples today" % today)
+        print("gpu report %s machine=%s: no samples today" % (today, MACHINE))
         return 0
     avg = sum(r["util_pct"] for r in day) / len(day)
     mx = max(r["util_pct"] for r in day)
-    kpi = "PASS" if avg >= IDLE_PCT else "FLAG(<50% daily-avg dereliction)"
-    print("gpu report %s: n=%d avg=%.1f%% max=%.0f%% kpi=%s"
-          % (today, len(day), avg, mx, kpi))
+    kpi = ("PASS" if avg >= CALL_PCT
+           else "FLAG(<30% call-out threshold, C-20260929-02)")
+    print("gpu report %s machine=%s: n=%d avg=%.1f%% max=%.0f%% kpi=%s"
+          % (today, MACHINE, len(day), avg, mx, kpi))
     inwin, complete = window(rows)
     if complete:
         wavg = sum(r["util_pct"] for r in inwin) / len(inwin)
@@ -222,12 +227,15 @@ def cmd_selftest():
     busy = [mk(1, 80.0), mk(16, 90.0)]
     bavg = sum(r["util_pct"] for r in busy) / len(busy)
     assert bavg >= IDLE_PCT, "85% avg must classify as busy"
+    assert CALL_PCT < IDLE_PCT, "C-20260929-02: call-out threshold sanity"
+    assert ("PASS" if 35.0 >= CALL_PCT else "FLAG") == "PASS", \
+        "35% avg must sit above the 30% call-out line"
     assert _parse_last_ts("| 2026-09-28T09:33:28 | IDLE x | y |") == \
         datetime.datetime(2026, 9, 28, 9, 33, 28), "dispatch ts parse"
     assert _parse_last_ts("not a dispatch row") is None, "non-row -> None"
     assert _parse_last_ts("| garbage | IDLE x | y |") is None, "bad ts -> None"
     print("selftest PASS: window completeness/exclusion/average/"
-          "idle-vs-busy verdicts/dispatch-ts parse ok")
+          "idle-vs-busy verdicts/call-out threshold/dispatch-ts parse ok")
     return 0
 
 
