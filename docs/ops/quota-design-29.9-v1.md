@@ -49,3 +49,5 @@ v1=口径 B 单位成本（元/1M token·月末归集回溯唯一口径·⬜ 待
 ## 七、证据指针
 
 pricing-confirmation-package-29.9-v1.md（§二 核心式+§四 回填面）｜BC-F-20260927-03（配额设计律 ≥1.5×19.9 单包）｜R-20260928-compute-cost-economics（Q5 结算式+Q6 判据）｜qa/smoke-20260928-0929.log（157.98 tok/s 实测）｜docs/ops/paypoint-alignment-matrix-v1.md L17（19.9 B 边际成本带）｜Tools/cost_ledger.py（quota-budget/issue/consume/summary+blocked_over_budget）｜**Tools/e12_package_anchor_probe.py+state/e12-anchor-20260928-2243.json（E_单包=243 tokens dry-run 首单实测锚·2026-09-28 22:43 夜窗·E12）**
+
+> 2026-09-29 M21 联签：A 档上线前须过付费点×合规义务映射表硬门（docs/ops/paypoint-compliance-map-v1.md·席7 附款·机检 Tools/compliance_gate_check.py 53/53 绿）——本件数值批落即回填映射表 ⬜ 槽位。

@@ -58,3 +58,5 @@ v1=口径 B 单位成本（元/1M token·月末归集回溯唯一口径·⬜ 待
 ## 七、证据指针
 
 C-20260927-01 票档归档（decisions 委员会节·议题③ 选 A·席4 独占权益/席6 防蚕食附款）｜docs/ops/quota-design-29.9-v1.md（M12 同法源件·E 锚与 N 判据）｜**Tools/quota_design.py（本件计算器·selftest=M12 15 格回归 PASS）**｜state/e12-anchor-20260928-2243.json（E_单包=243 实测）｜R-20260928-compute-cost-economics（Q5 结算式）｜Tools/cost_ledger.py（quota-budget 闸）｜docs/ops/month-end-cost-collection-sheet-v1.md（N1 首跑预注册）
+
+> 2026-09-29 M21 联签：A 档上线前须过付费点×合规义务映射表硬门（docs/ops/paypoint-compliance-map-v1.md·席7 附款·机检 Tools/compliance_gate_check.py 53/53 绿）——本件数值批落即回填映射表 ⬜ 槽位。

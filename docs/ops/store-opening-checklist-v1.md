@@ -36,3 +36,5 @@
 ## 三、状态与指针
 - 四件全=⬜ 待 CEO 物理件（本件 v0.1=就绪态·零催办）；到件一件销一件·行级更新本件
 - 指针：BLUEPRINT §二先行件序/§五.4 判据/§五.5 物理件｜集团 orders.md CEO 待办物理件常设区（只读引用）｜docs/risk-register.md｜docs/ops/paypoint-alignment-matrix-v1.md（blocked 项销账面）｜docs/legal/blind-box-gacha-compliance.md（类目判定联动）
+
+> 2026-09-29 M21：A 档上线硬门=付费点×合规义务映射表（docs/ops/paypoint-compliance-map-v1.md·机检 Tools/compliance_gate_check.py·53 锚全绿+3 ⬜ 随批）——开店门禁行联签位（过表才开单收款）。
