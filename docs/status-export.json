@@ -1,7 +1,7 @@
 {
   "company": "BigCompute",
-  "updated_at": "2026-09-29 14:5x",
-  "current_activity": "首月末归集 N1 前置工程：E25 五源机械链工具化 month_end_collect.py+九月预演出数（selftest 9/9·SLA 产能窗基线直供接线）",
-  "latest_artifact": "Tools/month_end_collect.py + state/month-end-202609.json（2026-09-29 14:5x）·selftest 9/9 PASS·九月月末行实跑出数：商业 0/自用 322 tokens×41 探针/SLA 净窗 87.05 tok/s/三要素 ⬜ 如实",
+  "updated_at": "2026-09-29 15:2x",
+  "current_activity": "N1 前夜值守+真窗判据机械化：VRAM 真窗探针落地（T15/E17 两项预注册测试的空窗观测基础设施）+N1 机械链就绪待跑",
+  "latest_artifact": "Tools/vram_window_probe.py（2026-09-29 15:2x）·selftest PASS+判负 #4 机械记录（W_q8_0 BLOCKED short 740 MiB·历史日志 state/vram-window-log.jsonl 空窗频率累积）",
   "next_milestone": "09-30 22:43 首月末归集 N1 必跑（一命令 python Tools/month_end_collect.py run → 月末行入轮账本·E25 N1 判据）·窗 ≤48h"
 }
