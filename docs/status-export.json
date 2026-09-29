@@ -1,7 +1,7 @@
 {
   "company": "BigCompute",
-  "updated_at": "2026-09-29 15:2x",
-  "current_activity": "N1 前夜值守+真窗判据机械化：VRAM 真窗探针落地（T15/E17 两项预注册测试的空窗观测基础设施）+N1 机械链就绪待跑",
-  "latest_artifact": "Tools/vram_window_probe.py（2026-09-29 15:2x）·selftest PASS+判负 #4 机械记录（W_q8_0 BLOCKED short 740 MiB·历史日志 state/vram-window-log.jsonl 空窗频率累积）",
-  "next_milestone": "09-30 22:43 首月末归集 N1 必跑（一命令 python Tools/month_end_collect.py run → 月末行入轮账本·E25 N1 判据）·窗 ≤48h"
+  "updated_at": "2026-09-29 18:5x",
+  "current_activity": "同步风暴恢复收口+值守 N1 前夜：提案面 canonical 复活+冲突垃圾清零+风暴遗留自检件落地（gitignored state/ 盲区填补·O-20260929-1830-HQ 承接）·N1 机械链就绪待跑",
+  "latest_artifact": "Tools/storm_leftover_check.py（2026-09-29 18:5x）·selftest 9/9 PASS+check 实跑 clean（tech T23·风暴遗留检测件）",
+  "next_milestone": "09-30 22:43 首月末归集 N1 必跑（一命令 python Tools/month_end_collect.py run → 月末行入轮账本·E25 N1 判据·漏跑=下下轮第一优先）·窗 ≤48h"
 }
