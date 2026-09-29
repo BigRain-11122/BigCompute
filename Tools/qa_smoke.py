@@ -6,6 +6,10 @@ Runs the four BigCompute charter checks (docs/qa-smoke-test-charter.md):
  2. Ollama real response (local serve probe, qwen2.5:7b-instruct)
  3. three queue files each hold >= 3 todo rows (state/queue/*.md)
  4. cost ledger maintained (cost_ledger.py selftest PASS)
+ 5. rounds.log strict UTF-8 decode integrity (tech T25 / BC-P-16 / T24:
+    shell Add-Content wrote GBK-mangled lines once; appends now go
+    through python utf-8 only, and this probe surfaces any recurrence
+    in the same round it happens)
 
 Writes qa/smoke-<ts>.log with raw outputs + a self-judge verdict, then
 renders that exact log content to qa/smoke-<ts>.png via .NET
@@ -149,13 +153,31 @@ def probe_ledger():
     return rc == 0 and "PASS" in out, out.strip()
 
 
+def probe_rounds_log():
+    """Tech T25 (BC-P-16): rounds.log strict UTF-8 decode integrity."""
+    path = os.path.join(ROOT, "state", "rounds.log")
+    if not os.path.exists(path):
+        return False, "rounds.log missing"
+    with open(path, "rb") as f:
+        raw = f.read()
+    try:
+        raw.decode("utf-8", errors="strict")
+        return True, ("strict utf-8 decode ok: %d bytes / %d lines"
+                      % (len(raw), raw.count(b"\n")))
+    except UnicodeDecodeError as e:
+        return False, ("strict decode FAILED at byte %d: %s "
+                       "(T24 GBK recurrence - fix next round top priority)"
+                       % (e.start, e.reason))
+
+
 def main():
     os.makedirs(QA_DIR, exist_ok=True)
     ts = datetime.datetime.now().strftime("%Y%m%d-%H%M")
     log_path = os.path.join(QA_DIR, "smoke-%s.log" % ts)
     png_path = os.path.join(QA_DIR, "smoke-%s.png" % ts)
     probes = [("gpu collector", probe_gpu), ("ollama response", probe_ollama),
-              ("queue rows", probe_queues), ("cost ledger", probe_ledger)]
+              ("queue rows", probe_queues), ("cost ledger", probe_ledger),
+              ("rounds.log strict-decode", probe_rounds_log)]
     lines, passed = [], 0
     lines.append("BigCompute QA smoke test %s (orders L254 / charter v1)"
                  % ts)
@@ -168,7 +190,8 @@ def main():
         lines.append(detail)
         print("[%s] %s" % ("PASS" if ok else "FAIL", label))
     lines.append("")
-    verdict = "smoke verdict: %d/4 PASS" % passed
+    verdict = "smoke verdict: %d/%d PASS (charter 4 + tech T25 probe)" % (
+        passed, len(probes))
     lines.append(verdict)
     with open(log_path, "w", encoding="utf-8") as f:
         f.write("\n".join(lines) + "\n")
@@ -187,7 +210,7 @@ def main():
     print("%s (log=%s png=%s)" % (verdict,
                                   os.path.basename(log_path),
                                   os.path.basename(png_path)))
-    return 0 if passed == 4 else 1
+    return 0 if passed == len(probes) else 1
 
 
 if __name__ == "__main__":

@@ -1,7 +1,7 @@
 {
   "company": "BigCompute",
-  "updated_at": "2026-09-29 20:1x",
-  "current_activity": "哨兵轮：O-031/032/033 三令收讫回执（BC-F-20260929-05）+月末归集 N1 预演毕（M26·selftest 9/9+run 参数面·链路就绪）+rounds.log 编码修复毕（T24）",
-  "latest_artifact": "state/rounds.log L70 GBK→UTF-8 保全转码修复（strict decode 全过·备份 rounds.log.bak-20260929-200205·2026-09-29 20:02）+HQ-FEEDBACK BC-F-20260929-05 三令回执行",
-  "next_milestone": "09-29 22:43 夜窗：M25 室内烘焙 labbench 样板间实弹（GPU/CPU 双路三指标）；09-30 22:43 首月末归集 N1 必跑（一命令 run·E25 判据·漏跑=下下轮第一优先）·窗 ≤48h"
+  "updated_at": "2026-09-29 22:5x",
+  "current_activity": "22:43 夜班排程轮：M25 室内烘焙样板间机械链预建毕（spike 工程落 labbench 隔离区+批模式烘焙入口 BakeSpike.cs+run_bake.ps1·净窗闸 BLOCKED exit 3 实证）+T25 qa_smoke 第 5 探针落地（rounds.log strict-decode 巡检）",
+  "latest_artifact": "Tools/city3d_bake_spike.py（selftest 8/8 PASS）+Tools/bake_spike_assets/（BakeSpike.cs+run_bake.ps1）+labbench city3d-bake-spike/BakeSpike 工程（AD-021 2,920+AD-035 4,832 文件·2026-09-29 22:4x）+qa/smoke-20260929-2250（5/5 PASS）",
+  "next_milestone": "净窗一命令烘焙实弹（run_bake.ps1·GPU/CPU 双路 J1-J4 出数·净窗闸机械执法）；09-30 22:43 首月末归集 N1 必跑（month_end_collect run·E25 判据·漏跑=下下轮第一优先）·窗 ≤48h"
 }

@@ -17,6 +17,7 @@
 - 主径=**Tuanjie 批模式烘焙**（`-batchmode -executeMethod` 烘焙入口·labbench spike 项目隔离实弹·室内样板间=AD-021 模块壳围合+AD-035 灯板光池）。
 - 双路对照=GPU lightmapper（bm-a 4070S 12GB 档·共卡纪律 headroom ≥1.5GB J2 同律）vs CPU progressive（32 核档）——首笔实测出**时长/峰值/质量**三指标 ⬜。
 - 判据预注册：**J1** 单样板间烘焙 ≤30min；**J2** 贴图内存/显存峰值记录在案（让路律面）；**J3** AO+光照贴图产物交消费方验收（B-CITY3D-01 acceptance 口径）；**J4** tx_id 幂等入账（口径 B·同单重跑零新增）。
+- **机械链预建毕（09-29 22:43 夜班轮）**：Tools/city3d_bake_spike.py（scaffold/selftest 8/8）+Tools/bake_spike_assets/（BakeSpike.cs 批模式入口+run_bake.ps1）+labbench 工程（AD-021/035 两包 7,752 文件逐包落位）——实弹=净窗一命令；**首窗窗检判负**（10 Tuanjie 实例夜班峰窗=O-027 令下 22:43 反转·净窗闸 BLOCKED exit 3 机械执法·J1/J2 指标窗污染判负顺延·R-43 承载）。
 
 ## 三 应用表（6 行·观察 3/6）
 | # | 用途 | 承接面 | 状态 |
