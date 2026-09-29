@@ -19,9 +19,10 @@ tasks/TASKS.md T-20260928-28 + state/proposals.md BC-P-01 batch pool).
   activation (BC-P-01 batch pool -> local Ollama) stays deferred until
   after the one-week observation window ends 2026-10-05.
 - report: same-day stats with machine tag (weekly ledger per-machine row,
-  C-20260929-02 7.1) + daily KPI verdict: sole call-out threshold = 30%
-  daily avg (C-20260929-02; the 70% target stays a directional reference
-  only) -> honest FLAG below 30%.
+  C-20260929-02 7.1) + call-out KPI verdict. Pre-registered measurement
+  rule (C-20260929-02 seat-2/seat-7 amendments): sole call-out threshold
+  = 30% evaluated on the 3-day rolling baseline (the 70% target stays a
+  directional reference only) -> honest FLAG below 30%.
 - selftest: offline window/dispatch math checks (no nvidia-smi needed).
 
 Usage (run from repo root):
@@ -46,7 +47,8 @@ QUEUE_DIR = os.path.join(HERE, "..", "state", "queue")
 
 WINDOW_MIN = 30    # rolling idle window (CEO spec)
 IDLE_PCT = 50.0    # rolling-window idle verdict (CEO spec, unchanged)
-CALL_PCT = 30.0    # C-20260929-02 7.1: SOLE call-out threshold for daily KPI
+CALL_PCT = 30.0    # C-20260929-02 7.1: SOLE call-out threshold (see below)
+ROLL_DAYS = 3      # C-20260929-02 seat-2/7: pre-registered measure basis
 MACHINE = "bm-a"   # local machine tag -> weekly per-machine ledger row
 DISPATCH_COOLDOWN_MIN = 30
 DISPATCH_HEADER = ("# GPU idle observation log (T-20260928-28; DRY-RUN per "
@@ -98,6 +100,21 @@ def window(rows, at=None):
     inwin = [r for r in rows
              if datetime.datetime.fromisoformat(r["ts"]) >= cutoff]
     return inwin, len(inwin) >= 2
+
+
+def roll3_dates(at=None):
+    """Calendar dates covered by the rolling baseline (today + N-1 back)."""
+    at = at or now()
+    return tuple((at.date() - datetime.timedelta(days=i)).isoformat()
+                 for i in range(ROLL_DAYS))
+
+
+def callout_verdict(avg):
+    """C-20260929-02 seat-2/seat-7: sole call-out gate = 30% measured on
+    the pre-registered 3-day rolling baseline (not a same-day snapshot)."""
+    return ("PASS" if avg >= CALL_PCT
+            else "FLAG(<30%% call-out threshold on %d-day rolling "
+                 "baseline, C-20260929-02)" % ROLL_DAYS)
 
 
 def queue_head_pointer():
@@ -188,10 +205,16 @@ def cmd_report():
         return 0
     avg = sum(r["util_pct"] for r in day) / len(day)
     mx = max(r["util_pct"] for r in day)
-    kpi = ("PASS" if avg >= CALL_PCT
-           else "FLAG(<30% call-out threshold, C-20260929-02)")
+    r3_days = roll3_dates()
+    r3 = [r for r in rows if r["ts"].startswith(r3_days)]
+    r3avg = (sum(r["util_pct"] for r in r3) / len(r3)) if r3 else avg
+    kpi = callout_verdict(r3avg)
     print("gpu report %s machine=%s: n=%d avg=%.1f%% max=%.0f%% kpi=%s"
           % (today, MACHINE, len(day), avg, mx, kpi))
+    print("%d-day rolling baseline (pre-registered, C-20260929-02): "
+          "%s..%s n=%d avg=%.1f%% (call-out 30%%; 70%% target = "
+          "directional ref)" % (ROLL_DAYS, r3_days[-1], r3_days[0],
+                                len(r3), r3avg))
     inwin, complete = window(rows)
     if complete:
         wavg = sum(r["util_pct"] for r in inwin) / len(inwin)
@@ -230,12 +253,36 @@ def cmd_selftest():
     assert CALL_PCT < IDLE_PCT, "C-20260929-02: call-out threshold sanity"
     assert ("PASS" if 35.0 >= CALL_PCT else "FLAG") == "PASS", \
         "35% avg must sit above the 30% call-out line"
+    # C-20260929-02 seat-2/7: 3-day rolling baseline (pre-registered rule)
+    b_days = roll3_dates(at)
+    assert b_days[0] == "2026-09-28" and b_days[-1] == "2026-09-26", \
+        "baseline spans today + 2 prior calendar days"
+    day1 = {"ts": (at - datetime.timedelta(days=1, minutes=5)
+                   ).isoformat(timespec="seconds"),
+            "util_pct": 40.0, "mem_used_mib": 0.0, "power_w": 0.0}
+    day2 = {"ts": (at - datetime.timedelta(days=2, minutes=5)
+                   ).isoformat(timespec="seconds"),
+            "util_pct": 40.0, "mem_used_mib": 0.0, "power_w": 0.0}
+    spread = [mk(5, 20.0), day1, day2]
+    in3 = [r for r in spread if r["ts"].startswith(b_days)]
+    assert len(in3) == 3, "baseline must include today + 2 prior days"
+    stale = {"ts": (at - datetime.timedelta(days=ROLL_DAYS, minutes=5)
+                    ).isoformat(timespec="seconds"),
+             "util_pct": 100.0, "mem_used_mib": 0.0, "power_w": 0.0}
+    assert not stale["ts"].startswith(b_days), "day-3-old sample excluded"
+    s_avg = spread[0]["util_pct"]
+    b_avg = sum(r["util_pct"] for r in in3) / len(in3)
+    assert s_avg < CALL_PCT, "same-day 20% sits below the call-out line"
+    assert b_avg >= CALL_PCT, "3-day avg 33.3% must clear the line"
+    assert callout_verdict(s_avg).startswith("FLAG"), "20% same-day FLAGS"
+    assert callout_verdict(b_avg) == "PASS", "33.3% baseline PASSes"
     assert _parse_last_ts("| 2026-09-28T09:33:28 | IDLE x | y |") == \
         datetime.datetime(2026, 9, 28, 9, 33, 28), "dispatch ts parse"
     assert _parse_last_ts("not a dispatch row") is None, "non-row -> None"
     assert _parse_last_ts("| garbage | IDLE x | y |") is None, "bad ts -> None"
     print("selftest PASS: window completeness/exclusion/average/"
-          "idle-vs-busy verdicts/call-out threshold/dispatch-ts parse ok")
+          "idle-vs-busy verdicts/call-out threshold/3-day rolling "
+          "baseline/dispatch-ts parse ok")
     return 0
 
 
