@@ -5,7 +5,7 @@ E29 轮内实锤「SLA 分类漂移」的 N1 后修复预验证：
 - 根因锚（2026-09-30 15:2x 轮实读定位）：2026-09-29 14:18:37 样本 util=60% power=164.55W
   但 mem=4776MiB ≤7500 —— 竞争态为**计算型压制**（他司产线活算）非显存型：
   mem 单维判据结构性盲区（14:20 探针 25.16 tok/s 误归净窗→CV 5.8%→24.4%）。
-- check   : 复用 serve_sla_baseline 同源配对分类（零口径变更·N1 冻结期纯只读）→
+- check   : mem-only 口径钉住视图（classify_mem_only·BC-P-15 落地后=前后对照的「前」面锚）→
             净窗点逐点 util/power 面板 + 漂移嫌疑点（net 但 util/power 越嫌疑线）+
             双判据敏感性表（候选阈值组合下翻转数与净窗 mean/CV 变化）→ JSON 落盘 state/
 - selftest: 合成夹具断言（漂移点识别/敏感性翻转/CV 收窄/确定性）
@@ -23,6 +23,27 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import serve_sla_baseline as slb  # noqa: E402  同源解析/配对/统计复用（口径冻结面零复制漂移）
 
+
+def classify_mem_only(points, samples, join_window_min=slb.JOIN_WINDOW_MIN):
+    """E36 冻结期 mem-only 口径钉住视图（预审计语义=复现修复前盲区面）。
+    BC-P-15 落地后 slb.classify 已升双判据——本件 net_now 仍须展示 mem-only 基线
+    （预注册前后对照的「前」面）·敏感性表从 mem-only net 行起算翻转。"""
+    out = []
+    for ts, tok, name in points:
+        near = None
+        for gts, util, mem, pw in samples:
+            if abs((gts - ts).total_seconds()) <= join_window_min * 60:
+                if near is None or abs((gts - ts).total_seconds()) < abs((near[0] - ts).total_seconds()):
+                    near = (gts, util, mem, pw)
+        if near is None:
+            out.append({"ts": ts, "tok_s": tok, "log": name, "state": "no_sample",
+                        "mem_mib": None, "util": None, "power": None})
+        else:
+            state = "contended" if near[2] > slb.NET_MEM_THRESHOLD_MIB else "net"
+            out.append({"ts": ts, "tok_s": tok, "log": name, "state": state,
+                        "mem_mib": near[2], "util": near[1], "power": near[3]})
+    return out
+
 ROOT = Path(__file__).resolve().parents[1]
 OUT_DIR = ROOT / "state"
 
@@ -39,7 +60,7 @@ RULES = [("util<30 AND power<80", 30.0, 80.0, None),
 
 def audit(qa_dir, samples_path):
     points, n_logs = slb.parse_smoke_points(qa_dir)
-    rows = slb.classify(points, slb.load_gpu_samples(samples_path))
+    rows = classify_mem_only(points, slb.load_gpu_samples(samples_path))
     n_no_sample = sum(1 for r in rows if r["state"] == "no_sample")
     net_rows = [r for r in rows if r["state"] == "net"]
     contended_rows = [r for r in rows if r["state"] == "contended"]

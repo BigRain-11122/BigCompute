@@ -3,10 +3,13 @@
 
 R-20260929-resident-serving-throughput-stability（R-39）手工双态分析的工程化：
 - series : 解析 qa/smoke-*.log 的 tok/s 序列 × state/gpu-util/samples.jsonl 显存/功率序列
-           → 净窗/竞争窗双态分类（预注册阈值 NET_MEM_THRESHOLD_MIB=7500：
-             R-39 基线 6.6GB〔常驻 5.1GB+系统底座〕vs 竞争带 8.4-11.4GB〔他司产线显存挤占〕的中分线）
+           → 净窗/竞争窗双态分类（BC-P-15 双判据·E36 预审计择律落地：
+             ①显存判据 NET_MEM_THRESHOLD_MIB=7500（R-39 基线 6.6GB vs 竞争带 8.4-11.4GB 中分线）
+             ②降级+热双证判据（计算型压制补盲：热=util≥30% 或 power≥80W 且 tok/s<50 才翻竞争——
+               E36 实跑 4 热嫌疑 3 伪〔自探针采样伪影 util=100×2+孤立 power 峰·吞吐正常〕唯一真漂移
+               =09-29 14:20 点 25.16 tok/s·纯热单证 flips=4 误伤 vs 双证 flips=1 全中）
            → 净窗基线 mean/CV/P10 + 竞争窗对照 + SLA 判读行 + JSON 落盘 state/
-- selftest: 合成夹具断言（分类/数学/无样本窗豁免/确定性）·temp 夹具零真实状态污染
+- selftest: 合成夹具断言（分类/双证翻类/伪阳性保护/数学/无样本窗豁免/确定性）·temp 夹具零真实状态污染
 
 零 GPU 占用（纯日志面）·数据源=qa_smoke 每轮自产+GPU-IdleWatch 既有样本零新采集
 消费方=月末归集执行单 S5 产能窗基线（E25·N1）+BC-P-12 双态 SLA 承诺结构+BC-P-04/11 数据前置
@@ -27,6 +30,10 @@ OUT_DIR = ROOT / "state"
 
 NET_MEM_THRESHOLD_MIB = 7500.0  # R-39 双态分界中分线（基线 6.6GB / 竞争带起 8.4GB）
 JOIN_WINDOW_MIN = 15             # smoke 点与 gpu 样本最近邻配对窗（分钟）
+# BC-P-15 第二判据（E36 预审计三候选择律=「降级+热双证」·preaudit JSON flips=1 全中真漂移）
+HOT_UTIL_PCT = 30.0              # 热嫌疑线（真净窗带 util 4-9% vs 漂移点 60% 中分）
+HOT_POWER_W = 80.0               # 热嫌疑线（真净窗带 33-37W vs 漂移点 164.55W 中分）
+DEGRADED_TOK_S = 50.0            # 降级带线（净窗 P10~82 vs 竞争带 29.69-60.99 下缘中分）
 
 SMOKE_TS_RE = re.compile(r"BigCompute QA smoke test (\d{8}-\d{4})")
 TOKS_RE = re.compile(r"eval_count=(\d+)\s+([\d.]+) tok/s")
@@ -84,7 +91,9 @@ def load_gpu_samples(path):
 
 
 def classify(points, samples, join_window_min=JOIN_WINDOW_MIN, threshold=NET_MEM_THRESHOLD_MIB):
-    """最近邻样本配对分类：net / contended / no_sample（无样本=豁免计数不入选）"""
+    """最近邻样本配对双判据分类：net / contended / no_sample（无样本=豁免计数不入选）
+    竞争态 = ①显存越线（mem>7500）或 ②降级+热双证（热=util≥30 或 power≥80，且 tok/s<50）。
+    双证律防伪阳性：E36 实跑纯热单证 flips=4 含 3 采样伪影误伤（吞吐正常不翻）·双证 flips=1 全中。"""
     out = []
     for ts, tok, name in points:
         near = None
@@ -96,7 +105,9 @@ def classify(points, samples, join_window_min=JOIN_WINDOW_MIN, threshold=NET_MEM
             out.append({"ts": ts, "tok_s": tok, "log": name, "state": "no_sample",
                         "mem_mib": None, "util": None, "power": None})
         else:
-            state = "contended" if near[2] > threshold else "net"
+            hot = (near[1] is not None and near[1] >= HOT_UTIL_PCT) or \
+                  (near[3] is not None and near[3] >= HOT_POWER_W)
+            state = "contended" if (near[2] > threshold or (hot and tok < DEGRADED_TOK_S)) else "net"
             out.append({"ts": ts, "tok_s": tok, "log": name, "state": state,
                         "mem_mib": near[2], "util": near[1], "power": near[3]})
     return out
@@ -124,6 +135,8 @@ def build(qa_dir, samples_path):
         "n_logs": n_logs, "n_points": len(rows),
         "n_no_sample": sum(1 for r in rows if r["state"] == "no_sample"),
         "threshold_mem_mib": NET_MEM_THRESHOLD_MIB, "join_window_min": JOIN_WINDOW_MIN,
+        "rule": "mem>7500 OR (hot AND tok<50) — BC-P-15 dual-criterion (E36 preaudit rule 3)",
+        "hot_util_pct": HOT_UTIL_PCT, "hot_power_w": HOT_POWER_W, "degraded_tok_s": DEGRADED_TOK_S,
         "net": net, "contended": cont, "contended_to_net_ratio": ratio,
         "span": [rows[0]["ts"].strftime("%Y-%m-%d %H:%M"), rows[-1]["ts"].strftime("%Y-%m-%d %H:%M")] if rows else None,
         "points": [{"ts": r["ts"].strftime("%Y-%m-%d %H:%M"), "tok_s": r["tok_s"],
@@ -162,6 +175,10 @@ def _write_fixture(d):
                                     "answer='ok' eval_count=8 95.10 tok/s\n"),
         "smoke-20260929-1106.log": ("BigCompute QA smoke test 20260929-1106 (orders L254 / charter v1)\n",
                                     "answer='ok' eval_count=8 93.90 tok/s\n"),
+        "smoke-20260929-1420.log": ("BigCompute QA smoke test 20260929-1420 (orders L254 / charter v1)\n",
+                                    "answer='ok' eval_count=8 25.16 tok/s\n"),
+        "smoke-20260929-1500.log": ("BigCompute QA smoke test 20260929-1500 (orders L254 / charter v1)\n",
+                                    "answer='ok' eval_count=8 103.07 tok/s\n"),
         "smoke-20260929-1330.log": ("BigCompute QA smoke test 20260929-1330 (orders L254 / charter v1)\n", None),
     }
     for name, (head, toks) in logs.items():
@@ -174,6 +191,8 @@ def _write_fixture(d):
         {"ts": "2026-09-28T14:05:00", "util_pct": 98.0, "mem_used_mib": 8400.0, "power_w": 180.0},
         {"ts": "2026-09-29T00:04:00", "util_pct": 4.0, "mem_used_mib": 6632.0, "power_w": 33.9},
         {"ts": "2026-09-29T11:08:00", "util_pct": 5.0, "mem_used_mib": 6652.0, "power_w": 35.0},
+        {"ts": "2026-09-29T14:20:37", "util_pct": 60.0, "mem_used_mib": 4776.0, "power_w": 164.55},
+        {"ts": "2026-09-29T15:02:00", "util_pct": 100.0, "mem_used_mib": 6600.0, "power_w": 60.43},
     ]
     (gpu / "samples.jsonl").write_text(
         "\n".join(json.dumps(r) for r in rows) + "\n", encoding="utf-8")
@@ -186,25 +205,38 @@ def cmd_selftest(_args):
         d = _write_fixture(Path(td))
         qa_dir, smp = d / "qa", d / "state" / "gpu-util" / "samples.jsonl"
         pts, n_logs = parse_smoke_points(qa_dir)
-        ok.append(("parse: 4 points / 5 logs (1 missing tok/s skipped)",
-                   len(pts) == 4 and n_logs == 5))
+        ok.append(("parse: 6 points / 7 logs (1 missing tok/s skipped)",
+                   len(pts) == 6 and n_logs == 7))
         rows = classify(pts, load_gpu_samples(smp))
         by = {(r["log"], r["state"]) for r in rows}
-        ok.append(("classify: contended 2 (mem>7500) + net 2 (mem~6.6GB)",
+        ok.append(("classify: contended 3 (mem>7500 ×2 + 双证翻类 ×1) + net 3",
                    by == {("smoke-20260928-1301.log", "contended"),
                           ("smoke-20260928-1402.log", "contended"),
+                          ("smoke-20260929-1420.log", "contended"),
                           ("smoke-20260929-0002.log", "net"),
-                          ("smoke-20260929-1106.log", "net")}))
+                          ("smoke-20260929-1106.log", "net"),
+                          ("smoke-20260929-1500.log", "net")}))
+        # 双证翻类：14:20 漂移点 mem=4776 不越显存线，但 util=60/power=164.55 热+tok=25.16 降级 → 翻竞争
+        r1420 = next(r for r in rows if r["log"] == "smoke-20260929-1420.log")
+        ok.append(("dual-evidence: 14:20 计算型压制点翻竞争（mem 单维盲区补上）",
+                   r1420["state"] == "contended"))
+        # 伪阳性保护：15:00 自探针采样伪影 util=100 但吞吐 103.07 正常 → 维持净窗不翻
+        r1500 = next(r for r in rows if r["log"] == "smoke-20260929-1500.log")
+        ok.append(("false-positive guard: 热但吞吐正常不翻（E36 三伪同律）",
+                   r1500["state"] == "net"))
         # 远样本豁免：+30min 无样本点 → no_sample
         far = classify([(datetime(2026, 9, 29, 23, 0), 50.0, "far.log")], load_gpu_samples(smp))
         ok.append(("no_sample: outside 15min join window excluded", far[0]["state"] == "no_sample"))
-        net = stats([95.10, 93.90])
-        ok.append(("math: net mean=94.50 CV=0.6% (n=2 P10=min)", net["mean"] == 94.50 and net["cv_pct"] == 0.6))
+        net = stats([95.10, 93.90, 103.07])
+        ok.append(("math: net mean=97.36 CV=4.2% (n=3 P10=min)", net["mean"] == 97.36 and net["cv_pct"] == 4.2))
         r1 = build(qa_dir, smp)
         ok.append(("determinism: double build identical",
                    json.dumps(r1, sort_keys=True) == json.dumps(build(qa_dir, smp), sort_keys=True)))
-        ok.append(("ratio: contended mean 45.34 = 0.48x net",
-                   r1["contended_to_net_ratio"] == 0.48))
+        ok.append(("rule meta: BC-P-15 双判据字段入报告 JSON",
+                   r1["hot_util_pct"] == 30.0 and r1["hot_power_w"] == 80.0
+                   and r1["degraded_tok_s"] == 50.0 and "dual-criterion" in r1["rule"]))
+        ok.append(("ratio: contended mean 38.61 = 0.4x net",
+                   r1["contended_to_net_ratio"] == 0.4))
     for name, passed in ok:
         print(("[PASS] " if passed else "[FAIL] ") + name)
     return 0 if all(p for _, p in ok) else 1

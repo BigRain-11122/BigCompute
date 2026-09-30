@@ -8,19 +8,21 @@
 month_end_collect run→读报告 month_end_line 字段→in-process 调 round_append.append_line
 （utf-8 唯一路径+J1 strict 门+J2 幂等护栏全继承）→「一命令」真语义。
 
-三闸（真 run 禁提前律的机械执法·W2 先于 W1=已落账幂等快路径零副作用）：
+四闸（真 run 禁提前律的机械执法·W2 先于 W1=已落账幂等快路径零副作用）：
   W1 月份闭合门：目标月未到末日（today < last-day）→ exit 4 EARLY（N1 窗=月末轮·漏跑补跑自次日合法）
   W2 月行在账门：rounds.log 已有 [month-end <month> 行 → exit 2 ALREADY-PRESENT（月一行幂等·重复落账拒）
   W3 报告新鲜门：collect 后报告 mtime < 子进程起点-1s → exit 5 STALE（防静默失败读旧件）
+  W4 同日提前落账闸（T39 派生·09-30 午班提前落账违例防再发）：月末日当天正窗前（<22:43 夜班轮起）
+      → exit 7 SAME-DAY-EARLY（M26 预注册「真 run 禁提前=N1 唯一窗」机械执法·非末日不适用=次日补跑合法）
 
 amend 修正行命令（09-30 N1 轮发现缺口收口：午班提前 run 落账→月末行滞留午间快照·
 run W2 幂等拒追加=修正无路径——amend=append-only 修正行，不删不改来源行·审计链完整）：
   WA 修正幂等门：已有 [month-end-amend <month> 行 → exit 2 ALREADY-AMENDED（月一修正行）
   WB 来源行在账门：无 [month-end <month> 来源行 → exit 6 NOTHING-TO-AMEND（无源不修·用 run）
-  W1/W3 与 run 同律（月份闭合+collect 报告新鲜）；修正行=collect 权威行前缀改写+AMEND 注释后缀
+  W1/W3/W4 与 run 同律（月份闭合+collect 报告新鲜+同日提前闸）；修正行=collect 权威行前缀改写+AMEND 注释后缀
 
 用法：python Tools/month_end_append.py run|amend [--month YYYY-MM] | python Tools/month_end_append.py selftest
-退出码：0=APPENDED / 2=ALREADY（run=PRESENT·amend=AMENDED 幂等） / 3=CORRUPT（strict 门·按 T24 流程修复） / 4=EARLY / 5=COLLECT-FAILED / 6=NOTHING-TO-AMEND
+退出码：0=APPENDED / 2=ALREADY（run=PRESENT·amend=AMENDED 幂等） / 3=CORRUPT（strict 门·按 T24 流程修复） / 4=EARLY / 5=COLLECT-FAILED / 6=NOTHING-TO-AMEND / 7=SAME-DAY-EARLY（W4）
 """
 import argparse
 import datetime
@@ -42,6 +44,7 @@ if hasattr(sys.stdout, "reconfigure"):
         pass
 
 LEDGER = ROOT / "state" / "rounds.log"
+N1_WINDOW_OPEN = datetime.time(22, 43)  # N1 正窗开界=月末日 22:43 夜班轮（M26 预注册唯一窗）
 
 
 def last_day_of_month(year, month):
@@ -57,6 +60,21 @@ def guard_month_closed(month, today=None):
     if today >= last:
         return True, f"month {month} closed (last day {last}·today {today}·N1 窗=月末轮)"
     return False, f"EARLY: month {month} 未到末日（last day {last}·today {today}）——真 run 禁提前·漏跑补跑自次日合法"
+
+
+def guard_n1_window(month, now=None):
+    """W4 同日提前落账闸：返回 (ok, message)。
+    仅月末日当天适用：正窗（22:43 夜班轮起）前拒跑；非末日恒放行（W1 管提前月·次日补跑合法）。
+    09-30 违例防再发：午班 run 落账滞留午间快照（442 tokens vs 正窗 666）——M26「真 run 禁提前=N1 唯一窗」。"""
+    y, m = int(month[:4]), int(month[5:7])
+    now = now or datetime.datetime.now()
+    last = last_day_of_month(y, m)
+    if now.date() != last:
+        return True, f"W4 不适用（非月末日 {now.date()}）——W1 闭合门管辖·次日补跑合法"
+    if now.time() >= N1_WINDOW_OPEN:
+        return True, f"月末日 N1 正窗已开（{now.time()}≥22:43）——run/amend 放行"
+    return False, (f"SAME-DAY-EARLY: [{month}] 月末日 {now.date()} 正窗前（{now.time()}<22:43）"
+                   "——真 run 禁提前（N1 唯一窗·M26 预注册）·待 22:43 正窗跑")
 
 
 def extract_line(payload, month):
@@ -153,6 +171,10 @@ def cmd_run(month):
     if not ok:
         print(gmsg)
         return 4
+    ok4, g4msg = guard_n1_window(month)
+    if not ok4:
+        print(g4msg)
+        return 7
     c, line = _collect_fresh(month)
     if c:
         return c
@@ -178,6 +200,10 @@ def cmd_amend(month):
     if not ok:
         print(gmsg)
         return 4
+    ok4, g4msg = guard_n1_window(month)
+    if not ok4:
+        print(g4msg)
+        return 7
     c, line = _collect_fresh(month)
     if c:
         return c
@@ -203,6 +229,14 @@ def _selftest():
     g2b, _ = guard_month_closed("2026-09", datetime.date(2026, 10, 5))
     check("S2 W1 门=末日即闭合+漏跑补跑合法", g2a and g2b)
     check("S3 W1 门=未来月拒跑（跨月防误）", guard_month_closed("2026-12", datetime.date(2026, 9, 30))[0] is False)
+    # W4 同日提前落账闸（09-30 午班违例防再发）
+    check("S13 W4 门=月末日正窗前拒跑（09-30 12:43 午班违例场景）",
+          guard_n1_window("2026-09", datetime.datetime(2026, 9, 30, 12, 43))[0] is False)
+    w4a, _ = guard_n1_window("2026-09", datetime.datetime(2026, 9, 30, 22, 43))
+    w4b, _ = guard_n1_window("2026-09", datetime.datetime(2026, 9, 30, 23, 10))
+    check("S14 W4 门=月末日 22:43 正窗起放行（含夜班抖动余量）", w4a and w4b)
+    w4c, _ = guard_n1_window("2026-09", datetime.datetime(2026, 10, 1, 0, 29))
+    check("S15 W4 门=非末日不适用（次日 00:29 补跑合法放行）", w4c)
     # 提取门
     fix_payload = {"month": "2026-09", "month_end_line": "[month-end 2026-09 planning-state light line · E25] 商业面 tokens_mtok=0 测试行"}
     check("S4 提取=一致月+前缀格式通过", extract_line(fix_payload, "2026-09").startswith("[month-end 2026-09 "))
@@ -243,7 +277,7 @@ def _selftest():
         led3.write_text("普通轮行\n", encoding="utf-8")
         c6, _ = append_amend(led3, "2026-09", fix_amend)
         check("S12 WB 无源不修=exit6 零追加", c6 == 6 and led3.read_text(encoding="utf-8") == "普通轮行\n")
-    total = 12
+    total = 15
     print(f"selftest: {ok[0]}/{total} PASS" if ok[0] == total else f"selftest: FAIL ({ok[0]}/{total})")
     return 0 if ok[0] == total else 1
 
