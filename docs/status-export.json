@@ -1,7 +1,7 @@
 {
   "company": "BigCompute",
-  "updated_at": "2026-09-30 19:4x",
-  "current_activity": "19:1x 哨兵轮：审核步=orders 19:06 新八行收讫（O-015 本地机队满载确保令=本司承接面/O-016+017+018 token 三令/O-1858+O-1901 假期算力双令/O-1856/C-06·零直接派单）→队列步=tech T38 O-015 承接件：gpu_idle_collector.py v1.3 增 loadline 命令（夜报满载行三组件+P-32 三字段数据源·写手债归 @Biggame A 机窗 O-010③ 禁跨仓写）+净窗探针第 5 连 BLOCKED（editors=1+vram_free 5065MiB）M25/T26 顺延如实",
-  "latest_artifact": "Tools/gpu_idle_collector.py loadline 命令（O-2026-0930-015③ 夜报满载行生成器·selftest 扩断言 PASS+真跑 bm-a 出数：busy>=30%=21.8%/quiet<10%=71.8%·in_flight 0/6 卡·GREEN-IDLE 点名 FLAG 3 日 n=221 avg 15.9%·p32 cpu_util 4%/ram 93.6GB/prod_lanes 6=alive 2+standby 4）·09-30 19:3x——22:43 夜班满载行=loadline 一命令入轮账本",
-  "next_milestone": "①今晚 00:00=委员会常务轮 C-04 七席记名投票（席位4 立场行已备 M30）+云端 token 全司机内首报（O-014 ④·T37 审计 JSON 已备）；②22:43=N1 月末行幂等复跑必跑（month_end_append run·W2）+夜报满载行首落（O-015③·loadline）+BC-P-15 修复解冻（E36 证据基线已备）+净窗开则 M25/T26 烘焙实弹；③10-02 12:00=验证集独立标注窗（本司禁自标·窗到未标续催）；④10-05 复核窗（GPU 观察+自驱首计量+批池激活呈批+净窗频率证据）；⑤节前 P1 手动件维持：CEO 出发前 Windows 更新暂停 ≥1 周或管理员 AU reg add（O-1540①·R-46）；长假窗 10-01~10-08 双班+哨兵 15min 24h 自转在役"
+  "updated_at": "2026-09-30 21:1x",
+  "current_activity": "21:0x 哨兵轮：代收 20:4x 被杀轮（M32 席位4 立场行 commit 8e136ed 已推·死点=收尾段 append·轮账本补录毕）+N1 夜班前置整备真跑（month_end_append selftest 8/8+month_end_collect run 只读 5/5 源出数·机械链就绪·22:43 一命令）+orders 20:55~21:0x 新八行全他司域零派单收讫（O-020 战略主线定谳=本司算力/判据供给配合位知悉·O-2054② P-32 测量面引用=T38 loadline 在役服务）·净窗第 8 连 BLOCKED（editors=1+vram_free 5333MiB）M25/T26 夜窗顺延",
+  "latest_artifact": "state/month-end-202609.json N1 前置整备刷新（21:1x month_end_collect run 只读真跑·5/5 源出数：月末行=商业 tokens 0 计划态如实/自用 658 tokens/SLA 净窗 n=23 CV=20.8%〔分类漂移=BC-P-15 N1 后修复窗证据在案〕/GPU bm-a n=85 avg=19.8% FLAG 30% 唯一点名/三要素与单位成本 ⬜=Q3 铁律+N3 双门如实）——今晚 22:43 month_end_append run 正窗落账",
+  "next_milestone": "①今晚 22:43=N1 月末行幂等复跑必跑（month_end_append run·W2）+夜报满载行首落（O-015③·loadline 一命令·P-32 数据源）+BC-P-15 修复解冻（E36 证据基线已备）+净窗开则 M25/T26 烘焙实弹（第 8 连 BLOCKED·15min tick 盯防）；②00:00=委员会常务轮三案投票（C-04 根治案 M30/C-06 记忆瘦身 M31/BigHouse 派单确认 M32——席位4 立场行三备齐）+云端 token 全司机内首报（O-014 ④·T37 审计 JSON 已备）；③10-02 12:00=验证集独立标注窗（本司禁自标·外部依赖）；④10-05 复核窗（GPU 观察+自驱首计量+批池激活呈批+净窗频率证据）；⑤节前 P1 手动件维持：CEO 出发前 Windows 更新暂停 ≥1 周或管理员 AU reg add（O-1540①·R-46）——长假窗 10-01~10-08 双班+哨兵 15min 24h 自转在役"
 }
