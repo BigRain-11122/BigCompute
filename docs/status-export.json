@@ -1,7 +1,7 @@
 {
   "company": "BigCompute",
-  "updated_at": "2026-09-30 06:1x",
-  "current_activity": "05:4x 哨兵轮：L201 审核收讫（BigLife 域零本司派单）+BC-P-16 轮账本 append 工具化收口（round_append.py·selftest 4/4）+BC-P-18 轮预算沙漏提案新立",
-  "latest_artifact": "Tools/round_append.py（append/selftest·utf-8 唯一写入路径+strict 门+幂等护栏·selftest 4/4 PASS·2026-09-30 05:5x）+qa/smoke-20260930-0549（5/5 PASS）",
-  "next_milestone": "09-30 22:43 首月末归集 N1 必跑（python Tools/month_end_collect.py run·一命令机械跑零推导·E25 判据·漏跑=下下轮第一优先）·窗 ≤48h；净窗开则 M25 烘焙实弹双路跑（run_bake.ps1）"
+  "updated_at": "2026-09-30 10:3x",
+  "current_activity": "10:3x 哨兵轮：L202 O-034 三方案迭代重做令收讫（@CPH4 域零本司动作）+BC-P-17 净窗探测落地（clean_window_probe.py·15min tick 注册在役）+BC-P-19 光基准对齐提案新立",
+  "latest_artifact": "Tools/clean_window_probe.py（check/report/selftest 12/12 PASS·净窗双判据=零 Tuanjie 实例+free ≥8GB·首跑 BLOCKED 真实出数·CleanWindowProbe 15min tick 在役·2026-09-30 10:3x）+qa/smoke-20260930-1034（5/5 PASS）",
+  "next_milestone": "09-30 22:43 首月末归集 N1 必跑（python Tools/month_end_collect.py run·一命令机械跑零推导·E25 判据·漏跑=下下轮第一优先）·窗 ≤48h；净窗开（clean_window_probe check exit 0）则 M25 烘焙实弹双路跑（run_bake.ps1）"
 }
