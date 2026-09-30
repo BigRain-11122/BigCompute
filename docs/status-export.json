@@ -1,7 +1,7 @@
 {
   "company": "BigCompute",
-  "updated_at": "2026-09-30 16:2x",
-  "current_activity": "16:2x 哨兵触发轮：orders 16:11 新五行收讫（O-1555 机队分工修正=借算轨/批池呈批走 ③ 委员会过会通道对齐注记+O-1556 知识共通律本司面承接）→E38=知识共通律本司面自审计+缺口修复（state/ 运行时区知识面五件盘面-only 实锤→批内修复 GREEN）",
-  "latest_artifact": "Tools/knowledge_sync_audit.py（O-20260930-1556 承接·J1-J4+R1 五面·selftest 7/7）+实锤修复：state/runbook.md+proposals.md+queue×3 五件盘面-only→.gitignore 否定行组+定向 add→复跑 KNOWLEDGE-SYNC-GREEN violations=0（证据 state/knowledge-sync-audit-20260930-162200 RED→162224 GREEN·09-30 16:22·回执 BC-F-20260930-06）",
-  "next_milestone": "①节前 P1 手动件=Windows 更新暂停 ≥1 周或 AU reg add（O-1540①·R-46 第五面盯防·防长假断循环最长 8 天）；②今晚 22:43=N1 月末行幂等复跑（month_end_append run·W2）+BC-P-15 修复解冻（证据基线已备）+净窗开则 M25/T26 烘焙实弹；③10-02 12:00=验证集独立标注窗（本司禁自标）；④10-05 复核窗（GPU 观察+批池激活呈批+自驱首计量）；⑤10-07 批池呈批（走 O-1555 ③ 委员会过会通道）·长假窗 10-01~10-08 双班+哨兵 15min 24h 自转维持"
+  "updated_at": "2026-09-30 16:4x",
+  "current_activity": "16:4x 令牌触发轮：双台账增量收讫（orders 16:24 estate/BigHouse 建库线=CEO 物理件待办·本司零动作；decisions D-40=量化线非本司面）→净窗闸 BLOCKED（10 编辑器实例）→自驱步 E39=GPU 能耗实测序列件（族 B 成本经济学增量·月末归集电费要素实测底座）",
+  "latest_artifact": "Tools/gpu_energy_profile.py（E39·power_w 序列 15min 梯形积分·selftest 7/7）+首跑实测 bm-a 3 日 total 2.524 kWh·日均 0.8413 kWh〔idle 1.4407/active 1.0833/peak 227.9W〕·证据 state/gpu-energy-profile-20260930-163425.json·09-30 16:34",
+  "next_milestone": "①今晚 22:43=N1 月末行幂等复跑（month_end_append run·W2）+BC-P-15 SLA 修复解冻（E36 证据基线已备）+净窗开则 M25/T26 烘焙实弹；②节前 P1 手动件维持：CEO 出发前 Windows 更新暂停 ≥1 周或管理员 AU reg add（O-1540①·R-46 第五面盯防）；③10-02 12:00=验证集独立标注窗（本司禁自标）；④10-05 复核窗（GPU 观察+批池激活呈批+自驱首计量+_trash 删）；⑤10-07 批池呈批（走 O-1555 ② 决策委员会过会通道）；长假窗 10-01~10-08 双班+哨兵 15min 24h 自转维持"
 }
