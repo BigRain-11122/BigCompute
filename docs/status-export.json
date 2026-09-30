@@ -1,7 +1,7 @@
 {
   "company": "BigCompute",
-  "updated_at": "2026-09-30 18:3x",
-  "current_activity": "18:2x 哨兵轮：审核步=orders 18:09 六新行（O-010 机队协同/O-011 C-04 城市线委员会案/O-012 陆家嘴/O-012 长假就绪/O-013 可视化桌面端/O-1808 玩法 8 分闸）零本司派单收讫→队列步=tech T36 SEC 官方域通道纪律件落地（技能 §4 先声明后访问+efts 单试判负 403+curl_cffi 缺装·双通道本窗判负止损）+M30 新增即耗=C-04 席位4 投票预备件（立场行=赞成双附款·今晚 00:00 常务轮执行）",
-  "latest_artifact": "docs/research/R-20260930-compute-industry-benchmark-evidence.md §十（T36 SEC 通道纪律件落地+efts 单试判负实录：SKILL §4 通道序 web_fetch→curl TLS 指纹→禁 httpx 裸首抓+冷却 ≥10min 复抓 ≤1+data.sec.gov XBRL 备用 SOP+IR 官网候选通道）+技能 bigcompute-verify-official-source SKILL.md §4（盘面运行时区）+state/queue/main.md M30（C-04 席位4 立场行）·09-30 18:2x",
-  "next_milestone": "①今晚 00:00=委员会常务轮 C-04 七席记名投票（席位4 立场行已备 M30）；②22:43=N1 月末行幂等复跑（month_end_append run·W2）+BC-P-15 SLA 修复解冻（E36 证据基线已备）+净窗开则 M25/T26 烘焙实弹（探针 BLOCKED 维持·BC-P-21 协调窗申请在册）；③10-02 12:00=验证集独立标注窗（本司禁自标·BC-P-26）；④10-05 复核窗（GPU 观察+自驱首计量+批池呈批+E17/Q8_0 真窗+净窗频率证据）+10-07 治理日批池呈批；⑤节前 P1 手动件维持：CEO 出发前 Windows 更新暂停 ≥1 周或管理员 AU reg add（O-1540①·R-46 第五面盯防）；长假窗 10-01~10-08 双班+哨兵 15min 24h 自转维持"
+  "updated_at": "2026-09-30 18:4x",
+  "current_activity": "18:3x 哨兵轮：审核步=orders 18:27 新四行（O-011 C-04 城市线委员会案投票=今 00:00·M30 席位4 立场行已备/O-012 陆家嘴/O-012 长假就绪/O-013 可视化桌面端/O-1808 玩法 8 分闸）全他司域零本司派单收讫→队列步=E44 SEC 四源利用率全文筛收口（声明 UA 通道 200 过墙破 T36 墙面·Nebius 20+MSFT 21+AMZN 12+CoreWeave 26=79 命中零百分比披露·R-C1 维持推断级+R-C3 take-or-pay 官方锚增量）+M25/T26 净窗探针第 3 连 BLOCKED 顺延夜窗",
+  "latest_artifact": "Tools/sec_fulltext_screen.py（SEC 全文筛件·selftest 5/5·声明 UA 通道=web_fetch httpx 无 UA 墙的正解）+R-20260930-compute-industry-benchmark-evidence §十一（四源全文筛收口：79 命中零百分比·微软 $17.4B/Meta irrespective-of-utilization take-or-pay 逐字引句）+state/e44-sec-fulltext-screen-20260930.json·09-30 18:3x",
+  "next_milestone": "①今晚 00:00=委员会常务轮 C-04 七席记名投票（席位4 立场行已备 M30）；②22:43=N1 月末行幂等复跑（month_end_append run·W2）+BC-P-15 SLA 修复解冻（E36 证据基线已备）+净窗开则 M25/T26 烘焙实弹（探针第 3 连 BLOCKED·BC-P-21 协调窗申请在册）；③10-02 12:00=验证集独立标注窗（本司禁自标·BC-P-26）；④10-05 复核窗（GPU 观察+自驱首计量+批池呈批+E17/Q8_0 真窗+净窗频率证据）+10-07 治理日批池呈批；⑤节前 P1 手动件维持：CEO 出发前 Windows 更新暂停 ≥1 周或管理员 AU reg add（O-1540①·R-46 第五面盯防）；长假窗 10-01~10-08 双班+哨兵 15min 24h 自转维持"
 }
