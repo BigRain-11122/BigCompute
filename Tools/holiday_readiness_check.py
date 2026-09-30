@@ -3,12 +3,12 @@
 
 Committee order O-20260930-1540 (holiday readiness check) asks every
 subsidiary to prove 24h autonomous operation through the CEO absence
-window (10-01..10-08). This probe bundles the four BigCompute readiness
+window (10-01..10-08). This probe bundles the five BigCompute readiness
 faces into one verdict plus a P0 fix list, re-runnable by any round
 through the holiday; the JSON evidence file is the readiness proof.
 
 Faces (order wording: automation base / activity / review chain /
-resource water level):
+resource water; face 5 = O-1540 standing add-on 1):
  1. automation base  - schtasks patrol via Tools/task_check.ps1
                        (OSLoop-PM + OrderSentinel + GPU-IdleWatch +
                        CleanWindowProbe, orphan round.lock included)
@@ -18,6 +18,11 @@ resource water level):
                        fulfillment/test_pipeline.py exit 0
  4. resource water   - free disk on the repo drive >= 20 GB, and
                        state/gpu-util/samples.jsonl mtime age < 24h
+ 5. win-update guard - no auto-reboot while a user is logged on
+                       (AU NoAutoRebootWithLoggedOnUsers=1) OR an
+                       active Windows Update pause; both absent = P0
+                       (the fix is an admin one-liner, echoed in the
+                       P0 line for the daily report).
 
 Writes state/holiday-readiness-<ts>.json with raw evidence.
 Exit 0 = READY (no P0); 1 = P0 present (fix = next round top priority).
@@ -119,6 +124,32 @@ def main():
         p0.append("disk free %.1f GB < %.0f GB" % (free / 1e9, DISK_MIN_GB))
     if gpu_age is None or gpu_age > GPU_LIMIT_H:
         p0.append("gpu samples stale (age %s h)" % gpu_age)
+
+    # 5. windows update auto-reboot guard (O-1540 standing add-on 1)
+    guard = {}
+    rc_g, out_g, _ = run(["reg", "query",
+                          "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion"
+                          "\\WindowsUpdate\\Auto Update\\AU",
+                          "/v", "NoAutoRebootWithLoggedOnUsers"], 30)
+    guard["no_auto_reboot_on"] = (rc_g == 0 and "0x1" in out_g.split())
+    rc_p, out_p, _ = run(["reg", "query", "HKLM\\SOFTWARE\\Microsoft"
+                          "\\WindowsUpdate\\UX\\Settings",
+                          "/v", "PauseUpdatesExpiryTime"], 30)
+    pause_until = None
+    if rc_p == 0:
+        for ln in out_p.splitlines():
+            s = ln.strip()
+            if s and not s.upper().startswith(("HKLM", "HKEY")):
+                pause_until = s
+    guard["pause_updates_expiry"] = pause_until
+    faces["windows_update_guard"] = guard
+    if not guard["no_auto_reboot_on"] and pause_until is None:
+        p0.append("windows update auto-reboot guard ABSENT: neither AU "
+                  "NoAutoRebootWithLoggedOnUsers=1 nor active update "
+                  "pause (O-1540 1 fix: Settings -> pause updates >=1w, "
+                  "or admin: reg add HKLM\\SOFTWARE\\Microsoft\\Windows\\"
+                  "CurrentVersion\\WindowsUpdate\\Auto Update\\AU /v "
+                  "NoAutoRebootWithLoggedOnUsers /t REG_DWORD /d 1 /f)")
 
     verdict = "READY" if not p0 else "P0-PRESENT"
     doc = {"ts": ts, "verdict": verdict, "p0": p0, "faces": faces,
