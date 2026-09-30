@@ -1,5 +1,11 @@
 # BigCompute repo runtime rules
-state/
+# O-20260930-1556 知识共通律：知识件必落 git 同步面——state/ 运行时区中规则/队列/提案三知识面显式排除（台账/心跳/证据 JSON 维持豁免）
+state/*
+!state/runbook.md
+!state/proposals.md
+!state/queue/
+state/queue/*
+!state/queue/*.md
 logs/
 .codely-cli/
 docs/_trash/
