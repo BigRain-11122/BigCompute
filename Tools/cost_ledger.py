@@ -966,7 +966,7 @@ def main():
     ce.add_argument("--tx-id", dest="tx_id", required=True)
     ce.add_argument("--consumer", required=True)
     ce.add_argument("--lane", required=True)
-    ce.add_argument("--task-ref", dest="task_ref", default="-")
+    ce.add_argument("--task-ref", dest="task_ref", required=True)  # 工单号: 三径闸三必填（O-2026-0930-014 执法相位对齐·原 default="-"=attribution 空值缺口）
     ce.add_argument("--amount-mtok", dest="amount_mtok", type=float, required=True)
     ce.add_argument("--reason", default="-")
     ce.add_argument("--date", default=None)
