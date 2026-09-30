@@ -5,7 +5,7 @@
 
 ## 当前优先
 - 13:1x 毕=M28 计分器 v1.2 工程面（round_score 47/47+score_validation 8/8+30 件集导出 label 留空）；**验证集独立标注窗=10-02 12:00**（CPH4 外审/他司·本司禁自标·窗到未标=续催如实）；**22:43 N1 必跑=python Tools/month_end_append.py run（W2 幂等复跑）**；夜窗候选=M25/T26 烘焙实弹（净窗=clean_window_probe exit 0→run_bake 双路→bake_accept_check 收口）；BC-P-15 N1 窗后解冻；C-01/C-02+批池呈批=10-07。
-- 17:2x 毕=M17 BigHouse 收款出口承接预备面（解锁=O-005/O-006 v0.3 终谳·结缘轨演练 6/6·证据 state/house-lane-drill-m17-20260930.txt·回执 BC-F-20260930-09）；**M29=结缘费合规映射行（下轮可执行·map 扩行+gate 复跑全绿）**；open=三队列 10 持平（main M4/M25/M29+tech T2/T9/T15/T26+explore E4/E6/E17·M25/T26 净窗事件·余 blocked 禁造活）；开店物理件待 CEO；A 档硬门=M21 表。
+- 17:3x 毕=M29 结缘费合规映射行（map §二 house lane 行×五列+§四 联签区·gate 59/59 全绿·证据 state/compliance-gate-20260930-1732.txt）；M17+M29 双毕=BigHouse 收款出口承接面全收口（账本演练+合规过表两翼齐）；open=三队列 10 持平（main M4/M25+tech T2/T9/T15/T26+explore E4/E6/E17/E42·M25/T26 净窗事件·E42=D-36 R-C 行业取证·余 blocked 禁造活）；开店物理件待 CEO；A 档硬门=M21 表〔house lane 行已入〕。
 - 10-05 复核=GPU 观察+自驱首计量（T21）+_trash 删+批池激活呈批+净窗频率证据；E17/Q8_0 真窗顺延同窗；keep_alive=-1 即载在役。
 
 ## 常设判据/红线速查
