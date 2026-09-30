@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""round_score.py — 产品优先律轮计分器（D-20260929-07 ②③·P-2026-09-29-07·BC-P-24/T33 工程面·v1.1=D-20260930-12 口径勘正派工·48h 窗）
+"""round_score.py — 产品优先律轮计分器（D-20260929-07 ②③·P-2026-09-29-07·BC-P-24/T33 工程面·v1.1=D-20260930-12 口径勘正·v1.2=D-20260930-17/D-23 过程件降档+验证集判据·48h 窗）
 
 计分律（Executive Protocol v1.1·CEO 原话锚「产出落地很少…结果早点出」）：
   2 分=能跑/能看/能用实物（可跑脚本/真实出数报告/可看账本）
@@ -9,11 +9,12 @@
       非产品增量，入 0 类防全员 2 分稀释判负面）
   连续 24h 全部 commit 均 0 分=空转判负（值守轮点名面·D-20260929-07 ③）
 
-机械分类法（v1.1·文件路径 → 类·D-20260930-12 ①）：
-  2 类：可跑脚本 *.(py|ps1|cs)（全域·BigDomain src 等真实交付面·0 类路径优先）｜白名单扩展名
-      .html/.mp4/.png/.jsonl/.csv/.parquet（能看/能用实物面：成片/图集/数据集/网页）｜
-      docs/ops/*.jsonl=可看账本｜state/*.txt=真实出数报告｜state/*.json 须含真实数字
-      （非时间戳/心跳字段）方记 2·无则降 1（防「只刷新心跳」套利刷 2）
+机械分类法（v1.2·D-20260930-17 ②在 v1.1 基上细化）：
+  2 类：可跑脚本 *.(py|ps1|cs)（全域）——**过程件除外**：_r*_resolve/_append/_probe/
+      tick claim/state carry 类（路径或 subject 命中）=解阻塞/探测不等于交付→1 档；
+      白名单扩展名 .html/.mp4/.png/.jsonl/.csv/.parquet｜docs/ops/*.jsonl=可看账本｜
+      state/*.txt=真实出数报告｜state/*.json 须含真实数字（非时间戳/心跳/簿记键
+      ——tick/count/seq/counter 类计数器=D-23 ③ 反例·不视为真实数字）方记 2·无则降 1
   0 类：心跳/日清类 md｜state/{heartbeat.txt,rounds.log,runbook.md,queue/*,proposals.md}
       ｜docs/status-export.json（export 刷新）｜qa/*｜Tools/iteration_prompt.txt｜Tools/skills/**
   1 类：研究报告类 md（research/ 下或 docs/ 下 R- 件·与心跳/日清类 md 分离计分）+其余实改
@@ -46,7 +47,10 @@ TWO_EXT = (".html", ".mp4", ".png", ".jsonl", ".csv", ".parquet")
 # state/*.json 内容闸哨兵（数值 1.5=与 int 可比·语义「1/2 之间待 blob 内容定谳」）
 STATE_JSON = 1.5
 NUM_KEY = re.compile(r'"([^"]+)"\s*:\s*(-?\d[\d_.eE+]*)')
-TS_KEY = re.compile(r"time|date|stamp|epoch|updated|last|heartbeat|version|(^|_)ts($|_)")
+TS_KEY = re.compile(r"time|date|stamp|epoch|updated|last|heartbeat|version|(^|_)ts($|_)|tick|count|seq|counter")
+# v1.2（D-20260930-17 ②）：过程件降档——「解阻塞/探测不等于交付」机械面
+PROCESS_PATH = re.compile(r"(_r\d+_?resolve|_resolve|_append|_probe|tick[_-]?claim|state[_-]?carry)[^/]*\.(py|ps1|cs)$")
+PROCESS_SUBJECT = re.compile(r"storm rescue|state carry|tick claim|_r\d+_resolve")
 
 
 def is_research_md(p):
@@ -65,7 +69,7 @@ def classify_path(path):
     if p.endswith(TWO_EXT):
         return 2
     if p.endswith((".py", ".ps1", ".cs")):
-        return 2
+        return 1 if PROCESS_PATH.search(p) else 2
     if p.startswith("state/") and p.endswith(".txt"):
         return 2
     if p.startswith("state/") and p.endswith(".json"):
@@ -89,13 +93,18 @@ def _blob_real_numbers(short, path, repo):
     return out.returncode == 0 and json_has_real_numbers(out.stdout)
 
 
-def commit_score(paths, short=None, repo=".", blob_check=None):
+def commit_score(paths, short=None, repo=".", blob_check=None, subject=""):
     """commit 分=变更文件类 max（空变更集=0·merge 类如实）。
 
     state/*.json 哨兵类按 blob 内容定谳（真实数字→2·无→1·防只刷心跳套利）；
     blob_check 注入点=selftest 纯函数夹具（真跑=git show·short=commit 短哈希）。
+    v1.2（D-20260930-17 ②）：subject 命中过程件族（storm rescue/state carry/
+    tick claim/_r*_resolve）时脚本类路径降 1（白名单实物面不降）。
     """
     classes = [classify_path(p) for p in paths]
+    if subject and PROCESS_SUBJECT.search(subject):
+        classes = [1 if c == 2 and p.endswith((".py", ".ps1", ".cs")) else c
+                   for c, p in zip(classes, paths)]
     top = max(classes, default=0)
     if top == STATE_JSON:
         check = blob_check if blob_check is not None else (lambda pth: _blob_real_numbers(short, pth, repo))
@@ -124,7 +133,7 @@ def _git_log(hours, repo="."):
     if cur:
         commits.append(cur)
     for c in commits:
-        c["score"] = commit_score(c["paths"], c["short"], repo)
+        c["score"] = commit_score(c["paths"], c["short"], repo, subject=c["subject"])
     return commits
 
 
@@ -191,6 +200,16 @@ def _selftest():
     run("S6d 内容闸真数字判定", json_has_real_numbers('{"timestamp": 1760000000, "updated_at": 1, "n2": 16}') is True)
     run("S6e 内容闸纯时间戳判负", json_has_real_numbers('{"last_run": 1760000000, "ts": 1760000001, "time": 22}') is False)
     run("S6f 内容闸零数字判负", json_has_real_numbers('{"verdict": "PRODUCT-24h"}') is False)
+    # S7 v1.2 三判据面（D-20260930-17 ②·D-20260930-23 ③正反例）
+    run("S7a 过程脚本路径降档 _resolve", classify_path("results/_r449_resolve.py") == 1)
+    run("S7b 过程脚本路径降档 _append", classify_path("Tools/month_end_append.py") == 1)
+    run("S7c 过程脚本路径降档 _probe", classify_path("Tools/clean_window_probe.py") == 1)
+    run("S7d 过程 subject 脚本类降档", commit_score(["src/os/claim.py"], subject="autofill tick claim burn r449") == 1)
+    run("S7e 过程 subject 白名单实物不降", commit_score(["renders/final.mp4"], subject="autofill tick claim burn") == 2)
+    run("S7f 非过程 subject 维持 2", commit_score(["Tools/round_score.py"], subject="计分器 v1.2 交付") == 2)
+    run("S7g 数字闸反例·只刷心跳+序号", json_has_real_numbers('{"heartbeat": 1760000000, "seq": 42}') is False)
+    run("S7h 数字闸反例·tick 计数器", json_has_real_numbers('{"tick_count": 11, "counter": 3}') is False)
+    run("S7i 数字闸正例·真实出数", json_has_real_numbers('{"mean": 93.93, "cv": 5.8, "p10": 82.09}') is True)
     # S3 空变更集=0
     run("S3 空集=0", commit_score([]) == 0)
     # S4 判负面：全 0 commit 列表→IDLE-ALL-ZERO 判定面（纯函数判定·不碰 git）

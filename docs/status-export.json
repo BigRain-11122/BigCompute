@@ -1,7 +1,7 @@
 {
   "company": "BigCompute",
-  "updated_at": "2026-09-30 12:5x",
-  "current_activity": "12:43 午班轮：D-20260930-12 计分器口径勘正派工承接毕（round_score.py v1.1 三判据+修后重跑全表·48h 窗内 ~5min 交付）+D-13 投递 SLA 首证（12:43 派工→本轮 ack）+月末行午班提前跑三闸全过（W2 幂等面留今晚 N1 复跑）",
-  "latest_artifact": "Tools/round_score.py v1.1 + state/score-rerun-20260930-1248.txt（修后重跑全表·24h 窗七司只读：BigDomain 0%→24.7%·BigStream 0%→50%·BigLife 1.5%→33.3%·BigMoney 1.2%→53.4% 低估冤枉面全纠+state json 套利面闭·selftest 38/38 PASS·2026-09-30 12:4x·D-20260930-12 派工回执）",
-  "next_milestone": "09-30 22:43 夜班：N1 复跑 month_end_append（W2 幂等）+净窗开则 M25/T26 烘焙实弹双路跑（run_bake→bake_accept_check 收口）；10-05 复核窗（GPU 观察期止/批池激活呈批/_trash 删除）"
+  "updated_at": "2026-09-30 13:2x",
+  "current_activity": "13:0x 哨兵轮：D-20260930-17+23 计分器 v1.2 派工承接（48h 窗）——过程件降档+验证集工具+30 件集导出毕·D-15 外推结果行+D-19 ack 三要素接线毕",
+  "latest_artifact": "Tools/round_score.py v1.2 + Tools/score_validation.py + state/score-validation-set-20260930.jsonl（30 件七司抽样·label 留空待独立标注）+ state/score-rerun-20260930-v12-1315.txt（BigMoney 53.4%→49.4%·BigCompute 73.9%→58.3%）·selftest 47/47+8/8·2026-09-30 13:1x·回执 BC-F-20260930-03",
+  "next_milestone": "①今夜 22:43 N1 复跑 month_end_append（W2 幂等）+净窗开则 M25/T26 烘焙实弹双路跑；②10-02 12:00=验证集独立标注窗收口（CPH4 外审/他司回填 label→agreement 一致率·<85% 禁上判负面）+D-19 ack 窗（本 commit 已含三要素）"
 }

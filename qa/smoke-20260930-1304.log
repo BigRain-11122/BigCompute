@@ -1,0 +1,27 @@
+BigCompute QA smoke test 20260930-1304 (orders L254 / charter v1)
+
+[gpu collector] PASS -> gpu collector
+gpu report 2026-09-30 machine=bm-a: n=53 avg=18.3% max=100% kpi=FLAG(<30% call-out threshold on 3-day rolling baseline, C-20260929-02)
+3-day rolling baseline (pre-registered, C-20260929-02): 2026-09-28..2026-09-30 n=196 avg=14.3% (call-out 30%; 70% target = directional ref)
+rolling 30-min window: n=2 avg=35.5% -> IDLE
+
+[ollama response] PASS -> ollama response
+answer='1+1 equals 2.' eval_count=8 89.26 tok/s
+residency: pre=FOREVER post=FOREVER (maintained)
+NAME                   ID              SIZE      PROCESSOR    CONTEXT    UNTIL   
+qwen2.5:7b-instruct    845dbda0ea48    5.1 GB    100% GPU     4096       Forever
+NAME                   ID              SIZE      PROCESSOR    CONTEXT    UNTIL   
+qwen2.5:7b-instruct    845dbda0ea48    5.1 GB    100% GPU     4096       Forever
+
+[queue rows] PASS -> queue rows
+main.md: 27 rows
+tech.md: 34 rows
+explore.md: 30 rows
+
+[cost ledger] PASS -> cost ledger
+selftest: math=True determinism=True count=ok (orders+quota-gate+count+cloud) -> PASS
+
+[rounds.log strict-decode] PASS -> rounds.log strict-decode
+strict utf-8 decode ok: 102840 bytes / 84 lines
+
+smoke verdict: 5/5 PASS (charter 4 + tech T25 probe)
