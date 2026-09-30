@@ -1,7 +1,7 @@
 {
   "company": "BigCompute",
-  "updated_at": "2026-09-30 17:21",
-  "current_activity": "17:2x 哨兵轮：orders 17:12 批收讫（L254/L259 BigHouse v0.3 终谳批准+词族清零令 O-005/O-006→本司收款出口承接 M17 解锁执行毕·回执 BC-F-20260930-09；L262/L263 2D 取帧径/音频标准=Biggame/CPH4 域零动作）→队列步=M17 BigHouse 结缘年度费收款轨微演练 6/6 PASS（按比例退费新数学面+N2 四声明位锚+O-006 词族 lane 标签 0 命中）→M29 结缘费合规映射行新立（下轮可执行）",
-  "latest_artifact": "state/house_ledger_drill_m17.py BigHouse 结缘收款轨演练件+证据 state/house-lane-drill-m17-20260930.txt（M17·299/年 order net=261.326+order_id 幂等+服务中断 day180 未消费部分退费 299×185/365=151.55 退款行+续费新 order_id 分立+月度归集+N2 使用权/显著提醒/未消费退还/AIGC 标识四锚全 Y·temp 账本零污染）·09-30 17:21",
-  "next_milestone": "①今晚 22:43=N1 月末行幂等复跑（month_end_append run·W2）+BC-P-15 SLA 修复解冻（E36 证据基线已备）+净窗开则 M25/T26 烘焙实弹；②下轮=M29 BigHouse 结缘费合规映射行（paypoint-compliance-map 扩行+gate 复跑全绿）；③节前 P1 手动件维持：CEO 出发前 Windows 更新暂停 ≥1 周或管理员 AU reg add（O-1540①·R-46 第五面盯防）；④10-02 12:00=验证集独立标注窗（本司禁自标）；⑤10-05 复核窗+10-07 批池呈批；长假窗 10-01~10-08 双班+哨兵 15min 24h 自转维持"
+  "updated_at": "2026-09-30 17:35",
+  "current_activity": "17:3x 哨兵轮：审核步零本司派工（orders 17:12 无新行+decisions 17:22 D-40/D-41=审计会话交付件派 BigMoney/CPH4 面收讫）→队列步=M29 BigHouse 结缘费合规映射行毕（paypoint-compliance-map-v1 §二 扩 house lane 行+§四 联签区行·gate 复跑 59/59 全绿）→E42 算力对标行业基准取证新立（D-36 R-C 阈值校准承接）",
+  "latest_artifact": "docs/ops/paypoint-compliance-map-v1.md 结缘费 299/年 house lane 行×五列（O-005 四闸①②③声明位四锚+④标识锚+未成年人锚+C4/C5 n/a 注记）+证据 state/compliance-gate-20260930-1732.txt（gate 59/59 全绿·rows 14→15·anchors 53→59·slots 3 维持）·09-30 17:32",
+  "next_milestone": "①今晚 22:43=N1 月末行幂等复跑（month_end_append run·W2）+BC-P-15 SLA 修复解冻（E36 证据基线已备）+净窗开则 M25/T26 烘焙实弹；②10-02 12:00=验证集独立标注窗（本司禁自标）+D-11/16/18/19 集团投递层 ack 窗；③10-05 复核窗（GPU 观察+自驱首计量+_trash 删+批池呈批+E17/Q8_0 真窗）+10-07 批池呈批；④节前 P1 手动件维持：CEO 出发前 Windows 更新暂停 ≥1 周或管理员 AU reg add（O-1540①·R-46 第五面盯防）；长假窗 10-01~10-08 双班+哨兵 15min 24h 自转维持"
 }
