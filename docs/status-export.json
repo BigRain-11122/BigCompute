@@ -1,7 +1,7 @@
 {
   "company": "BigCompute",
-  "updated_at": "2026-09-30 12:3x",
-  "current_activity": "12:3x 哨兵轮：D-20260930-06 集团全域改进清单 XL-1~21 收讫（本司零 XL-1x 派单行·四源零=XL-2 商户号物理件面）+U320 吸嘟嘟音频批本司面=按需支援席收讫；队列步=产品优先律轮计分器落地（昨两轮 0 分纯 md 坐实·本轮 2 分实物回正）",
-  "latest_artifact": "Tools/round_score.py（产品优先律轮计分器：git log 变更集 2/1/0 机械分类+24h 空转判负点名面·selftest 22/22 PASS+真跑 PRODUCT-24h max=2 n=23 n2=16 n1=0 n0=7·JSON state/round-score-20260930-1235.json·2026-09-30 12:3x·D-20260929-07 ②③+XL-8 转换率闸机械面）",
-  "next_milestone": "09-30 22:43 首月末归集 N1 必跑（python Tools/month_end_append.py run 一命令·E25 判据·漏跑=次日起补跑合法）；净窗开（clean_window_probe check exit 0）则 M25/T26 烘焙实弹双路跑→bake_accept_check 收口"
+  "updated_at": "2026-09-30 12:5x",
+  "current_activity": "12:43 午班轮：D-20260930-12 计分器口径勘正派工承接毕（round_score.py v1.1 三判据+修后重跑全表·48h 窗内 ~5min 交付）+D-13 投递 SLA 首证（12:43 派工→本轮 ack）+月末行午班提前跑三闸全过（W2 幂等面留今晚 N1 复跑）",
+  "latest_artifact": "Tools/round_score.py v1.1 + state/score-rerun-20260930-1248.txt（修后重跑全表·24h 窗七司只读：BigDomain 0%→24.7%·BigStream 0%→50%·BigLife 1.5%→33.3%·BigMoney 1.2%→53.4% 低估冤枉面全纠+state json 套利面闭·selftest 38/38 PASS·2026-09-30 12:4x·D-20260930-12 派工回执）",
+  "next_milestone": "09-30 22:43 夜班：N1 复跑 month_end_append（W2 幂等）+净窗开则 M25/T26 烘焙实弹双路跑（run_bake→bake_accept_check 收口）；10-05 复核窗（GPU 观察期止/批池激活呈批/_trash 删除）"
 }
