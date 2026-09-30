@@ -61,3 +61,10 @@ U240 serve 常驻标准（族 A·T-22 下窗排程）引用本 manifest 作为�
 ## 落点
 
 任务板 T-20260926-22（族 D 首 R- ✅）+赋能目录 §四 服务项 #2 证据面+风险台账 R-26（模型大件误走 git 通道·本件=依据正典）。
+
+## 五轮循环增量（2026-09-30 14:5x 窗·E34·分发完整性基线门 verify 工具化）
+
+- **缺口→门**：§Q3/Q4 的 SHA256 校验此前=手工单 blob 演示（68B 最小件·predesign §三）+盘上存在性核验（E27 missing=0）——**完整性重哈希门未机械化**。本轮 Tools/model_blob_manifest.py 增 `verify` 命令收口：full=逐唯一 blob 流式 SHA256 重哈希 vs manifest digest（文件名内证法）·`--quick`=声明 size vs 实际 size 秒级预检（哈希坏件 size 同则不可见=两模式如实分立）·状态四态 OK/OK_QUICK/HASH_MISMATCH/SIZE_MISMATCH+MISSING·exit 码绿红·基线 JSON 落盘。
+- **selftest**：verify 四态端到端扩测 PASS（临时 root 合成夹具：内容哈希吻合件/篡改件/缺件/size 不符件——零真实 state 污染）。
+- **实跑基线（本机 bm-a·2026-09-30）**：全量 verify=**VERIFY_GREEN——16/16 唯一 blob 零缺零坏**（5 模型·41,484,097,962B·86.5s·457.4MiB/s·与 E27 dedup 唯一集字节逐位吻合）·基线 JSON=state/manifest-verify-baseline-20260930.json。
+- **消费面**：tech T9 分发日即用件（Q6 判据 2/3 的完整性基线一命令）+fleet-network-predesign-v1 W4（L2 直拷完整性门）+提案 BC-P-29（周轮底座自检第三件候选·quick 模式周周可见）。零分发动作维持。

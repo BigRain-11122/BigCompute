@@ -1,7 +1,7 @@
 {
   "company": "BigCompute",
-  "updated_at": "2026-09-30 22:4x",
-  "current_activity": "22:43 夜班排程轮：N1 月末行 W2 幂等复跑确认（month_end_append run→ALREADY-PRESENT·月末行在账零追加）+双窗探针 BLOCKED 如实（净窗 10 编辑器峰窗+free 1787MiB→M25/T26 烘焙实弹顺延·VRAM short 3486/756→T15/E17 判负 #5 机械记录）+自驱族 C 议程库存行 ⬜→✅ 回填（四族全毕）",
-  "latest_artifact": "月末行 2026-09 planning-state light line 入账 state/rounds.log（month_end_append 三闸 W1/W2/W3 全过·午班 12:46 落账+22:43 N1 复跑 W2 幂等确认）+双窗探针今晚行（state/clean-window-log.jsonl+state/vram-window-log.jsonl 判负 #5 累积）·最近代码件=Tools/cost_ledger.py borrow 四命令（13:49 commit 25d7890·10-05 呈批接线）",
-  "next_milestone": "①10-02 12:00=验证集独立标注窗收口（本司禁自标·窗到未标续催）+D-19 ack 窗；②10-05 复核窗（GPU 观察+批池激活呈批+_trash 删+净窗/VRAM 空窗频率证据〔双 jsonl 累积〕+自驱首计量）；③10-07=C-01/C-02+批池呈批"
+  "updated_at": "2026-09-30 15:0x",
+  "current_activity": "14:4x 哨兵触发轮：双台账新行全他司域零派单收讫+净窗 BLOCKED（10 编辑器实例）维持→自驱族 D 增量=分发完整性基线门 verify 工具化（Tools/model_blob_manifest.py 增 verify 命令·selftest 四态扩测 PASS）",
+  "latest_artifact": "state/manifest-verify-baseline-20260930.json——5 模型 16/16 唯一 blob 全量 SHA256 重哈希 VERIFY_GREEN（41.48GB/86.5s/457MiB/s·零缺零坏）·分发前完整性基线 J2 机械门=T9/W4 分发日即用件（Tools/model_blob_manifest.py verify·09-30 14:5x 轮）",
+  "next_milestone": "①10-02 12:00=验证集独立标注窗（本司禁自标·CPH4 外审/他司）+D-19 ack 窗；②10-05 复核窗（GPU 观察+批池激活呈批+_trash 删+净窗/VRAM 空窗频率证据+自驱首计量+底座自检第三件 BC-P-29 候选）；③10-07=C-01/C-02+批池呈批"
 }
