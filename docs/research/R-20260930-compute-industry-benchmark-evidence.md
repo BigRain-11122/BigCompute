@@ -108,3 +108,10 @@
 - **通道墙如实**：www.sec.gov **4 抓 403 止损**（browse-edgar×2+Archives 20-F/A 主档×2·declared UA 不豁免·IP 级「undeclared automated tool」拦截页）——**触墙根因=本机 fetch_content httpx 无 UA 首抓**→「SEC 域先声明后访问」纪律新行（tech T36 承接·§九本声明=复抓日志在案即验）。
 - 局限如实：Nebius FY2024 D&A 未取（FY2025 单年够用不扩抓省请求）；三源 utilization 全文筛 ⬜；全部百分比=本件显式公式派生·非公司列报值。
 - 临时件：$env:TEMP/e43_amzn.py（AMZN companyfacts 重复键解析脚本·非源缓存）；nbis-20fa.htm 下载失败零缓存。
+
+## §十 T36 SEC 通道纪律件落地+efts 单试判负实录（09-30 18:2x 轮）
+
+- **纪律件落位**：技能 `bigcompute-verify-official-source` SKILL.md 增 §4「SEC 官方域通道纪律」——先声明后访问律（通道序=web_fetch 原生 UA→fetch_content `backend="curl"` TLS 指纹→**禁 httpx 裸通道首抓 SEC 域**）+触墙止损（冷却 ≥10min+同通道复抓 ≤1·再负=本窗判负）+data.sec.gov XBRL 三接口备用通道 SOP（不受墙·§九全数实证）+efts.sec.gov FTS 全文筛单试通道+判负=「不披露」结论加固实证面如实记录。
+- **efts 单试判负（复抓 ≤1 已用尽）**：`web_fetch` efts.sec.gov/LATEST/search-index（q="data center utilization"·ciks=0001513845 Nebius 靶）→ **403**；同通道复抓 `fetch_content backend="curl"` → **curl_cffi 未装**（duckduckgo-mcp-server[browser] extra 缺装·通道序第二位现不可用·装件评估挂维护窗非本轮）→ **efts 通道本窗判负**。
+- **www 通道维持判负**（E43 §九 4×403 已用尽本窗额度）→ **三源利用率全文筛=SEC 双通道本窗全判负**，⬜ 顺延下窗；候选通道（下窗单试评估）=①curl_cffi 装件后 efts 复试②公司 IR 官网自托管申报件（nebius.com / microsoft.com/investor / ir.aboutamazon.com·官方源级但非 SEC 域·适用 §1 铁律同律逐字引用）。
+- **诚实律维持**：「双头部零披露」结论加固本窗仍不宣称（CoreWeave 单源 26 命中零百分比在案·其余三源待筛）——纪律执行本身即本窗产出（止损面=省盲抓轮预算·§2.5 收严实证）。

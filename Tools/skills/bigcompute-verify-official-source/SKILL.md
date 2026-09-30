@@ -30,3 +30,13 @@ description: BigCompute（硅基算力）法务/风控官方原文核验工作�
 - 复抓结果同步任务板 T-13 行（状态＋进展＋证据指针·如实）。
 - 交叉验证优先：同文多官方源（政策库+公报+部委 PDF）互证后回填；单源新发现（如 2026 年 9 号公告类）只加注待核指针、不回填正典。
 - commit 尾标 `[via BigCompute-OSLoop]`；轮账本 `api=<抓取次数>` 如实记。
+
+## §4 SEC 官方域通道纪律（2026-09-30 E43 墙面实证沉淀·T36）
+
+**先声明后访问律**：SEC fair-access 政策要求访问带声明式 User-Agent（如 `Sample Company name@domain`）。实证锚＝fetch_content 默认 httpx 通道**无 UA 首抓即触 www.sec.gov IP 级自动工具墙**，且墙后补声明 UA 复抓 4 连 403 不豁免（2026-09-30 18:0x E43 轮实录）——故：
+
+1. **通道序**（SEC 域专用，覆盖 §2 第 2 步渠道序）：`web_fetch`（原生客户端带 UA）→ `fetch_content` 且 `backend="curl"`（浏览器 TLS 指纹·过多数自动墙）→ **禁 httpx 裸通道首抓 SEC 域**。
+2. **触墙止损**：一旦 403/412，冷却窗 **≥10min** + 同通道复抓 **≤1 次**；再负＝该渠道本窗判负留痕，禁盲抓消耗轮预算（三抓止损 §2.5 同源收严）。
+3. **data.sec.gov XBRL 备用通道 SOP（不受墙·E43 全数实证）**：结构化官方值（收入/成本/折旧等 US-GAAP 概念）优先走三接口——`data.sec.gov/submissions/CIK##########.json`（申报历史）→ `data.sec.gov/api/xbrl/companyconcept/CIK##########/us-gaap/<Concept>.json`（单概念全史）→ `data.sec.gov/api/xbrl/companyfacts/CIK##########.json`（全概念面·大文件慎用）。XBRL 值=官方源级可直接回填（标注 fiscal year/form 锚）。
+4. **全文筛专用通道**：`efts.sec.gov/LATEST/search-index?q=<词>&ciks=<CIK>`（EDGAR 全文检索 API·单试通道）——命中面=哪些申报文件含目标词；取正文段落仍须回 www 单文档通道（同律受限）。
+5. **诚实律**：全文筛判负（零披露/墙不可破）＝「头部不披露」结论加固的实证面，如实记录禁宣称「已证实不披露」。
