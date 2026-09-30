@@ -1,7 +1,7 @@
 {
   "company": "BigCompute",
-  "updated_at": "2026-09-30 16:5x",
-  "current_activity": "16:4x 令牌触发轮：orders 16:43 五新行收讫（BigHouse 定位三连令+@Biggame IAA+O-1645 观测窗正典化·零 @BigCompute 派单）→净窗 BLOCKED（11 实例）→自驱步 E40=8792 居民问答服务端落地（O-1645 遗留待裁承接·BC-P-04 MaaS 消费面）",
-  "latest_artifact": "Tools/resident_qa_server.py（E40·居民问答服务端 v1·selftest 10/10+生产路径真召见入戏应答 26tok/1.19s）+BigCompute-ResidentQA schtasks 5min 保活在役——CEO 观测窗「召见居民」对话台今起在役·09-30 16:50",
+  "updated_at": "2026-09-30 17:0x",
+  "current_activity": "17:0x 哨兵触发轮：orders 16:57 新两行收讫（O-1656 三件派单/O-1654 均 @Biggame·O-1656② 居民问答后端与本司 E40 在役件重叠=回执 BC-F-20260930-08 对齐禁重建）→净窗 BLOCKED（10 实例）→自驱步 E41=CEO 观测窗 8792 服务巡逻探针落地（qa_smoke 第 6 探针+task_check 扩 ResidentQA）",
+  "latest_artifact": "Tools/qa_smoke.py 第 6 探针+task_check.ps1 第五任务行（E41·resident QA 8792 health 巡逻——CEO 观测窗「召见居民」服务今起每轮 QA 当轮盯防·首跑 6/6 PASS health 200 anchors=20）·09-30 17:02",
   "next_milestone": "①今晚 22:43=N1 月末行幂等复跑（month_end_append run·W2）+BC-P-15 SLA 修复解冻（E36 证据基线已备）+净窗开则 M25/T26 烘焙实弹；②节前 P1 手动件维持：CEO 出发前 Windows 更新暂停 ≥1 周或管理员 AU reg add（O-1540①·R-46 第五面盯防）；③10-02 12:00=验证集独立标注窗（本司禁自标）；④10-05 复核窗（GPU 观察+批池激活呈批+自驱首计量+_trash 删）；⑤10-07 批池呈批（走 O-1555 ② 决策委员会过会通道）；长假窗 10-01~10-08 双班+哨兵 15min 24h 自转维持"
 }

@@ -10,6 +10,10 @@ Runs the four BigCompute charter checks (docs/qa-smoke-test-charter.md):
     shell Add-Content wrote GBK-mangled lines once; appends now go
     through python utf-8 only, and this probe surfaces any recurrence
     in the same round it happens)
+ 6. resident QA serve 8792 health (E41 / O-20260930-1645+1656 CEO
+    observation window backend, E40 delivery): a silent death of the
+    CEO-facing "summon residents" service must surface in the same
+    round it happens, not wait for a CEO click
 
 Writes qa/smoke-<ts>.log with raw outputs + a self-judge verdict, then
 renders that exact log content to qa/smoke-<ts>.png via .NET
@@ -36,6 +40,7 @@ QUEUE_DIR = os.path.join(ROOT, "state", "queue")
 QUEUE_FILES = ("main.md", "tech.md", "explore.md")
 OLLAMA_URL = "http://localhost:11434/api/generate"
 OLLAMA_MODEL = "qwen2.5:7b-instruct"
+RESIDENT_QA_URL = "http://127.0.0.1:8792/health"
 
 PNG_PS_TEMPLATE = r"""
 $ErrorActionPreference='Stop'
@@ -170,6 +175,28 @@ def probe_rounds_log():
                        % (e.start, e.reason))
 
 
+def probe_resident_qa():
+    """E41: resident QA serve (8792) health for the CEO observation window.
+
+    E40 delivered Tools/resident_qa_server.py as the O-20260930-1645
+    observation-window backend, kept alive by a 5min silent schtasks
+    loop. The keepalive restarts, but nothing watched the restart
+    failing; this probe classifies PRESENT (health 200) vs LOST so a
+    dead CEO-facing service shows up in this round's verdict.
+    """
+    try:
+        with urllib.request.urlopen(RESIDENT_QA_URL, timeout=10) as r:
+            h = json.loads(r.read().decode("utf-8"))
+        ok = r.status == 200 and h.get("status") == "ok"
+        return ok, ("health %d status=%s anchors=%s server=%s model=%s"
+                    % (r.status, h.get("status"), h.get("anchors"),
+                       h.get("server"), h.get("model")))
+    except Exception as e:  # noqa: BLE001 - probe must not crash pipeline
+        return False, ("resident QA serve 8792 LOST: %r "
+                       "(CEO observation window - fix next round top "
+                       "priority)" % e)
+
+
 def main():
     os.makedirs(QA_DIR, exist_ok=True)
     ts = datetime.datetime.now().strftime("%Y%m%d-%H%M")
@@ -177,7 +204,8 @@ def main():
     png_path = os.path.join(QA_DIR, "smoke-%s.png" % ts)
     probes = [("gpu collector", probe_gpu), ("ollama response", probe_ollama),
               ("queue rows", probe_queues), ("cost ledger", probe_ledger),
-              ("rounds.log strict-decode", probe_rounds_log)]
+              ("rounds.log strict-decode", probe_rounds_log),
+              ("resident QA serve 8792", probe_resident_qa)]
     lines, passed = [], 0
     lines.append("BigCompute QA smoke test %s (orders L254 / charter v1)"
                  % ts)
@@ -190,7 +218,7 @@ def main():
         lines.append(detail)
         print("[%s] %s" % ("PASS" if ok else "FAIL", label))
     lines.append("")
-    verdict = "smoke verdict: %d/%d PASS (charter 4 + tech T25 probe)" % (
+    verdict = "smoke verdict: %d/%d PASS (charter 4 + tech T25 + E41 probes)" % (
         passed, len(probes))
     lines.append(verdict)
     with open(log_path, "w", encoding="utf-8") as f:

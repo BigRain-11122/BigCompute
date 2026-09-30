@@ -1,5 +1,6 @@
 # task_check.ps1 - schtasks patrol for BigCompute loop tasks (queue tech T10).
-# Walks OSLoop-PM + OrderSentinel + GPU-IdleWatch + CleanWindowProbe:
+# Walks OSLoop-PM + OrderSentinel + GPU-IdleWatch + CleanWindowProbe
+# + ResidentQA (E41, 09-30: CEO observation window 8792 keepalive task):
 # State/LastRun/LastResult (probe task added with BC-P-17, 09-30).
 # tech T18 (2026-09-28): orphan round.lock detection. The lock holds the live
 # round's worker PID; the next tick takes a dead-PID lock over at once. A lock
@@ -9,7 +10,7 @@
 # Exit 1 if any task is missing or not Ready/Running, or an orphan lock shows;
 # the round's daily clearing note carries the anomaly line. Pure ASCII.
 param([string]$LockPath = '')
-$names = @('BigCompute-OSLoop-PM', 'BigCompute-OrderSentinel', 'BigCompute-GPU-IdleWatch', 'BigCompute-CleanWindowProbe')
+$names = @('BigCompute-OSLoop-PM', 'BigCompute-OrderSentinel', 'BigCompute-GPU-IdleWatch', 'BigCompute-CleanWindowProbe', 'BigCompute-ResidentQA')
 $bad = 0
 foreach ($n in $names) {
     $t = Get-ScheduledTask -TaskName $n -ErrorAction SilentlyContinue
