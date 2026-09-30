@@ -23,6 +23,11 @@ tasks/TASKS.md T-20260928-28 + state/proposals.md BC-P-01 batch pool).
   rule (C-20260929-02 seat-2/seat-7 amendments): sole call-out threshold
   = 30% evaluated on the 3-day rolling baseline (the 70% target stays a
   directional reference only) -> honest FLAG below 30%.
+  D-20260930-36 R-C1 add-on: benchmark GAP line = 50% evaluated on the
+  7-day rolling average (head-firm compare; <50% = structural failure).
+  Gap line is NOT an enforcement line: the sole call-out threshold stays
+  30% (C-20260929-02), and the 70% target stays a directional reference
+  pending threshold calibration R- receipts (D-20260930-36).
 - selftest: offline window/dispatch math checks (no nvidia-smi needed).
 
 Usage (run from repo root):
@@ -49,6 +54,8 @@ WINDOW_MIN = 30    # rolling idle window (CEO spec)
 IDLE_PCT = 50.0    # rolling-window idle verdict (CEO spec, unchanged)
 CALL_PCT = 30.0    # C-20260929-02 7.1: SOLE call-out threshold (see below)
 ROLL_DAYS = 3      # C-20260929-02 seat-2/7: pre-registered measure basis
+BENCH_DAYS = 7     # D-20260930-36 R-C1: benchmark horizon (head-firm compare)
+BENCH_PCT = 50.0   # D-20260930-36 R-C1: 7-day avg <50% = structural failure
 MACHINE = "bm-a"   # local machine tag -> weekly per-machine ledger row
 DISPATCH_COOLDOWN_MIN = 30
 DISPATCH_HEADER = ("# GPU idle observation log (T-20260928-28; DRY-RUN per "
@@ -102,11 +109,16 @@ def window(rows, at=None):
     return inwin, len(inwin) >= 2
 
 
-def roll3_dates(at=None):
-    """Calendar dates covered by the rolling baseline (today + N-1 back)."""
+def roll_dates(n_days, at=None):
+    """Calendar dates covered by an n-day rolling window (today + n-1 back)."""
     at = at or now()
     return tuple((at.date() - datetime.timedelta(days=i)).isoformat()
-                 for i in range(ROLL_DAYS))
+                 for i in range(n_days))
+
+
+def roll3_dates(at=None):
+    """Calendar dates covered by the rolling baseline (today + N-1 back)."""
+    return roll_dates(ROLL_DAYS, at)
 
 
 def callout_verdict(avg):
@@ -115,6 +127,14 @@ def callout_verdict(avg):
     return ("PASS" if avg >= CALL_PCT
             else "FLAG(<30%% call-out threshold on %d-day rolling "
                  "baseline, C-20260929-02)" % ROLL_DAYS)
+
+
+def bench_verdict(avg):
+    """D-20260930-36 R-C1: benchmark gap line (CoreWeave/Lambda head-firm
+    compare). Gap line only -- the sole call-out threshold stays 30%."""
+    return ("BELOW-BENCH(<50%% structural-failure line on %d-day avg, "
+            "R-C1 D-20260930-36)" % BENCH_DAYS if avg < BENCH_PCT
+            else "AT-OR-ABOVE-BENCH(R-C1 50%% line, D-20260930-36)")
 
 
 def queue_head_pointer():
@@ -215,6 +235,15 @@ def cmd_report():
           "%s..%s n=%d avg=%.1f%% (call-out 30%%; 70%% target = "
           "directional ref)" % (ROLL_DAYS, r3_days[-1], r3_days[0],
                                 len(r3), r3avg))
+    b7_days = roll_dates(BENCH_DAYS)
+    b7 = [r for r in rows if r["ts"].startswith(b7_days)]
+    b7avg = (sum(r["util_pct"] for r in b7) / len(b7)) if b7 else avg
+    print("%d-day benchmark (D-20260930-36 R-C1, head-firm gap line): "
+          "%s..%s n=%d avg=%.1f%% -> %s (gap line only; sole call-out "
+          "stays 30%%; 70%% target = directional ref pending R- "
+          "threshold-calibration receipts)"
+          % (BENCH_DAYS, b7_days[-1], b7_days[0], len(b7), b7avg,
+             bench_verdict(b7avg)))
     inwin, complete = window(rows)
     if complete:
         wavg = sum(r["util_pct"] for r in inwin) / len(inwin)
@@ -280,9 +309,34 @@ def cmd_selftest():
         datetime.datetime(2026, 9, 28, 9, 33, 28), "dispatch ts parse"
     assert _parse_last_ts("not a dispatch row") is None, "non-row -> None"
     assert _parse_last_ts("| garbage | IDLE x | y |") is None, "bad ts -> None"
+    # D-20260930-36 R-C1: 7-day benchmark gap line (not an enforcement line)
+    b7_days = roll_dates(BENCH_DAYS, at)
+    assert b7_days[0] == "2026-09-28" and b7_days[-1] == "2026-09-22", \
+        "benchmark spans today + 6 prior calendar days"
+    assert roll_dates(ROLL_DAYS, at) == roll3_dates(at), \
+        "generic roller must reproduce the 3-day baseline exactly"
+    assert BENCH_PCT > CALL_PCT, "R-C1 gap line sits above the call-out line"
+    week = [{"ts": (at - datetime.timedelta(days=d, minutes=5)
+                    ).isoformat(timespec="seconds"),
+             "util_pct": 46.0, "mem_used_mib": 0.0, "power_w": 0.0}
+            for d in range(BENCH_DAYS)]
+    in7 = [r for r in week if r["ts"].startswith(b7_days)]
+    assert len(in7) == BENCH_DAYS, "benchmark window includes all 7 days"
+    older7 = {"ts": (at - datetime.timedelta(days=BENCH_DAYS, minutes=5)
+                     ).isoformat(timespec="seconds"),
+              "util_pct": 100.0, "mem_used_mib": 0.0, "power_w": 0.0}
+    assert not older7["ts"].startswith(b7_days), "day-7-old sample excluded"
+    w7avg = sum(r["util_pct"] for r in in7) / len(in7)
+    assert abs(w7avg - 46.0) < 1e-9, "7-day average math"
+    assert bench_verdict(w7avg).startswith("BELOW-BENCH"), \
+        "46% 7-day avg must read as below the 50% line"
+    assert bench_verdict(50.0).startswith("AT-OR-ABOVE-BENCH"), \
+        "50% exactly = at the line, not below it"
+    assert bench_verdict(51.0).startswith("AT-OR-ABOVE-BENCH"), \
+        "51% 7-day avg clears the gap line"
     print("selftest PASS: window completeness/exclusion/average/"
           "idle-vs-busy verdicts/call-out threshold/3-day rolling "
-          "baseline/dispatch-ts parse ok")
+          "baseline/7-day R-C1 benchmark line/dispatch-ts parse ok")
     return 0
 
 
