@@ -1,7 +1,7 @@
 {
   "company": "BigCompute",
-  "updated_at": "2026-09-30 11:2x",
-  "current_activity": "11:2x 哨兵轮：O-20260930-1101 宽进演习令收讫（@BigMoney 域零本司动作）+BC-P-20 烘焙三指标验收预检件落地（T26 实弹后一命令收口在位）+BC-P-21 净窗协调窗申请件立案（clean-window-log 首日 6/6 BLOCKED 锚·日清呈面）",
-  "latest_artifact": "Tools/bake_accept_check.py（烘焙三指标验收预检件：J1 bake_ok+≤30min/J2 VRAM 峰值 csv+summary 回退+headroom ≥1.5GB 注记/J3 lightmap 产物三键·无参自动取最新两 dir=净窗双路一命令收口+R- §三行 3 回填行组装·selftest 14/14 PASS·2026-09-30 11:2x）+qa/smoke-20260930-1118（5/5 PASS）",
-  "next_milestone": "09-30 22:43 首月末归集 N1 必跑（python Tools/month_end_collect.py run·一命令机械跑零推导·E25 判据·漏跑=下下轮第一优先）·窗 ≤48h；净窗开（clean_window_probe check exit 0）则 M25/T26 烘焙实弹双路跑→bake_accept_check check 一命令验收收口"
+  "updated_at": "2026-09-30 11:3x",
+  "current_activity": "11:3x 轮：orders 三新行收讫（U319 机制流程梳理令=全集团执法面·本司 QA 真命令输出律同向已在役；O-1121/O-1132 金融工具采掘两令=@BigMoney 域零本司动作）+BC-P-18 轮预算沙漏探针落地（tech T31）+BC-P-22 N1 月末行一命令落账件提案新立",
+  "latest_artifact": "Tools/round_budget.py（轮预算沙漏探针：读 logs/os-loop/round.lock mtime=轮起锚→elapsed/remaining 25min 一行直出+remaining<8min 收尾预警/OVERTIME/缺锁 exit5·selftest 10/10 PASS+真实首跑 BUDGET-OK·2026-09-30 11:3x）+qa/smoke-20260930-1133（5/5 PASS）",
+  "next_milestone": "09-30 12:43 午班窗先耗 BC-P-22（month_end_append.py 微件·N1 一命令真语义）→09-30 22:43 首月末归集 N1 必跑（month_end_collect run→月末行经 round_append 落账·E25 判据·漏跑=下下轮第一优先）；净窗开（clean_window_probe check exit 0）则 M25/T26 烘焙实弹双路跑→bake_accept_check check 收口"
 }
