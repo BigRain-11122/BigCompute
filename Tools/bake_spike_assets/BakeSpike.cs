@@ -2,6 +2,8 @@
 // 用法：Tuanjie.exe -batchmode -projectPath <spike工程> -executeMethod City3DBakeSpike.Entry.Run -logFile <log>
 // 环境变量：BAKE_SPIKE_LIGHTMAPPER=ProgressiveGPU|ProgressiveCPU（缺省 CPU）；BAKE_SPIKE_OUT=<metrics.json 绝对路径>
 // J1=单样板间烘焙时长；J2=内存/显存峰值记录；J3=AO+光照贴图产物；J4=记账随 run_bake.ps1 tx_id 轨。
+// 光基准=City3D 官方光基准档 v1（BC-P-19·正典只读抄录=FluxVerse City3D-staging/official-baseline.md
+// AD-022 现代城市段·O-034 B 腿同律）：暖白主光 1.2/(50,212.23,0)/软影0.8+补光0.27/(20,148,0)+Skybox 环境光。
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -91,12 +93,38 @@ namespace City3DBakeSpike
             pl.shadows = LightShadows.Soft;
             ptGo.transform.position = new Vector3(0f, 2.6f, 0f);
 
+            // City3D 官方光基准档直配（BC-P-19·正典只读抄录同上）：室内灯板点光维持+三面对齐
             var sun = GameObject.Find("Directional Light");
             if (sun != null)
             {
                 var dl = sun.GetComponent<Light>();
-                if (dl != null) { dl.intensity = 0.4f; dl.shadows = LightShadows.Soft; }
+                if (dl != null)
+                {
+                    dl.intensity = 1.2f; // 暖白主光 1.2
+                    dl.color = new Color32(0xFF, 0xF4, 0xD6, 0xFF); // #FFF4D6
+                    dl.transform.rotation = Quaternion.Euler(50f, 212.23f, 0f); // 仰50°/方212°
+                    dl.shadows = LightShadows.Soft;
+                    dl.shadowStrength = 0.8f; // 软影 0.8
+                }
             }
+
+            var fillGo = new GameObject("BakeFillLight"); // 补光=主光对侧交叉光·无影
+            var fl = fillGo.AddComponent<Light>();
+            fl.type = LightType.Directional;
+            fl.intensity = 0.27f;
+            fl.color = new Color32(0xCC, 0xDD, 0xFF, 0xFF); // #CCDDFF
+            fl.shadows = LightShadows.None;
+            fillGo.transform.rotation = Quaternion.Euler(20f, 148f, 0f);
+
+            RenderSettings.ambientMode = AmbientMode.Skybox; // Skybox 环境光
+            var skyShader = Shader.Find("Skybox/Procedural"); // B2 判例：GetBuiltinExtraResource 不可用→Shader.Find 构材
+            if (skyShader != null) RenderSettings.skybox = new Material(skyShader);
+            RenderSettings.ambientSkyColor = new Color32(0x36, 0x3A, 0x42, 0xFF);
+            RenderSettings.ambientEquatorColor = new Color32(0x1D, 0x20, 0x22, 0xFF);
+            RenderSettings.ambientGroundColor = new Color32(0x0C, 0x0B, 0x09, 0xFF);
+            RenderSettings.ambientIntensity = 1f;
+            RenderSettings.fog = false;
+            M["light_baseline"] = "city3d_official_ad022_v1";
             M["objects_placed"] = placed;
             M["scene_saved"] = EditorSceneManager.SaveScene(scene, "Assets/BakeRoom.unity");
         }

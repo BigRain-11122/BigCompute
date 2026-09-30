@@ -117,6 +117,10 @@ def selftest() -> int:
         check("A5 entry cs copied", "namespace City3DBakeSpike" in cs and "public static void Run()" in cs)
         # A6 花括号平衡（编辑器编译前置卫生检）
         check("A6 cs braces balanced", cs.count("{") == cs.count("}"))
+        # A9 光基准对齐锚（BC-P-19·City3D 官方光基准档三面在模板在位）
+        check("A9 light baseline anchors",
+              "shadowStrength = 0.8f" in cs and "Skybox/Procedural" in cs
+              and "BakeFillLight" in cs and "city3d_official_ad022_v1" in cs)
         # A7 确定性：重跑 scaffold 后文件集合不变
         before = sorted(str(p.relative_to(dest)) for p in dest.rglob("*") if p.is_file())
         scaffold(dest, root, src_proj, ["AD-021", "AD-035"])
@@ -126,7 +130,7 @@ def selftest() -> int:
         top = sorted(d.name for d in dest.iterdir())
         check("A8 top-level dirs only 3", top == ["Assets", "Packages", "ProjectSettings"])
 
-    print(f"selftest: {8 - len(fails)}/8 checks, {'PASS' if not fails else 'FAIL'}")
+    print(f"selftest: {9 - len(fails)}/9 checks, {'PASS' if not fails else 'FAIL'}")
     return 0 if not fails else 1
 
 
