@@ -1,7 +1,7 @@
 {
   "company": "BigCompute",
-  "updated_at": "2026-09-30 11:3x",
-  "current_activity": "11:3x 轮：orders 三新行收讫（U319 机制流程梳理令=全集团执法面·本司 QA 真命令输出律同向已在役；O-1121/O-1132 金融工具采掘两令=@BigMoney 域零本司动作）+BC-P-18 轮预算沙漏探针落地（tech T31）+BC-P-22 N1 月末行一命令落账件提案新立",
-  "latest_artifact": "Tools/round_budget.py（轮预算沙漏探针：读 logs/os-loop/round.lock mtime=轮起锚→elapsed/remaining 25min 一行直出+remaining<8min 收尾预警/OVERTIME/缺锁 exit5·selftest 10/10 PASS+真实首跑 BUDGET-OK·2026-09-30 11:3x）+qa/smoke-20260930-1133（5/5 PASS）",
-  "next_milestone": "09-30 12:43 午班窗先耗 BC-P-22（month_end_append.py 微件·N1 一命令真语义）→09-30 22:43 首月末归集 N1 必跑（month_end_collect run→月末行经 round_append 落账·E25 判据·漏跑=下下轮第一优先）；净窗开（clean_window_probe check exit 0）则 M25/T26 烘焙实弹双路跑→bake_accept_check check 收口"
+  "updated_at": "2026-09-30 11:5x",
+  "current_activity": "11:4x 轮：orders 新行收讫（L209 美术表现专家团介入令=@Biggame 承接零本司派单）+BC-P-22 N1 月末行一命令落账微件落地（month_end_append.py·tech 队列提案双耗）+T32 刻痕/心跳 append 路径律冲突消解（双台账 strict 全绿实证）",
+  "latest_artifact": "Tools/month_end_append.py（N1 月末行「一命令」落账微件：subprocess 跑 month_end_collect run→读报告 month_end_line→in-process 调 round_append.append_line 落账 rounds.log·W1 月份闭合门/W2 月行在账门/W3 报告新鲜门三闸=selftest 8/8 PASS+真守门实证 EARLY exit 4 零副作用·2026-09-30 11:5x）",
+  "next_milestone": "09-30 22:43 首月末归集 N1 必跑（python Tools/month_end_append.py run 一命令·E25 判据·漏跑=下下轮第一优先·次日起补跑合法）；净窗开（clean_window_probe check exit 0）则 M25/T26 烘焙实弹双路跑→bake_accept_check check 收口；BC-P-21 净窗协调窗申请呈 23:00 决策轮"
 }
