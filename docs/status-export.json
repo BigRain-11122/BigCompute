@@ -1,7 +1,7 @@
 {
   "company": "BigCompute",
-  "updated_at": "2026-09-30 13:5x",
-  "current_activity": "13:5x 哨兵轮：自驱族 C 增量 E33=借算工单轨 borrow lane 工程前置落地（cost_ledger.py 四命令+selftest 五面 PASS+J4 零生成）；orders L223 尾 BigLife 强冻令五犯 P0+L224 O-034 重落均他司域收讫（零本司派单）",
-  "latest_artifact": "Tools/cost_ledger.py borrow-budget/borrow-entry/borrow-settle/borrow-summary 四命令（E23 预设计 §六 接线轮判据前置件·15 字段 schema+月度借出预算闸+月末归集回溯唯一回填+借入方×机器合账面）+selftest PASS（orders+quota-gate+count+cloud+borrow）+state/borrow-* 零生成 J4 实证=R-38 激活即违规缺口消解面在位·2026-09-30 13:5x",
-  "next_milestone": "①今夜 22:43 N1 必跑 month_end_append run（W2 幂等）+净窗开则 M25/T26 烘焙实弹双路跑；②10-02 12:00=验证集独立标注窗收口（本司禁自标）+D-19 ack 窗；③10-05 复核窗（GPU 观察+批池激活呈批+_trash 删+净窗频率证据）"
+  "updated_at": "2026-09-30 22:4x",
+  "current_activity": "22:43 夜班排程轮：N1 月末行 W2 幂等复跑确认（month_end_append run→ALREADY-PRESENT·月末行在账零追加）+双窗探针 BLOCKED 如实（净窗 10 编辑器峰窗+free 1787MiB→M25/T26 烘焙实弹顺延·VRAM short 3486/756→T15/E17 判负 #5 机械记录）+自驱族 C 议程库存行 ⬜→✅ 回填（四族全毕）",
+  "latest_artifact": "月末行 2026-09 planning-state light line 入账 state/rounds.log（month_end_append 三闸 W1/W2/W3 全过·午班 12:46 落账+22:43 N1 复跑 W2 幂等确认）+双窗探针今晚行（state/clean-window-log.jsonl+state/vram-window-log.jsonl 判负 #5 累积）·最近代码件=Tools/cost_ledger.py borrow 四命令（13:49 commit 25d7890·10-05 呈批接线）",
+  "next_milestone": "①10-02 12:00=验证集独立标注窗收口（本司禁自标·窗到未标续催）+D-19 ack 窗；②10-05 复核窗（GPU 观察+批池激活呈批+_trash 删+净窗/VRAM 空窗频率证据〔双 jsonl 累积〕+自驱首计量）；③10-07=C-01/C-02+批池呈批"
 }
