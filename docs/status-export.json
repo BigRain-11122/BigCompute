@@ -1,7 +1,7 @@
 {
   "company": "BigCompute",
-  "updated_at": "2026-09-30 12:1x",
-  "current_activity": "12:0x 哨兵轮：orders 双新令收讫（O-20260930-1147 @BigMoney+O-20260930-001 三方案 v3 迭代令+图集正典令 @CPH4·均零本司派单）+自驱族 B 续窗增量 R- 件落地（2D Live 三方案产线算力足迹与承接成本经济学对照件·图集正典令承接预备面）",
-  "latest_artifact": "docs/research/R-20260930-2dlive-atlas-compute-economics.md（2D Live 三方案产线算力足迹与承接成本经济学对照件：台账行级转述表+口径 A 预估包络+承接记账面四轨映射+J1-J4 预注册·提案 BC-P-23 吸嘟嘟图集产线承接 lane 候选同窗回流·2026-09-30 12:1x）",
+  "updated_at": "2026-09-30 12:2x",
+  "current_activity": "12:2x 哨兵轮：D-20260930-01 ⑤ 唯一 @BigCompute 派工承接毕——BigDomain R675 席7 附款映射表 v1 联办列 PENDING_BIGCOMPUTE→补签（48h 窗内提前 ~47.5h）+D-20260930-04 Bonsai 首轮收口收讫（7B=实验位候选维持·零新派单）",
+  "latest_artifact": "docs/ops/paypoint-compliance-map-v1.md §四 联签行（D-01 ⑤ 补签=PENDING_BIGCOMPUTE→CLOSED·机检今日复跑 53/53 全绿+3 ⬜ 如实·证据 state/compliance-gate-20260930-1219.txt·回执 BC-F-20260930-01·2026-09-30 12:2x）",
   "next_milestone": "09-30 22:43 首月末归集 N1 必跑（python Tools/month_end_append.py run 一命令·E25 判据·漏跑=次日起补跑合法）；净窗开（clean_window_probe check exit 0）则 M25/T26 烘焙实弹双路跑→bake_accept_check 收口"
 }
