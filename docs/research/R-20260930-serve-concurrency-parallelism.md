@@ -4,8 +4,8 @@
 
 ## 一、官方锚与现役配置实证
 
-- **本机 user 级 OLLAMA_NUM_PARALLEL=2 显式在位**（PowerShell User/Machine/shell 三面实测 2026-09-30 13:1x·ollama 0.34.4）——设置者未溯=非本司 OSLoop 所设（候选归因=MiniGame GPU 产线/用户配置面·待核如实）；与 OLLAMA_KEEP_ALIVE=15m（R-20260928 在册）同为 user 级配置面。
-- 官方原文级锚 ⬜：GitHub docs/faq.md 已 404（docs 迁 docs.ollama.com·performance 页亦 404）——三抓止损律停；OLLAMA_NUM_PARALLEL 语义=要点级 🟡（后续窗补原文级）；keep_alive 机制锚 ✅ 复用 R-20260928-inference-serving-standard（URL核验件）。
+- **本机 user 级 OLLAMA_NUM_PARALLEL=2 显式在位**（PowerShell User/Machine/shell 三面实测 2026-09-30 13:1x·ollama 0.34.4）——**归因收口（E32·09-30 13:3x）**：设置者=CPH4 infra 件 R-20260924-infra-3-llm.md（L12 配置行+L112-120 配置表+L120 实施路径·L114 理由「防队首阻塞；7b KV 448MiB（q8_0 后 224MiB）可承受」）；全集团 rg 唯一提及=该件（E31 候选归因「MiniGame GPU 产线」判负修正）；user 级四键齐=KEEP_ALIVE=15m/NUM_PARALLEL=2/MAX_LOADED_MODELS=2/**CONTEXT_LENGTH=4096**（=「常驻位 4096」根因锚·CPH4 L118「显式钉住防版本默认漂移」+官方默认值同 4096→R-20260928「静默缩窗发现」定谳=有意钉住非意外）；CPH4 spec「机器级」（L120）vs 实测 user 级差=CPH4 域注记（功能面实证有效：E31 双槽激活+qa 常驻 15m）；FLASH_ATTENTION=1/KV_CACHE_TYPE=q8_0 spec 行未在 registry=默认 f16/auto 生效面如实。
+- **官方原文级锚 ✅（E32·docs.ollama.com/faq 实抓 09-30 13:3x）**：①「By default, Ollama uses a context window size of 4096 tokens. This can be overridden with the OLLAMA_CONTEXT_LENGTH environment variable.」②**「Parallel request processing for a given model results in increasing the context size by the number of parallel requests. For example, a 2K context with 4 parallel requests will result in an 8K context and additional memory allocation.」**（并行=扩窗非分窗·每并发请求各享完整 ctx 窗）③「OLLAMA_NUM_PARALLEL - The maximum number of parallel requests each model will process at the same time, default 1. Required RAM will scale by OLLAMA_NUM_PARALLEL * OLLAMA_CONTEXT_LENGTH.」；keep_alive 机制锚 ✅ 复用 R-20260928-inference-serving-standard（URL核验件）。
 
 ## 二、实测数据（Tools/serve_concurrency_probe.py·qwen2.5:7b-instruct Q4_K_M 常驻 num_ctx 4096·num_predict 64·keep_alive:-1 每调用）
 
@@ -49,3 +49,9 @@
 - 内证：本机三轮实测 JSON 在盘（state/serve-concurrency-20260930-1317/1318/1319.json·eval_count/eval_duration 引擎侧出数）；探针 selftest 7/7；QA 5/5 同轮在案。
 - 外证：OLLAMA_NUM_PARALLEL 官方原文级 ⬜（docs 迁移 404×2·三抓止损）·要点级 🟡 如实标注；keep_alive 锚复用在册已核验件。
 - 建议级标注：SLA 承诺结构/K1 调优窗/配置归因均为建议级；数值承诺冻结权随 CEO/试点批；N1 前口径冻结维持。
+
+## 七、E32 续窗增量（09-30 13:3x 窗·归因收口+ctx 并发语义定谳）
+
+- **三面互证链**：官方 FAQ 原文级锚（并行=扩窗·RAM 按 N×ctx 规模化）×CPH4 infra KV 数学（7b 56KiB/tok→224MiB/槽@4096·L114「KV 448MiB」=2 槽×224MiB 逐位吻合）×本件 §二 行为实证（n=2 聚合 1.61-1.88×·单流降级仅 1.02-1.21×）——语义定谳=**每并发请求各享完整 4096 ctx 窗·KV 显存按槽位数 N× 增量**。
+- **商业面定谳（K3/BC-P-04 工单条款语义锚）**：并发承载不缩每请求 ctx 窗（E16 B 端报告成品体量 2305-8397 tokens 并发无缩窗风险）；代价面=KV 显存 N×（K1 调优窗成本式）；**单请求 >4096 例外路径=per-request num_ctx 8192 离峰档**（CPH4 L72「7b 的 P3 离峰任务可 per-request num_ctx 8192」·14b 禁 8192 照 §2.2）→提案 BC-P-28（ctx 预算工单条款候选·与 BC-P-27 并发上限条款互补分立）。
+- 证据：state/parallel-config-provenance-20260930.json（registry 四键实读+归因链+官方原文三引+交叉验证）；explore E32 行（新增即耗）。

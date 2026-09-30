@@ -1,7 +1,7 @@
 {
   "company": "BigCompute",
-  "updated_at": "2026-09-30 13:2x",
-  "current_activity": "13:2x 哨兵轮：自驱族 A 续窗=常驻 serve 并发基线首件（探针+R- 件·E31 新增即耗）；D-24~D-30+D-07 尾批审核收讫（外审收口/BigMoney 量化/FluxVerse 域·零本司派单）",
-  "latest_artifact": "Tools/serve_concurrency_probe.py + docs/research/R-20260930-serve-concurrency-parallelism.md + state/serve-concurrency-20260930-1317/1318/1319.json（三轮实测：NUM_PARALLEL=2 user 级在位发现·真并行 1.61-1.88× 聚合·槽位饱和·常驻零损伤）·selftest 7/7+QA 5/5·2026-09-30 13:2x",
-  "next_milestone": "①今夜 22:43 N1 复跑 month_end_append（W2 幂等）+净窗开则 M25/T26 烘焙实弹双路跑；②10-02 12:00=验证集独立标注窗收口（本司禁自标）+D-19 ack 窗（本 commit 三要素在）"
+  "updated_at": "2026-09-30 13:4x",
+  "current_activity": "13:4x 哨兵轮：自驱族 A 续窗第 2 步=E32 归因收口+ctx 并发语义定谳（user 级四键实读+CPH4 infra 件设置者定谳+docs.ollama.com/faq 原文级锚三引·三面互证）；orders L222+decisions D-28~D-34 尾批审核收讫（均他司域零本司派单）",
+  "latest_artifact": "docs/research/R-20260930-serve-concurrency-parallelism.md §一收口+§七增量 + state/parallel-config-provenance-20260930.json（registry 四键+归因链+官方原文三引：并行=扩窗非分窗·每并发请求各享完整 4096 ctx 窗·KV 显存 N×）+提案 BC-P-28（MaaS 工单 ctx 预算条款）·QA 5/5·2026-09-30 13:4x",
+  "next_milestone": "①今夜 22:43 N1 必跑 month_end_append run（W2 幂等·今晨三闸全过+命令链核验双件在位）+净窗开则 M25/T26 烘焙实弹双路跑；②10-02 12:00=验证集独立标注窗收口（本司禁自标）+D-19 ack 窗"
 }
