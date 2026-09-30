@@ -1,7 +1,7 @@
 {
   "company": "BigCompute",
-  "updated_at": "2026-09-30 12:2x",
-  "current_activity": "12:2x 哨兵轮：D-20260930-01 ⑤ 唯一 @BigCompute 派工承接毕——BigDomain R675 席7 附款映射表 v1 联办列 PENDING_BIGCOMPUTE→补签（48h 窗内提前 ~47.5h）+D-20260930-04 Bonsai 首轮收口收讫（7B=实验位候选维持·零新派单）",
-  "latest_artifact": "docs/ops/paypoint-compliance-map-v1.md §四 联签行（D-01 ⑤ 补签=PENDING_BIGCOMPUTE→CLOSED·机检今日复跑 53/53 全绿+3 ⬜ 如实·证据 state/compliance-gate-20260930-1219.txt·回执 BC-F-20260930-01·2026-09-30 12:2x）",
+  "updated_at": "2026-09-30 12:3x",
+  "current_activity": "12:3x 哨兵轮：D-20260930-06 集团全域改进清单 XL-1~21 收讫（本司零 XL-1x 派单行·四源零=XL-2 商户号物理件面）+U320 吸嘟嘟音频批本司面=按需支援席收讫；队列步=产品优先律轮计分器落地（昨两轮 0 分纯 md 坐实·本轮 2 分实物回正）",
+  "latest_artifact": "Tools/round_score.py（产品优先律轮计分器：git log 变更集 2/1/0 机械分类+24h 空转判负点名面·selftest 22/22 PASS+真跑 PRODUCT-24h max=2 n=23 n2=16 n1=0 n0=7·JSON state/round-score-20260930-1235.json·2026-09-30 12:3x·D-20260929-07 ②③+XL-8 转换率闸机械面）",
   "next_milestone": "09-30 22:43 首月末归集 N1 必跑（python Tools/month_end_append.py run 一命令·E25 判据·漏跑=次日起补跑合法）；净窗开（clean_window_probe check exit 0）则 M25/T26 烘焙实弹双路跑→bake_accept_check 收口"
 }
