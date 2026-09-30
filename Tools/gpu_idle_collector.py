@@ -28,11 +28,19 @@ tasks/TASKS.md T-20260928-28 + state/proposals.md BC-P-01 batch pool).
   Gap line is NOT an enforcement line: the sole call-out threshold stays
   30% (C-20260929-02), and the 70% target stays a directional reference
   pending threshold calibration R- receipts (D-20260930-36).
+- loadline: O-2026-0930-015 item 3 night-ledger FULL-LOAD line for the
+  fleet report (util time-share + in-flight batches + GREEN-IDLE
+  call-out) plus P-32 data-source fields (cpu_util_pct / total_ram_gb /
+  prod_lanes). The bm-a heartbeat WRITER itself belongs to the Biggame
+  A-machine window (O-2026-0930-010 item 3, NO_TS + P-32 debt); this
+  tool only PROVIDES machine metrics - no writer edit, no cross-repo
+  write.
 - selftest: offline window/dispatch math checks (no nvidia-smi needed).
 
 Usage (run from repo root):
   python Tools/gpu_idle_collector.py sample
   python Tools/gpu_idle_collector.py report
+  python Tools/gpu_idle_collector.py loadline
   python Tools/gpu_idle_collector.py selftest
 
 Encoding rule: this file stays PURE ASCII (group coding law).
@@ -57,6 +65,12 @@ ROLL_DAYS = 3      # C-20260929-02 seat-2/7: pre-registered measure basis
 BENCH_DAYS = 7     # D-20260930-36 R-C1: benchmark horizon (head-firm compare)
 BENCH_PCT = 50.0   # D-20260930-36 R-C1: 7-day avg <50% = structural failure
 MACHINE = "bm-a"   # local machine tag -> weekly per-machine ledger row
+BUSY_PCT = 30.0   # loadline time-share busy line (= sole call-out line)
+QUIET_PCT = 10.0  # loadline time-share quiet line
+BATCH_POOL = os.path.join(HERE, "..", "docs", "ops",
+                          "batch-pool-stock-v1.jsonl")
+RESIDENT_LANES = [("serve-ollama", "http://127.0.0.1:11434/"),
+                  ("resident-qa-8792", "http://127.0.0.1:8792/health")]
 DISPATCH_COOLDOWN_MIN = 30
 DISPATCH_HEADER = ("# GPU idle observation log (T-20260928-28; DRY-RUN per "
                    "CEO safety-fix order 2026-09-28 item 3: no "
@@ -255,6 +269,82 @@ def cmd_report():
     return 0
 
 
+def time_share(day):
+    """O-2026-0930-015 item 3: util time-share over the day's samples."""
+    n = len(day)
+    busy = sum(1 for r in day if r["util_pct"] >= BUSY_PCT)
+    quiet = sum(1 for r in day if r["util_pct"] < QUIET_PCT)
+    return busy * 100.0 / n, quiet * 100.0 / n
+
+
+def pool_status(path=BATCH_POOL):
+    """Batch pool census: (cards, in_flight, standby_lanes) per J5 gate."""
+    cards, in_flight, lanes = 0, 0, set()
+    if os.path.exists(path):
+        with open(path, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    row = json.loads(line)
+                except ValueError:
+                    continue
+                cards += 1
+                if str(row.get("status", "")).upper() != "STOCKED":
+                    in_flight += 1
+                lane = row.get("lane")
+                if lane:
+                    lanes.add(lane)
+    return cards, in_flight, len(lanes)
+
+
+def lane_alive(url, timeout=1.5):
+    """Read-only localhost liveness probe for one resident lane."""
+    try:
+        import urllib.request
+        with urllib.request.urlopen(url, timeout=timeout) as r:
+            return 200 <= r.status < 300
+    except Exception:
+        return False
+
+
+def cmd_loadline():
+    rows = load_samples()
+    today = now().date().isoformat()
+    day = [r for r in rows if r["ts"].startswith(today)]
+    if day:
+        busy_pct, quiet_pct = time_share(day)
+        avg = sum(r["util_pct"] for r in day) / len(day)
+        share = ("gpu_ts_share busy>=30%%=%.1f%% quiet<10%%=%.1f%% "
+                 "n=%d avg=%.1f%%" % (busy_pct, quiet_pct, len(day), avg))
+    else:
+        share = "gpu_ts_share no-samples-today"
+    r3_days = roll3_dates()
+    r3 = [r for r in rows if r["ts"].startswith(r3_days)]
+    r3avg = (sum(r["util_pct"] for r in r3) / len(r3)) if r3 else 0.0
+    kpi = callout_verdict(r3avg)
+    cards, in_flight, lanes = pool_status()
+    alive = sum(1 for _n, u in RESIDENT_LANES if lane_alive(u))
+    try:
+        import psutil
+        cpu = psutil.cpu_percent(interval=1)
+        ram = round(psutil.virtual_memory().total / (1024 ** 3), 1)
+    except ImportError:
+        cpu, ram = None, None
+    p32 = "p32 cpu_util_pct=%s total_ram_gb=%s prod_lanes=%d " \
+          "(alive=%d resident + %d standby pool lanes)" % (
+              ("%.0f" % cpu) if cpu is not None else "n/a",
+              ("%.1f" % ram) if ram is not None else "n/a",
+              alive + lanes, alive, lanes)
+    print("loadline %s machine=%s: %s | in_flight=%d/%d cards | "
+          "green_idle_callout=%s (3-day %s..%s n=%d avg=%.1f%%, sole "
+          "line 30%%) | %s"
+          % (today, MACHINE, share, in_flight, cards, kpi,
+             r3_days[-1], r3_days[0], len(r3), r3avg, p32))
+    return 0
+
+
 def cmd_selftest():
     at = datetime.datetime(2026, 9, 28, 10, 0, 0)
 
@@ -334,9 +424,30 @@ def cmd_selftest():
         "50% exactly = at the line, not below it"
     assert bench_verdict(51.0).startswith("AT-OR-ABOVE-BENCH"), \
         "51% 7-day avg clears the gap line"
+    # O-2026-0930-015 item 3: loadline time-share + pool gate + probe
+    share_rows = [{"util_pct": v} for v in (35.0, 80.0, 5.0, 25.0, 2.0)]
+    b_pct, q_pct = time_share(share_rows)
+    assert abs(b_pct - 40.0) < 1e-9 and abs(q_pct - 40.0) < 1e-9, \
+        "time-share math: 2/5 busy (>=30), 2/5 quiet (<10)"
+    import tempfile
+    with tempfile.NamedTemporaryFile("w", suffix=".jsonl", delete=False,
+                                     encoding="utf-8") as tf:
+        tf.write(json.dumps({"lane": "L1", "status": "STOCKED"}) + "\n")
+        tf.write(json.dumps({"lane": "L1", "status": "STOCKED"}) + "\n")
+        tf.write(json.dumps({"lane": "L2", "status": "IN_FLIGHT"}) + "\n")
+        tmp_path = tf.name
+    try:
+        c, inf, ln = pool_status(tmp_path)
+        assert (c, inf, ln) == (3, 1, 2), \
+            "pool census: 3 cards, 1 in-flight, 2 distinct lanes"
+    finally:
+        os.unlink(tmp_path)
+    assert not lane_alive("http://127.0.0.1:1/", timeout=0.5), \
+        "closed port must probe dead (probe guard)"
     print("selftest PASS: window completeness/exclusion/average/"
           "idle-vs-busy verdicts/call-out threshold/3-day rolling "
-          "baseline/7-day R-C1 benchmark line/dispatch-ts parse ok")
+          "baseline/7-day R-C1 benchmark line/dispatch-ts parse/"
+          "O-015 loadline time-share+pool census+probe guard ok")
     return 0
 
 
@@ -345,10 +456,12 @@ def main():
     sub = p.add_subparsers(dest="cmd", required=True)
     sub.add_parser("sample", help="take one nvidia-smi sample + maybe dispatch")
     sub.add_parser("report", help="same-day stats + daily KPI line")
+    sub.add_parser("loadline",
+                   help="O-015 night-ledger full-load line + P-32 fields")
     sub.add_parser("selftest", help="offline window/dispatch math checks")
     a = p.parse_args()
     return {"sample": cmd_sample, "report": cmd_report,
-            "selftest": cmd_selftest}[a.cmd]()
+            "loadline": cmd_loadline, "selftest": cmd_selftest}[a.cmd]()
 
 
 if __name__ == "__main__":

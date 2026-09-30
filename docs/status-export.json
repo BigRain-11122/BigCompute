@@ -1,7 +1,7 @@
 {
   "company": "BigCompute",
-  "updated_at": "2026-09-30 18:5x",
-  "current_activity": "18:4x 哨兵轮：审核步=orders 18:43 新行 O-2026-0930-014 云端 token 节省执法启动令（点名本司 M18 接线范式·三径闸全在役→收讫承接）+O-1835 全面开工令（全司循环面）→队列步=tech T37 O-014 承接件：cloud_attribution_audit.py 落地+cost_ledger cloud-entry task_ref required=True（mandate 三必填 vs default=\"-\" 空值缺口即修）+净窗探针第 4 连 BLOCKED（editors 10→1 骤降·vram_free 4962）M25/T26 顺延如实",
-  "latest_artifact": "Tools/cloud_attribution_audit.py（云端 attribution 空值违例计数器·O-014 执法相位·selftest 15/15+真跑 CLEAN-ZERO-STATE exit 0）+Tools/cost_ledger.py cloud-entry --task-ref required=True（三径闸三必填结构对齐·selftest 回归 PASS）+state/cloud-attribution-audit-20260930-184715.json·09-30 18:5x",
-  "next_milestone": "①今晚 00:00=委员会常务轮 C-04 七席记名投票（席位4 立场行已备 M30）+云端 token 机制全司机内首报（O-014 ④·本司审计 JSON 已备 T37）；②22:43=N1 月末行幂等复跑（month_end_append run·W2）+BC-P-15 SLA 修复解冻（E36 证据基线已备）+净窗开则 M25/T26 烘焙实弹（探针第 4 连 BLOCKED·editors 已骤降至 1）；③10-02 12:00=验证集独立标注窗（本司禁自标·BC-P-26）；④10-05 复核窗（GPU 观察+自驱首计量+批池呈批+E17/Q8_0 真窗+净窗频率证据）+10-07 治理日批池呈批；⑤节前 P1 手动件维持：CEO 出发前 Windows 更新暂停 ≥1 周或管理员 AU reg add（O-1540①·R-46 第五面盯防）；长假窗 10-01~10-08 双班+哨兵 15min 24h 自转维持"
+  "updated_at": "2026-09-30 19:4x",
+  "current_activity": "19:1x 哨兵轮：审核步=orders 19:06 新八行收讫（O-015 本地机队满载确保令=本司承接面/O-016+017+018 token 三令/O-1858+O-1901 假期算力双令/O-1856/C-06·零直接派单）→队列步=tech T38 O-015 承接件：gpu_idle_collector.py v1.3 增 loadline 命令（夜报满载行三组件+P-32 三字段数据源·写手债归 @Biggame A 机窗 O-010③ 禁跨仓写）+净窗探针第 5 连 BLOCKED（editors=1+vram_free 5065MiB）M25/T26 顺延如实",
+  "latest_artifact": "Tools/gpu_idle_collector.py loadline 命令（O-2026-0930-015③ 夜报满载行生成器·selftest 扩断言 PASS+真跑 bm-a 出数：busy>=30%=21.8%/quiet<10%=71.8%·in_flight 0/6 卡·GREEN-IDLE 点名 FLAG 3 日 n=221 avg 15.9%·p32 cpu_util 4%/ram 93.6GB/prod_lanes 6=alive 2+standby 4）·09-30 19:3x——22:43 夜班满载行=loadline 一命令入轮账本",
+  "next_milestone": "①今晚 00:00=委员会常务轮 C-04 七席记名投票（席位4 立场行已备 M30）+云端 token 全司机内首报（O-014 ④·T37 审计 JSON 已备）；②22:43=N1 月末行幂等复跑必跑（month_end_append run·W2）+夜报满载行首落（O-015③·loadline）+BC-P-15 修复解冻（E36 证据基线已备）+净窗开则 M25/T26 烘焙实弹；③10-02 12:00=验证集独立标注窗（本司禁自标·窗到未标续催）；④10-05 复核窗（GPU 观察+自驱首计量+批池激活呈批+净窗频率证据）；⑤节前 P1 手动件维持：CEO 出发前 Windows 更新暂停 ≥1 周或管理员 AU reg add（O-1540①·R-46）；长假窗 10-01~10-08 双班+哨兵 15min 24h 自转在役"
 }
