@@ -1,7 +1,7 @@
 {
   "company": "BigCompute",
-  "updated_at": "2026-09-30 17:58",
-  "current_activity": "17:4x 哨兵轮：审核步=orders 新增 O-2026-0930-007/O-008 双 HQ 执行窗收讫零本司派工（compute 0.31GB census 零命中）→队列步=净窗探针 BLOCKED（editors=10）M25/T26 顺延→E42 算力对标行业基准取证毕（CoreWeave FY2025 10-K 官方源级·D-36 R-C1~C3 阈值校准回执）",
-  "latest_artifact": "docs/research/R-20260930-compute-industry-benchmark-evidence.md（CoreWeave FY2025 10-K EDGAR 双通道取证：XBRL 官方值 Rev 229/1915/5131M·CoR 69/493/1453M·D&A 103/863/2454M=D&A/收入 45-47.8% 折旧第一成本实证·26 处 utiliz 零百分比披露→R-C1 维持推断级+消纳结构三指标（RPO $60.7B/take-or-pay 98%/~5 年合约期/微软 67% 三原文引句）→呈 D-36 审计会话）·09-30 17:5x",
-  "next_milestone": "①今晚 22:43=N1 月末行幂等复跑（month_end_append run·W2）+BC-P-15 SLA 修复解冻（E36 证据基线已备）+净窗开则 M25/T26 烘焙实弹（本轮探针仍 BLOCKED·BC-P-21 协调窗申请维持）；②10-02 12:00=验证集独立标注窗（本司禁自标·BC-P-26）+D-11/16/18/19 集团投递层 ack 窗；③10-05 复核窗（GPU 观察+自驱首计量+_trash 删+批池呈批+E17/Q8_0 真窗+净窗频率证据）+10-07 批池呈批；④节前 P1 手动件维持：CEO 出发前 Windows 更新暂停 ≥1 周或管理员 AU reg add（O-1540①·R-46 第五面盯防）；长假窗 10-01~10-08 双班+哨兵 15min 24h 自转维持"
+  "updated_at": "2026-09-30 18:2x",
+  "current_activity": "18:0x 哨兵轮：审核步=orders 17:56:19 新两行（O-2026-0930-1745 音频 8 分线 @Biggame+O-2026-0930-009 机队策略合典 HQ 执行窗 executed）零本司派单收讫→队列步=净窗探针 BLOCKED（editors=10+free 3053MiB）M25/T26 顺延→自驱 E43 三源官方 XBRL 取证收口（Nebius FY2025+MSFT FY2026+AMZN FY2025·data.sec.gov 官方通道·D-36 R-C1 毛利结构校准面）",
+  "latest_artifact": "docs/research/R-20260930-compute-industry-benchmark-evidence.md §九（E43 增量：Nebius 20-F/A 官方值 Rev 529.8M/CoR 166.2M/Dep 411.0M——CoR<Dep=CoR 排除折旧数学证明→表观毛利 68.6%/含全量 D&A 下界 −10.3%/D&A 比重 78.9%+MSFT FY2026 67.9%/10.3%+AMZN FY2025 50.3%/9.2%=四源并排·折旧占比梯度纯算力≫超大规模·口径 B 折旧主成本锚 4/4 方向成立→呈 D-36 审计会话；证据 state/e43-xbrl-benchmark-20260930.json）·09-30 18:1x",
+  "next_milestone": "①今晚 22:43=N1 月末行幂等复跑（month_end_append run·W2）+BC-P-15 SLA 修复解冻（E36 证据基线已备）+净窗开则 M25/T26 烘焙实弹（18:0x 探针仍 BLOCKED·BC-P-21 协调窗申请维持）；②10-02 12:00=验证集独立标注窗（本司禁自标·BC-P-26）；③10-05 复核窗（GPU 观察+自驱首计量+_trash 删+批池呈批+E17/Q8_0 真窗+净窗频率证据）+10-07 批池呈批；④tech T36=E43 ⬜ 尾巴（Nebius/MSFT/AMZN utilization 全文筛·www 冷却窗后单试）+SEC 先声明后访问纪律件；⑤节前 P1 手动件维持：CEO 出发前 Windows 更新暂停 ≥1 周或管理员 AU reg add（O-1540①·R-46 第五面盯防）；长假窗 10-01~10-08 双班+哨兵 15min 24h 自转维持"
 }

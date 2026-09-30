@@ -73,3 +73,38 @@
 - **局限如实**：头部利用率百分比判负维持（26 命中定性零数字）·Lambda 面判负维持（私有零披露）·阈值建议=建议级（冻结权在 CEO/委员会）·本件零跨仓写零真实交易。
 
 （派生链临时件：$env:TEMP/crwv-ftsearch/——10-K 与 8-K ex992 官方原文缓存·不入仓不提交）
+
+## 九、E43 增量·次级头部 Nebius+超大规模三源并排（09-30 18:1x 哨兵轮·explore E43）
+
+> E42 判负承接（§八 局限行「次级头部补证窗」）·全部数值=data.sec.gov SEC 官方 XBRL 接口当日抓取（2026-09-30 18:0x-18:1x·declared UA）·禁记忆充当来源维持。
+
+**源 3=Nebius Group N.V.**（Nasdaq: NBIS·CIK 0001513845·data.sec.gov submissions 接口官方确认 name/ticker）FY2025 20-F/A（accession 0001104659-26-065681·nbis-20251231x20fa.htm·2026-05-22 filed·period 2025-12-31）XBRL 官方值：
+
+| us-gaap 概念 | FY2024 | FY2025 |
+|---|---|---|
+| Revenues | $117.5M | $529.8M |
+| CostOfRevenue | $73.4M | $166.2M |
+| Depreciation | ⬜未取 | $411.0M |
+| DepreciationAndAmortization | ⬜未取 | $417.9M |
+
+- **列报结构数学证明**：CoR($166.2M)＜Depreciation($411.0M)→**CoR 必然排除折旧**（与 CoreWeave 同构·§三）→表观毛利=**68.6%**（FY2024 37.5%·派生计算）。
+- **含全量 D&A 下界毛利**（派生计算·同 §三 下界口径）=(529.8−166.2−417.9)/529.8=**−10.3%**——次级头部建设期极端形态（产能爬坡·折旧前置）。
+- **D&A/收入=78.9%**（vs CoreWeave FY2025 47.8%）——折旧第一成本在纯 AI infra 次级源面**更极端成立**。
+
+**源 4=Microsoft**（CIK 0000789019·10-K FY2026〔2025-07-01→2026-06-30〕）／**源 5=Amazon**（CIK 0001018724·10-K FY2025）超大规模对照（XBRL 官方值）：
+
+| 源 | Rev | CoR/CoGS | D&A（口径注记） | 表观毛利（派生） | D&A/Rev |
+|---|---|---|---|---|---|
+| Microsoft FY2026 | $331,839M | $106,374M（CostOfGoodsAndServicesSold） | $34,300M（Depreciation） | 67.9% | 10.3% |
+| Amazon FY2025 | $716,924M | $356,414M（CostOfGoodsAndServicesSold） | $65,756M（DepreciationDepletionAndAmortization）·Dep $41,860M | 50.3% | 9.2% |
+
+- **四源并排结构判读**：纯 AI infra（CoreWeave 47.8%／Nebius 78.9%）vs 超大规模（MSFT 10.3%〔Dep 口径〕／AMZN 9.2%）——**折旧占比梯度=纯算力≫超大规模**（多元业务稀释+成熟资产基座）；**口径 B「折旧主成本锚」四源方向全成立（4/4）**；表观毛利带 50-72% 全部依赖「成本行剔除/低置 D&A」列报结构。
+- **列报口径注记 ⬜**：MSFT/AMZN CoGS 是否含折旧=全文核受阻未断言（见验证声明墙注）；排除折旧证仅 Nebius（数学）/CoreWeave（原文+GrossProfit 404）两源在案。
+
+**利用率尺（E43 靶面）如实**：Nebius 20-F/A 全文 utiliz 逐条过筛 **⬜ 顺延**（www.sec.gov 通道墙·冷却窗重试承接 tech T36）；MSFT/AMZN 10-K 同 ⬜——**本窗不可宣称「双头部零披露」结论加固**（CoreWeave 26 命中零百分比单源在案·其余源待筛）→ R-C1 利用率百分比维持【推断】级不动；毛利结构尺升级为**四源官方并排**（本节）呈 D-36 R-C1~C3 校准面。
+
+**验证声明（E43 增量·复抓日志）**：
+- 外证全通（declared UA·data.sec.gov）：submissions/CIK0001513845.json×2（name/ticker/20-F/6-K 档案清单）+companyconcept×3（Nebius Revenues/CostOfRevenue/DepreciationDepletionAndAmortization——末者仅 Yandex 期旧值→companyfacts 全枚举定位现役 tag=Depreciation/DepreciationAndAmortization）+companyfacts×3（Nebius/MSFT/AMZN·AMZN 重复键 Python 容错解析）。
+- **通道墙如实**：www.sec.gov **4 抓 403 止损**（browse-edgar×2+Archives 20-F/A 主档×2·declared UA 不豁免·IP 级「undeclared automated tool」拦截页）——**触墙根因=本机 fetch_content httpx 无 UA 首抓**→「SEC 域先声明后访问」纪律新行（tech T36 承接·§九本声明=复抓日志在案即验）。
+- 局限如实：Nebius FY2024 D&A 未取（FY2025 单年够用不扩抓省请求）；三源 utilization 全文筛 ⬜；全部百分比=本件显式公式派生·非公司列报值。
+- 临时件：$env:TEMP/e43_amzn.py（AMZN companyfacts 重复键解析脚本·非源缓存）；nbis-20fa.htm 下载失败零缓存。
