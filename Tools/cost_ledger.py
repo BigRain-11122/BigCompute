@@ -57,6 +57,12 @@ price enters ONLY via month-end bill backfill (J2), never at entry time):
   python Tools/cost_ledger.py cloud-bill --month 2026-10 --lane openrouter \
       --unit-cost-b 2.5 --ref BILL-202610-001
   python Tools/cost_ledger.py cloud-summary [--month 2026-10]
+  python Tools/cost_ledger.py borrow-budget --month 2026-10 --cap-mtok 200
+  python Tools/cost_ledger.py borrow-entry --tx-id WO-0001 --borrower-dept biglife \
+      --machine-id bm-a --work-type batch_inference --tokens-mtok 1.5 \
+      --quota-debit-mtok 1.5 --verdict-source idlewatch-log-L1
+  python Tools/cost_ledger.py borrow-settle --month 2026-10 --unit-cost-b 2.0 --ref ME-202610
+  python Tools/cost_ledger.py borrow-summary [--month 2026-10]
 
 Encoding rule: this file stays PURE ASCII (group coding law).
 """
@@ -72,6 +78,8 @@ QLEDGER = os.path.join(HERE, "..", "state", "quota-ledger.jsonl")
 QBUDGET = os.path.join(HERE, "..", "state", "quota-budget.json")
 CLEDGER = os.path.join(HERE, "..", "state", "cloud-cost-ledger.jsonl")
 CBUDGET = os.path.join(HERE, "..", "state", "cloud-budget.json")
+BLEDGER = os.path.join(HERE, "..", "state", "borrow-cost-ledger.jsonl")
+BBUDGET = os.path.join(HERE, "..", "state", "borrow-budget.json")
 FUND_ACCRUAL_DEFAULT = 10.0
 FUND_TARGET_DEFAULT = 3500.0
 
@@ -497,15 +505,166 @@ def cloud_summary(args, ledger=CLEDGER, budget=CBUDGET):
     }
 
 
+# ---------------------------------------------------------------------------
+# borrow-compute order lane (fleet work-order rail; docs/ops/
+# borrow-compute-lane-predesign-v1.md, E23). Cross-company borrowed compute
+# MUST hit caliber-B books keyed by the fleet work-order tx_id
+# (multi-node-scheduling R- J3: unlogged borrow = P1 violation). J2: lender
+# cost is ONLY backfilled via month-end retroactive settle; borrow-entry
+# structurally exposes no unit-price flag so nothing can be fabricated at
+# entry time. J4: accounting rail only -- real borrow entry waits for T-28
+# activation approval (10-05 review) + first real work-order voucher.
+
+def borrow_budget(args, path=BBUDGET):
+    data = _load_budget(path)
+    prev = data.get(args.month)
+    data[args.month] = args.cap_mtok
+    _save_budget(data, path)
+    return {"status": "ok", "month": args.month,
+            "cap_mtok": args.cap_mtok, "prev_cap_mtok": prev}
+
+
+def borrow_entry(args, ledger=BLEDGER, budget=BBUDGET):
+    rows = _load_rows(ledger)
+    for r in rows:
+        if r.get("tx_id") == args.tx_id:
+            return {"status": "duplicate", "tx_id": args.tx_id, "row": r}
+    month = _month_of(args.date)
+    used_mtd = round(sum(r.get("tokens_mtok", 0.0) for r in rows
+                         if r.get("month") == month), 6)
+    cap = _load_budget(budget).get(month)
+    over = cap is not None and (used_mtd + args.tokens_mtok) > cap
+    if over and not args.ceo_approved:
+        return {"status": "blocked_over_borrow_budget", "month": month,
+                "cap_mtok": cap, "used_mtd_mtok": used_mtd,
+                "attempt_mtok": args.tokens_mtok,
+                "note": "monthly borrow-lane budget gate: over-cap entry "
+                        "needs --ceo-approved (borrow-compute-lane-"
+                        "predesign s4; D-20260925-10)"}
+    row = {
+        "tx_id": args.tx_id,
+        "date": args.date,
+        "month": month,
+        "type": "borrow",
+        "lender_dept": args.lender_dept,
+        "borrower_dept": args.borrower_dept,
+        "machine_id": args.machine_id,
+        "work_type": args.work_type,
+        "tokens_mtok": round(args.tokens_mtok, 6),
+        "quota_debit_mtok": round(args.quota_debit_mtok, 6),
+        "settlement_caliber": "B",
+        "cost_b_cny": None,       # J2: month-end retroactive settle only
+        "receipt_status": "pending_settlement",
+        "timeout_rule": args.timeout_rule,
+        "return_rule": args.return_rule,
+        "guardrails": "fleet-protocol s3.2: no-preempt-owner-priority; "
+                      "no-dual-machine-same-stem; "
+                      "no-write-into-borrower-core-domain",
+        "verdict_source": args.verdict_source,
+        "reason": args.reason,
+        "ref": None,              # settle pointer, set by borrow-settle
+        "ceo_approved": bool(args.ceo_approved),
+    }
+    _append_row(ledger, row)
+    return {"status": "ok_ceo_approved_over_cap" if over else "ok", "row": row,
+            "month_used_mtok": round(used_mtd + args.tokens_mtok, 6),
+            "month_cap_mtok": cap}
+
+
+def borrow_settle(args, ledger=BLEDGER):
+    """Month-end retroactive settle: the ONLY legal lender-cost backfill
+    channel (J2); flips pending_settlement -> settled for the month in place."""
+    rows = _load_rows(ledger)
+    hit = 0
+    for r in rows:
+        if (r.get("type") == "borrow" and r.get("month") == args.month
+                and r.get("receipt_status") == "pending_settlement"):
+            r["cost_b_cny"] = round(r.get("tokens_mtok", 0.0)
+                                    * args.unit_cost_b, 4)
+            r["receipt_status"] = "settled"
+            r["ref"] = args.ref
+            hit += 1
+    if hit:
+        _ensure_state(ledger)
+        with open(ledger, "w", encoding="utf-8") as fh:
+            for r in rows:
+                fh.write(json.dumps(r, sort_keys=True, ensure_ascii=True) + "\n")
+    return {"status": "ok" if hit else "no_pending_rows",
+            "month": args.month,
+            "unit_cost_b_cny": round(args.unit_cost_b, 6),
+            "ref": args.ref, "settled_rows": hit}
+
+
+def borrow_summary(args, ledger=BLEDGER, budget=BBUDGET):
+    """Borrow-side monthly rollup: borrower x machine (lender collection vs
+    borrower debit reconciliation face, predesign s5)."""
+    rows = _load_rows(ledger)
+    if args.month:
+        rows = [r for r in rows if r.get("month") == args.month]
+    per = {}
+    for r in rows:
+        if r.get("type") != "borrow":
+            continue
+        key = (r.get("borrower_dept", "-"), r.get("machine_id", "-"))
+        c = per.setdefault(key, {"tokens_mtok": 0.0, "settled_mtok": 0.0,
+                                  "cost_b_cny": 0.0, "pending_rows": 0,
+                                  "settled_rows": 0})
+        amt = r.get("tokens_mtok", 0.0)
+        c["tokens_mtok"] += amt
+        if r.get("receipt_status") == "settled":
+            c["settled_mtok"] += amt
+            c["cost_b_cny"] += r.get("cost_b_cny") or 0.0
+            c["settled_rows"] += 1
+        else:
+            c["pending_rows"] += 1
+    face = {}
+    for key, c in per.items():
+        face["%s|%s" % key] = {
+            "tokens_mtok": round(c["tokens_mtok"], 6),
+            "settled_mtok": round(c["settled_mtok"], 6),
+            "cost_b_cny": round(c["cost_b_cny"], 4),
+            "pending_rows": c["pending_rows"],
+            "settled_rows": c["settled_rows"],
+        }
+    month_face = {}
+    if args.month:
+        cap = _load_budget(budget).get(args.month)
+        used = round(sum(r.get("tokens_mtok", 0.0) for r in rows
+                         if r.get("type") == "borrow"), 6)
+        month_face = {
+            "month": args.month,
+            "cap_mtok": cap,
+            "used_mtok": used,
+            "remaining_mtok": None if cap is None else round(cap - used, 6),
+        }
+    return {
+        "borrower_machine": face,
+        "totals": {
+            "rows": len([r for r in rows if r.get("type") == "borrow"]),
+            "tokens_mtok": round(sum(c["tokens_mtok"] for c in per.values()), 6),
+            "cost_settled_b_cny": round(sum(c["cost_b_cny"]
+                                            for c in per.values()), 4),
+            "pending_settlement_rows": sum(c["pending_rows"] for c in per.values()),
+        },
+        "month_face": month_face,
+        "settlement_caliber": "B_only (lender cost via month-end retroactive settle only, J2)",
+        "wiring": "accounting rail only; real borrow entry waits for T-28 "
+                  "activation approval (10-05 review) + first real "
+                  "work-order voucher (J4)",
+    }
+
+
 def _selftest():
-    order_results, quota_results, cloud_results = [], [], []
+    order_results, quota_results, cloud_results, borrow_results = [], [], [], []
     for run in (1, 2):
         tmp = os.path.join(tempfile.gettempdir(), "bc_ledger_selftest_%d.jsonl" % run)
         qtmp = os.path.join(tempfile.gettempdir(), "bc_quota_selftest_%d.jsonl" % run)
         qbtmp = os.path.join(tempfile.gettempdir(), "bc_quota_budget_%d.json" % run)
         ctmp = os.path.join(tempfile.gettempdir(), "bc_cloud_selftest_%d.jsonl" % run)
         cbtmp = os.path.join(tempfile.gettempdir(), "bc_cloud_budget_%d.json" % run)
-        for p in (tmp, qtmp, qbtmp, ctmp, cbtmp):
+        btmp = os.path.join(tempfile.gettempdir(), "bc_borrow_selftest_%d.jsonl" % run)
+        bbtmp = os.path.join(tempfile.gettempdir(), "bc_borrow_budget_%d.json" % run)
+        for p in (tmp, qtmp, qbtmp, ctmp, cbtmp, btmp, bbtmp):
             if os.path.isfile(p):
                 os.remove(p)
 
@@ -639,7 +798,67 @@ def _selftest():
             and abs(csumm["month_face"]["used_mtok"] - 11.0) < 1e-6
         )
         cloud_results.append((cloud_ok, crows, csumm))
-        for p in (tmp, qtmp, qbtmp, ctmp, cbtmp):
+
+        # borrow lane: fleet work-order rail (predesign s6 wiring-round
+        # prerequisite) -- J3 tx_id replay zero-new, monthly budget gate,
+        # J2 lender cost only via month-end retroactive settle
+        bb = Q()
+        bb.month, bb.cap_mtok = "2026-09", 10.0
+        borrow_budget(bb, path=bbtmp)
+
+        def bentry(tx, amt, approved=False):
+            qq = Q()
+            qq.tx_id, qq.date = tx, "2026-09-28"
+            qq.lender_dept, qq.borrower_dept = "bigcompute", "biglife"
+            qq.machine_id, qq.work_type = "bm-a", "batch_inference"
+            qq.tokens_mtok = amt
+            qq.quota_debit_mtok = amt
+            qq.timeout_rule, qq.return_rule = "30min", "on-complete"
+            qq.verdict_source, qq.reason = "idlewatch-log-L1", "selftest"
+            qq.ceo_approved = approved
+            return borrow_entry(qq, ledger=btmp, budget=bbtmp)
+
+        f1 = bentry("W1", 6.0)                   # within cap -> ok
+        f2 = bentry("W2", 3.0)                   # 9 <= 10 -> ok
+        f3 = bentry("W3", 2.0)                   # 11 > 10 -> budget gate blocks
+        f4 = bentry("W3", 2.0, approved=True)    # over cap, CEO approved
+        f5 = bentry("W1", 6.0)                   # duplicate tx_id -> no new row
+        brows_pre = _load_rows(btmp)
+        bj2_ok = all(r.get("cost_b_cny") is None
+                     and r.get("receipt_status") == "pending_settlement"
+                     and r.get("settlement_caliber") == "B"
+                     for r in brows_pre)
+        bset = Q()
+        bset.month, bset.unit_cost_b, bset.ref = "2026-09", 2.0, "SETTLE-202609-001"
+        s1 = borrow_settle(bset, ledger=btmp)
+        brows = _load_rows(btmp)
+        bsargs = Q()
+        bsargs.month = "2026-09"
+        bsumm = borrow_summary(bsargs, ledger=btmp, budget=bbtmp)
+        bl = bsumm["borrower_machine"]["biglife|bm-a"]
+        borrow_ok = (
+            f1["status"] == "ok"
+            and f2["status"] == "ok"
+            and f3["status"] == "blocked_over_borrow_budget"
+            and f4["status"] == "ok_ceo_approved_over_cap"
+            and f5["status"] == "duplicate"
+            and len(brows_pre) == 3
+            and bj2_ok
+            and s1["settled_rows"] == 3
+            and all(r.get("receipt_status") == "settled" for r in brows)
+            and all(r.get("ref") == "SETTLE-202609-001" for r in brows)
+            and abs(brows[0]["cost_b_cny"] - 12.0) < 0.0001
+            and abs(bl["tokens_mtok"] - 11.0) < 1e-6
+            and abs(bl["cost_b_cny"] - 22.0) < 0.0001
+            and bl["pending_rows"] == 0 and bl["settled_rows"] == 3
+            and abs(bsumm["totals"]["tokens_mtok"] - 11.0) < 1e-6
+            and abs(bsumm["totals"]["cost_settled_b_cny"] - 22.0) < 0.0001
+            and bsumm["totals"]["pending_settlement_rows"] == 0
+            and bsumm["month_face"]["cap_mtok"] == 10.0
+            and abs(bsumm["month_face"]["used_mtok"] - 11.0) < 1e-6
+        )
+        borrow_results.append((borrow_ok, brows, bsumm))
+        for p in (tmp, qtmp, qbtmp, ctmp, cbtmp, btmp, bbtmp):
             os.remove(p)
     # token-count face: estimation caliber; absence is visible, not a math fail
     class C:
@@ -678,11 +897,16 @@ def _selftest():
         == json.dumps(cloud_results[1][1], sort_keys=True)
         and json.dumps(cloud_results[0][2], sort_keys=True)
         == json.dumps(cloud_results[1][2], sort_keys=True)
+        and json.dumps(borrow_results[0][1], sort_keys=True)
+        == json.dumps(borrow_results[1][1], sort_keys=True)
+        and json.dumps(borrow_results[0][2], sort_keys=True)
+        == json.dumps(borrow_results[1][2], sort_keys=True)
     )  # order_id differs by design; determinism = identical math on all else
     math_ok = (order_results[0][0] and order_results[1][0]
                and quota_results[0][0] and quota_results[1][0]
-               and cloud_results[0][0] and cloud_results[1][0])
-    print("selftest: math=%s determinism=%s count=%s (orders+quota-gate+count+cloud) -> %s"
+               and cloud_results[0][0] and cloud_results[1][0]
+               and borrow_results[0][0] and borrow_results[1][0])
+    print("selftest: math=%s determinism=%s count=%s (orders+quota-gate+count+cloud+borrow) -> %s"
           % (math_ok, same, count_status,
              "PASS" if (math_ok and same and count_ok) else "FAIL"))
     return 0 if (math_ok and same and count_ok) else 1
@@ -757,13 +981,36 @@ def main():
     cb2.add_argument("--ref", required=True)
     csu = sub.add_parser("cloud-summary")
     csu.add_argument("--month", default=None)
+    bbp = sub.add_parser("borrow-budget")
+    bbp.add_argument("--month", required=True)
+    bbp.add_argument("--cap-mtok", dest="cap_mtok", type=float, required=True)
+    be = sub.add_parser("borrow-entry")
+    be.add_argument("--tx-id", dest="tx_id", required=True)
+    be.add_argument("--lender-dept", dest="lender_dept", default="BigCompute")
+    be.add_argument("--borrower-dept", dest="borrower_dept", required=True)
+    be.add_argument("--machine-id", dest="machine_id", required=True)
+    be.add_argument("--work-type", dest="work_type", required=True)
+    be.add_argument("--tokens-mtok", dest="tokens_mtok", type=float, required=True)
+    be.add_argument("--quota-debit-mtok", dest="quota_debit_mtok", type=float, default=0.0)
+    be.add_argument("--timeout-rule", dest="timeout_rule", default="-")
+    be.add_argument("--return-rule", dest="return_rule", default="-")
+    be.add_argument("--verdict-source", dest="verdict_source", default="-")
+    be.add_argument("--reason", default="-")
+    be.add_argument("--date", default=None)
+    be.add_argument("--ceo-approved", dest="ceo_approved", action="store_true")
+    bs = sub.add_parser("borrow-settle")
+    bs.add_argument("--month", required=True)
+    bs.add_argument("--unit-cost-b", dest="unit_cost_b", type=float, required=True)
+    bs.add_argument("--ref", required=True)
+    bsu = sub.add_parser("borrow-summary")
+    bsu.add_argument("--month", default=None)
     ct = sub.add_parser("count")
     ct.add_argument("--text", default=None)
     ct.add_argument("--file", default=None)
     ct.add_argument("--encoding", default="cl100k_base")
     sub.add_parser("selftest")
     args = p.parse_args()
-    if getattr(args, "date", None) is None and args.cmd in ("add", "quota-issue", "quota-consume", "cloud-entry"):
+    if getattr(args, "date", None) is None and args.cmd in ("add", "quota-issue", "quota-consume", "cloud-entry", "borrow-entry"):
         import datetime
         args.date = datetime.date.today().isoformat()
     if args.cmd == "add":
@@ -788,6 +1035,14 @@ def main():
         out = cloud_bill(args)
     elif args.cmd == "cloud-summary":
         out = cloud_summary(args)
+    elif args.cmd == "borrow-budget":
+        out = borrow_budget(args)
+    elif args.cmd == "borrow-entry":
+        out = borrow_entry(args)
+    elif args.cmd == "borrow-settle":
+        out = borrow_settle(args)
+    elif args.cmd == "borrow-summary":
+        out = borrow_summary(args)
     elif args.cmd == "count":
         out = count_tokens(args)
     else:

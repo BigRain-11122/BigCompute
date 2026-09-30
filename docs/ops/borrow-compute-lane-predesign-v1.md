@@ -57,6 +57,8 @@
 
 本件=纯预设计：Tools/ 零改动·真实 state/ 零生成（state/borrow-* 不存在=J4 维持）。正式立件随接线轮。
 
+> **2026-09-30 13:5x 工程前置落地实录（append·T19 cloud lane 同模式先例）**：§六「接线轮判据」前置件已落地=cost_ledger.py 加性扩展 borrow-budget/borrow-entry/borrow-settle/borrow-summary 四命令+selftest 扩测 borrow 合成 dry-run PASS（temp 账本零污染·explore E33 双载体）。§七 原文「Tools/ 零改动」=预设计时点声明维持不删（append 纪律）；现时点=工具面前置就绪·**真接线仍维持双门**（T-28 激活呈批 10-05+首笔真实借算工单物理凭证=J4·state/borrow-* 零生成实证维持）——激活即违规缺口（§一·R-38）的结构性消解面在位。
+
 ## 八、验证声明（外证/内知如实）
 
 - 外证：R-20260928-multi-node-scheduling §二 L15/§四.1/§五 J3（本司正典件·台账原文实读行号在案）+Tools/gpu_idle_collector.py 源码实读（L42-50/L154-160 签名证据）+E11 预演轨 6/6 PASS+quota/cloud 轨现役 selftest。
