@@ -1,7 +1,7 @@
 {
   "company": "BigCompute",
-  "updated_at": "2026-09-30 15:0x",
-  "current_activity": "15:0x 哨兵触发轮：D-20260930-36 对标规律规则承接（本司算力线 R-C1~C3）→R-C1 机判接线=采集器 7 日滚动均值对标行落地（BELOW-BENCH 双态+三尺并排 30% 执法×50% 对标×70% 方向）",
-  "latest_artifact": "Tools/gpu_idle_collector.py R-C1 add-on（7 日对标行+roll_dates 通用化+selftest 扩 5 断言 PASS）·实跑 2026-09-24..30 n=203 avg=14.8% → BELOW-BENCH 差距如实（09-30 15:0x 轮·D-20260930-36 回执 BC-F-20260930-04）",
-  "next_milestone": "①10-02 12:00=验证集独立标注窗（本司禁自标·CPH4 外审/他司）+D-19 ack 窗；②10-05 复核窗（GPU 观察+批池激活呈批+_trash 删+净窗/VRAM 空窗频率证据+自驱首计量+底座自检第三件 BC-P-29 候选）；③10-07=C-01/C-02+批池呈批"
+  "updated_at": "2026-09-30 15:3x",
+  "current_activity": "15:2x 哨兵触发轮：orders O-20260930-1512（@Biggame）零派单收讫→自驱族 B 增量 E36=SLA 分类漂移双判据预验证件（BC-P-15 修复数据前置·N1 口径冻结纯只读零触碰）",
+  "latest_artifact": "Tools/sla_drift_preaudit.py（selftest 6/6 PASS）+实跑 63 点面板 state/sla-drift-preaudit-20260930-1519.json——根因锚实锤（竞争态=计算型压制·mem 单维判据结构性盲区）+降级+热双证规则 flips=1 净窗 CV 18.7%→6.5%（09-30 15:19·今晚 N1 后 BC-P-15 修复轮证据基线）",
+  "next_milestone": "①今晚 22:43=N1 月末行幂等复跑（month_end_append run·W2）+净窗开则 M25/T26 烘焙实弹+BC-P-15 修复解冻（证据基线已备）；②10-02 12:00=验证集独立标注窗（本司禁自标）+D-19 ack 窗；③10-05 复核窗（GPU 观察+批池激活呈批+净窗/VRAM 空窗频率证据+自驱首计量）"
 }
