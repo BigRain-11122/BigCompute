@@ -1,7 +1,7 @@
 {
   "company": "BigCompute",
-  "updated_at": "2026-09-30 17:0x",
-  "current_activity": "17:0x 哨兵触发轮：orders 16:57 新两行收讫（O-1656 三件派单/O-1654 均 @Biggame·O-1656② 居民问答后端与本司 E40 在役件重叠=回执 BC-F-20260930-08 对齐禁重建）→净窗 BLOCKED（10 实例）→自驱步 E41=CEO 观测窗 8792 服务巡逻探针落地（qa_smoke 第 6 探针+task_check 扩 ResidentQA）",
-  "latest_artifact": "Tools/qa_smoke.py 第 6 探针+task_check.ps1 第五任务行（E41·resident QA 8792 health 巡逻——CEO 观测窗「召见居民」服务今起每轮 QA 当轮盯防·首跑 6/6 PASS health 200 anchors=20）·09-30 17:02",
-  "next_milestone": "①今晚 22:43=N1 月末行幂等复跑（month_end_append run·W2）+BC-P-15 SLA 修复解冻（E36 证据基线已备）+净窗开则 M25/T26 烘焙实弹；②节前 P1 手动件维持：CEO 出发前 Windows 更新暂停 ≥1 周或管理员 AU reg add（O-1540①·R-46 第五面盯防）；③10-02 12:00=验证集独立标注窗（本司禁自标）；④10-05 复核窗（GPU 观察+批池激活呈批+自驱首计量+_trash 删）；⑤10-07 批池呈批（走 O-1555 ② 决策委员会过会通道）；长假窗 10-01~10-08 双班+哨兵 15min 24h 自转维持"
+  "updated_at": "2026-09-30 17:21",
+  "current_activity": "17:2x 哨兵轮：orders 17:12 批收讫（L254/L259 BigHouse v0.3 终谳批准+词族清零令 O-005/O-006→本司收款出口承接 M17 解锁执行毕·回执 BC-F-20260930-09；L262/L263 2D 取帧径/音频标准=Biggame/CPH4 域零动作）→队列步=M17 BigHouse 结缘年度费收款轨微演练 6/6 PASS（按比例退费新数学面+N2 四声明位锚+O-006 词族 lane 标签 0 命中）→M29 结缘费合规映射行新立（下轮可执行）",
+  "latest_artifact": "state/house_ledger_drill_m17.py BigHouse 结缘收款轨演练件+证据 state/house-lane-drill-m17-20260930.txt（M17·299/年 order net=261.326+order_id 幂等+服务中断 day180 未消费部分退费 299×185/365=151.55 退款行+续费新 order_id 分立+月度归集+N2 使用权/显著提醒/未消费退还/AIGC 标识四锚全 Y·temp 账本零污染）·09-30 17:21",
+  "next_milestone": "①今晚 22:43=N1 月末行幂等复跑（month_end_append run·W2）+BC-P-15 SLA 修复解冻（E36 证据基线已备）+净窗开则 M25/T26 烘焙实弹；②下轮=M29 BigHouse 结缘费合规映射行（paypoint-compliance-map 扩行+gate 复跑全绿）；③节前 P1 手动件维持：CEO 出发前 Windows 更新暂停 ≥1 周或管理员 AU reg add（O-1540①·R-46 第五面盯防）；④10-02 12:00=验证集独立标注窗（本司禁自标）；⑤10-05 复核窗+10-07 批池呈批；长假窗 10-01~10-08 双班+哨兵 15min 24h 自转维持"
 }
