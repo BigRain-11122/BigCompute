@@ -1,7 +1,7 @@
 {
   "company": "BigCompute",
-  "updated_at": "2026-09-30 11:1x",
-  "current_activity": "11:1x 哨兵轮：O-20260930-1058 筛选改革令收讫（@BigMoney 域零本司动作）+BC-P-19 烘焙样板间光基准对齐毕（BakeSpike.cs=City3D 官方光基准档直配·T26 净窗实弹前置收口）",
-  "latest_artifact": "Tools/bake_spike_assets/BakeSpike.cs（City3D 官方光基准档直配：暖白主光 1.2 #FFF4D6（50,212.23,0）软影 0.8+补光 0.27 #CCDDFF（20,148,0）无影+Skybox 环境光三段色+程序化天空盒·scaffold selftest 9/9 PASS〔A9 光基准锚〕+labbench 双位 fc 逐字节零差·2026-09-30 11:1x）+qa/smoke-20260930-1104（5/5 PASS）",
-  "next_milestone": "09-30 22:43 首月末归集 N1 必跑（python Tools/month_end_collect.py run·一命令机械跑零推导·E25 判据·漏跑=下下轮第一优先）·窗 ≤48h；净窗开（clean_window_probe check exit 0）则 M25/T26 烘焙实弹双路跑（run_bake.ps1·光基准已对齐）"
+  "updated_at": "2026-09-30 11:2x",
+  "current_activity": "11:2x 哨兵轮：O-20260930-1101 宽进演习令收讫（@BigMoney 域零本司动作）+BC-P-20 烘焙三指标验收预检件落地（T26 实弹后一命令收口在位）+BC-P-21 净窗协调窗申请件立案（clean-window-log 首日 6/6 BLOCKED 锚·日清呈面）",
+  "latest_artifact": "Tools/bake_accept_check.py（烘焙三指标验收预检件：J1 bake_ok+≤30min/J2 VRAM 峰值 csv+summary 回退+headroom ≥1.5GB 注记/J3 lightmap 产物三键·无参自动取最新两 dir=净窗双路一命令收口+R- §三行 3 回填行组装·selftest 14/14 PASS·2026-09-30 11:2x）+qa/smoke-20260930-1118（5/5 PASS）",
+  "next_milestone": "09-30 22:43 首月末归集 N1 必跑（python Tools/month_end_collect.py run·一命令机械跑零推导·E25 判据·漏跑=下下轮第一优先）·窗 ≤48h；净窗开（clean_window_probe check exit 0）则 M25/T26 烘焙实弹双路跑→bake_accept_check check 一命令验收收口"
 }
