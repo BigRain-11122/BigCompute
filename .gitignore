@@ -8,6 +8,7 @@ state/queue/*
 !state/queue/*.md
 logs/
 .codely-cli/
+.playwright-mcp/
 docs/_trash/
 *.local.json
 .env
