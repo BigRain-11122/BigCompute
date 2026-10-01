@@ -1,7 +1,7 @@
 {
   "company": "BigCompute",
-  "updated_at": "2026-10-01 00:4x",
-  "current_activity": "00:00 常务轮收口：三案投票 C-04/05/06=HQ 00:00 窗 7/7 过会（席位4 三立场行已消费）+云端 token 首报落账（CLEAN-ZERO-STATE rows=0）+BC-P-15 SLA 分类精化 N1 解冻即落地（双判据分类器·selftest 9/9·同点集 84 点前后对照全过）+W4 同日提前落账闸 T40（月末日 <22:43 exit 7·selftest 15/15）+D-20261001-03 只读消费正典本司 ack+O-025 工作流迭代令周报接线（10-04 首报）·净窗第 10 连 BLOCKED M25/T26 顺延",
-  "latest_artifact": "Tools/serve_sla_baseline.py BC-P-15 双判据分类器（竞争态=mem>7500 OR 热〔util≥30 或 power≥80〕且 tok<50 降级+热双证——E36 三候择律·伪阳性保护实证 flips=1 全中 vs 纯热 flips=4 含 3 采样伪影；同点集前后对照：净窗 CV 20.3%→13.7%·误分类 1→0·P10 82.09→86.45·证据 state/serve-sla-baseline-20261001-0036.json+sla-drift-preaudit-20261001-0036.json）+Tools/month_end_append.py W4 末日时点闸（selftest 15/15·W2 幂等回归 exit 2）+qa/smoke-20261001-0040 6/6 PASS",
-  "next_milestone": "①下轮首对象=10-02 12:00 验证集独立标注窗催办（BC-P-26·本司禁自标·窗到未标续催）+净窗开则 M25/T26 烘焙实弹（run_bake 双路→bake_accept_check）；②10-04 周日轮=底座自检+@本司行全量对账+周报「工作流迭代面」一行首报（O-025④ 新接线·本窗迭代+下窗计划+四标自评）；③10-05 复核窗（GPU 观察+批池激活呈批+净窗频率证据）；④10 月 N1=月末日 22:43 正窗一命令跑（W4 闸在位·提前落账违例机械拦截）；⑤节前 P1 手动件维持：CEO 出发前 Windows 更新暂停 ≥1 周或管理员 AU reg add（O-1540①）——长假窗双班+哨兵 15min 24h 自转在役"
+  "updated_at": "2026-10-01 12:4x",
+  "current_activity": "12:43 午班收口：集团三委员会案全收讫零本司直接派单（C-20261001-01 机队信息同步治理六条/C-02 规则通胀与产出不足治理五条=本司 mandate v2.8 计分制同构已在役/C-03 机队生产力闲置根治四条=值班轮+秘书处实施面）+D-20261001-08 核销批收讫·本司在役合规面全对齐（零云发射 CLEAN-ZERO-STATE+回执纪律+durable OSLoop）；净窗第 11 连 BLOCKED（editors=1）M25/T26 烘焙实弹顺延",
+  "latest_artifact": "tech T41=C-02 产出计分制承接·周产出分证据件（Tools/round_score.py score 168h 实跑：本司周产出分 130 分=2 分件×47+1 分件×36+0 分件×51·n=134 commit·verdict=PRODUCT-168h max=2·证据 state/round-score-20261001-1214.json——C-02 回访判据「周产出分 ≥3」远超在证）+qa/smoke-20261001-1220 6/6 PASS",
+  "next_milestone": "①下轮 22:43 夜班=净窗开则 M25/T26 烘焙实弹（run_bake 双路→bake_accept_check）；②10-02 12:00 验证集独立标注窗催办（BC-P-26·本司禁自标·窗到未标续催）；③10-04 周日轮=底座自检+@本司行全量对账+周报「工作流迭代面」一行首报（O-025④·数据面=T41 周产出分证据件在盘）；④10-05 复核窗（GPU 观察+批池激活呈批+净窗频率证据）；⑤10 月 N1=月末日 22:43 正窗一命令跑（W4 闸在位·提前落账违例机械拦截）；⑥节前 P1 手动件维持：CEO 出发前 Windows 更新暂停 ≥1 周或管理员 AU reg add（O-1540①）——长假窗双班+哨兵 15min 24h 自转在役"
 }
