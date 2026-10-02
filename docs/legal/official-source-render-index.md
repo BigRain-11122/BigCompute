@@ -22,6 +22,7 @@
 | 13 | 财政部 税务总局公告 2026 年第 9 号《关于增值税征税具体范围有关事项的公告》（2026-01-01 施行）+附件 2《销售服务、无形资产、不动产注释》（新版·类目名=「其他无形资产」·现行有效口径） | 主页 https://www.mof.gov.cn/jrttts/202602/t20260203_3983174.htm +附件 2 官方 PDF https://www.mof.gov.cn/jrttts/202602/P020260203333744980975.pdf | 发文机关官网（财政部 mof） | state/w4-ann9-att2-extract-20261002.txt |
 | 14 | GB/T 37964-2019《信息安全技术 个人信息去标识化指南》（现行·2019-08-30 发布·2020-03-01 实施·全文 35 PDF 页·范围+引用文件+3.1-3.13 术语逐字在证据件） | 详情页 https://openstd.samr.gov.cn/bzgk/std/newGbInfo?hcno=C8DF1BC2FB43C6EC0E602EB65EF0BC66 +在线预览 https://openstd.samr.gov.cn/bzgk/std/showGb?type=online&hcno=C8DF1BC2FB43C6EC0E602EB65EF0BC66（免登录）+检索 https://openstd.samr.gov.cn/bzgk/gb/std_list?p.p2=37964 | 国家标准全文公开系统（openstd.samr.gov.cn·图像瓦片反爬=鼠标在场模拟+逐页截图读图转写破取·**国标原文级新通道**·10-02 夜班轮实证） | state/w37964-stdstd-render-20261002.txt+5 png |
 | 15 | GB/T 42460-2023《信息安全技术 个人信息去标识化效果评估指南》（现行·2023-03-17 发布·2023-10-01 实施·正文未取=M40 分轮续） | 检索命中 https://openstd.samr.gov.cn/bzgk/gb/std_list?p.p2=42460（详情页 hcno 待下轮开页取） | 同上（元数据级） | 同上 |
+| 16 | 37964 附录 A/B 渲染复验增量（10-02 22:43 夜班轮·同 hcno 预览）——**方法增量**：页码控件前跳生效/回跳失效→**直接设内层滚动容器 scrollTop 定位**（页高 CSS 1308px@40% 缩放·0 基页 div id=N=PDF 第 N+1 页·印刷页 N≈PDF 第 N+4 页）；预取律=当前页+后续 ~3 页随鼠标在场事件流载入 | 同行 14 URL·证据 state/w37964-appendix-render-20261002.txt+7 png（附录 B 全区 B.1/B.2+附录 A A.2.5 尾-A.4.4 逐字） | 同上·附录 B 无 k-匿名小节=结构定谳（k-匿名候选=附录 A 泛化区 PDF 18-19·下轮首对象 scrollTop≈23544） | 同上 |
 
 ## 二、W8 候选通道（已证毕·留档）
 
