@@ -8,6 +8,7 @@
 - 现状：⬜ 未设立（波⑦推荐公司主体；BLUEPRINT §五.5「须个体工商户/企业主体」口径）
 - 就绪判据：营业执照到手+经营范围覆盖教培/文娱虚拟商品销售相关细目（以平台类目树实测口径为准·D2 双口径）
 - 本司预备面（随到件即接）：开店资料包字段表+主体信息登记模板；接产对齐矩阵 v1「物理件类」销账面启动
+- **税负身份决策行**（M45·M22 三环第三环·2026-10-04）：主体设立时「小规模纳税人 vs 一般纳税人」身份选择=随 CEO 物理件窗决策面——①双线对比与临界测算=Tools/vat_break_even.py（selftest 25/25·测算=本司立场非税务结论·临界 r\*=6%−征收率与销售额代数无关）；②税目/税率四锚=docs/legal/tax-category-confirmation-brief-v1.md §四（9 号公告品目+12/19 号优惠+增值税法第十条（三）6% 档+826 号实施条例）；③三条边界注记：年应税销售额 500 万线〔增值税法第九条〕｜登记为一般纳税人后**不得转回**小规模〔实施条例第三十六条·单向〕｜月销售额 10 万起征点内免征/超线减按 1% 窗至 2027-12-31〔2026 年第 10 号公告衔接〕——身份选择前须跑 vat_break_even table 对照并随开店资料包呈 CEO 批（零定价动作·数值全 ⬜ 随批）
 
 ### ② 商户号/支付（微信支付商户号）
 - 现状：⬜ CEO 物理件（orders 常设区「两个物理件没动，一切商业闭环都是零」=当前最高优先件；BigDomain 支付通道行同源）
@@ -35,6 +36,8 @@
 
 ## 三、状态与指针
 - 四件全=⬜ 待 CEO 物理件（本件 v0.1=就绪态·零催办）；到件一件销一件·行级更新本件
-- 指针：BLUEPRINT §二先行件序/§五.4 判据/§五.5 物理件｜集团 orders.md CEO 待办物理件常设区（只读引用）｜docs/risk-register.md｜docs/ops/paypoint-alignment-matrix-v1.md（blocked 项销账面）｜docs/legal/blind-box-gacha-compliance.md（类目判定联动）
+- 指针：BLUEPRINT §二先行件序/§五.4 判据/§五.5 物理件｜集团 orders.md CEO 待办物理件常设区（只读引用）｜docs/risk-register.md｜docs/ops/paypoint-alignment-matrix-v1.md（blocked 项销账面）｜docs/legal/blind-box-gacha-compliance.md（类目判定联动）｜docs/legal/tax-category-confirmation-brief-v1.md（税目/税率四锚·M41/M42 原文级）｜Tools/vat_break_even.py（税负临界测算·M43）
 
 > 2026-09-29 M21：A 档上线硬门=付费点×合规义务映射表（docs/ops/paypoint-compliance-map-v1.md·机检 Tools/compliance_gate_check.py·53 锚全绿+3 ⬜ 随批）——开店门禁行联签位（过表才开单收款）。
+
+> 2026-10-04 M45：主体登记税负决策行接线毕=M22 三环闭环第三环收口（定价环〔M44 定价包+quota-design 税负行〕↔合规硬门环〔M21 映射表 59/59〕↔开店清单环〔本件 §一① 税负身份决策行〕）——登记身份选择=随 CEO 物理件窗决策面·零定价动作。
