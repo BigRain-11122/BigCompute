@@ -1,7 +1,7 @@
 {
   "company": "BigCompute",
-  "updated_at": "2026-10-04 00:2x",
-  "current_activity": "00:1x 哨兵触发轮·周日轮：M44 收口=定价确认包+quota-design 两件（三文件）增值税税负成本行接线毕——定价包 §二 税负行参数化注记〔小规模/一般纳税人双线+临界 r*=6%−征收率+vat_break_even 工具指针〕+周日轮三附加毕（底座自检双绿=ledger PASS+pipeline 44/44·@本司行全量对账·周报工作流迭代面首报+ccgs 采用面自决声明=11 件全判负留痕）",
-  "latest_artifact": "docs/ops/pricing-confirmation-package-29.9-v1.md+quota-design-29.9-v1.md+quota-design-49.9-99-v1.md（税负行接线三件·BC-P-36 ① 消费方条款落地）·2026-10-04 00:2x·M44",
-  "next_milestone": "①M45=开店清单主体登记税负决策行接线（M22 三环闭环第三环收口·vat_break_even 双线+500 万线+单向登记注记入开店清单）——窗 ≤24h；②10-05 复核窗=GPU 观察期收口+批池呈批（BC-P-37 J6 数据本地性门收口候选）+_trash 7 天复核删除+净窗开则 M25/T26 run_bake 双路——窗 ≤48h"
+  "updated_at": "2026-10-04 00:5x",
+  "current_activity": "00:4x 哨兵触发轮：M45 收口=开店清单主体登记税负决策行接线毕（§一① 税负身份决策行=vat_break_even 双线测算指针+税目四锚+500 万线/单向登记/起征点三边界注记·身份选择随 CEO 物理件窗）——M22 三环闭环全收口（定价环 M44↔合规硬门环 M21↔开店清单环）·零定价动作",
+  "latest_artifact": "docs/ops/store-opening-checklist-v1.md（税负身份决策行+三环闭环注记·vat_break_even selftest 25/25 复验）·2026-10-04 00:5x·M45",
+  "next_milestone": "①M46=10-05 复核窗呈批包组装（四复核面一页汇总=GPU 观察期收口+批池呈批〔BC-P-37 J6〕+_trash 删除面+净窗证据）——窗 ≤24h；②10-05 复核窗本体=GPU DRY-RUN 毕呈批+批池 J5 头窗+M25/T26 净窗开则 run_bake 双路——窗 ≤48h"
 }
