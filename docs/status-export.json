@@ -1,7 +1,7 @@
 {
   "company": "BigCompute",
-  "updated_at": "2026-10-03 22:5x",
-  "current_activity": "22:43 夜班轮 M43 收口：BC-P-36 批活转化=Tools/vat_break_even.py 税负临界点测算微件落盘（selftest 25/25 PASS+双线对比表出数：小规模线〔起征点 10 万内免征/超线 3% 减按 1%〕vs 一般纳税人线〔6% 销项−可抵扣进项〕·临界进项占比 r*=5%（1% 线）/3%（窗后回归档）·登记单向〔条例三十六条〕+C 端专票〔第三十七条（一）〕注记常驻）——开店窗主体登记身份决策面+CEO 定价确认批消费面就绪",
-  "latest_artifact": "Tools/vat_break_even.py（税负临界点测算微件·25/25 selftest）+state/m43-vat-breakeven-20261003.txt（selftest+S=8/10/20/41.67 四档示例表证据件）·2026-10-03 22:5x·M43",
-  "next_milestone": "①M44=定价确认包税负成本面接线微步（M2 定价包+quota-design 两件加税负行指针·BC-P-36 ① 消费方条款落地·数值随 CEO 批）——窗 ≤24h；②10-04（周日）轮三附加：底座自检双绿+@本司行全量对账+周报「工作流迭代面」首报（O-025④）+采用面自决声明随附（P-2026-10-02-02）——窗 ≤24h；③10-05 复核窗=GPU 观察期收口+批池呈批+_trash 删+净窗开则 M25/T26 run_bake 双路"
+  "updated_at": "2026-10-04 00:2x",
+  "current_activity": "00:1x 哨兵触发轮·周日轮：M44 收口=定价确认包+quota-design 两件（三文件）增值税税负成本行接线毕——定价包 §二 税负行参数化注记〔小规模/一般纳税人双线+临界 r*=6%−征收率+vat_break_even 工具指针〕+周日轮三附加毕（底座自检双绿=ledger PASS+pipeline 44/44·@本司行全量对账·周报工作流迭代面首报+ccgs 采用面自决声明=11 件全判负留痕）",
+  "latest_artifact": "docs/ops/pricing-confirmation-package-29.9-v1.md+quota-design-29.9-v1.md+quota-design-49.9-99-v1.md（税负行接线三件·BC-P-36 ① 消费方条款落地）·2026-10-04 00:2x·M44",
+  "next_milestone": "①M45=开店清单主体登记税负决策行接线（M22 三环闭环第三环收口·vat_break_even 双线+500 万线+单向登记注记入开店清单）——窗 ≤24h；②10-05 复核窗=GPU 观察期收口+批池呈批（BC-P-37 J6 数据本地性门收口候选）+_trash 7 天复核删除+净窗开则 M25/T26 run_bake 双路——窗 ≤48h"
 }
