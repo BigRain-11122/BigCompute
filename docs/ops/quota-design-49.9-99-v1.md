@@ -26,6 +26,8 @@ v1=口径 B 单位成本（元/1M token·月末归集回溯唯一口径·⬜ 待
 | 0.50 | 59.4 | 49.5 | 39.6 |
 | 0.80 | 37.1 | 30.9 | 24.7 |
 
+- **税负成本行（M44 接线 2026-10-04）**：成本面新增参数化要素 ⬜——本件闸式统一以 v1 月末归集代入；税负成本计入时按 pricing-confirmation-package-29.9-v1.md §二「税负行」参数化注记执行（双线=小规模／一般纳税人·临界 r\*=6%−征收率）·测算工具 **Tools/vat_break_even.py**（selftest 25/25）——数值随 CEO 定价确认批+开店主体登记决策·零定价动作（M12 §一 税负成本行同律）。
+
 ## 二、价值感线与区隔参考线
 
 - 价值感下限（配额设计律·同律各档）：Q_min = 1.5 × E_单包 = 1.5 × 243 = 364.5 tokens/月（0.0003645 Mtok/月·M12 发布值 365/0.000365=舍入口径）——E_单包=243 tokens 实测锚（2026-09-28 22:43 dry-run 首单·SKU 终稿复测）。
@@ -57,6 +59,6 @@ v1=口径 B 单位成本（元/1M token·月末归集回溯唯一口径·⬜ 待
 
 ## 七、证据指针
 
-C-20260927-01 票档归档（decisions 委员会节·议题③ 选 A·席4 独占权益/席6 防蚕食附款）｜docs/ops/quota-design-29.9-v1.md（M12 同法源件·E 锚与 N 判据）｜**Tools/quota_design.py（本件计算器·selftest=M12 15 格回归 PASS）**｜state/e12-anchor-20260928-2243.json（E_单包=243 实测）｜R-20260928-compute-cost-economics（Q5 结算式）｜Tools/cost_ledger.py（quota-budget 闸）｜docs/ops/month-end-cost-collection-sheet-v1.md（N1 首跑预注册）
+C-20260927-01 票档归档（decisions 委员会节·议题③ 选 A·席4 独占权益/席6 防蚕食附款）｜docs/ops/quota-design-29.9-v1.md（M12 同法源件·E 锚与 N 判据）｜**Tools/quota_design.py（本件计算器·selftest=M12 15 格回归 PASS）**｜state/e12-anchor-20260928-2243.json（E_单包=243 实测）｜R-20260928-compute-cost-economics（Q5 结算式）｜Tools/cost_ledger.py（quota-budget 闸）｜docs/ops/month-end-cost-collection-sheet-v1.md（N1 首跑预注册）｜**Tools/vat_break_even.py（税负临界点测算微件·M43/M44 接线·selftest 25/25）**
 
 > 2026-09-29 M21 联签：A 档上线前须过付费点×合规义务映射表硬门（docs/ops/paypoint-compliance-map-v1.md·席7 附款·机检 Tools/compliance_gate_check.py 53/53 绿）——本件数值批落即回填映射表 ⬜ 槽位。

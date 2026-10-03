@@ -16,6 +16,8 @@ v1=口径 B 单位成本（元/1M token·月末归集回溯唯一口径·⬜ 待
 
 （月口径 B 成本天花板：70%→¥8.97／75%→¥7.48／80%→¥5.98。承接包 §二 三行算例为本表 g=70% 列·目标毛利率设计值 ≥70% 取稳健下档维持。）
 
+- **税负成本行（M44 接线 2026-10-04）**：成本面新增参数化要素 ⬜——本件闸式统一以 v1 月末归集代入；税负成本计入时按承接包 §二「税负行」参数化注记执行（双线=小规模〔起征点 10 万内免征／超线减按 1% 窗至 2027-12-31〕／一般纳税人〔6% 销项−可抵扣进项·临界 r\*=6%−征收率〕）·测算工具 **Tools/vat_break_even.py**（selftest 25/25）——数值随 CEO 定价确认批+开店主体登记决策·零定价动作。
+
 ## 二、价值感判据线（Q_min = 1.5 × E_单包）
 
 - E_单包=19.9 单包单次交付记账轨 token 量（Qwen 精确计数 Ollama eval_count 累计口径）——**✅ 2026-09-28 22:43 夜窗 dry-run 首单实测回填：E_单包=243 tokens（0.000243 Mtok）**（v0 两调用面口径=策略蓝图生成 149+报告解说 94·回测引擎与报告页渲染=确定性计算零 token 不计·探针 Tools/e12_package_anchor_probe.py·原始档 state/e12-anchor-20260928-2243.json·常驻 7b keep_alive:-1 零 VRAM 影响·批处理池派活面 DRY-RUN 观察期维持·本锚=人工 dry-run 首单口径·SKU 终稿后复测）。
@@ -48,6 +50,6 @@ v1=口径 B 单位成本（元/1M token·月末归集回溯唯一口径·⬜ 待
 
 ## 七、证据指针
 
-pricing-confirmation-package-29.9-v1.md（§二 核心式+§四 回填面）｜BC-F-20260927-03（配额设计律 ≥1.5×19.9 单包）｜R-20260928-compute-cost-economics（Q5 结算式+Q6 判据）｜qa/smoke-20260928-0929.log（157.98 tok/s 实测）｜docs/ops/paypoint-alignment-matrix-v1.md L17（19.9 B 边际成本带）｜Tools/cost_ledger.py（quota-budget/issue/consume/summary+blocked_over_budget）｜**Tools/e12_package_anchor_probe.py+state/e12-anchor-20260928-2243.json（E_单包=243 tokens dry-run 首单实测锚·2026-09-28 22:43 夜窗·E12）**
+pricing-confirmation-package-29.9-v1.md（§二 核心式+§四 回填面）｜BC-F-20260927-03（配额设计律 ≥1.5×19.9 单包）｜R-20260928-compute-cost-economics（Q5 结算式+Q6 判据）｜qa/smoke-20260928-0929.log（157.98 tok/s 实测）｜docs/ops/paypoint-alignment-matrix-v1.md L17（19.9 B 边际成本带）｜Tools/cost_ledger.py（quota-budget/issue/consume/summary+blocked_over_budget）｜**Tools/e12_package_anchor_probe.py+state/e12-anchor-20260928-2243.json（E_单包=243 tokens dry-run 首单实测锚·2026-09-28 22:43 夜窗·E12）**｜**Tools/vat_break_even.py（税负临界点测算微件·M43/M44 接线·selftest 25/25）**
 
 > 2026-09-29 M21 联签：A 档上线前须过付费点×合规义务映射表硬门（docs/ops/paypoint-compliance-map-v1.md·席7 附款·机检 Tools/compliance_gate_check.py 53/53 绿）——本件数值批落即回填映射表 ⬜ 槽位。
