@@ -15,7 +15,7 @@
 | loadline 满载行（T38/P-32） | busy≥30%=2.0%／quiet<10%=98.0%·cpu 6%·RAM 93.6GB·prod_lanes=6（alive 2 常驻+4 备货 lane） | 待机主导 |
 
 - 观察期结论：DRY-RUN 8 日全程**零派活**（采集器 NO dispatch·派活日志=指针制）——日均低利用=保护态豁免面成立（商业物理件未通=P-20260928-02 ③·O-1820 意义性律「宁亮牌合法等待不造活凑数」·bm-a 自动派活黑名单=C-20260929-02 7.4 毕业呈批制）
-- **D-20261004-04 双探判据应用（10-04 12:06 集团新法·本包接入）**：机面级可借 verdict=VRAM 余量 ≥6GB＋共租活跃面空双探——bm-a 最新样本（12:04）：编辑器实例 1 个＋VRAM 余 5894MiB≈5.9GB<6GB → **机面不可借·不挂牌**（循环态 GREEN-IDLE ≠ 机面可借两态解耦·与 BigStream 判例同向）
+- **D-20261004-04 双探判据应用（10-04 12:06 集团新法·本包接入）**：机面级可借 verdict=VRAM 余量 ≥6GB＋共租活跃面空双探——bm-a 最新样本（12:04）：编辑器实例 1 个＋VRAM 余 5894MiB≈5.9GB<6GB → **机面不可借·不挂牌**（循环态 GREEN-IDLE ≠ 机面可借两态解耦·与 BigStream 判例同向）——**T44 探针已落地（10-04 12:4x）**：采集器 report/loadline 自带 machine_borrowable 列（12:4x 实测 NOT-BORROWABLE[VRAM|COTENANT]·余 5904MiB+编辑器 1·证据 state/t44-borrow-probe-20261004.txt）·复核窗收据自此自动出列（BC-P-38 批活·tech T44 done）
 - **决策项①**：A=真派活激活（10-05 观察期毕；激活前置=净窗+J5 头窗放行+黑名单解除面另呈批）｜B=延期观察（新窗+新判据呈批）
 
 ## ② 批池呈批面（batch-pool-stock-v1）
@@ -38,4 +38,4 @@
 
 ## 附：数据指针（全既有件直引）
 
-state/gpu_idle_metrics.jsonl｜state/self-drive-metrics-*.json｜docs/ops/batch-pool-stock-v1.jsonl｜Tools/batch_pool.py（J1-J6·selftest 12）｜state/clean-window-log.jsonl｜qa/smoke-20261004-1217.log+png｜docs/_trash/（56 件 63.4MB）｜GPU 三尺/loadline 实测行=本包各面内嵌（Tools/gpu_idle_collector.py 2026-10-04 12:1x 复跑）
+state/gpu_idle_metrics.jsonl｜state/self-drive-metrics-*.json｜docs/ops/batch-pool-stock-v1.jsonl｜Tools/batch_pool.py（J1-J6·selftest 12）｜state/clean-window-log.jsonl｜qa/smoke-20261004-1217.log+png｜docs/_trash/（56 件 63.4MB）｜GPU 三尺/loadline 实测行=本包各面内嵌（Tools/gpu_idle_collector.py 2026-10-04 12:1x 复跑+12:4x T44 machine_borrowable 列）

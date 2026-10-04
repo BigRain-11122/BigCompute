@@ -1,7 +1,7 @@
 {
   "company": "BigCompute",
-  "updated_at": "2026-10-04 12:3x",
-  "current_activity": "12:43 午班轮：M46 毕=10-05 复核窗呈批包组装（四复核面一页汇总=GPU 观察期三尺实测+D-20261004-04 双探判据接入〔bm-a 机面不可借〕+批池 POOL_GREEN/J6 预接+_trash 复验+净窗 411/411 BLOCKED 证据）+BC-P-37 批活转化=J6 数据本地性门落地（batch_pool.py selftest 12·D-20261004-02① 判例前置）",
-  "latest_artifact": "docs/ops/review-window-1005-package-v1.md（10-05 复核窗呈批包·四决策项 A/B）+Tools/batch_pool.py J6 数据本地性红门·2026-10-04 12:3x·M46/BC-P-37",
-  "next_milestone": "10-05 复核窗=四面呈批执行（GPU 派活激活 or 延期+批池激活 or DRY-RUN 维持+_trash 删除 or 延期）——窗 ≤48h；下轮首对象=T44 机面双探只读探针（BC-P-38 批活候选·10-05 前窗）——窗 ≤24h"
+  "updated_at": "2026-10-04 12:5x",
+  "current_activity": "12:43 排程午班轮：T44 毕=gpu_idle_collector 机面双探只读探针落地（report/loadline machine_borrowable 列·D-20261004-04 判据吸收自动化·实测 NOT-BORROWABLE[VRAM|COTENANT]）+12:20 轮残留簿记四件承接补 commit（f72f413）+M47 新立（复核窗数据面窗前刷新）",
+  "latest_artifact": "Tools/gpu_idle_collector.py machine_borrowable 双探列（BC-P-38 批活转化·selftest 扩 6 断言 PASS·证据 state/t44-borrow-probe-20261004.txt）·2026-10-04 12:5x·T44",
+  "next_milestone": "10-05 复核窗=四面呈批执行（GPU 派活激活 or 延期+批池激活 or DRY-RUN 维持+_trash 删除 or 延期）——窗 ≤48h；下轮首对象=M47 呈批包数据面窗前刷新 v1→v1.1（22:43 夜班执行）——窗 ≤24h"
 }

@@ -35,6 +35,14 @@ tasks/TASKS.md T-20260928-28 + state/proposals.md BC-P-01 batch pool).
   A-machine window (O-2026-0930-010 item 3, NO_TS + P-32 debt); this
   tool only PROVIDES machine metrics - no writer edit, no cross-repo
   write.
+- machine_borrowable (BC-P-38 T44 / D-20261004-04): report + loadline
+  carry a read-only machine-face dual-probe column -- BORROWABLE iff
+  VRAM free >= 6GB AND cotenant editor instances == 0 (exact-match
+  Tuanjie.exe, clean-window gate mirror). The verdict is decoupled from
+  the GREEN-IDLE loop state (machine face != loop face) and feeds the
+  bm-a weekly per-machine ledger row (R-41 fleet borrow-pool scan
+  field). Probe failures fail safe to NOT-BORROWABLE. Read-only: no
+  dispatch, no kill, no cross-repo write.
 - selftest: offline window/dispatch math checks (no nvidia-smi needed).
 
 Usage (run from repo root):
@@ -71,6 +79,8 @@ BATCH_POOL = os.path.join(HERE, "..", "docs", "ops",
                           "batch-pool-stock-v1.jsonl")
 RESIDENT_LANES = [("serve-ollama", "http://127.0.0.1:11434/"),
                   ("resident-qa-8792", "http://127.0.0.1:8792/health")]
+BORROW_VRAM_MIN_MIB = 6144    # D-20261004-04: VRAM headroom >= 6GB line
+COTENANT_EXE = "tuanjie.exe"   # exact image name (clean-window gate mirror)
 DISPATCH_COOLDOWN_MIN = 30
 DISPATCH_HEADER = ("# GPU idle observation log (T-20260928-28; DRY-RUN per "
                    "CEO safety-fix order 2026-09-28 item 3: no "
@@ -215,6 +225,64 @@ def maybe_dispatch(rows):
     return "IDLE avg %.1f%% -> dry-run observation line appended (no dispatch)" % avg
 
 
+def read_vram_free():
+    """(total_mib, used_mib) from nvidia-smi, or (None, None)."""
+    try:
+        out = subprocess.run(
+            ["nvidia-smi", "--query-gpu=memory.total,memory.used",
+             "--format=csv,noheader,nounits"],
+            capture_output=True, text=True, timeout=30).stdout.strip()
+        total, used = (int(x.strip()) for x in out.split(",")[:2])
+        return total, used
+    except Exception:
+        return None, None
+
+
+def count_cotenants():
+    """Cotenant active-surface probe: Tuanjie editor instances via
+    tasklist (exact image-name match, mirrors clean_window_probe gate)."""
+    try:
+        out = subprocess.run(
+            ["tasklist", "/FI", "IMAGENAME eq Tuanjie.exe",
+             "/FO", "CSV", "/NH"],
+            capture_output=True, text=True, timeout=30).stdout
+    except Exception:
+        return None
+    n = 0
+    for line in out.splitlines():
+        if line.lower().startswith('"' + COTENANT_EXE + '"'):
+            n += 1
+    return n
+
+
+def borrow_classify(free_mib, cotenants):
+    """D-20261004-04 dual probe -> machine-face borrow verdict.
+    BORROWABLE iff free >= BORROW_VRAM_MIN_MIB AND cotenants == 0.
+    Decoupled from GREEN-IDLE by construction: no util input at all.
+    Probe failures fail safe to NOT-BORROWABLE."""
+    blockers = []
+    if free_mib is None:
+        blockers.append("VRAM-PROBE")
+    elif free_mib < BORROW_VRAM_MIN_MIB:
+        blockers.append("VRAM")
+    if cotenants is None:
+        blockers.append("COTENANT-PROBE")
+    elif cotenants > 0:
+        blockers.append("COTENANT")
+    return ("NOT-BORROWABLE", blockers) if blockers else ("BORROWABLE", [])
+
+
+def borrow_status():
+    """Live dual-probe read-only status: (tag, free_mib, cotenants)."""
+    total, used = read_vram_free()
+    free = (total - used) if (total is not None and used is not None) \
+        else None
+    cotenants = count_cotenants()
+    verdict, blockers = borrow_classify(free, cotenants)
+    tag = verdict + (("[" + "|".join(blockers) + "]") if blockers else "")
+    return tag, free, cotenants
+
+
 def cmd_sample():
     m = query_gpu()
     if m is None:
@@ -233,6 +301,12 @@ def cmd_sample():
 def cmd_report():
     rows = load_samples()
     today = now().date().isoformat()
+    tag, bfree, bcot = borrow_status()
+    print("machine_borrowable=%s vram_free=%sMiB(line>=%dMiB) "
+          "cotenant_editors=%s(line 0) (D-20261004-04 dual probe; "
+          "decoupled from GREEN-IDLE loop state; R-41 fleet-row field)"
+          % (tag, bfree if bfree is not None else "n/a",
+             BORROW_VRAM_MIN_MIB, bcot if bcot is not None else "n/a"))
     day = [r for r in rows if r["ts"].startswith(today)]
     if not day:
         print("gpu report %s machine=%s: no samples today" % (today, MACHINE))
@@ -337,11 +411,16 @@ def cmd_loadline():
               ("%.0f" % cpu) if cpu is not None else "n/a",
               ("%.1f" % ram) if ram is not None else "n/a",
               alive + lanes, alive, lanes)
+    mb_tag, mb_free, mb_cot = borrow_status()
+    mb = ("machine_borrowable=%s vram_free=%sMiB editors=%s "
+          "(D-20261004-04 dual probe, decoupled)"
+          % (mb_tag, mb_free if mb_free is not None else "n/a",
+             mb_cot if mb_cot is not None else "n/a"))
     print("loadline %s machine=%s: %s | in_flight=%d/%d cards | "
           "green_idle_callout=%s (3-day %s..%s n=%d avg=%.1f%%, sole "
-          "line 30%%) | %s"
+          "line 30%%) | %s | %s"
           % (today, MACHINE, share, in_flight, cards, kpi,
-             r3_days[-1], r3_days[0], len(r3), r3avg, p32))
+             r3_days[-1], r3_days[0], len(r3), r3avg, p32, mb))
     return 0
 
 
@@ -444,10 +523,27 @@ def cmd_selftest():
         os.unlink(tmp_path)
     assert not lane_alive("http://127.0.0.1:1/", timeout=0.5), \
         "closed port must probe dead (probe guard)"
+    # BC-P-38 T44 / D-20261004-04: machine-borrowable dual probe math
+    assert borrow_classify(6144, 0) == ("BORROWABLE", []), \
+        "boundary: exactly 6GB free + no cotenant = borrowable"
+    assert borrow_classify(6143, 0) == ("NOT-BORROWABLE", ["VRAM"]), \
+        "boundary: 1MiB under the 6GB line = not borrowable"
+    assert borrow_classify(5894, 1) == \
+        ("NOT-BORROWABLE", ["VRAM", "COTENANT"]), \
+        "bm-a 10-04 12:04 fixture: 5.9GB free + 1 editor = dual block"
+    assert borrow_classify(16384, 2) == ("NOT-BORROWABLE", ["COTENANT"]), \
+        "VRAM headroom alone cannot outvote a live cotenant"
+    assert borrow_classify(None, None) == \
+        ("NOT-BORROWABLE", ["VRAM-PROBE", "COTENANT-PROBE"]), \
+        "probe failures fail safe to NOT-BORROWABLE"
+    import inspect
+    assert "util" not in str(inspect.signature(borrow_classify)), \
+        "decoupling law D-20261004-04: verdict takes no loop-state input"
     print("selftest PASS: window completeness/exclusion/average/"
           "idle-vs-busy verdicts/call-out threshold/3-day rolling "
           "baseline/7-day R-C1 benchmark line/dispatch-ts parse/"
-          "O-015 loadline time-share+pool census+probe guard ok")
+          "O-015 loadline time-share+pool census+probe guard/"
+          "T44 machine-borrowable dual probe ok")
     return 0
 
 
