@@ -13,7 +13,7 @@
 | 值班夜轮 mandate v2.7+2.8 批次 | Tools/iteration_prompt.txt | 7/10.0KB | 每轮固定步+自审步+刻痕律+QA 四条收尾闸 | 集团 orders 正典族（O-20260926-2253-HQ-C/L254/省token令④） | 在册·机检=轮账本+刻痕行 |
 | runbook v0.10 | state/runbook.md | 9/2.0KB | <2KB 线·启动读序 | T-20260928-29（Executive Protocol 适配） | 在册 |
 | 调研部章程 v1.0 | docs/research-dept-charter.md | 13/5.0KB | 每窗 ≥1 R- 实质件·P-65 三件套 | P-2026-09-26-18 建制令 | 在册 |
-| QA 自验 charter | docs/qa-smoke-test-charter.md | **缺位** | 四条清单已冻结于 mandate §收尾步+qa_smoke.py 实装 | orders L254 | **⬜ 引用 6 处（mandate/qa_smoke.py docstring/R-31/HQ-FEEDBACK/T11/E37）·文件从未落盘（git log --all 零命中）→ 步② 补建件 G1** |
+| QA 自验 charter v1.0 | docs/qa-smoke-test-charter.md | 31/2919B | 四条清单+证据形态+扩展探针 5/6+执行律+引用链归一 | orders L254 | **✓ 10-04 哨兵轮落盘（G1 补建毕·6 处引用归一·R-47 缓解主动作毕）** |
 
 ### B. ops 族（27 件·类型分列）
 | 件 | 行/字节 | 类型 | 判据/锚 |
@@ -68,7 +68,7 @@
 ## 二、缺口补建清单（步②·10-05 轮补全·本轮扫描所见候选先行在册）
 | # | 缺口 | 判据前置 | 排期建议 |
 |---|---|---|---|
-| G1 | qa-smoke-test-charter.md 落盘（6 处引用悬空·判据已冻结于 mandate+qa_smoke.py 实装=落盘即引用归一） | 四条清单+证据形态（log+png 渲染法·R-31 承接） | 10-05 夜窗·自驱轨·≤200 行/25KB |
+| G1 | qa-smoke-test-charter.md 落盘（6 处引用悬空·判据已冻结于 mandate+qa_smoke.py 实装=落盘即引用归一） | 四条清单+证据形态（log+png 渲染法·R-31 承接） | **done 10-04 哨兵轮提前于排期**：docs/qa-smoke-test-charter.md v1.0 在树·≤200 行/25KB 过闸·R-47 缓解主动作毕 |
 | G2 | 模块级 SOP 覆盖缺口对照（业务线/司内部门/开发模块三级对照矩阵·O-027 §①） | 每缺口=判据前置冻结+对标依据先行 | 10-05/10-06 分轮 |
 
 ## 三、对标依据指针（步③·每件带对标·无对标=拍脑袋违例）
