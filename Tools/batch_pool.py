@@ -13,6 +13,11 @@ This tool NEVER dispatches anything - it machine-checks the stocking sheet:
   J3  batch_id unique (tx_id idempotency basis)
   J4  consumer_plan non-empty on every card (备货律指名, O-1820 (3) same law)
   J5  no card is in-flight/running (DRY-RUN to 2026-10-05; STOCKED only)
+  J6  data_deps local-presence gate (BC-P-37, group precedent
+      D-20261004-02 (1) BigMoney F-01 four-shard crash): if a card
+      declares data_deps (file/dir list), every path must exist locally
+      at validation time; missing = DATA_NOT_LOCAL red gate. Cards with
+      no data_deps field are unaffected (zero forced migration).
 
 Commands:
   list      print all cards (lane summary + per-card lines)
@@ -82,6 +87,19 @@ def check_rows(rows):
             problems.append(
                 "J5 %s: status=%s is in-flight (DRY-RUN to 2026-10-05)"
                 % (rid, row.get("status")))
+        deps = row.get("data_deps")
+        if deps:
+            if not isinstance(deps, list):
+                problems.append("J6 %s: data_deps must be a list" % rid)
+            else:
+                for dep in deps:
+                    dp = str(dep)
+                    target = dp if os.path.isabs(dp) else os.path.join(ROOT, dp)
+                    if not os.path.exists(target):
+                        problems.append(
+                            "J6 %s: DATA_NOT_LOCAL: %s "
+                            "(claim-before-dispatch presence assertion, "
+                            "D-20261004-02 (1) precedent)" % (rid, dp))
         lane = str(row.get("lane", "") or "?")
         lanes[lane] = lanes.get(lane, 0) + 1
         if lane == CITY3D_LANE and row.get("category") == CITY3D_CATEGORY:
@@ -130,7 +148,7 @@ def cmd_validate(path):
         print("VERDICT=POOL_FAIL (%d problem(s))" % len(problems))
         return 1
     print("VERDICT=POOL_GREEN (J1 fields/J2 city3d>=2/J3 unique/J4 "
-          "consumer_plan/J5 dry-run all PASS)")
+          "consumer_plan/J5 dry-run/J6 data_deps-locality all PASS)")
     return 0
 
 
@@ -167,12 +185,28 @@ def cmd_selftest():
     assert any("J5" in p for p in bad_st), "J5 miss"
     assert not any("J5" in p for p in check_rows([_fixture()])[0]), \
         "J5 false positive"
+    # J6: no data_deps -> unaffected; existing dep passes; missing dep
+    # red-gates; non-list type rejected
+    pair = [_fixture(), _fixture(base={"batch_id": "B-T-02"})]
+    assert not any("J6" in p for p in check_rows(pair)[0]), \
+        "J6 false positive (no data_deps)"
+    dep_ok = check_rows([_fixture(), _fixture(base={
+        "batch_id": "B-T-02", "data_deps": ["Tools/batch_pool.py"]})])[0]
+    assert not any("J6" in p for p in dep_ok), "J6 false positive (exists)"
+    dep_bad = check_rows([_fixture(), _fixture(base={
+        "batch_id": "B-T-02",
+        "data_deps": ["state/no-such-dep-dir-xyz/"]})])[0]
+    assert any("J6" in p and "DATA_NOT_LOCAL" in p for p in dep_bad), \
+        "J6 miss (DATA_NOT_LOCAL)"
+    dep_typ = check_rows([_fixture(), _fixture(base={
+        "batch_id": "B-T-02", "data_deps": "Tools/batch_pool.py"})])[0]
+    assert any("J6" in p and "list" in p for p in dep_typ), "J6 type miss"
     # determinism: same rows -> same problems
     r1 = check_rows([_fixture(), _fixture()])[0]
     r2 = check_rows([_fixture(), _fixture()])[0]
     assert r1 == r2, "determinism"
-    print("selftest PASS (J1-J5 + determinism, %d checks)"
-          % 7)
+    print("selftest PASS (J1-J6 + determinism, %d checks)"
+          % 12)
     return 0
 
 

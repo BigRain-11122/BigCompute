@@ -1,7 +1,7 @@
 {
   "company": "BigCompute",
-  "updated_at": "2026-10-04 00:5x",
-  "current_activity": "00:4x 哨兵触发轮：M45 收口=开店清单主体登记税负决策行接线毕（§一① 税负身份决策行=vat_break_even 双线测算指针+税目四锚+500 万线/单向登记/起征点三边界注记·身份选择随 CEO 物理件窗）——M22 三环闭环全收口（定价环 M44↔合规硬门环 M21↔开店清单环）·零定价动作",
-  "latest_artifact": "docs/ops/store-opening-checklist-v1.md（税负身份决策行+三环闭环注记·vat_break_even selftest 25/25 复验）·2026-10-04 00:5x·M45",
-  "next_milestone": "①M46=10-05 复核窗呈批包组装（四复核面一页汇总=GPU 观察期收口+批池呈批〔BC-P-37 J6〕+_trash 删除面+净窗证据）——窗 ≤24h；②10-05 复核窗本体=GPU DRY-RUN 毕呈批+批池 J5 头窗+M25/T26 净窗开则 run_bake 双路——窗 ≤48h"
+  "updated_at": "2026-10-04 12:3x",
+  "current_activity": "12:43 午班轮：M46 毕=10-05 复核窗呈批包组装（四复核面一页汇总=GPU 观察期三尺实测+D-20261004-04 双探判据接入〔bm-a 机面不可借〕+批池 POOL_GREEN/J6 预接+_trash 复验+净窗 411/411 BLOCKED 证据）+BC-P-37 批活转化=J6 数据本地性门落地（batch_pool.py selftest 12·D-20261004-02① 判例前置）",
+  "latest_artifact": "docs/ops/review-window-1005-package-v1.md（10-05 复核窗呈批包·四决策项 A/B）+Tools/batch_pool.py J6 数据本地性红门·2026-10-04 12:3x·M46/BC-P-37",
+  "next_milestone": "10-05 复核窗=四面呈批执行（GPU 派活激活 or 延期+批池激活 or DRY-RUN 维持+_trash 删除 or 延期）——窗 ≤48h；下轮首对象=T44 机面双探只读探针（BC-P-38 批活候选·10-05 前窗）——窗 ≤24h"
 }
