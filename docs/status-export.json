@@ -1,7 +1,7 @@
 {
   "company": "BigCompute",
   "updated_at": "2026-10-04 22:5x",
-  "current_activity": "22:43 夜班轮（周日）：M47 收口=10-05 复核窗呈批包 v1→v1.1 数据面复跑刷新（窗开口 ≤12h 新判据兑现）+O-2026-0930-027 全集团 SOP 建制令承接（M49 新立）+BC-P-40 提案",
-  "latest_artifact": "docs/ops/review-window-1005-package-v1.md v1.1（四复核面 22:5x 复跑实测：GPU 三尺+machine_borrowable 三连证/批池 POOL_GREEN J1-J6/_trash 56 件复点/净窗 452/452 BLOCKED）·2026-10-04 22:5x·M47 done",
-  "next_milestone": "10-05 复核窗=四面呈批执行（GPU A/B/情景 C+批池激活 or DRY-RUN+_trash 删除 or 延期+净窗证据面·M48 承接 CEO 裁定回执）+M49《BigCompute SOP 盘点与补建清单》≤10-06 EOD 落盘（10-07 治理日聚合审前置）——窗 ≤48h"
+  "current_activity": "22:43 夜班正班轮（周日）：M49 步① SOP 在册盘点落盘（《SOP 盘点与补建清单》v0.1·O-2026-0930-027 承接）+O-2026-0930-028 云端本地双轨制定谳令承接（M50 新立·机器画像数据源+席位4 三面证据）+BC-P-41 提案",
+  "latest_artifact": "docs/ops/sop-inventory-gap-list-v1.md v0.1（60 行/8.5KB 过轻量闸·A 治理 4+B ops 27+C legal 12+D Tools 37 全量行数字节实测·G1 缺位发现=qa-smoke-test-charter 六处引用零落盘→10-05 补建首件+R-47 立行）·2026-10-04 22:53·M49 in_progress",
+  "next_milestone": "10-05 窗=M49 步② G1 charter 落盘（本窗 ≥1 件兑现）+10-05 复核窗四面呈批执行（M48 承接 CEO 裁定回执）；10-06 EOD=M49 清单全件收口呈 10-07 治理日聚合审——窗 ≤48h"
 }
