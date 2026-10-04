@@ -1,7 +1,7 @@
 {
   "company": "BigCompute",
-  "updated_at": "2026-10-04 12:5x",
-  "current_activity": "12:43 排程午班轮：T44 毕=gpu_idle_collector 机面双探只读探针落地（report/loadline machine_borrowable 列·D-20261004-04 判据吸收自动化·实测 NOT-BORROWABLE[VRAM|COTENANT]）+12:20 轮残留簿记四件承接补 commit（f72f413）+M47 新立（复核窗数据面窗前刷新）",
-  "latest_artifact": "Tools/gpu_idle_collector.py machine_borrowable 双探列（BC-P-38 批活转化·selftest 扩 6 断言 PASS·证据 state/t44-borrow-probe-20261004.txt）·2026-10-04 12:5x·T44",
-  "next_milestone": "10-05 复核窗=四面呈批执行（GPU 派活激活 or 延期+批池激活 or DRY-RUN 维持+_trash 删除 or 延期）——窗 ≤48h；下轮首对象=M47 呈批包数据面窗前刷新 v1→v1.1（22:43 夜班执行）——窗 ≤24h"
+  "updated_at": "2026-10-04 16:5x",
+  "current_activity": "16:44 哨兵轮（周日·16:37 CEO 令 ack ≤30min）：FluxVerse 再空窗→GPU HOLD 份额回收转配本司复核窗情景接入 10-05 呈批包决策项①（M47 分步①）+BC-P-39 消费计划预备提案+M48 裁定回执面新立",
+  "latest_artifact": "docs/ops/review-window-1005-package-v1.md 情景 C 增补（16:37 CEO 令供给面上行情景接线决策项①·30%/净窗/双探/黑名单判据不随供给面变化维持）·2026-10-04 16:5x·M47 分步①",
+  "next_milestone": "10-05 复核窗=四面呈批执行（GPU A/B/情景 C+批池激活 or DRY-RUN+_trash 删除 or 延期+净窗证据面）——呈批包数据面 22:43 夜班末轮复跑刷新（窗开口 ≤12h 新）后呈批面就绪——窗 ≤48h"
 }

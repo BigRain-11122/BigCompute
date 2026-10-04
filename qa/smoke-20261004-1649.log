@@ -1,0 +1,32 @@
+BigCompute QA smoke test 20261004-1649 (orders L254 / charter v1)
+
+[gpu collector] PASS -> gpu collector
+machine_borrowable=NOT-BORROWABLE[VRAM|COTENANT] vram_free=5895MiB(line>=6144MiB) cotenant_editors=1(line 0) (D-20261004-04 dual probe; decoupled from GREEN-IDLE loop state; R-41 fleet-row field)
+gpu report 2026-10-04 machine=bm-a: n=68 avg=1.4% max=96% kpi=FLAG(<30% call-out threshold on 3-day rolling baseline, C-20260929-02)
+3-day rolling baseline (pre-registered, C-20260929-02): 2026-10-02..2026-10-04 n=260 avg=2.1% (call-out 30%; 70% target = directional ref)
+7-day benchmark (D-20260930-36 R-C1, head-firm gap line): 2026-09-28..2026-10-04 n=595 avg=7.0% -> BELOW-BENCH(<50% structural-failure line on 7-day avg, R-C1 D-20260930-36) (gap line only; sole call-out stays 30%; 70% target = directional ref pending R- threshold-calibration receipts)
+rolling 30-min window: n=2 avg=0.0% -> IDLE
+
+[ollama response] PASS -> ollama response
+answer='1+1 equals 2.' eval_count=8 94.35 tok/s
+residency: pre=FOREVER post=FOREVER (maintained)
+NAME                   ID              SIZE      PROCESSOR    CONTEXT    UNTIL   
+qwen2.5:7b-instruct    845dbda0ea48    5.1 GB    100% GPU     4096       Forever
+NAME                   ID              SIZE      PROCESSOR    CONTEXT    UNTIL   
+qwen2.5:7b-instruct    845dbda0ea48    5.1 GB    100% GPU     4096       Forever
+
+[queue rows] PASS -> queue rows
+main.md: 48 rows
+tech.md: 44 rows
+explore.md: 46 rows
+
+[cost ledger] PASS -> cost ledger
+selftest: math=True determinism=True count=ok (orders+quota-gate+count+cloud+borrow) -> PASS
+
+[rounds.log strict-decode] PASS -> rounds.log strict-decode
+strict utf-8 decode ok: 172681 bytes / 137 lines
+
+[resident QA serve 8792] PASS -> resident QA serve 8792
+health 200 status=ok anchors=20 server=resident-qa v1.0 (BigCompute MaaS consumer face) model=qwen2.5:7b-instruct
+
+smoke verdict: 6/6 PASS (charter 4 + tech T25 + E41 probes)
