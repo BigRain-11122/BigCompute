@@ -1,7 +1,7 @@
 {
   "company": "BigCompute",
-  "updated_at": "2026-10-05 00:2x",
-  "current_activity": "00:1x 哨兵触发轮（10-05 复核窗日）：M49 步③ G2 三级对照矩阵机检化毕（O-027 §① 承接）+M48=等 CEO 四决策项裁定窗（一行声明）",
-  "latest_artifact": "Tools/sop_coverage_check.py（SOP 三级覆盖机检件·产品优先律 2 分件：selftest 7/7+真实 check SOP-COVERAGE-GREEN violations=0·三级覆盖 L1 业务线 6/6+L2 部门 4/4+L3 开发模块 6/6·证据 state/sop-coverage-20261005-001835.json）+docs/ops/sop-inventory-gap-list-v1.md v0.2·2026-10-05 00:20·M49 in_progress 步④=10-06",
-  "next_milestone": "10-05 复核窗 M48 裁定回执面（裁定至即承接）+M51 委员会聚合对账+假期逐日核销第 2 行随夜报；10-06=M49 步④ 对标双源补全+G4 上册 SOP+v1.0 定稿；10-07 治理日=盘点清单呈委员会聚合审+M50 ② 席位4 证据包——窗 ≤48h"
+  "updated_at": "2026-10-05 00:5x",
+  "current_activity": "00:4x 哨兵轮（10-05）：D-20261005-05① OSS 收获窗切片落群仓推送毕（点名→回执制首例·窗 10-06 00:00·P-51 送达）·M51 委员会聚合对账毕（四面引用零失真）·M48=等 CEO 四决策项裁定窗维持",
+  "latest_artifact": "cph4/oss-harvest/OH-20261005-bigcompute.md（集团仓 commit 97d4717·量具线切片：optimum-benchmark Apache-2.0 原文验 cleared-for-adoption 接线 tech T45 p95 实测窗+gpu-burn BSD-2 原文验 cleared=O-015 满载律载具〔净窗纪律闸前置〕+llmperf archived 诚实负发现·实搜面 5 处全 A 级·反重复三面零撞）·2026-10-05 00:5x",
+  "next_milestone": "10-05 22:43 夜班=假期逐日核销第 2 行随夜报（连续两日零核销=RED 点名面如实接）+M48 裁定回执面（裁定至 orders 即承接）·10-06=M49 步④ 对标双源补全+G4 上册 SOP+v1.0 定稿·10-07 治理日=盘点清单呈委员会+M50 ② 席位4 证据包·窗 ≤48h"
 }
