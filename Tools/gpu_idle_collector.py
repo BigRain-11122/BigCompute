@@ -43,12 +43,21 @@ tasks/TASKS.md T-20260928-28 + state/proposals.md BC-P-01 batch pool).
   bm-a weekly per-machine ledger row (R-41 fleet borrow-pool scan
   field). Probe failures fail safe to NOT-BORROWABLE. Read-only: no
   dispatch, no kill, no cross-repo write.
+- machine_profile (BC-P-41 T46 / O-2026-0930-028 dual-track order): one
+  machine-readable JSON row consolidating the machine-picture data
+  source on the BigCompute side (P-32 prep): proposal-frozen fields
+  ram_total_gb / vram_total_mib / dual utilization (cpu_util_pct +
+  gpu_util_pct) plus reuse fields cpu_cores / ram_avail_gb /
+  vram_free_mib / cotenant_editors / machine_borrowable (T44 dual
+  probe). On-demand read-only probe, zero new daemon, zero cross-repo
+  write; probe failures fail soft to null fields (readers fail safe).
 - selftest: offline window/dispatch math checks (no nvidia-smi needed).
 
 Usage (run from repo root):
   python Tools/gpu_idle_collector.py sample
   python Tools/gpu_idle_collector.py report
   python Tools/gpu_idle_collector.py loadline
+  python Tools/gpu_idle_collector.py machine_profile
   python Tools/gpu_idle_collector.py selftest
 
 Encoding rule: this file stays PURE ASCII (group coding law).
@@ -281,6 +290,73 @@ def borrow_status():
     verdict, blockers = borrow_classify(free, cotenants)
     tag = verdict + (("[" + "|".join(blockers) + "]") if blockers else "")
     return tag, free, cotenants
+
+
+def read_cpu_ram():
+    """(cpu_util_pct, cpu_cores, ram_total_gb, ram_avail_gb) via psutil,
+    or (None, None, None, None) when psutil is unavailable (fail soft)."""
+    try:
+        import psutil
+        cpu = psutil.cpu_percent(interval=1)
+        cores = psutil.cpu_count(logical=True)
+        vm = psutil.virtual_memory()
+        return (cpu, cores, round(vm.total / (1024 ** 3), 1),
+                round(vm.available / (1024 ** 3), 1))
+    except ImportError:
+        return None, None, None, None
+
+
+def profile_row(cpu_util, cpu_cores, ram_total_gb, ram_avail_gb,
+                gpu_util, vram_total_mib, vram_free_mib, cotenants,
+                borrow_tag):
+    """BC-P-41 T46 / O-2026-0930-028: machine-picture data-source row
+    (P-32 prep on the BigCompute side). Pure builder so selftest can pin
+    the contract: proposal-frozen fields (ram_total_gb, vram_total_mib,
+    dual utilization) + T44/P-32 reuse fields. Decoupled by
+    construction: takes no samples/queue/loop-state input."""
+    return {
+        "ts": now().isoformat(timespec="seconds"),
+        "machine": MACHINE,
+        "cpu_util_pct": cpu_util,
+        "cpu_cores": cpu_cores,
+        "ram_total_gb": ram_total_gb,
+        "ram_avail_gb": ram_avail_gb,
+        "gpu_util_pct": gpu_util,
+        "vram_total_mib": vram_total_mib,
+        "vram_free_mib": vram_free_mib,
+        "cotenant_editors": cotenants,
+        "machine_borrowable": borrow_tag,
+    }
+
+
+def machine_profile():
+    """Live consolidated read-only probe -> profile dict (fail-soft)."""
+    cpu_util, cpu_cores, ram_total, ram_avail = read_cpu_ram()
+    gpu = query_gpu()
+    total, used = read_vram_free()
+    free = (total - used) if (total is not None and used is not None) \
+        else None
+    cotenants = count_cotenants()
+    verdict, blockers = borrow_classify(free, cotenants)
+    tag = verdict + (("[" + "|".join(blockers) + "]") if blockers else "")
+    return profile_row(cpu_util, cpu_cores, ram_total, ram_avail,
+                       gpu["util_pct"] if gpu else None,
+                       total, free, cotenants, tag)
+
+
+def cmd_profile():
+    row = machine_profile()
+    print("machine_profile: %s" % json.dumps(row))
+    fields = ("cpu_util_pct", "cpu_cores", "ram_total_gb", "ram_avail_gb",
+              "gpu_util_pct", "vram_total_mib", "vram_free_mib",
+              "cotenant_editors")
+    parts = ["%s=%s" % (k, ("n/a" if row[k] is None else row[k]))
+             for k in fields]
+    print("machine_profile fields: %s machine_borrowable=%s "
+          "(BC-P-41 T46 / O-2026-0930-028 P-32 prep; read-only probe; "
+          "null = probe fail-soft n/a)"
+          % (" ".join(parts), row["machine_borrowable"]))
+    return 0
 
 
 def cmd_sample():
@@ -539,11 +615,34 @@ def cmd_selftest():
     import inspect
     assert "util" not in str(inspect.signature(borrow_classify)), \
         "decoupling law D-20261004-04: verdict takes no loop-state input"
+    # BC-P-41 T46 / O-2026-0930-028: machine-profile data-source row
+    prof = profile_row(4.0, 16, 93.6, 60.2, 2.0, 12282, 5904, 1,
+                       "NOT-BORROWABLE[VRAM|COTENANT]")
+    assert prof["ram_total_gb"] == 93.6 and prof["vram_total_mib"] == 12282, \
+        "proposal-frozen fields: RAM total + VRAM total must carry"
+    assert prof["cpu_util_pct"] == 4.0 and prof["gpu_util_pct"] == 2.0, \
+        "proposal-frozen fields: dual utilization must carry"
+    assert set(("cpu_cores", "ram_avail_gb", "vram_free_mib",
+                "cotenant_editors", "machine_borrowable")) <= set(prof), \
+        "T44/P-32 reuse fields must stay in the row"
+    assert prof["machine"] == MACHINE and len(prof["ts"]) >= 19, \
+        "row must carry the machine tag + iso ts"
+    nullrow = profile_row(None, None, None, None, None, None, None, None,
+                           "NOT-BORROWABLE[VRAM-PROBE|COTENANT-PROBE]")
+    assert nullrow["ram_total_gb"] is None and \
+        nullrow["vram_total_mib"] is None, \
+        "probe fail-soft: null fields with the row still emitted"
+    assert json.dumps(nullrow), "row must stay JSON-serializable with nulls"
+    prof_sig = str(inspect.signature(profile_row))
+    for banned in ("rows", "queue", "inwin", "samples"):
+        assert banned not in prof_sig, \
+            "decoupling law: profile row takes no loop-state input"
     print("selftest PASS: window completeness/exclusion/average/"
           "idle-vs-busy verdicts/call-out threshold/3-day rolling "
           "baseline/7-day R-C1 benchmark line/dispatch-ts parse/"
           "O-015 loadline time-share+pool census+probe guard/"
-          "T44 machine-borrowable dual probe ok")
+          "T44 machine-borrowable dual probe/"
+          "T46 machine-profile data-source row ok")
     return 0
 
 
@@ -554,10 +653,13 @@ def main():
     sub.add_parser("report", help="same-day stats + daily KPI line")
     sub.add_parser("loadline",
                    help="O-015 night-ledger full-load line + P-32 fields")
+    sub.add_parser("machine_profile",
+                   help="one machine-picture JSON row (P-32 prep, T46)")
     sub.add_parser("selftest", help="offline window/dispatch math checks")
     a = p.parse_args()
     return {"sample": cmd_sample, "report": cmd_report,
-            "loadline": cmd_loadline, "selftest": cmd_selftest}[a.cmd]()
+            "loadline": cmd_loadline, "machine_profile": cmd_profile,
+            "selftest": cmd_selftest}[a.cmd]()
 
 
 if __name__ == "__main__":

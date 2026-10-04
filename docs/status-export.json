@@ -1,7 +1,7 @@
 {
   "company": "BigCompute",
-  "updated_at": "2026-10-04 23:20",
-  "current_activity": "23:14 哨兵触发轮（周日）：radar 双令承接（P-10-04-01 过目通道+P-10-04-02 收益导向）+本司双接线单 T45 入队（jeff 0.8B/Strata 实测）+M49 步② G1 毕",
-  "latest_artifact": "docs/qa-smoke-test-charter.md v1.0（G1 补建件·四条清单+证据形态 R-31 承接+扩展探针+引用链归一表——六处悬空引用归一·落盘后烟测 6/6 首跑实证·R-47 mitigated）·2026-10-04 23:19·M49 in_progress",
-  "next_milestone": "00:00 常务轮=M51 步② 卡点证据包初版对齐+假期逐日核销；10-05 窗=M49 步③ G2 模块级对照（窗 ≥1 件）+M48 四面呈批复核窗+T45 实测排窗——窗 ≤48h"
+  "updated_at": "2026-10-04 23:41",
+  "current_activity": "23:29 哨兵触发轮（周日）：M50 ① 工程面毕（O-028 双轨令画像数据源承接）+补录 38c4f2d 对账零新动作",
+  "latest_artifact": "Tools/gpu_idle_collector.py machine_profile 命令（BC-P-41 批活转化=tech T46·提案冻结三字段 RAM 总量/VRAM 总量/双利用率+T44 复用字段·selftest 扩断言 PASS+实跑 bm-a 行 ram 93.6GB/vram 12282MiB 与 O-028 画像三档双吻合=P-32 前置数据源·证据 state/m50-machine-profile-20261004.txt）·2026-10-04 23:35·M50 in_progress",
+  "next_milestone": "00:00 常务轮=M51 步② 卡点证据包初版对齐+假期逐日核销；10-05 窗=M48 四面呈批复核窗+M49 步③ G2 对照（窗 ≥1 件）+T45 实测排窗——窗 ≤48h"
 }
