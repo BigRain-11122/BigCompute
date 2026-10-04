@@ -1,7 +1,7 @@
 {
   "company": "BigCompute",
-  "updated_at": "2026-10-04 16:5x",
-  "current_activity": "16:44 哨兵轮（周日·16:37 CEO 令 ack ≤30min）：FluxVerse 再空窗→GPU HOLD 份额回收转配本司复核窗情景接入 10-05 呈批包决策项①（M47 分步①）+BC-P-39 消费计划预备提案+M48 裁定回执面新立",
-  "latest_artifact": "docs/ops/review-window-1005-package-v1.md 情景 C 增补（16:37 CEO 令供给面上行情景接线决策项①·30%/净窗/双探/黑名单判据不随供给面变化维持）·2026-10-04 16:5x·M47 分步①",
-  "next_milestone": "10-05 复核窗=四面呈批执行（GPU A/B/情景 C+批池激活 or DRY-RUN+_trash 删除 or 延期+净窗证据面）——呈批包数据面 22:43 夜班末轮复跑刷新（窗开口 ≤12h 新）后呈批面就绪——窗 ≤48h"
+  "updated_at": "2026-10-04 22:5x",
+  "current_activity": "22:43 夜班轮（周日）：M47 收口=10-05 复核窗呈批包 v1→v1.1 数据面复跑刷新（窗开口 ≤12h 新判据兑现）+O-2026-0930-027 全集团 SOP 建制令承接（M49 新立）+BC-P-40 提案",
+  "latest_artifact": "docs/ops/review-window-1005-package-v1.md v1.1（四复核面 22:5x 复跑实测：GPU 三尺+machine_borrowable 三连证/批池 POOL_GREEN J1-J6/_trash 56 件复点/净窗 452/452 BLOCKED）·2026-10-04 22:5x·M47 done",
+  "next_milestone": "10-05 复核窗=四面呈批执行（GPU A/B/情景 C+批池激活 or DRY-RUN+_trash 删除 or 延期+净窗证据面·M48 承接 CEO 裁定回执）+M49《BigCompute SOP 盘点与补建清单》≤10-06 EOD 落盘（10-07 治理日聚合审前置）——窗 ≤48h"
 }
