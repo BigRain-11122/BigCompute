@@ -1,7 +1,7 @@
 {
   "company": "BigCompute",
-  "updated_at": "2026-10-04 23:41",
-  "current_activity": "23:29 哨兵触发轮（周日）：M50 ① 工程面毕（O-028 双轨令画像数据源承接）+补录 38c4f2d 对账零新动作",
-  "latest_artifact": "Tools/gpu_idle_collector.py machine_profile 命令（BC-P-41 批活转化=tech T46·提案冻结三字段 RAM 总量/VRAM 总量/双利用率+T44 复用字段·selftest 扩断言 PASS+实跑 bm-a 行 ram 93.6GB/vram 12282MiB 与 O-028 画像三档双吻合=P-32 前置数据源·证据 state/m50-machine-profile-20261004.txt）·2026-10-04 23:35·M50 in_progress",
-  "next_milestone": "00:00 常务轮=M51 步② 卡点证据包初版对齐+假期逐日核销；10-05 窗=M48 四面呈批复核窗+M49 步③ G2 对照（窗 ≥1 件）+T45 实测排窗——窗 ≤48h"
+  "updated_at": "2026-10-04 23:50",
+  "current_activity": "23:4x 哨兵触发轮（周日·夜班窗内第五轮）：M51 步② 毕（卡点证据包 v1.1 初版对齐+假期逐日核销面首行）+origin 删批找回对账零新动作",
+  "latest_artifact": "docs/ops/blockage-census-bigcompute-v1.md v1.1（O-029 卡点堵点证据包·00:00 常务轮聚合前数据面刷新：open 14→16/M49 步②毕/M50 ①毕/runbook v0.12+假期逐日核销面新节首行 10-04=0 项核销全维持·呈委员会初版聚合就绪）·2026-10-04 23:49·M51 in_progress",
+  "next_milestone": "10-05 复核窗=M48 四面呈批裁定回执面+M49 步③ G2 对照（窗 ≥1 件）+T45 实测排窗；10-07=M49 收口呈治理日+M50 ② 席位4 证据包回访——窗 ≤48h"
 }
