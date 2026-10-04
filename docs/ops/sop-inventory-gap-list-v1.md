@@ -1,9 +1,9 @@
-# BigCompute《SOP 盘点与补建清单》v0.1（O-2026-0930-027 承接件）
+# BigCompute《SOP 盘点与补建清单》v0.2（O-2026-0930-027 承接件）
 
 - 令据：O-2026-0930-027 全集团 SOP 建制令（2026-10-04 22:23 委员会通道落地·九司+CPH4 承接·盘点清单=首窗回执·10-07 治理日聚合审）。
 - 双闸判据（O-027 §③）：轻量闸=单件 ≤200 行/25KB+入口窄化三问；判据前置闸=可执行判据+机器可验优先。
-- 证据口径：行数/字节=2026-10-04 22:5x 全量逐件实测（PowerShell Measure-Object -Line + Length）；缺位判定=全仓 glob+`git log --all` 双零命中。
-- 版本进度：**步① 在册盘点=10-04 22:43 夜班轮落盘**；步② 缺口/步③ 对标依据/步④ 排期=10-05/10-06 分轮补全（≤10-06 EOD 全件收口呈 10-07）。
+- 证据口径：行数/字节=2026-10-04 22:5x 全量逐件实测（PowerShell Measure-Object -Line + Length·行数=非空行口径）；缺位判定=全仓 glob+`git log --all` 双零命中。
+- 版本进度：**步① 在册盘点=10-04 22:43 夜班轮落盘**；**步② G2 三级对照矩阵+机检件=10-05 00:1x 轮落盘（sop_coverage_check.py selftest 7/7+真实 check GREEN·证据 state/sop-coverage-20261005-001835.json）**；步③ 对标补全/步④ 排期收口=10-06 分轮（≤10-06 EOD 全件收口呈 10-07）。
 
 ## 一、在册盘点（步①）
 
@@ -60,21 +60,40 @@
 
 ### D. Tools 机检面（37 件·注册表）
 全数带 selftest/探针子命令=机器可验判据面（各轮 rounds.log 自验在案；反重复律查册对象=集团 cph4/README 注册表只读引用，本司零重复建制）。
-行数实测全录（37 件）：bake_accept_check(231) banned_words_check(65) batch_pool(207) batch_token_estimate(90) bonsai_fleet_trial_probe(133) city3d_bake_readiness_probe(142) city3d_bake_spike(127) clean_window_probe(164) cloud_attribution_audit(186) compliance_gate_check(98) cost_ledger(978) e12_package_anchor_probe(104) gpu_energy_profile(186) gpu_idle_collector(508) holiday_readiness_check(150) inference_energy_anchor(179) knowledge_sync_audit(131) model_blob_manifest(273) month_end_append(259) month_end_collect(229) q8_trial_probe(274) qa_smoke(217) queue_check(58) quota_design(87) resident_qa_server(261) round_append(87) round_budget(109) round_score(207) score_validation(185) sec_fulltext_screen(156) self_drive_metrics(119) serve_concurrency_probe(138) serve_sla_baseline(222) sla_drift_preaudit(162) storm_leftover_check(143) vat_break_even(131) vram_window_probe(165)——共 37 件（本节标题计数 10-04 复点修正：34→37·三件 10-04 新增探针已含）。
+行数实测全录（38 件）：bake_accept_check(231) banned_words_check(65) batch_pool(207) batch_token_estimate(90) bonsai_fleet_trial_probe(133) city3d_bake_readiness_probe(142) city3d_bake_spike(127) clean_window_probe(164) cloud_attribution_audit(186) compliance_gate_check(98) cost_ledger(978) e12_package_anchor_probe(104) gpu_energy_profile(186) gpu_idle_collector(508) holiday_readiness_check(150) inference_energy_anchor(179) knowledge_sync_audit(131) model_blob_manifest(273) month_end_append(259) month_end_collect(229) q8_trial_probe(274) qa_smoke(217) queue_check(58) quota_design(87) resident_qa_server(261) round_append(87) round_budget(109) round_score(207) score_validation(185) sec_fulltext_screen(156) self_drive_metrics(119) serve_concurrency_probe(138) serve_sla_baseline(222) sla_drift_preaudit(162) sop_coverage_check(169) storm_leftover_check(143) vat_break_even(131) vram_window_probe(165)——共 38 件（10-05 00:1x 轮 +sop_coverage_check·G2 机检面=F3 注册表漂移探针防再漂移）。
 
 ### E. 上游集团面 SOP 族（只读引用·反重复律查册对象）
 集团 14+ 件 SOP 族（新公司 SOP/五闸审查/音频标准/批建造 SOP/调研协议/极简执行协议/值班夜轮 mandate 等）=cph4 注册面在册——本司新建/补建一律先对照查册，禁重复建制。
 
-## 二、缺口补建清单（步②·10-05 轮补全·本轮扫描所见候选先行在册）
+## 二、缺口补建清单（步②·G2 三级对照矩阵=10-05 00:1x 轮落盘）
 | # | 缺口 | 判据前置 | 排期建议 |
 |---|---|---|---|
 | G1 | qa-smoke-test-charter.md 落盘（6 处引用悬空·判据已冻结于 mandate+qa_smoke.py 实装=落盘即引用归一） | 四条清单+证据形态（log+png 渲染法·R-31 承接） | **done 10-04 哨兵轮提前于排期**：docs/qa-smoke-test-charter.md v1.0 在树·≤200 行/25KB 过闸·R-47 缓解主动作毕 |
-| G2 | 模块级 SOP 覆盖缺口对照（业务线/司内部门/开发模块三级对照矩阵·O-027 §①） | 每缺口=判据前置冻结+对标依据先行 | 10-05/10-06 分轮 |
+| G2 | 模块级 SOP 覆盖缺口对照（业务线/司内部门/开发模块三级对照矩阵·O-027 §①） | 每缺口=判据前置冻结+对标依据先行 | **done 10-05 00:1x 轮**：三级矩阵机检化=Tools/sop_coverage_check.py〔L1 业务线 6/L2 部门 4/L3 开发模块 6 三级注册面·F1 存在性+F2 轻量闸+F3 注册表漂移+F4 覆盖汇总·selftest 7/7〕+真实 check **GREEN violations=0**〔三级覆盖 6/6+4/4+6/6·两申报件 DECLARED-PENDING 呈 10-07〕·证据 state/sop-coverage-20261005-001835.json |
+
+### G2 三级对照矩阵（机检注册面摘要·正副本=Tools/sop_coverage_check.py REGISTER）
+
+| 级 | 模块 | 覆盖件（指针） | 判定 |
+|---|---|---|---|
+| L1 业务线 | 抖音小店电商 | store-opening-checklist+merchandise-listing-v0+fulfillment-sku-mapping+refund-disputes-sop | ✅ 计划态全链（merchandise v0 随开店物理件窗升级在册） |
+| L1 业务线 | 直播带货 | livestream-plan+cart-scripts+cart-mount-checklist+promotion-packaging-sop | ✅ |
+| L1 业务线 | B 端数据年报 | b2b-playbook+b2b-custom-report-pricing-band | ✅ |
+| L1 业务线 | 私域订阅 | private-domain-plan | ✅ |
+| L1 业务线 | 会员权益 | membership-benefits | ✅ |
+| L1 业务线 | 算力成本商业化 | month-end-cost-collection+quota-design×2+pricing-package | ✅ |
+| L2 部门 | 外部成交通道部 | L1 电商四件+store-ledger-wiring-predesign | ✅ |
+| L2 部门 | 定价与算力成本核算部 | quota-design×2+pricing-package+tax-brief+month-end-collection+b2b-pricing-band | ✅ |
+| L2 部门 | 直播带货运营部 | livestream 四件族 | ✅ |
+| L2 部门 | 风控法务部 | legal 12 件+paypoint-compliance-map+alignment-matrix | ✅ |
+| L3 开发模块 | 治理循环/QA 巡检/数据采集/法务文本/批池烘焙/履约管线 | §A+§C+§D 件族（iteration_prompt/runbook/两 charter/qa_smoke/collector 族/legal 12/batch_pool+bake/check/batch-pool-stock/test_pipeline） | ✅ 6/6 模块 |
+| 缺口 | G3 履约执行 SOP（发货/对账/异常件操作面·现=sku-mapping 映射表+test_pipeline 44/44 机检面·无操作面件） | 判据前置=订单状态机+pipeline 断言挂接；对标=抖音电商平台发货时效规则（官方源·原文级核验待 10-06 收口面） | ⬜ 随开店物理件窗（等待态·不占当期车道） |
+| 缺口 | G4 Tools 新件上册 SOP（selftest 必带+注册表行+反重复查册·现散见 mandate/runbook 无单件） | 判据前置=机检可验（selftest 子命令+D 面行数实测+qa_smoke 过）；对标=业界自验惯例（pytest/cargo test 同律）+cph4 注册表 SOP 族查册面 | ⬜ 10-06 自驱轨窗候选 |
 
 ## 三、对标依据指针（步③·每件带对标·无对标=拍脑袋违例）
 - 已带官方原文级对标在册件：legal 12 件全数（见 §C 锚列）+ops 商业件锚=BLUEPRINT §五+CEO 方案归档（docs/plans/）。
 - 步③ 补全面：每件补「顶尖对标双源」行级指针（O-022 标杆定谳律=Steam 爆款方法论+业界头部工程实践；GitHub 雷达高星件=O-021 波）——10-06 轮收口入本表各列。
 
 ## 四、排期（步④·每司每窗 ≥1 件·夜窗/自驱轨承接不占业务车道）
-- 10-05 窗：G1 charter 落盘（本窗 ≥1 件兑现）。
-- 10-06 窗：步②③ 收口+本清单 v1.0 定稿（≤10-06 EOD）→ 呈 10-07 治理日委员会聚合审。
+- 10-04 窗：G1 charter 落盘（提前兑现）。
+- 10-05 窗：**G2 三级对照矩阵+机检件落盘（本窗 ≥1 件兑现·sop_coverage_check.py selftest 7/7+check GREEN）**。
+- 10-06 窗：步③ 对标双源行级补全（legal/ops 各件+G3/G4 对标核验）+G4 上册 SOP（自驱轨候选）+本清单 v1.0 定稿（≤10-06 EOD）→ 呈 10-07 治理日委员会聚合审。
