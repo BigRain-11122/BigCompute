@@ -14,6 +14,14 @@ Runs the four BigCompute charter checks (docs/qa-smoke-test-charter.md):
     observation window backend, E40 delivery): a silent death of the
     CEO-facing "summon residents" service must surface in the same
     round it happens, not wait for a CEO click
+ 7. (reserved: cloud attribution audit probe, wires only with the first
+    real J4 cloud bill - T37, do not wire early)
+ 8. git-tracked ledger tail integrity (BC-P-45): trailing-newline
+    assertion + merged-last-line sniff over the seven ledger files;
+    the write-side round_append J4 guard covers python appends only,
+    so tail damage from any other writer (shell Add-Content, manual
+    edits; T24 GBK line and the 10-04/05 proposals.md row merge are
+    the precedent classes) surfaces here in the round it happens
 
 Writes qa/smoke-<ts>.log with raw outputs + a self-judge verdict, then
 renders that exact log content to qa/smoke-<ts>.png via .NET
@@ -29,6 +37,7 @@ Encoding rule: this file stays PURE ASCII (group coding law).
 import datetime
 import json
 import os
+import re
 import subprocess
 import sys
 import urllib.request
@@ -197,6 +206,64 @@ def probe_resident_qa():
                        "priority)" % e)
 
 
+TAIL_PROBE_FILES = (
+    ("state/rounds.log", r"\d{4}-\d{2}-\d{2}"),
+    ("state/heartbeat.txt", r"\d{2}:\d{2}"),
+    ("HQ-FEEDBACK.md", "\u65e5\u6e05[:\uff1a]"),
+    ("state/proposals.md", r"\| BC-P-\d+"),
+    ("state/queue/main.md", r"\| M\d+"),
+    ("state/queue/tech.md", r"\| T\d+"),
+    ("state/queue/explore.md", r"\| E\d+"),
+)
+
+
+def probe_ledger_tails():
+    """BC-P-45 (probe no.8): git-tracked ledger tail integrity.
+
+    Read-side complement to the write-side round_append J4 guard:
+    per file assert (a) last byte is a newline and (b) the last line
+    holds at most one row/date marker (>= 2 = suspected merged lines,
+    e.g. two queue rows or two daily-clean entries fused into one).
+    Pure read, zero writes, zero new ledgers.
+    """
+    fails, detail = [], []
+    for rel, marker in TAIL_PROBE_FILES:
+        path = os.path.join(ROOT, *rel.split("/"))
+        if not os.path.exists(path):
+            fails.append("%s missing" % rel)
+            detail.append("%s: MISSING" % rel)
+            continue
+        with open(path, "rb") as f:
+            raw = f.read()
+        rows = [ln for ln in raw.split(b"\n") if ln.strip()]
+        if not rows:
+            fails.append("%s empty" % rel)
+            detail.append("%s: EMPTY" % rel)
+            continue
+        try:
+            last = rows[-1].decode("utf-8", errors="strict")
+        except UnicodeDecodeError as e:
+            fails.append("%s last line utf-8 decode fail" % rel)
+            detail.append("%s: LAST-LINE DECODE FAIL at byte %d"
+                          % (rel, e.start))
+            continue
+        n_mark = len(re.findall(marker, last))
+        tail_nl = raw.endswith(b"\n")
+        if not tail_nl:
+            fails.append("%s: trailing newline missing" % rel)
+        if n_mark >= 2:
+            fails.append("%s: %d markers in last line (merged rows?)"
+                         % (rel, n_mark))
+        detail.append("%s: tail_nl=%s last_markers=%d last_len=%d"
+                      % (rel, "ok" if tail_nl else "MISSING", n_mark,
+                         len(last)))
+    ok = not fails
+    out = "\n".join(detail)
+    if fails:
+        out += "\nSUSPECT: " + "; ".join(fails)
+    return ok, out
+
+
 def main():
     os.makedirs(QA_DIR, exist_ok=True)
     ts = datetime.datetime.now().strftime("%Y%m%d-%H%M")
@@ -205,7 +272,8 @@ def main():
     probes = [("gpu collector", probe_gpu), ("ollama response", probe_ollama),
               ("queue rows", probe_queues), ("cost ledger", probe_ledger),
               ("rounds.log strict-decode", probe_rounds_log),
-              ("resident QA serve 8792", probe_resident_qa)]
+              ("resident QA serve 8792", probe_resident_qa),
+              ("ledger tail integrity (BC-P-45)", probe_ledger_tails)]
     lines, passed = [], 0
     lines.append("BigCompute QA smoke test %s (orders L254 / charter v1)"
                  % ts)
@@ -218,7 +286,7 @@ def main():
         lines.append(detail)
         print("[%s] %s" % ("PASS" if ok else "FAIL", label))
     lines.append("")
-    verdict = "smoke verdict: %d/%d PASS (charter 4 + tech T25 + E41 probes)" % (
+    verdict = "smoke verdict: %d/%d PASS (charter 4 + T25 + E41 + BC-P-45 no.8 probes)" % (
         passed, len(probes))
     lines.append(verdict)
     with open(log_path, "w", encoding="utf-8") as f:
