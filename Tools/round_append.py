@@ -14,6 +14,8 @@ utf-8 显式编码唯一写入路径——轮账本/心跳 append 一律走本�
   J1 写入前后全文件 strict UTF-8 decode 全过（前置门=既有损行拒绝追加 exit 3）
   J2 幂等护栏：--line 与文件末非空行完全一致时拒绝追加 exit 2（防轮内双写）
   J3 目标不存在时创建（utf-8 无 BOM·LF 行尾）
+  J4 尾行守卫（T50·HQ-FEEDBACK 04/05 行合并判例）：既有文件尾字节非 \\n 时
+     先补一个换行再追加——防新行并入既有尾行（合并=行账本可读性损·10-05 即修实证）
 """
 import argparse
 import io
@@ -48,12 +50,19 @@ def append_line(path, line):
         last = [l for l in text.splitlines() if l.strip()]
         if last and last[-1] == line:
             return 2, "DUPLICATE-SKIP: --line 与末非空行一致（幂等护栏，零追加）"
+    # J4 尾行守卫：既有尾字节非 \n 时先补换行，防新行并入既有尾行（T50 判例）
+    tail_nl_fix = bool(text) and not raw.endswith(b"\n")
     with io.open(path, "a", encoding="utf-8", newline="") as f:
+        if tail_nl_fix:
+            f.write("\n")
         f.write(line + "\n")
     _, after = _read_strict(path)
     if after is None:
         return 3, "CORRUPT-POST: 写入后 strict decode 失败（异常态，即查）"
-    return 0, "APPENDED ok bytes_total=%d lines_total=%d" % (len(after.encode("utf-8")), len(after.splitlines()))
+    msg = "APPENDED ok bytes_total=%d lines_total=%d" % (len(after.encode("utf-8")), len(after.splitlines()))
+    if tail_nl_fix:
+        msg += " tail_nl_fix=1（既有尾行缺换行已补——J4 守卫）"
+    return 0, msg
 
 
 def _selftest():
@@ -81,6 +90,17 @@ def _selftest():
             f.write("正常行\n".encode("utf-8") + "中文损行".encode("gbk"))
         c, m = append_line(p2, "新行")
         run("S3 损行前置门 exit3", c == 3, m)
+        # S5 尾行守卫（J4）：既有尾字节无 \n → 补换行后追加，两行分立不合并
+        p3 = os.path.join(td, "notail.log")
+        with open(p3, "wb") as f:
+            f.write("行A（尾无换行）".encode("utf-8"))
+        c, m = append_line(p3, "行B（追加行）")
+        txt3 = open(p3, "rb").read().decode("utf-8")
+        run("S5 尾行守卫补换行", c == 0 and txt3 == "行A（尾无换行）\n行B（追加行）\n" and "tail_nl_fix=1" in m, m)
+        # S6 正常尾（带 \n）→ 零补换行动作
+        c, m = append_line(p3, "行C")
+        txt4 = open(p3, "rb").read().decode("utf-8")
+        run("S6 正常尾零动作", c == 0 and txt4 == "行A（尾无换行）\n行B（追加行）\n行C\n" and "tail_nl_fix" not in m, m)
 
     n_pass = sum(1 for _, ok, _ in checks if ok)
     for name, ok, detail in checks:

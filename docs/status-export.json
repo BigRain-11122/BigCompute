@@ -1,7 +1,7 @@
 {
   "company": "BigCompute",
-  "updated_at": "2026-10-05 12:5x",
-  "current_activity": "12:46 排程午班轮（10-05）：M50 ② 毕=席位4 商业市场证据包 v1 落盘（O-028 双轨令 10-07 回访件提前 ~2 天）+T48 qa 判定行机检新增即耗·M48=等 CEO 四决策项裁定窗维持（orders 零新裁定行）",
-  "latest_artifact": "docs/ops/seat4-dualtrack-evidence-pack-v1.md（席位4 商业市场证据包 v1·commit 6ac7c63：本地承接率 100%=api 全史 76 外呼全只读零云生成+云端轨零生成态三证/质量对照=烟测 121 件全过 120+部分判负 1 如实+机检族全绿+产出节奏 git 直采/满载行=loadline busy 0.0%+3 日滚动 2.0% FLAG+NOT-BORROWABLE 双探/机器画像逐字吻合 O-028 大内存档·鲜度判据 J1-J4）·2026-10-05 12:5x",
-  "next_milestone": "10-05 22:43 夜班=假期逐日核销第 2 行随夜报（连续两日零核销=RED 点名面如实接）+M48 裁定回执面（裁定至 orders 即承接）·10-07 治理日=O-027 盘点清单 v1.0+席位4 证据包+O-025 工作流迭代面三令同窗呈报（呈报面就绪·数据复刷 J1 鲜度 ≤12h）·窗 ≤48h"
+  "updated_at": "2026-10-06 00:2x",
+  "current_activity": "00:2x 哨兵触发轮（10-06·00:09 集团批唤醒）：D-20261006-01~03 审核零本司派单+tech T50 毕=round_append J4 尾行守卫（selftest 6/6+首战实弹拦截 proposals.md tail_nl_fix=1）+假期核销第 3 行=1 项分量核销（b 项 M49 串行分量销账·RED 连击止于两日）·M48=等 CEO 四决策项裁定窗维持",
+  "latest_artifact": "Tools/round_append.py J4 尾行守卫（selftest 4→6/6：S5=HQ-FEEDBACK 04/05 行合并判例回归+S6 正常尾零动作·首战实弹拦截=BC-P-45 行追加时 proposals.md 尾缺换行 tail_nl_fix=1 守卫救火=合并场景真复发被拦）·2026-10-06 00:2x",
+  "next_milestone": "10-06 12:43 午班=BC-P-45 尾行完整性探针批活候选+净窗开则 M25/T26 run_bake 双路·10-07 治理日=O-027 盘点 v1.0+席位4 证据包（BC-P-44 复刷命令位候选）+O-025 工作流迭代周报面三令同窗呈报·窗 ≤48h"
 }

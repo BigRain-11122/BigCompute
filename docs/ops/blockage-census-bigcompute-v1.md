@@ -53,3 +53,4 @@
 ## 证据指针
 
 rounds.log（10-01..10-05 轮账本·api 聚合 50 后增量 0）｜state/runbook.md v0.12｜docs/ops/review-window-1005-package-v1.md v1.2（22:47 一命令复刷·state/review-pkg-refresh-20261005-224x.txt）｜docs/ops/sop-inventory-gap-list-v1.md｜BLUEPRINT §五.5｜净窗计数=state/clean-window-log.jsonl
+- **10-06（第 3 行·00:2x 哨兵轮〔时标勘正：初记 12:43 午班误标·实=00:09 集团批唤醒哨兵轮〕）**：a 物理件链 0/5 维持（orders 尾零新 CEO 裁定行·M48 等裁定维持·呈批包 v1.2 在案）｜b **分量核销 1 项=M49 串行分量销账**〔步③④ 10-05 12:2x 提前收口毕·G2 三级矩阵机检件+G4 上册 SOP 双落盘=盘点 v1.0·本日对账入行〕——余量=M40 附录分轮+单写手结构面维持｜c 净窗 00:1x tick BLOCKED〔editors=1+vram_free 5561MiB〕M25/T26 顺延维持｜d/e 零变化（返工环 0·派工 0 超窗）｜f 正向样本维持（api 增量 0）｜g 与 a 同源维持——**1 项核销·RED 连击止于两日**。
