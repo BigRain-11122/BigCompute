@@ -48,7 +48,8 @@
 ## 假期逐日核销面（夜报「卡点面」一行·连续两日零核销=RED 点名风险面）
 
 - **10-04（首行）**：a 物理件链 0/5 维持（当日 CEO 面唯一新令=16:37 GPU HOLD 转配〔FluxVerse 域·本司已接线呈批包情景 C〕·商户号零新动作）｜b open 14→16（M49 步②+T46 即耗·串行结构面维持）｜c 净窗 452/452 BLOCKED 维持（M25/T26 顺延）｜d/e 零变化（返工环 0·派工 0 超窗）｜f 正向样本维持（api 增量 0）｜g 与 a 同源维持——**0 项核销·全维持**。
+- **10-05（第 2 行·22:43 夜班轮）**：a 物理件链 0/5 维持（orders 00:09 后零新 CEO 行·商户号零新动作·复核窗四决策项裁定未至=M48 等待态·呈批包 v1.2 数据龄 0h 至即呈）｜b open 维持（queue_check 14·M51 in_progress 不计起始行口径·T49 新增即耗净 0）｜c 净窗 549/549 BLOCKED 维持（22:47 计数·+97 tick 全 BLOCKED·M25/T26 顺延·净窗闸机械执法在位）｜d/e 零变化（返工环 0·派工 0 超窗·本窗零新派单）｜f 正向样本维持（api 增量 0·纯本地轮）｜g 与 a 同源维持——**0 项核销·连续两日零核销=RED 点名风险面如实接（夜报卡点面一行随日清上报·核销面唯一可动项 c 净窗=他司编辑器峰窗占用·M47/呈批包④ 顺延判据预注册在案合法顺延）**。
 
 ## 证据指针
 
-rounds.log（10-01..10-04 轮账本·api 聚合 50 后增量 0）｜state/runbook.md v0.12｜docs/ops/review-window-1005-package-v1.md v1.1｜docs/ops/sop-inventory-gap-list-v1.md｜BLUEPRINT §五.5｜净窗计数=state/clean-window-log.jsonl
+rounds.log（10-01..10-05 轮账本·api 聚合 50 后增量 0）｜state/runbook.md v0.12｜docs/ops/review-window-1005-package-v1.md v1.2（22:47 一命令复刷·state/review-pkg-refresh-20261005-224x.txt）｜docs/ops/sop-inventory-gap-list-v1.md｜BLUEPRINT §五.5｜净窗计数=state/clean-window-log.jsonl
