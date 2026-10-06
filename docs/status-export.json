@@ -1,7 +1,7 @@
 {
   "company": "BigCompute",
-  "updated_at": "2026-10-06 12:4x",
-  "current_activity": "12:43 午班排程正轮：10-07 治理日四件同窗呈报包 v1.0 组装毕（M53·三数据面命令直采）+组装轮发现 F3 tools-drift 38→40 检出即修（机检复跑 GREEN）·净窗 BLOCKED（M25/T26 顺延）·M48 等四决策项裁定",
-  "latest_artifact": "docs/ops/governance-day-1007-report-package-v1.md（10-07 治理日呈报包：件席位4 证据包 v1.1 复刷数据节 12:45:33+O-027 盘点 v1.0 聚合审+O-025 周产出分 101 分+M48 情景 C 消费计划·BC-P-47 邮件直投随批）·2026-10-06 12:4x",
-  "next_milestone": "10-07 治理日窗开口 J1 三命令复刷（seat4 refresh/sop check/round_score·数据 ≤12h）→四件同窗呈报（正典回执+BC-P-47 邮件面激活窗随批）+M48 裁定至即承接·窗 ≤24h（10-07 12:43）"
+  "updated_at": "2026-10-07 00:4x",
+  "current_activity": "00:1x 哨兵轮：J1 三命令窗开口复刷毕（seat4/sop/round_score·数据龄 0h=呈报包件五）+T54 openstd 渲染通道修复毕（.ck_btn 弹窗路径实弹 37964 p01 出图）·M48 等四决策项裁定·净窗 BLOCKED（M25/T26 顺延）",
+  "latest_artifact": "docs/ops/governance-day-1007-report-package-v1.md 件五（10-07 窗开口三命令复刷新数直采）+Tools/openstd_render_probe.py T54 修复（弹窗通道+DOM 诊断器·selftest 14/14）·2026-10-07 00:2x",
+  "next_milestone": "10-07 12:43 治理日正窗：四件同窗呈报（呈报包 v1.0+件五）+M48 裁定至即承接·窗 ≤24h（10-07 12:43）"
 }

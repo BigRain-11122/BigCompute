@@ -40,4 +40,10 @@
 - 呈递双轨：orders/decisions 回执面照旧=正典通道；邮件=增值面非替代。判负路径=CEO 收件回执窗内未闭环→邮件面降级留痕合法（双轨维持不受损）
 - 激活=10-07 呈报窗随批（激活前零发送动作）
 
-> 验证声明：本包全部数字为 2026-10-06 12:45:33-12:46:42 三命令真实输出直采（seat4 refresh/sop check/round_score）；两处历史分数（130/101）注明各自测量窗；等待面如实标注；J1=10-07 窗开口复刷后呈报（鲜度 ≤12h）。
+## 件五 J1 窗开口复刷实录（10-07 00:20 实跑·三命令直采）
+
+- seat4 refresh（--face seat4）：四段直出·GPU 三尺=3 日滚动 n=193 avg=3.0% FLAG（30% 唯一点名阈值）+7 日 n=577 avg=2.2% BELOW-BENCH（R-C1 对标线）+30min 窗 IDLE；machine_profile 复测=cpu 10.6%/RAM 93.6GB 总量·48.5GB 可用/GPU 97.0%（cotenant 编辑器在役）/VRAM free 5982MiB/editors=2/**NOT-BORROWABLE[VRAM|COTENANT]**——数据龄 0h（窗开口鲜度判据 J1 达标）
+- sop check：三级 **GREEN**=L1 6/6+L2 4/4+L3 6/6·证据 state/sop-coverage-20261007-002004.json（两件 legal declared-pending-1007 如实在注）
+- round_score：**PRODUCT-24h max=2 n=9 n2=5 n1=1 n0=3**——窗开口 24h 面健康（2 分件 5 件>0 分件 3 件）
+
+> 验证声明：本包件一~件四数字为 2026-10-06 12:45:33-12:46:42 三命令真实输出直采（seat4 refresh/sop check/round_score）；件五=10-07 00:20:04-00:20:29 同三命令窗开口复刷新数直采（数据龄 0h·J1 达标）；两处历史分数（130/101）注明各自测量窗；等待面如实标注。

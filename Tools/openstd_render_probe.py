@@ -147,6 +147,46 @@ def _mouse_stream(page, box):
         page.wait_for_timeout(120)
 
 
+def _discover_ctx(pg):
+    """T54: main frame first, then every iframe (viewer may be framed)."""
+    dom = pg.evaluate(JS_DISCOVER)
+    if dom and dom.get("container"):
+        return pg, dom, "main"
+    for fr in pg.frames:
+        if fr is pg.main_frame:
+            continue
+        try:
+            d = fr.evaluate(JS_DISCOVER)
+        except Exception:
+            continue
+        if d and d.get("container"):
+            return fr, d, "frame"
+    return None, dom, "none"
+
+
+def _dump_dom(pg, prefix):
+    """T54 diag: HTML snapshot + per-frame stats on DOM miss (login-wall /
+    headless-block / iframe evidence for the next fix round)."""
+    snap = os.path.join(STATE, prefix + "-domsnap.html")
+    try:
+        _write(snap, pg.content())
+    except Exception:
+        pass
+    rows = []
+    for fr in pg.frames:
+        try:
+            st = fr.evaluate("""() => ({num_divs: document.querySelectorAll('div[id]').length,
+                                        body_len: (document.body ? document.body.innerHTML.length : 0),
+                                        title: (document.title || '').slice(0, 60)})""")
+        except Exception as exc:
+            st = {"error": str(exc)[:60]}
+        rows.append({"url": fr.url[:120], "stats": st})
+    jpath = os.path.join(STATE, prefix + "-domdiag.json")
+    _write(jpath, json.dumps({"snapshot": os.path.basename(snap), "frames": rows},
+                             ensure_ascii=False, indent=1))
+    return jpath
+
+
 def cmd_search(a):
     exe, how = find_browser()
     if not exe:
@@ -197,32 +237,52 @@ def cmd_render(a):
            "browser=%s" % how, "pages=%s" % pages]
     verdict, code = "OK", 0
     with sync_playwright() as pw:
-        browser = pw.chromium.launch(headless=True, executable_path=exe)
+        browser = pw.chromium.launch(headless=True, executable_path=exe,
+                                     args=["--disable-blink-features=AutomationControlled"])
         pg = browser.new_page(viewport={"width": 1400, "height": 1600})
+        pg.add_init_script("Object.defineProperty(navigator,'webdriver',{get:()=>undefined})")
         try:
-            pg.goto(urls["preview"], wait_until="domcontentloaded", timeout=60000)
+            # T54 fix faces: (a) bare showGb 302s to newGbInfo?refer=outter
+            # (10-07 实证, cookie/locale warm-up insufficient); (b) the site's
+            # own trigger = .ck_btn click -> showGb hcno,'online' -> window.open
+            # popup carrying site referer+session. Manual channel reproduction
+            # = click-driven popup; direct preview goto kept as fallback.
+            pg.goto(urls["detail"], wait_until="domcontentloaded", timeout=60000)
+            pg.wait_for_timeout(2500)
+            try:
+                with pg.expect_popup() as pi:
+                    pg.click(".ck_btn")
+                pg = pi.value
+                pg.set_viewport_size({"width": 1400, "height": 1600})
+            except Exception as exc:
+                log.append("popup-fallback error=%s" % str(exc)[:80])
+                pg.goto(urls["preview"] + "&request_locale=zh_CN",
+                        wait_until="domcontentloaded", timeout=60000)
             pg.wait_for_timeout(8000)
-            dom = pg.evaluate(JS_DISCOVER)
-            if not dom or not dom.get("container"):
-                print("DOM-NOT-MATCHED dom=%s verdict=HARD-FAIL" % dom)
+            log.append("final_url=%s" % pg.url[:120])
+            ctx, dom, where = _discover_ctx(pg)
+            if ctx is None:
+                jpath = _dump_dom(pg, prefix)
+                print("DOM-NOT-MATCHED where=%s dom=%s diag=%s verdict=HARD-FAIL"
+                      % (where, dom, os.path.basename(jpath)))
                 return 2
-            log.append("dom_pages=%s pageH_css=%s (law=%s)" % (dom["pages"],
-                                                              dom["pageH"], DOC_PAGE_H))
+            log.append("dom_where=%s dom_pages=%s pageH_css=%s (law=%s)"
+                       % (where, dom["pages"], dom["pageH"], DOC_PAGE_H))
             for p in pages:
                 t0 = time.time()
-                pg.evaluate(JS_SCROLL, p)
-                box = pg.locator('[id="%d"]' % (p - 1)).bounding_box()
+                ctx.evaluate(JS_SCROLL, p)
+                box = ctx.locator('[id="%d"]' % (p - 1)).bounding_box()
                 _mouse_stream(pg, box)
                 deadline = time.time() + a.tile_timeout
                 states = []
                 while time.time() < deadline:
-                    states = pg.evaluate(JS_TILES, p) or []
+                    states = ctx.evaluate(JS_TILES, p) or []
                     if tiles_ready(states):
                         break
                     pg.wait_for_timeout(400)
                 ready = tiles_ready(states)
                 shot = os.path.join(STATE, "%s-p%02d.png" % (prefix, p))
-                pg.locator('[id="%d"]' % (p - 1)).screenshot(path=shot)
+                ctx.locator('[id="%d"]' % (p - 1)).screenshot(path=shot)
                 m = page_mapping(p)
                 log.append("page=%d div=%d printed_est=%s imgs=%d ready=%s "
                            "prefetch=%s %.1fs -> %s"
@@ -271,8 +331,11 @@ def cmd_selftest(a=None):
     src = open(os.path.abspath(__file__), encoding="utf-8").read()
     check("S7 state-confined writes (no sibling-repo path)",
           ("Flux" + "Group") not in src and ("Desk" + "top") not in src)
-    print("selftest: %s" % ("PASS" if ok == 13 else "FAIL"))
-    return 0 if ok == 13 else 1
+    check("S14 T54 frame-fallback + dom-diag helpers present",
+          "def _discover_ctx" in src and "def _dump_dom" in src
+          and "AutomationControlled" in src)
+    print("selftest: %s" % ("PASS" if ok == 14 else "FAIL"))
+    return 0 if ok == 14 else 1
 
 
 def main():
