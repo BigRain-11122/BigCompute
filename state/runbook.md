@@ -4,7 +4,7 @@
 哨兵轮=定位新行·排程轮=mtime 快检零新行过；台账消费=D-20261001-03 正典=git fetch+show origin/main:<path>（禁 pull·禁写集团树）；队列步=state/queue/ 现役行；收尾=刻痕+rounds.log+QA+定向 commit+push（D-15）·日清 ≤3 行·append=round_append 唯一。
 
 ## 当前优先
-- 10-06 12:4x 午班轮毕=BC-P-46 批活转化（tech T52 尾行修复器 selftest 9/9+实弹 dry 7/7 全净）+**M48 情景 C 承接毕**（orders 12:06 CEO回收令=GPU HOLD 份额回收转配本司复核窗·四决策项裁定仍待）+BC-P-47 新立。**下轮首对象=BC-P-44 批活转化（review_pkg_refresh --face seat4·10-07 呈报窗开口前）+净窗开则 M25/T26 run_bake+10-07 治理日四件同窗呈报组装（O-027 盘点 v1.0+席位4 证据包复刷+O-025 周报面+M48 情景 C 消费计划 BC-P-39）**。
+- 10-06 12:3x 哨兵轮毕=BC-P-44 批活转化（tech T53 --face seat4 selftest 12/12+实弹四段直出=**10-07 呈报窗一命令复刷就绪**）+BC-P-48 新立（T51 BOM 盲区）。**下轮首对象=10-07 治理日四件同窗呈报组装（--face seat4 复刷→证据包升 v1.1+O-027 盘点 v1.0 聚合审+O-025 周报面+M48 情景 C 消费计划 BC-P-39〔邮件直投通道候选 BC-P-47 随批〕）+净窗开则 M25/T26 run_bake**。
 - open=queue_check 14 持平（main3〔M4/M25/M48〕/tech6〔T2/T9/T26/T42/T43/T45〕/explore5〔E4/E6/E17/E45/E47〕·M51 核销行至 10-08）；M40 余=42460 附录+37964 分轮；验证集 0/30 续催（BC-P-26）；开店物理件待CEO；A 档硬门=M21 表；N1=月末 22:43 一命令；思考预算律在役（O-030）；qa 第 7 位=T37 云账单窗。
 
 ## 常设判据/红线速查
