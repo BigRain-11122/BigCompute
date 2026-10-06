@@ -61,7 +61,8 @@ REGISTER = {
     },
     "L3-开发模块": {
         "治理循环": ["Tools/iteration_prompt.txt", "state/runbook.md", "docs/research-dept-charter.md",
-                  "docs/qa-smoke-test-charter.md"],
+                  "docs/qa-smoke-test-charter.md", "Tools/review_pkg_refresh.py",
+                  "Tools/ledger_tail_fix.py"],
         "QA巡检": ["Tools/qa_smoke.py", "Tools/holiday_readiness_check.py", "docs/qa-smoke-test-charter.md"],
         "数据采集": ["Tools/gpu_idle_collector.py", "Tools/gpu_energy_profile.py", "Tools/vram_window_probe.py"],
         "法务文本": LEGAL_12,
@@ -69,7 +70,7 @@ REGISTER = {
         "履约管线": ["Tools/fulfillment/test_pipeline.py"],
     },
 }
-DECLARED_TOOLS = 38  # Tools 根 py 申报数（盘点 §D·sop_coverage_check 入册后）
+DECLARED_TOOLS = 40  # Tools 根 py 申报数（盘点 §D·+review_pkg_refresh〔tech T49〕+ledger_tail_fix〔tech T52〕入册后）
 
 
 def _measure(path):
