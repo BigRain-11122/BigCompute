@@ -1,7 +1,7 @@
 {
   "company": "BigCompute",
-  "updated_at": "2026-10-06 00:2x",
-  "current_activity": "00:2x 哨兵触发轮（10-06·00:09 集团批唤醒）：D-20261006-01~03 审核零本司派单+tech T50 毕=round_append J4 尾行守卫（selftest 6/6+首战实弹拦截 proposals.md tail_nl_fix=1）+假期核销第 3 行=1 项分量核销（b 项 M49 串行分量销账·RED 连击止于两日）·M48=等 CEO 四决策项裁定窗维持",
-  "latest_artifact": "Tools/round_append.py J4 尾行守卫（selftest 4→6/6：S5=HQ-FEEDBACK 04/05 行合并判例回归+S6 正常尾零动作·首战实弹拦截=BC-P-45 行追加时 proposals.md 尾缺换行 tail_nl_fix=1 守卫救火=合并场景真复发被拦）·2026-10-06 00:2x",
-  "next_milestone": "10-06 12:43 午班=BC-P-45 尾行完整性探针批活候选+净窗开则 M25/T26 run_bake 双路·10-07 治理日=O-027 盘点 v1.0+席位4 证据包（BC-P-44 复刷命令位候选）+O-025 工作流迭代周报面三令同窗呈报·窗 ≤48h"
+  "updated_at": "2026-10-06 12:4x",
+  "current_activity": "12:43 午班排程正轮：10-07 治理日四件同窗呈报包 v1.0 组装毕（M53·三数据面命令直采）+组装轮发现 F3 tools-drift 38→40 检出即修（机检复跑 GREEN）·净窗 BLOCKED（M25/T26 顺延）·M48 等四决策项裁定",
+  "latest_artifact": "docs/ops/governance-day-1007-report-package-v1.md（10-07 治理日呈报包：件席位4 证据包 v1.1 复刷数据节 12:45:33+O-027 盘点 v1.0 聚合审+O-025 周产出分 101 分+M48 情景 C 消费计划·BC-P-47 邮件直投随批）·2026-10-06 12:4x",
+  "next_milestone": "10-07 治理日窗开口 J1 三命令复刷（seat4 refresh/sop check/round_score·数据 ≤12h）→四件同窗呈报（正典回执+BC-P-47 邮件面激活窗随批）+M48 裁定至即承接·窗 ≤24h（10-07 12:43）"
 }
