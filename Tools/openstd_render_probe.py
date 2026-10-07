@@ -25,7 +25,7 @@ import time
 PROJECT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 STATE = os.path.join(PROJECT, "state")
 BASE = "https://openstd.samr.gov.cn/bzgk/std/"
-DOC_PAGE_H = 1308   # M37 row 16 law: CSS page height at 40% zoom
+DOC_PAGE_H = 1308   # M37 row 16 law: CSS page height at 40% zoom (manual channel). T55: popup channel (.ck_btn) measures ~1644 @50% — scroll rides the offsetTop primary path (pageH-independent, verified 37964 p2/p4 full-page); the (p-1)*1308 fallback is manual-channel-only, must not fire under popup channel
 PRINTED_OFFSET = 4  # printed page N ~= PDF page N+4
 PREFETCH = 3        # prefetch law: current page + next ~3
 MAX_PAGES = 8       # bounded per invocation
@@ -334,8 +334,11 @@ def cmd_selftest(a=None):
     check("S14 T54 frame-fallback + dom-diag helpers present",
           "def _discover_ctx" in src and "def _dump_dom" in src
           and "AutomationControlled" in src)
-    print("selftest: %s" % ("PASS" if ok == 14 else "FAIL"))
-    return 0 if ok == 14 else 1
+    check("S15 T55 law-divergence note (popup ~1644@50% vs manual 1308@40%)",
+          "offsetTop primary" in src and "manual-channel-only" in src
+          and "el.offsetTop - c.offsetTop" in src)
+    print("selftest: %s" % ("PASS" if ok == 15 else "FAIL"))
+    return 0 if ok == 15 else 1
 
 
 def main():
