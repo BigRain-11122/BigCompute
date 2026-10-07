@@ -70,6 +70,14 @@ try {
 
 try {
     Log "BigCompute os-loop round start $stamp"
+    # sec 9.6 idle hard-trigger self-check step (O-20261007-2315, BC-P-54):
+    # reads machine verdict + pool/queue counts, appends the idle_rounds/
+    # agenda_starved dual fields to state\heartbeat.txt via round_append.
+    # Runs BEFORE the headless round spawns so the agent consumes the fields.
+    try {
+        & python (Join-Path $Project 'Tools\idle_selfcheck.py') check 2>&1 |
+            ForEach-Object { Log "idle_selfcheck: $_" }
+    } catch { Log "idle_selfcheck failed (non-fatal): $_" }
     $codelyPath = (Get-Command codely -ErrorAction SilentlyContinue).Source
     if (-not $codelyPath) { Log 'FATAL: codely not on PATH for this context'; Beat 'error codely missing'; exit 2 }
     $promptFile = Join-Path $Project 'Tools\iteration_prompt.txt'
