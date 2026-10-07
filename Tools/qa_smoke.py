@@ -207,7 +207,7 @@ def probe_resident_qa():
 
 
 TAIL_PROBE_FILES = (
-    ("state/rounds.log", r"\d{4}-\d{2}-\d{2}"),
+    ("state/rounds.log", r"\d{4}-\d{2}-\d{2}( [\d:.x]+)? tokens"),
     ("state/heartbeat.txt", r"\d{2}:\d{2}"),
     ("HQ-FEEDBACK.md", "\u65e5\u6e05[:\uff1a]"),
     ("state/proposals.md", r"\| BC-P-\d+"),
