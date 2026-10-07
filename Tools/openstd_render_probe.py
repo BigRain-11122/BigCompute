@@ -10,6 +10,10 @@ PDF page N+1); CSS page height 1308px @40% zoom; printed page N ~= PDF page
 N+4; prefetch law = current page + next ~3 pages arrive with mouse stream.
 
 Serves M40 appendix pages / 42460 body / tech T42 GB 45438 full text.
+T56: batch-first-jump double-hop - the first scroll target of a batch renders
+blank on first visit and recovers on the second; it is re-visited at batch end
+(warm-on-previous-page priming judged negative live 10-07). Tile counter also
+covers span.pdfImg (popup-channel false-negative fix, T55 residual).
 Browser discovery: PLAYWRIGHT bundled chromium -> OPENSTD_BROWSER env ->
 system Chrome -> Edge (zero download, silent headless). Output confined to
 state/ of this repo; zero cross-repo writes (T43 law).
@@ -60,8 +64,13 @@ JS_SCROLL = """(p) => {
 JS_TILES = """(p) => {
   const el = document.getElementById(String(p - 1));
   if (!el) return null;
-  return [...el.querySelectorAll('img')]
+  const imgs = [...el.querySelectorAll('img')]
     .map(i => i.complete && i.naturalWidth > 0);
+  const spans = [...el.querySelectorAll('span.pdfImg')].map(s => {
+    const bg = getComputedStyle(s).backgroundImage || '';
+    return !!bg && bg !== 'none' && s.offsetWidth > 0;
+  });
+  return imgs.concat(spans);
 }"""
 
 JS_SEARCH = """() => [...document.querySelectorAll('a[href*="hcno="]')]
@@ -101,6 +110,20 @@ def page_mapping(pdf_page):
 
 def prefetch_window(pdf_page):
     return list(range(pdf_page, pdf_page + PREFETCH + 1))
+
+
+def revisit_hop(p, total):
+    """T56 law: the first scroll target of a batch renders blank on its first
+    visit (viewer lazy queue unprimed for far jumps; p15/p12/p10 blank-firsts
+    10-07, and warm-on-previous-page judged NEGATIVE live 10-07: p14 blank,
+    p15 full in the same batch), while every second visit recovers. So the
+    first target is always re-visited once after the batch; single-page
+    batches hop to a neighbour page first."""
+    if p + 1 <= total:
+        return p + 1
+    if p - 1 >= 1:
+        return p - 1
+    return p
 
 
 def tiles_ready(states):
@@ -291,6 +314,36 @@ def cmd_render(a):
                               os.path.basename(shot)))
                 if not ready:
                     verdict, code = "TILES-TIMEOUT-PARTIAL", 1
+            # T56 double-hop: re-visit the first target once at batch end -
+            # first visits render blank (unprimed far-jump queue), second
+            # visits recover (p14 blank / p15 full live proof 10-07; warm-on-
+            # previous-page judged negative same round). Blank first attempt
+            # png kept as -a1 evidence; canonical png = second visit.
+            p0 = pages[0]
+            a0 = os.path.join(STATE, "%s-p%02d.png" % (prefix, p0))
+            if os.path.exists(a0):
+                os.rename(a0, os.path.join(STATE, "%s-p%02d-a1.png" % (prefix, p0)))
+            if len(pages) == 1:
+                hop = revisit_hop(p0, dom["pages"])
+                ctx.evaluate(JS_SCROLL, hop)
+                _mouse_stream(pg, ctx.locator('[id="%d"]' % (hop - 1)).bounding_box())
+                pg.wait_for_timeout(1500)
+            t0 = time.time()
+            ctx.evaluate(JS_SCROLL, p0)
+            _mouse_stream(pg, ctx.locator('[id="%d"]' % (p0 - 1)).bounding_box())
+            states, deadline = [], time.time() + a.tile_timeout
+            while time.time() < deadline:
+                states = ctx.evaluate(JS_TILES, p0) or []
+                if tiles_ready(states):
+                    break
+                pg.wait_for_timeout(400)
+            ready2 = tiles_ready(states)
+            ctx.locator('[id="%d"]' % (p0 - 1)).screenshot(path=a0)
+            log.append("rehop page=%d imgs=%d ready=%s %.1fs -> %s (T56 double-hop)"
+                       % (p0, len(states), ready2, time.time() - t0,
+                          os.path.basename(a0)))
+            if not ready2:
+                verdict, code = "TILES-TIMEOUT-PARTIAL", 1
         except Exception as exc:
             print("RUN-ERROR error=%s verdict=HARD-FAIL" % str(exc)[:120])
             return 2
@@ -337,8 +390,16 @@ def cmd_selftest(a=None):
     check("S15 T55 law-divergence note (popup ~1644@50% vs manual 1308@40%)",
           "offsetTop primary" in src and "manual-channel-only" in src
           and "el.offsetTop - c.offsetTop" in src)
-    print("selftest: %s" % ("PASS" if ok == 15 else "FAIL"))
-    return 0 if ok == 15 else 1
+    check("S16a T56 revisit-hop law (next page, prev fallback, self floor)",
+          revisit_hop(14, 35) == 15 and revisit_hop(35, 35) == 34
+          and revisit_hop(1, 1) == 1)
+    check("S16b T56 double-hop re-visit wired at batch end",
+          "def revisit_hop" in src and "rehop page=" in src
+          and "-a1.png" in src)
+    check("S17 tile counter covers span.pdfImg (popup false-negative fix)",
+          "span.pdfImg" in src)
+    print("selftest: %s" % ("PASS" if ok == 18 else "FAIL"))
+    return 0 if ok == 18 else 1
 
 
 def main():
