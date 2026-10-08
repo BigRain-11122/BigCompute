@@ -1,0 +1,43 @@
+BigCompute QA smoke test 20261008-1051 (orders L254 / charter v1)
+
+[gpu collector] PASS -> gpu collector
+machine_borrowable=NOT-BORROWABLE[VRAM|COTENANT] vram_free=3623MiB(line>=6144MiB) cotenant_editors=3(line 0) (D-20261004-04 dual probe; decoupled from GREEN-IDLE loop state; R-41 fleet-row field)
+gpu report 2026-10-08 machine=bm-a: n=44 avg=4.1% max=98% kpi=FLAG(<30% call-out threshold on 3-day rolling baseline, C-20260929-02)
+3-day rolling baseline (pre-registered, C-20260929-02): 2026-10-06..2026-10-08 n=235 avg=3.2% (call-out 30%; 70% target = directional ref)
+7-day benchmark (D-20260930-36 R-C1, head-firm gap line): 2026-10-02..2026-10-08 n=619 avg=2.4% -> BELOW-BENCH(<50% structural-failure line on 7-day avg, R-C1 D-20260930-36) (gap line only; sole call-out stays 30%; 70% target = directional ref pending R- threshold-calibration receipts)
+rolling 30-min window: n=2 avg=9.5% -> IDLE
+
+[ollama response] PASS -> ollama response
+answer='1+1 equals 2.' eval_count=8 92.05 tok/s
+residency: pre=FOREVER post=FOREVER (maintained)
+NAME                   ID              SIZE      PROCESSOR    CONTEXT    UNTIL   
+qwen2.5:7b-instruct    845dbda0ea48    5.1 GB    100% GPU     4096       Forever    
+bge-m3:latest          790764642607    664 MB    100% GPU     4096       Forever
+NAME                   ID              SIZE      PROCESSOR    CONTEXT    UNTIL   
+qwen2.5:7b-instruct    845dbda0ea48    5.1 GB    100% GPU     4096       Forever    
+bge-m3:latest          790764642607    664 MB    100% GPU     4096       Forever
+
+[queue rows] PASS -> queue rows
+main.md: 58 rows
+tech.md: 56 rows
+explore.md: 47 rows
+
+[cost ledger] PASS -> cost ledger
+selftest: math=True determinism=True count=ok (orders+quota-gate+count+cloud+borrow) -> PASS
+
+[rounds.log strict-decode] PASS -> rounds.log strict-decode
+strict utf-8 decode ok: 211562 bytes / 163 lines
+
+[resident QA serve 8792] PASS -> resident QA serve 8792
+health 200 status=ok anchors=20 server=resident-qa v1.0 (BigCompute MaaS consumer face) model=qwen2.5:7b-instruct
+
+[ledger tail integrity (BC-P-45)] PASS -> ledger tail integrity (BC-P-45)
+state/rounds.log: tail_nl=ok last_markers=1 last_len=374
+state/heartbeat.txt: tail_nl=ok last_markers=1 last_len=78
+HQ-FEEDBACK.md: tail_nl=ok last_markers=1 last_len=1030
+state/proposals.md: tail_nl=ok last_markers=1 last_len=702
+state/queue/main.md: tail_nl=ok last_markers=1 last_len=447
+state/queue/tech.md: tail_nl=ok last_markers=1 last_len=899
+state/queue/explore.md: tail_nl=ok last_markers=1 last_len=170
+
+smoke verdict: 7/7 PASS (charter 4 + T25 + E41 + BC-P-45 no.8 probes)
