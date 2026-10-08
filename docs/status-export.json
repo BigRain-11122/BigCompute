@@ -1,7 +1,7 @@
 {
   "company": "BigCompute",
-  "updated_at": "2026-10-08 13:5x",
-  "current_activity": "13:4x 午班轮：BC-P-55 serve_liveness 探针面落地（idle_selfcheck 加性扩展 serve_alive/serve_detail 心跳双字段+死亡即 P1 行·selftest J1-J5 PASS）——部署过程实弹命中 serve 事故 #2（更新器 12:52 二杀悬死 ~56min·13:45 探针零存在定谳→13:48 M57 配方净重启复活·POST 200 真生成实证）+8d980af 轮 QA R-50 归因勘正+probe 8 E50 假阳性判例修（复跑 7/7 全绿）",
-  "latest_artifact": "Tools/idle_selfcheck.py serve_liveness 扩展+state/bcp55-serve-liveness-deploy-20261008.txt（部署回执+事故 #2 实录+归因勘正）·2026-10-08 13:5x",
-  "next_milestone": "22:43 夜班轮：E47 OH- 切片回执组装（72h 窗 21:40 开口·点名→回执制）+E48 radar 专项窗呈报（≤10-10 12:00）+T60 serve 更新器双杀呈批面组装（自动重启接线/更新器钉住两径·悬剑=更新包 v0.40.1 在库）——窗 ≤48h"
+  "updated_at": "2026-10-08 15:3x",
+  "current_activity": "15:3x 哨兵触发轮：M61 去标识化技术适用速查表 v1 落盘（37964 附录 C.2 八类×十族适用性矩阵+§A 交叉引用+C.3 模型层判读三律·原文级两级锚定·data-report §三.1 出口闸接线·消费方指名=数据部管线选型）+E50 采用前置维护面核验收口（oncall 三轴复检零漂移+维护活性判定=代码维护停滞·社区面存续→fork 维护准备+v2.1.7 版本锚定注记·§E50 节入备货件=夜班轮 E47 组装直采）",
+  "latest_artifact": "docs/legal/deidentification-technique-quickref-v1.md（M61 速查表·数据部脱敏管线技术选型+出口闸输入）+state/e47-oss-domain-scan-20261008.md §E50 节·2026-10-08 15:3x",
+  "next_milestone": "22:43 夜班轮：E47 OH- 切片回执组装（72h 窗 21:40 开口·§E50 维护面证据已备=点名至即组装）+E48 radar 专项窗呈报（≤10-10 12:00）+T60 serve 更新器双杀呈批面组装——窗 ≤48h"
 }
