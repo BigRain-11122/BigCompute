@@ -1,7 +1,7 @@
 {
   "company": "BigCompute",
-  "updated_at": "2026-10-08 18:2x",
-  "current_activity": "18:0x 哨兵触发轮：T62 夜盲窗任务活性哨落地（idle_selfcheck night_watch 锁存去重哨+order_sentinel 15min tick 内建接线·selftest J1-J7 PASS+直跑/整 tick 双实弹零副作用·夜窗任务失能检测延迟 ~14h→≤15min=R-51 夜盲窗收口）+T63 补行（BC-P-45 marker 收紧候选）+集团 orders.md 尾部 merge conflict 标记 P1 呈报（非本司域）",
-  "latest_artifact": "Tools/idle_selfcheck.py（night_watch 夜盲窗哨在役·正常静默零追加·异常锁存去重）+Tools/order_sentinel.ps1（tick 接线块）+qa/smoke-20260908-1809.log+png（QA 7/7）·2026-10-08 18:2x",
-  "next_milestone": "22:43 夜班轮：E47 OH- 切片回执组装（72h 窗 21:40 开口·备货件含 §E50 维护面证据直采）+E48 radar 专项窗呈报（≤10-10 12:00）+T60 serve 更新器呈批面——窗 ≤48h"
+  "updated_at": "2026-10-08 18:3x",
+  "current_activity": "18:3x 轮：E47 OSS 收获窗切片回执+E48 radar 呈报双收口——OH-20261008-bigcompute.md（值守调度域+美术资产管线域两域五门：linkedin/oncall cleared·维护停滞判定收口+ybuild-ai/Miku 双 cleared 成熟窗前置+distill 参考位+judged-out 六件+E50 维护面复检并载）落群仓 commit 2ee9375 已推=O-20261008-0650 P-51 送达（窗 10-10 12:00 内）+E51 下窗续扫批新立+T62 night_watch 哨在役",
+  "latest_artifact": "cph4/oss-harvest/OH-20261008-bigcompute.md（O-20261008-0650 九司切片窗交付·含 E48 Strata 125B 能力线 hold 呈报行+radar 认领面零认领如实）+qa/smoke-20261008-1833.log+png（QA 7/7）·2026-10-08 18:3x",
+  "next_milestone": "下轮排程（12:43/22:43 双轨+令牌触发）：T60 serve 更新器双杀根治呈批案裁定跟进（BC-P-58 批窗·批后 T64 随批）+净窗开则 M25/T26 run_bake+E51 随下窗 OSS 收获轮续扫——窗 ≤48h（≤10-10 12:00 域）"
 }

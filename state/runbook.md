@@ -4,8 +4,8 @@
 哨兵轮=定位新行·排程轮=mtime 快检零新行过；台账消费=D-20261001-03 正典=git fetch+show origin/main:<path>（禁 pull·禁写集团树·**工作树未推行=diff 补获**）；队列步=state/queue/ 现役行；收尾=刻痕（**一律 round_append.py·Add-Content 禁用=T24 二犯在案**）+rounds.log+QA+定向 commit+push（D-15）·日清 ≤3 行·append=round_append 唯一。
 
 ## 当前优先
-- 10-08 18:0x 轮毕=**T62 夜盲窗任务活性哨落地**（night_watch 锁存去重+order_sentinel tick 接线·selftest J1-J7+双实弹·夜窗检测延迟 ~14h→≤15min=R-51 缓解③）。**下轮首对象=E47 OSS 收获窗切片 OH- 回执组装（72h 窗 21:40 开口·备货件 state/e47-oss-domain-scan-20261008.md 含 §E50 节直采·22:43 夜班轮）+E48 radar 呈报（≤10-10 12:00·呈报件 v1.0 在盘）**·次选=T60 呈批面（②径查证步纯只读可先行）·T42 45438 随窗·净窗开则 M25/T26 run_bake·BC-P-45 误报类候选（刻痕行引二手时间串误判合并行·marker 收紧提案）随提案步。
-- open=queue_check（main=M4/M25/M48·tech=T2/T9/T26/T42/T45/T60·explore=E4/E6/E17/E45/E47/E48）；验证集 0/30 续催（BC-P-26）；开店物理件待CEO；A 档硬门=M21 表；N1=月末 22:43 一命令（10 月=10-31·S5 直供=E49 滚动律）；思考预算律在役（O-030）；qa 第 7 位=T37 云账单窗；R-48 缓解=排程轮 fetch+diff 补丁；R-50 GPU 冲刺窗共租户降级在册；刻痕行=单一时标纪律（probe 8 判例 10-08·18:0x BC-P-45 误报类新例=刻痕行内禁引二手 HH:MM 时间串）；night_watch 哨在役（T62·OrderSentinel tick 内建·锁存去重）。
+- 10-08 18:3x 轮毕=**E47+E48 双收口**（OH-20261008-bigcompute.md 群仓 commit 2ee9375 已推=O-20261008-0650 P-51 送达·窗 10-10 12:00 内·E48 hold 呈报随切片过目面）。**下轮首对象=T60 呈批面裁定跟进（BC-P-58 三径呈批案在批窗·批后 T64 执行步随批）·次选=T42 45438 随窗**·净窗开则 M25/T26 run_bake·E51 下窗 OSS 续扫批随窗·验证集 0/30 续催（BC-P-26）·提案面本窗足额（BC-P-54~58）。
+- open=queue_check（main=M4/M25/M48·tech=T2/T9/T26/T42/T45/T60·explore=E4/E6/E17/E45/E51）；验证集 0/30 续催（BC-P-26）；开店物理件待CEO；A 档硬门=M21 表；N1=月末 22:43 一命令（10 月=10-31·S5 直供=E49 滚动律）；思考预算律在役（O-030）；qa 第 7 位=T37 云账单窗；R-48 缓解=排程轮 fetch+diff 补丁；R-50 GPU 冲刺窗共租户降级在册；刻痕行=单一时标纪律（probe 8 判例 10-08·18:0x BC-P-45 误报类新例=刻痕行内禁引二手 HH:MM 时间串）；night_watch 哨在役（T62·OrderSentinel tick 内建·锁存去重）。
 
 ## 常设判据/红线速查
 - GPU=30% 唯一×3 日滚动·70% 方向参考·分机行=bm-a 实测+他机转述·bm-a 黑名单·激活随 M48 裁定。
