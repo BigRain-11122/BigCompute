@@ -14,6 +14,11 @@ T56: batch-first-jump double-hop - the first scroll target of a batch renders
 blank on first visit and recovers on the second; it is re-visited at batch end
 (warm-on-previous-page priming judged negative live 10-07). Tile counter also
 covers span.pdfImg (popup-channel false-negative fix, T55 residual).
+T66: batch-first blank is positional; recovery approach must be a FORWARD
+near-jump arrival (v2): pad-hop to p0-1, final jump p0-1 -> p0 (forward
+arrivals to unloaded pages load 100% - in-loop non-first positions, fix1
+p08->p09; backward arrivals blank 100% - far 16->09 fix1, near 10->09 v1
+live-fired negative 10-08). p01 = no-jump exception (viewer start position).
 T65: hcno direct derivation - openstd hcno = MD5(standard full designation
 incl. year).hexdigest().upper() (M37 §二 law, proven verbatim on GB/T
 42460-2023 + GB 45438-2025, mandatory GB carries no /T). A full-designation
@@ -146,6 +151,24 @@ def revisit_hop(p, total):
     if p - 1 >= 1:
         return p - 1
     return p
+
+
+def rehop_plan(p0, total):
+    """T66 v2 forward-arrival law: the approach to the batch-first target
+    pads to p0-1, making the final jump p0-1 -> p0 a FORWARD near arrival -
+    the only geometry with 100% load evidence (in-loop non-first positions;
+    fix1 p08->p09 recovery 10-08). Backward arrivals to unloaded targets are
+    100% blank (fix1 far 16->09; v1 near 10->09 via p0+1 live-fired negative
+    10-08: stale-loaded p10 pad fired no fresh queue activity). Falls back to
+    p0+1 (T56-verified single-page geometry) only when p0-1 does not exist.
+    Returns None when no neighbour exists (single-page document = p01-style
+    no-jump case: the positional blank rides the first *jump* and p01, at
+    the viewer start position, needs none - hence the p01 exception 10-08)."""
+    if p0 - 1 >= 1:
+        return p0 - 1
+    if p0 + 1 <= total:
+        return p0 + 1
+    return None
 
 
 def tiles_ready(states):
@@ -358,17 +381,21 @@ def cmd_render(a):
                               os.path.basename(shot)))
                 if not ready:
                     verdict, code = "TILES-TIMEOUT-PARTIAL", 1
-            # T56 double-hop: re-visit the first target once at batch end -
-            # first visits render blank (unprimed far-jump queue), second
-            # visits recover (p14 blank / p15 full live proof 10-07; warm-on-
-            # previous-page judged negative same round). Blank first attempt
-            # png kept as -a1 evidence; canonical png = second visit.
+            # T56 double-hop + T66 v2 forward-arrival law: re-visit the first
+            # target once at batch end - first visits render blank (unprimed
+            # far-jump queue), second visits recover (p14 blank / p15 full
+            # live proof 10-07; warm-on-previous-page judged negative same
+            # round). T66: pad-hop to p0-1 so the final approach p0-1 -> p0 is
+            # a FORWARD near arrival (100% load evidence); backward arrivals
+            # stay blank (far 16->09 fix1; near 10->09 v1 live-negative
+            # 10-08). Blank first attempt png kept as -a1 evidence; canonical
+            # png = re-visit.
             p0 = pages[0]
             a0 = os.path.join(STATE, "%s-p%02d.png" % (prefix, p0))
             if os.path.exists(a0):
                 os.rename(a0, os.path.join(STATE, "%s-p%02d-a1.png" % (prefix, p0)))
-            if len(pages) == 1:
-                hop = revisit_hop(p0, dom["pages"])
+            hop = rehop_plan(p0, dom["pages"])
+            if hop is not None:
                 ctx.evaluate(JS_SCROLL, hop)
                 _mouse_stream(pg, ctx.locator('[id="%d"]' % (hop - 1)).bounding_box())
                 pg.wait_for_timeout(1500)
@@ -383,9 +410,9 @@ def cmd_render(a):
                 pg.wait_for_timeout(400)
             ready2 = tiles_ready(states)
             ctx.locator('[id="%d"]' % (p0 - 1)).screenshot(path=a0)
-            log.append("rehop page=%d imgs=%d ready=%s %.1fs -> %s (T56 double-hop)"
-                       % (p0, len(states), ready2, time.time() - t0,
-                          os.path.basename(a0)))
+            log.append("rehop page=%d via_hop=%s imgs=%d ready=%s %.1fs -> %s (T66 forward-arrival law)"
+                       % (p0, hop if hop is not None else "self", len(states),
+                          ready2, time.time() - t0, os.path.basename(a0)))
             if not ready2:
                 verdict, code = "TILES-TIMEOUT-PARTIAL", 1
         except Exception as exc:
@@ -452,8 +479,14 @@ def cmd_selftest(a=None):
           and not is_full_designation("45438")
           and not is_full_designation("GB 45438")
           and "MD5-DIRECT" in src and "md5-direct" in src)
-    print("selftest: %s" % ("PASS" if ok == 20 else "FAIL"))
-    return 0 if ok == 20 else 1
+    check("S20a T66 v2 forward-arrival rehop plan (prev-first pad, None floor)",
+          rehop_plan(9, 19) == 8 and rehop_plan(19, 19) == 18
+          and rehop_plan(1, 19) == 2 and rehop_plan(1, 1) is None)
+    check("S20b T66 v2 forward-arrival wired for ALL batch sizes (gate removed)",
+          "def rehop_plan" in src and ("len(pages) " + "== 1") not in src
+          and "via_hop=" in src and "T66 forward-arrival law" in src)
+    print("selftest: %s" % ("PASS" if ok == 22 else "FAIL"))
+    return 0 if ok == 22 else 1
 
 
 def main():
