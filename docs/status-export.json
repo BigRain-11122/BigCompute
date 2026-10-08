@@ -1,7 +1,7 @@
 {
   "company": "BigCompute",
-  "updated_at": "2026-10-08 12:0x",
-  "current_activity": "11:4x 哨兵段轮：M56 批②=37964 正文第 4/5 章原文级逐字转写（第 4 章概述+第 5 章去标识化过程全流程+第 6 章首段+3.15/3.16 术语增益·T56 双跳通道 7 页）+QA 烟测如实 6/7（ollama 真响应 FAIL=GPU 冲刺让路窗降级·常驻模型同超时实测·serve 活非死亡）→R-50 风险行+T59 探针判据面新立",
-  "latest_artifact": "state/w37964-ch45-transcribe-20261008.txt（37964 正文 4/5 章逐字转写件+7 页 png·2026-10-08 11:4x）+docs/legal/data-report-desensitization-standard.md v0.12（引用纪律开禁面扩至正文）",
-  "next_milestone": "QA 复跑（spike 收线即绿·午班首动作候选）→M56 批③+C.2.3 后/附录 D 转录（37964 零散区收口·随引用需要·窗 ≤10-10 12:43）+T58 Strata 底模可换档核验（M58 A/B 烧批窗决策前置·窗 ≤10-09 12:43）"
+  "updated_at": "2026-10-08 12:4x",
+  "current_activity": "12:43 午班排程轮：T58 Strata 底模可换档核验毕（README+MODELS.md 原文级双源=不支持自定义底模）→M58 A/B 试点按预注册判据关线归档（同模型对照结构性不可达）+创新专项轮（O-0650）本司切片结论呈报面就绪；C-20261008-05/06 两新令收讫（E0 上行借道律+命令查重律知悉）",
+  "latest_artifact": "state/t58-strata-basemodel-swap-20261008.txt（Strata 底模核验证据件·原文级双源判定+125B 硬件可达性独立发现·2026-10-08 12:4x）",
+  "next_milestone": "22:43 夜班轮：M55 C-01 缺口补呈窗呈报组装（cloudF 聚合面+单位配额产出对照·呈报窗 ≤10-14）+净窗开则 M25/T26 run_bake 烘焙实弹——窗 ≤24h"
 }

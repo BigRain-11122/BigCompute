@@ -50,3 +50,4 @@
 | E46 | 推理请求级能耗强度实测锚（族 B 增量·E39 日级 15min 粒度盲区收口：常驻 7b 受控突发+1s 功率采样→边际/总耗 kWh/Mtok 双口径·月末归集电费物理量+借算轨边际成本底座） | R-20260928-compute-cost-economics 增量窗行 | **done（10-01 21:1x 哨兵轮·双跑实测边际 0.471/0.499 kWh/Mtok·97.07/97.05 tok/s 净窗基线互证·selftest 8/8 PASS·证据 state/inference-energy-anchor-20261001-211854+211924.json）** |
 
 | E47 | OSS 雷达扩域切片批（BC-P-43 承接·M49 步③ 轮内发现派生）：值守调度域+美术资产管线域两域 OH- 切片候选——对标②源零同域面补全·五门评估照律·3 次外请级检索窗 | state/proposals.md BC-P-43/盘点 v1.0 §三 | open（随下窗 OSS 收获轮·点名→回执制滚动） |
+| E48 | **Strata 125B 消费级能力线观察位（T58 轮内独立发现派生·M58 关线附带件）**：单模型引擎 Qwen3.8-Flash-Next 125B 于 12GB VRAM+64GB RAM 达 53 tok/s（IQ3_S·官方 RTX 5070 实测表）=机队 125B MoE 可达性新档——三问先立〔消费方=125B 能力面集团需求扫描（CPH4 外审复杂推理批/长文档分析）·单位经济=RAM 载入 35-55GB+共租冲突让路面·合规=Qwen Community License 1.0 商用条款核验〕·随 radar 创新专项窗（≤10-10 12:00）呈报后定去留·观察位非活线·禁提前下载（O-1120 三闸在役） | state/t58-strata-basemodel-swap-20261008.txt §四+M58 行 | open（10-08 12:4x 轮新立·radar 窗后评） |
