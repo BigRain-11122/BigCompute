@@ -14,6 +14,11 @@ T56: batch-first-jump double-hop - the first scroll target of a batch renders
 blank on first visit and recovers on the second; it is re-visited at batch end
 (warm-on-previous-page priming judged negative live 10-07). Tile counter also
 covers span.pdfImg (popup-channel false-negative fix, T55 residual).
+T65: hcno direct derivation - openstd hcno = MD5(standard full designation
+incl. year).hexdigest().upper() (M37 §二 law, proven verbatim on GB/T
+42460-2023 + GB 45438-2025, mandatory GB carries no /T). A full-designation
+--std short-circuits the site list (ZERO-ROWS structural closure, T43);
+discovery chain = md5-direct > site-list fallback.
 Browser discovery: PLAYWRIGHT bundled chromium -> OPENSTD_BROWSER env ->
 system Chrome -> Edge (zero download, silent headless). Output confined to
 state/ of this repo; zero cross-repo writes (T43 law).
@@ -21,8 +26,10 @@ state/ of this repo; zero cross-repo writes (T43 law).
 Exit: 0 OK / 1 partial (tile timeout, files kept) / 2 hard fail / 3 usage.
 """
 import argparse
+import hashlib
 import json
 import os
+import re
 import sys
 import time
 
@@ -86,6 +93,21 @@ def build_urls(hcno):
 
 def list_url(std_no):
     return BASE + "gb/std_list?p.p2=" + str(std_no)
+
+
+STD_FULL_RE = re.compile(r"^GB(/T)? \d+(\.\d+)?-\d{4}$")
+
+
+def derive_hcno(std_full):
+    """T65/M37 §二 law: hcno = MD5(full designation incl. year).upper().
+    Proven on GB 45438-2025 -> F32EA2A561F1886CD8D606513512D547 and
+    GB/T 42460-2023 -> E1A4E7943D64346D9EF1E3D0855F8496 (exact string,
+    single spaces; zero network - preferred discovery channel)."""
+    return hashlib.md5(std_full.strip().encode("utf-8")).hexdigest().upper()
+
+
+def is_full_designation(s):
+    return bool(STD_FULL_RE.match(s.strip()))
 
 
 def parse_pages(spec):
@@ -211,6 +233,18 @@ def _dump_dom(pg, prefix):
 
 
 def cmd_search(a):
+    if is_full_designation(a.std):
+        # T65 md5-direct: no network, no site list (T43 ZERO-ROWS bypass).
+        hcno = derive_hcno(a.std)
+        jpath = os.path.join(STATE, "openstd-search-%s-%s.json"
+                             % (re.sub(r"[^0-9A-Za-z]", "", a.std), _ts()))
+        _write(jpath, json.dumps({"std": a.std, "method": "md5-direct",
+                                  "rows": [{"hcno": hcno,
+                                            "title": "(md5-direct)"}]},
+                                 ensure_ascii=False, indent=1))
+        print("hcno=%s title=(md5-direct)" % hcno)
+        print("rows=1 json=%s verdict=MD5-DIRECT" % os.path.basename(jpath))
+        return 0
     exe, how = find_browser()
     if not exe:
         print("BROWSER-NOT-FOUND verdict=HARD-FAIL")
@@ -241,6 +275,9 @@ def cmd_search(a):
                              ensure_ascii=False, indent=1))
     print("rows=%d json=%s verdict=%s" % (len(out), os.path.basename(jpath),
                                           "OK" if out else "ZERO-ROWS"))
+    if not out:
+        print("hint: --std 'GB 45438-2025' (full designation) derives hcno "
+              "directly via T65 md5-direct, no network")
     return 0 if out else 1
 
 
@@ -249,14 +286,21 @@ def cmd_render(a):
     if not pages:
         print("usage: --pages must be like 5 or 3-6 (<= %d pages)" % MAX_PAGES)
         return 3
+    # T65: --std full designation derives hcno when --hcno is omitted.
+    hcno = a.hcno or (derive_hcno(a.std)
+                      if a.std and is_full_designation(a.std) else None)
+    if not hcno:
+        print("usage: --hcno required, or --std 'GB 45438-2025' full "
+              "designation for T65 md5-direct")
+        return 3
     exe, how = find_browser()
     if not exe:
         print("BROWSER-NOT-FOUND verdict=HARD-FAIL")
         return 2
     from playwright.sync_api import sync_playwright
-    urls = build_urls(a.hcno)
-    prefix = a.out_prefix or ("openstd-%s-render-%s" % (a.hcno[:8], _ts()))
-    log = ["hcno=%s" % a.hcno, "preview=%s" % urls["preview"],
+    urls = build_urls(hcno)
+    prefix = a.out_prefix or ("openstd-%s-render-%s" % (hcno[:8], _ts()))
+    log = ["hcno=%s" % hcno, "preview=%s" % urls["preview"],
            "browser=%s" % how, "pages=%s" % pages]
     verdict, code = "OK", 0
     with sync_playwright() as pw:
@@ -398,8 +442,18 @@ def cmd_selftest(a=None):
           and "-a1.png" in src)
     check("S17 tile counter covers span.pdfImg (popup false-negative fix)",
           "span.pdfImg" in src)
-    print("selftest: %s" % ("PASS" if ok == 18 else "FAIL"))
-    return 0 if ok == 18 else 1
+    check("S18 T65 hcno md5 direct-derivation law (M37 §二 fixtures)",
+          derive_hcno("GB 45438-2025") == "F32EA2A561F1886CD8D606513512D547"
+          and derive_hcno("GB/T 42460-2023") == "E1A4E7943D64346D9EF1E3D0855F8496"
+          and derive_hcno("GB/T 37964-2019") == "C8DF1BC2FB43C6EC0E602EB65EF0BC66")
+    check("S19 T65 full-designation gate + search/render wiring",
+          is_full_designation("GB 45438-2025")
+          and is_full_designation("GB/T 42460-2023")
+          and not is_full_designation("45438")
+          and not is_full_designation("GB 45438")
+          and "MD5-DIRECT" in src and "md5-direct" in src)
+    print("selftest: %s" % ("PASS" if ok == 20 else "FAIL"))
+    return 0 if ok == 20 else 1
 
 
 def main():
@@ -414,7 +468,8 @@ def main():
     a = ap.parse_args()
     if a.command == "search" and not a.std:
         return 3
-    if a.command == "render" and not (a.hcno and a.pages):
+    if a.command == "render" and not (
+            (a.hcno or (a.std and is_full_designation(a.std))) and a.pages):
         return 3
     return {"search": cmd_search, "render": cmd_render,
             "selftest": cmd_selftest}[a.command](a)
