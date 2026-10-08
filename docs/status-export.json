@@ -1,7 +1,7 @@
 {
   "company": "BigCompute",
-  "updated_at": "2026-10-08 16:3x",
-  "current_activity": "16:3x 哨兵触发轮：M62 表 C.1 全表逐字转写件落盘（37964 附录 C 表 C.1=17 技术行+2 模型行+表内注+脚注 a-e 逐格逐字·在盘 png 双页多模态直采+定向交叉核验·取形分歧诚实注记）+quickref §五注指针升级·M63 终核件补行·E47 21:40 窗备货维持",
-  "latest_artifact": "state/w37964-tablec1-17tech-transcribe-20261008.txt（表 C.1 全表逐字转写件·数据部选型八列技术属性源）·2026-10-08 16:3x",
-  "next_milestone": "22:43 夜班轮：E47 OH- 切片回执组装（72h 窗 21:40 开口·§E50 维护面证据已备=点名至即组装）+E48 radar 专项窗呈报（≤10-10 12:00）+T60 serve 更新器双杀呈批面组装——窗 ≤48h"
+  "updated_at": "2026-10-08 17:2x",
+  "current_activity": "17:1x 哨兵窗轮：T61 task-liveness 探针落地（idle_selfcheck J6 新探针=schtasks 态只读探三任务+OSLoop 锚+暂停集≥4 辅证两态判定·BC-P-57 批活化·R-51 缓解②·selftest 四夹具绿+check task_face=ok 接线）+同轮发现 MiniGame 双任务同型失能观察（P2 移交面）+T62 探针频次升窗新立",
+  "latest_artifact": "Tools/idle_selfcheck.py（J6 task-liveness 探针在役·值守簿记失能≤轮频检出）+state/t61-task-liveness-deploy-20261008.txt（部署回执）·2026-10-08 17:2x",
+  "next_milestone": "22:43 夜班轮：E47 OH- 切片回执组装（72h 窗 21:40 开口·§E50 维护面证据已备）+E48 radar 专项窗呈报（≤10-10 12:00）+T60 serve 更新器呈批面黄装——窗 ≤48h"
 }

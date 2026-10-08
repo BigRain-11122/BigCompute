@@ -20,6 +20,12 @@ VRAM≥6GB〕→ 领池检（fleet/backlog 可领行计数）→ 池空拉本司
      + round_append 在位断言——零真实状态文件副作用
   J5 serve 探活（BC-P-55）：/api/tags 2s 超时只读 GET·alive=http200；
      死亡（连接拒/超时/非 200）→ check 落 P1 行（共租户受损预警面）·自动重启随批
+  J6 task-liveness 探针（T61·BC-P-57 批活化·R-51 缓解②·10-08 13:18 GPU-IdleWatch
+     静默失能 ~3h 事故派生）：schtasks 态只读探三任务（GPU-IdleWatch/OrderSentinel/
+     OSLoop）——非 Ready/Running 即心跳告警行；pause 律性失能豁免=OSLoop 锚+集群
+     辅证双条件（machine-state.ps1 -Mode pause 必整集 Disable 含 OSLoop→OSLoop
+     Disabled 且暂停集 Disabled ≥4=律性态零告警；OSLoop 单体失能≠pause=轮死最高
+     警级·禁误豁免）·任务缺失（Absent）=事故态告警
 
 用法：
   python Tools/idle_selfcheck.py check     # 每轮自检步（iteration_loop.ps1 内建）
@@ -48,6 +54,16 @@ RAM_FREE_PCT_MIN = 40.0
 VRAM_FREE_MB_MIN = 6 * 1024
 CONSECUTIVE_TRIGGER = 2  # §9.6.2 两读触发
 OLLAMA_TAGS_URL = "http://127.0.0.1:11434/api/tags"  # BC-P-55 探活端点（只读）
+# J6（T61/BC-P-57）：任务态探针三任务（非 Ready/Running 即告警）
+TASK_LIVENESS_PROBE = ("BigCompute-GPU-IdleWatch", "BigCompute-OrderSentinel",
+                       "BigCompute-OSLoop")
+# machine-state.ps1 -Mode pause 暂停集（bm-a LOCALIZE-1 全集）——pause 律性态判定源
+MACHINE_PAUSE_SET = ("BigCompute-OSLoop", "BigCompute-OSLoop-PM",
+                     "BigCompute-GPU-IdleWatch", "BigCompute-CleanWindowProbe",
+                     "BigCompute-OrderSentinel", "BigCompute-ResidentQA",
+                     "MiniGameOllamaKeepWarm", "MiniGameOllamaServe")
+ALIVE_STATES = ("Ready", "Running")
+PAUSE_CORROBORATE_MIN = 4  # pause 必整集 Disable；辅证下限防 OSLoop 单体失能误豁免
 
 
 class MemoryStatusEx(ctypes.Structure):
@@ -98,6 +114,43 @@ def probe_serve_liveness(url=OLLAMA_TAGS_URL, timeout=2):
             return False, "http%d" % r.status
     except Exception as e:
         return False, type(e).__name__
+
+
+def probe_task_states(names):
+    """J6（T61/BC-P-57）：schtasks 态只读探——Get-ScheduledTask State 枚举
+    （locale 无关）。返回 {name: state}；缺失任务/查询失败 → Absent/ProbeError。"""
+    ps = ("Get-ScheduledTask -TaskName %s -ErrorAction SilentlyContinue | "
+          "ForEach-Object { $_.TaskName + '=' + $_.State }"
+          % ",".join("'%s'" % n for n in names))
+    try:
+        out = subprocess.run(["powershell", "-NoProfile", "-Command", ps],
+                             capture_output=True, text=True, timeout=15,
+                             encoding="utf-8", errors="replace")
+        states = {}
+        for line in out.stdout.splitlines():
+            if "=" in line:
+                k, v = line.split("=", 1)
+                states[k.strip()] = v.strip()
+        for n in names:
+            states.setdefault(n, "Absent")
+        return states
+    except Exception:
+        return {n: "ProbeError" for n in names}
+
+
+def classify_task_face(states):
+    """J6 两态判定（BC-P-57 判负路径豁免面）：pause 律性态=OSLoop 锚+暂停集
+    Disabled ≥4 辅证（machine-state pause 必整集 Disable）→全探针豁免；
+    集群在活而探针任务单体非 Ready/Running=事故态告警（10-08 13:18 判例）。"""
+    disabled_n = sum(1 for n in MACHINE_PAUSE_SET
+                     if states.get(n) == "Disabled")
+    pause_mode = (states.get("BigCompute-OSLoop") == "Disabled"
+                  and disabled_n >= PAUSE_CORROBORATE_MIN)
+    if pause_mode:
+        return True, []
+    alerts = [n for n in TASK_LIVENESS_PROBE
+              if states.get(n) not in ALIVE_STATES]
+    return False, alerts
 
 
 def count_pool_claimable(backlog_path=BACKLOG):
@@ -164,6 +217,15 @@ def check():
     pool = count_pool_claimable()
     q_open = count_queue_open()
     serve_alive, serve_detail = probe_serve_liveness()
+    tstates = probe_task_states(MACHINE_PAUSE_SET)
+    probe_error = all(v == "ProbeError" for v in tstates.values())
+    if probe_error:
+        pause_mode, task_alerts, task_face = False, [], "probe-error"
+    else:
+        pause_mode, task_alerts = classify_task_face(tstates)
+        task_face = ("pause-exempt" if pause_mode else
+                     ("ALERT:" + ",".join(task_alerts) if task_alerts
+                      else "ok"))
 
     st = load_state()
     if green_idle and pool == 0 and q_open == 0:
@@ -181,16 +243,20 @@ def check():
     st["last_check"] = time.strftime("%Y-%m-%d %H:%M:%S")
     st["last_read"] = {"ram_free_pct": ram_pct, "vram_free_mb": vram_mb,
                        "pool_claimable": pool, "queue_open": q_open,
-                       "serve_alive": serve_alive, "serve_detail": serve_detail}
+                       "serve_alive": serve_alive, "serve_detail": serve_detail,
+                       "task_face": task_face,
+                       "task_states": {n: tstates.get(n) for n in
+                                       TASK_LIVENESS_PROBE}}
     save_state(st)
 
     line = ("%s idle_selfcheck: verdict=%s ram_free_pct=%s vram_free_mb=%s "
             "pool_claimable=%d queue_open=%d consecutive_idle=%d "
             "idle_rounds=%d agenda_starved=%s serve_alive=%s serve_detail=%s"
+            " task_face=%s"
             % (time.strftime("%Y-%m-%d %H:%M:%S"), verdict, ram_pct,
                vram_mb, pool, q_open, st["consecutive_idle"],
                st["idle_rounds"], str(starved).lower(),
-               str(serve_alive).lower(), serve_detail))
+               str(serve_alive).lower(), serve_detail, task_face))
     code, msg = append_heartbeat(line)
     print(line)
     print("append: code=%d %s" % (code, msg))
@@ -204,6 +270,26 @@ def check():
         code2, msg2 = append_heartbeat(p1)
         print(p1)
         print("append-p1: code=%d %s" % (code2, msg2))
+    if probe_error:
+        # J6 探针自身故障=检测面失明（P1·与任务告警分面）
+        p1e = ("%s P1 task_liveness: probe-error — schtasks 态查询失败"
+               "（检测面失明·修复=探针链自查）" % time.strftime(
+                   "%Y-%m-%d %H:%M:%S"))
+        code3, msg3 = append_heartbeat(p1e)
+        print(p1e)
+        print("append-p1e: code=%d %s" % (code3, msg3))
+    elif task_alerts and not pause_mode:
+        # J6（T61/BC-P-57·R-51 缓解②）：任务单体非 Ready=事故态告警
+        #（10-08 13:18 GPU-IdleWatch 判例同型·修复面=enable 复活·pause 未达=非律性）
+        p1t = ("%s P1 task_liveness: %s 非活态（%s）— R-51 事故态告警"
+               "（13:18 判例同型）·修复面=schtasks enable 复活·pause 集签名"
+               "未达=非律性失能禁豁免" % (time.strftime("%Y-%m-%d %H:%M:%S"),
+                ",".join(task_alerts),
+                ";".join("%s=%s" % (n, tstates.get(n))
+                         for n in task_alerts)))
+        code3, msg3 = append_heartbeat(p1t)
+        print(p1t)
+        print("append-p1t: code=%d %s" % (code3, msg3))
     return 0 if code in (0, 2) else 1
 
 
@@ -242,6 +328,26 @@ def selftest():
           % (alive, detail, alive_dn, detail_dn))
     ok &= isinstance(alive, bool)
     ok &= (alive_dn is False and bool(detail_dn))
+
+    # J6 task-liveness（T61/BC-P-57）：两态判定纯函数夹具 + 只读探真跑
+    base = {n: "Ready" for n in MACHINE_PAUSE_SET}
+    inc = dict(base, **{"BigCompute-GPU-IdleWatch": "Disabled"})  # 13:18 判例
+    pau = {n: "Disabled" for n in MACHINE_PAUSE_SET}              # pause 整集
+    solo = dict(base, **{"BigCompute-OSLoop": "Disabled"})        # OSLoop 单体
+    run = dict(base, **{"BigCompute-OrderSentinel": "Running"})   # Running 活
+    c_inc, c_pau, c_solo, c_run = (classify_task_face(inc),
+                                  classify_task_face(pau),
+                                  classify_task_face(solo),
+                                  classify_task_face(run))
+    live_t = probe_task_states(MACHINE_PAUSE_SET)  # 只读真跑
+    print("J6 task-liveness: incident=%s pause=%s osloop-solo=%s "
+          "running=%s live3=%s" % (c_inc, c_pau, c_solo, c_run,
+          {n: live_t.get(n) for n in TASK_LIVENESS_PROBE}))
+    ok &= (c_inc == (False, ["BigCompute-GPU-IdleWatch"]))
+    ok &= (c_pau == (True, []))
+    ok &= (c_solo == (False, ["BigCompute-OSLoop"]))
+    ok &= (c_run == (False, []))
+    ok &= all(live_t.get(n) for n in TASK_LIVENESS_PROBE)
     print("SELFTEST %s" % ("PASS" if ok else "FAIL"))
     return 0 if ok else 1
 
