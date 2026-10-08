@@ -1,7 +1,7 @@
 {
   "company": "BigCompute",
-  "updated_at": "2026-10-08 13:3x",
-  "current_activity": "13:2x 哨兵触发轮：E47 OSS 扩域两域切片前置扫描批毕（值守调度域+美术资产管线域备货——linkedin/oncall+ybuild-ai skill+Miku 材质桥三 cleared-for-adoption 登记·distill 参考位·六判负留痕·点名至即组装回执）；审核步 orders 尾段新六行全 BigStream/CPH4/FluxVerse 域零本司派单；QA 6/7〔ollama FAIL=R-50 冲刺窗共租降级判据命中·收线即复跑〕",
-  "latest_artifact": "state/e47-oss-domain-scan-20261008.md（E47 两域切片备货件·6 处 A 级实搜+许可原文验 3 verbatim+五门评估+结论应用表）·2026-10-08 13:3x",
-  "next_milestone": "22:43 夜班轮：E47 OH- 切片回执组装（72h 窗 21:40 开口·点名→回执制·备货件直移）+E48 radar 专项窗呈报（≤10-10 12:00）+QA ollama 复验（冲刺线收线即绿）——窗 ≤48h"
+  "updated_at": "2026-10-08 13:5x",
+  "current_activity": "13:4x 午班轮：BC-P-55 serve_liveness 探针面落地（idle_selfcheck 加性扩展 serve_alive/serve_detail 心跳双字段+死亡即 P1 行·selftest J1-J5 PASS）——部署过程实弹命中 serve 事故 #2（更新器 12:52 二杀悬死 ~56min·13:45 探针零存在定谳→13:48 M57 配方净重启复活·POST 200 真生成实证）+8d980af 轮 QA R-50 归因勘正+probe 8 E50 假阳性判例修（复跑 7/7 全绿）",
+  "latest_artifact": "Tools/idle_selfcheck.py serve_liveness 扩展+state/bcp55-serve-liveness-deploy-20261008.txt（部署回执+事故 #2 实录+归因勘正）·2026-10-08 13:5x",
+  "next_milestone": "22:43 夜班轮：E47 OH- 切片回执组装（72h 窗 21:40 开口·点名→回执制）+E48 radar 专项窗呈报（≤10-10 12:00）+T60 serve 更新器双杀呈批面组装（自动重启接线/更新器钉住两径·悬剑=更新包 v0.40.1 在库）——窗 ≤48h"
 }

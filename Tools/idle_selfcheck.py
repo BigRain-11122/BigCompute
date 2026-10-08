@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """idle_selfcheck.py — §9.6 闲置硬触发闭环·每轮自检步（O-20261007-2315 承接·BC-P-54 批活）
++ serve_liveness 探活扩展（BC-P-55·M57④ 10-08 serve 无声死亡 ~20min 事故实证派生——
+探针+轮报告 P1 行本窗落地·净重启自动动作随批非自决维持）
 
 构造化执法（§9.6.1-2）：读本机资源面 → GREEN-IDLE 达档〔§8.2：RAM 空闲≥40% 且
 VRAM≥6GB〕→ 领池检（fleet/backlog 可领行计数）→ 池空拉本司三队列议程计数 →
@@ -16,6 +18,8 @@ VRAM≥6GB〕→ 领池检（fleet/backlog 可领行计数）→ 池空拉本司
      轮间状态件 state/idle_selfcheck.json（consecutive_idle/idle_rounds 持久化）
   J4 selftest：RAM/VRAM 探针数值断言 + backlog 解析夹具断言 + 状态件 temp 往返
      + round_append 在位断言——零真实状态文件副作用
+  J5 serve 探活（BC-P-55）：/api/tags 2s 超时只读 GET·alive=http200；
+     死亡（连接拒/超时/非 200）→ check 落 P1 行（共租户受损预警面）·自动重启随批
 
 用法：
   python Tools/idle_selfcheck.py check     # 每轮自检步（iteration_loop.ps1 内建）
@@ -29,6 +33,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import urllib.request
 
 PROJECT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 HEARTBEAT = os.path.join(PROJECT, "state", "heartbeat.txt")
@@ -42,6 +47,7 @@ QUEUE_DIR = os.path.join(PROJECT, "state", "queue")
 RAM_FREE_PCT_MIN = 40.0
 VRAM_FREE_MB_MIN = 6 * 1024
 CONSECUTIVE_TRIGGER = 2  # §9.6.2 两读触发
+OLLAMA_TAGS_URL = "http://127.0.0.1:11434/api/tags"  # BC-P-55 探活端点（只读）
 
 
 class MemoryStatusEx(ctypes.Structure):
@@ -77,6 +83,21 @@ def probe_vram_free_mb():
         return min(vals) if vals else -1
     except Exception:
         return -1
+
+
+def probe_serve_liveness(url=OLLAMA_TAGS_URL, timeout=2):
+    """J5（BC-P-55）：serve 探活——/api/tags 只读 GET·2s 超时。
+
+    返回 (alive, detail)：alive=http200；死亡=连接拒/超时/非 200，
+    detail=异常类名或 http<code>（心跳行诊断位·app.log 事故面 10-08 在案）。
+    """
+    try:
+        with urllib.request.urlopen(url, timeout=timeout) as r:
+            if r.status == 200:
+                return True, "http200"
+            return False, "http%d" % r.status
+    except Exception as e:
+        return False, type(e).__name__
 
 
 def count_pool_claimable(backlog_path=BACKLOG):
@@ -142,6 +163,7 @@ def check():
     green_idle = (ram_pct >= RAM_FREE_PCT_MIN and vram_mb >= VRAM_FREE_MB_MIN)
     pool = count_pool_claimable()
     q_open = count_queue_open()
+    serve_alive, serve_detail = probe_serve_liveness()
 
     st = load_state()
     if green_idle and pool == 0 and q_open == 0:
@@ -158,18 +180,30 @@ def check():
     st["last_verdict"] = verdict
     st["last_check"] = time.strftime("%Y-%m-%d %H:%M:%S")
     st["last_read"] = {"ram_free_pct": ram_pct, "vram_free_mb": vram_mb,
-                       "pool_claimable": pool, "queue_open": q_open}
+                       "pool_claimable": pool, "queue_open": q_open,
+                       "serve_alive": serve_alive, "serve_detail": serve_detail}
     save_state(st)
 
     line = ("%s idle_selfcheck: verdict=%s ram_free_pct=%s vram_free_mb=%s "
             "pool_claimable=%d queue_open=%d consecutive_idle=%d "
-            "idle_rounds=%d agenda_starved=%s"
+            "idle_rounds=%d agenda_starved=%s serve_alive=%s serve_detail=%s"
             % (time.strftime("%Y-%m-%d %H:%M:%S"), verdict, ram_pct,
                vram_mb, pool, q_open, st["consecutive_idle"],
-               st["idle_rounds"], str(starved).lower()))
+               st["idle_rounds"], str(starved).lower(),
+               str(serve_alive).lower(), serve_detail))
     code, msg = append_heartbeat(line)
     print(line)
     print("append: code=%d %s" % (code, msg))
+    if not serve_alive:
+        # BC-P-55：serve 死亡 → P1 轮报告行（共租户受损预警·修复面=净重启托盘链
+        # 配方在案 M57·自动执行随批非自决）
+        p1 = ("%s P1 serve_liveness: OLLAMA DOWN detail=%s — 共租户"
+              "（BigMoney L1/BigLife QA/bge-m3）受损预警·修复=净重启托盘链"
+              "（M57 配方）·自动重启随批（BC-P-55）"
+              % (time.strftime("%Y-%m-%d %H:%M:%S"), serve_detail))
+        code2, msg2 = append_heartbeat(p1)
+        print(p1)
+        print("append-p1: code=%d %s" % (code2, msg2))
     return 0 if code in (0, 2) else 1
 
 
@@ -200,6 +234,14 @@ def selftest():
         ok &= (st["consecutive_idle"] == 1)
     print("J4 round_append present: %s" % os.path.exists(ROUND_APPEND))
     ok &= os.path.exists(ROUND_APPEND)
+
+    alive, detail = probe_serve_liveness()
+    alive_dn, detail_dn = probe_serve_liveness(
+        "http://127.0.0.1:1/api/tags")  # 闭合端口=死亡路径夹具（零副作用）
+    print("J5 serve liveness: live=(%s,%s) down=(%s,%s)"
+          % (alive, detail, alive_dn, detail_dn))
+    ok &= isinstance(alive, bool)
+    ok &= (alive_dn is False and bool(detail_dn))
     print("SELFTEST %s" % ("PASS" if ok else "FAIL"))
     return 0 if ok else 1
 
