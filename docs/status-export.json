@@ -1,7 +1,7 @@
 {
   "company": "BigCompute",
-  "updated_at": "2026-10-08 17:2x",
-  "current_activity": "17:1x 哨兵窗轮：T61 task-liveness 探针落地（idle_selfcheck J6 新探针=schtasks 态只读探三任务+OSLoop 锚+暂停集≥4 辅证两态判定·BC-P-57 批活化·R-51 缓解②·selftest 四夹具绿+check task_face=ok 接线）+同轮发现 MiniGame 双任务同型失能观察（P2 移交面）+T62 探针频次升窗新立",
-  "latest_artifact": "Tools/idle_selfcheck.py（J6 task-liveness 探针在役·值守簿记失能≤轮频检出）+state/t61-task-liveness-deploy-20261008.txt（部署回执）·2026-10-08 17:2x",
-  "next_milestone": "22:43 夜班轮：E47 OH- 切片回执组装（72h 窗 21:40 开口·§E50 维护面证据已备）+E48 radar 专项窗呈报（≤10-10 12:00）+T60 serve 更新器呈批面黄装——窗 ≤48h"
+  "updated_at": "2026-10-08 18:2x",
+  "current_activity": "18:0x 哨兵触发轮：T62 夜盲窗任务活性哨落地（idle_selfcheck night_watch 锁存去重哨+order_sentinel 15min tick 内建接线·selftest J1-J7 PASS+直跑/整 tick 双实弹零副作用·夜窗任务失能检测延迟 ~14h→≤15min=R-51 夜盲窗收口）+T63 补行（BC-P-45 marker 收紧候选）+集团 orders.md 尾部 merge conflict 标记 P1 呈报（非本司域）",
+  "latest_artifact": "Tools/idle_selfcheck.py（night_watch 夜盲窗哨在役·正常静默零追加·异常锁存去重）+Tools/order_sentinel.ps1（tick 接线块）+qa/smoke-20260908-1809.log+png（QA 7/7）·2026-10-08 18:2x",
+  "next_milestone": "22:43 夜班轮：E47 OH- 切片回执组装（72h 窗 21:40 开口·备货件含 §E50 维护面证据直采）+E48 radar 专项窗呈报（≤10-10 12:00）+T60 serve 更新器呈批面——窗 ≤48h"
 }

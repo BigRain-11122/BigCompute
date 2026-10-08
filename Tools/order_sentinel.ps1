@@ -18,6 +18,18 @@ New-Item -ItemType Directory -Force (Split-Path -Parent $snapshot) | Out-Null
 function SLog([string]$m) {
     Add-Content -Path $sentLog -Value "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') $m" -Encoding UTF8
 }
+# T62 night-blind-window task-liveness probe (R-51 mitigation-3): silent
+# pythonw fire-and-forget every tick; latched anomaly-only heartbeat alert
+# (zero appends on normal ticks). Fallback chain pythonw -> python hidden.
+try {
+    Start-Process -FilePath 'pythonw.exe' -ArgumentList ('"' +
+        (Join-Path $Project 'Tools\idle_selfcheck.py') + '" night_watch') -WindowStyle Hidden
+} catch {
+    try {
+        Start-Process -FilePath 'python.exe' -ArgumentList ('"' +
+            (Join-Path $Project 'Tools\idle_selfcheck.py') + '" night_watch') -WindowStyle Hidden
+    } catch { SLog ('night_watch launch failed: ' + $_.Exception.Message) }
+}
 $hashes = @()
 foreach ($f in $files) {
     if (Test-Path $f) { $hashes += (Get-FileHash -Path $f -Algorithm SHA256).Hash }

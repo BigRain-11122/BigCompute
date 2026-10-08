@@ -26,9 +26,15 @@ VRAM≥6GB〕→ 领池检（fleet/backlog 可领行计数）→ 池空拉本司
      辅证双条件（machine-state.ps1 -Mode pause 必整集 Disable 含 OSLoop→OSLoop
      Disabled 且暂停集 Disabled ≥4=律性态零告警；OSLoop 单体失能≠pause=轮死最高
      警级·禁误豁免）·任务缺失（Absent）=事故态告警
+  J7 night-watch 哨（T62·R-51 缓解③·探针频次升窗）：OrderSentinel 15min tick 内建
+     夜盲窗任务活性哨（pythonw 静默 fire-and-forget·夜窗检测延迟轮频 ~14h→≤15min
+     达预注册 ≤30min 预算）——锁存去重（同异常签名只告警一次防 tick 风暴）·恢复=
+     清锁存静默·正常零追加（预注册「正常静默」）·pause 豁免同 J6 双条件·
+     OrderSentinel 自身失能=自探盲区如实记（其态由轮频探针 J6 覆盖）
 
 用法：
-  python Tools/idle_selfcheck.py check     # 每轮自检步（iteration_loop.ps1 内建）
+  python Tools/idle_selfcheck.py check       # 每轮自检步（iteration_loop.ps1 内建）
+  python Tools/idle_selfcheck.py night_watch  # T62 tick 哨（静默·异常才写心跳）
   python Tools/idle_selfcheck.py selftest
 """
 import ctypes
@@ -44,6 +50,8 @@ import urllib.request
 PROJECT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 HEARTBEAT = os.path.join(PROJECT, "state", "heartbeat.txt")
 STATE_FILE = os.path.join(PROJECT, "state", "idle_selfcheck.json")
+LATCH_FILE = os.path.join(PROJECT, "state", "sentinel-taskface.latch")
+NIGHT_LOG = os.path.join(PROJECT, "state", "sentinel-nightwatch.log")
 ROUND_APPEND = os.path.join(PROJECT, "Tools", "round_append.py")
 BACKLOG = os.path.abspath(os.path.join(
     PROJECT, "..", "..", "quant", "BigMoney", "fleet", "backlog.md"))
@@ -210,6 +218,64 @@ def append_heartbeat(line, heart=HEARTBEAT):
     return r.returncode, (r.stdout or r.stderr).strip()[:120]
 
 
+def night_task_watch(states=None, latch_path=LATCH_FILE, recorder=None):
+    """J7（T62·R-51 缓解③）：夜盲窗任务活性哨——OrderSentinel 15min tick 内建
+    （pythonw 静默 fire-and-forget·宿主接线=order_sentinel.ps1）。判据=延迟预算
+    ≤30min（tick 15min 达标）vs 改动量（本函数+tick 接线块）。锁存去重：同一
+    异常签名只告警一次（持续异常零追加·防 15min tick 风暴）；恢复=清锁存静默；
+    正常=零追加（预注册「正常静默零追加」）。pause 律性豁免同 J6 双条件。
+    pythonw 无 stdout——本函数零 print（崩溃痕唯一出口=NIGHT_LOG·main 面）。"""
+    if states is None:
+        states = probe_task_states(MACHINE_PAUSE_SET)
+    probe_error = all(v == "ProbeError" for v in states.values())
+    if probe_error:
+        alerts = []
+        sig = "probe-error"
+    else:
+        pause_mode, alerts = classify_task_face(states)
+        if pause_mode:
+            alerts = []
+        sig = "|".join(sorted(alerts))
+    prev = ""
+    if os.path.exists(latch_path):
+        try:
+            with open(latch_path, encoding="utf-8") as f:
+                prev = f.read().strip()
+        except Exception:
+            prev = ""
+    if not sig:
+        # 正常态（含 pause 豁免）：恢复即清锁存·静默零追加
+        if os.path.exists(latch_path):
+            try:
+                os.unlink(latch_path)
+            except Exception:
+                pass
+        return 0
+    if prev == sig:
+        return 0  # 同签名已告警：锁存去重（持续异常零追加·防 tick 风暴）
+    try:
+        with open(latch_path, "w", encoding="utf-8") as f:
+            f.write(sig)
+    except Exception:
+        pass
+    now = time.strftime("%Y-%m-%d %H:%M:%S")
+    if sig == "probe-error":
+        line = ("%s P1 task_liveness night-watch: probe-error — schtasks "
+                "态查询失败（夜盲窗检测面失明·修复=探针链自查）〔T62·R-51 缓解③·"
+                "锁存 sig=probe-error〕" % now)
+    else:
+        line = ("%s P1 task_liveness night-watch: %s 非活态（%s）— T62 夜盲窗哨"
+                "〔OrderSentinel 15min tick·R-51 缓解③·锁存去重 sig=%s〕·修复面="
+                "schtasks enable 复活·pause 集签名未达=非律性失能禁豁免"
+                % (now, ",".join(alerts),
+                   ";".join("%s=%s" % (n, states.get(n)) for n in alerts), sig))
+    if recorder is not None:
+        recorder(line)  # selftest 注入面（零真实 heartbeat 副作用）
+    else:
+        append_heartbeat(line)
+    return 1
+
+
 def check():
     ram_pct = probe_ram_free_pct()
     vram_mb = probe_vram_free_mb()
@@ -348,10 +414,44 @@ def selftest():
     ok &= (c_solo == (False, ["BigCompute-OSLoop"]))
     ok &= (c_run == (False, []))
     ok &= all(live_t.get(n) for n in TASK_LIVENESS_PROBE)
+
+    # J7 night-watch（T62·R-51 缓解③）：锁存去重哨夹具——temp 锁存+注入
+    # recorder·零真实 heartbeat/latch 副作用（五路径：新告警/去重/签名变更/
+    # 恢复清锁存/pause 豁免）
+    with tempfile.TemporaryDirectory() as td:
+        lat = os.path.join(td, "latch")
+        rec = []
+        n_all = {n: "Ready" for n in MACHINE_PAUSE_SET}
+        n_inc = dict(n_all, **{"BigCompute-GPU-IdleWatch": "Disabled"})
+        n_pau = {n: "Disabled" for n in MACHINE_PAUSE_SET}
+        n_err = {n: "ProbeError" for n in MACHINE_PAUSE_SET}
+        r1 = night_task_watch(n_inc, lat, rec.append)   # 新事故→告警 1
+        r2 = night_task_watch(n_inc, lat, rec.append)   # 同签名→去重 0
+        r3 = night_task_watch(n_err, lat, rec.append)   # 签名变更→再告警 1
+        r4 = night_task_watch(n_all, lat, rec.append)   # 恢复→清锁存 0
+        r5 = night_task_watch(n_pau, lat, rec.append)   # pause 豁免→零追加 0
+        ok &= (r1, r2, r3, r4, r5) == (1, 0, 1, 0, 0)
+        ok &= (len(rec) == 2) and (not os.path.exists(lat))
+        ok &= ("night-watch" in rec[0]) and ("probe-error" in rec[1])
+        print("J7 night-watch: alert=%d dedup=%d resig=%d recover=%d "
+              "pause=%d alerts=%d latch-cleared=%s"
+              % (r1, r2, r3, r4, r5, len(rec), not os.path.exists(lat)))
     print("SELFTEST %s" % ("PASS" if ok else "FAIL"))
     return 0 if ok else 1
 
 
 if __name__ == "__main__":
     cmd = sys.argv[1] if len(sys.argv) > 1 else "check"
+    if cmd == "night_watch":
+        # T62 tick 哨：pythonw 无 stdout——零 print·崩溃痕唯一出口=NIGHT_LOG
+        try:
+            sys.exit(night_task_watch())
+        except Exception as e:
+            try:
+                with open(NIGHT_LOG, "a", encoding="utf-8") as f:
+                    f.write("%s night_watch crash: %r\n"
+                            % (time.strftime("%Y-%m-%d %H:%M:%S"), e))
+            except Exception:
+                pass
+            sys.exit(3)
     sys.exit(check() if cmd == "check" else selftest())
