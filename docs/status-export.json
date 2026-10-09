@@ -1,7 +1,7 @@
 {
   "company": "BigCompute",
-  "updated_at": "2026-10-09 19:21",
-  "current_activity": "10-09 19:1x-19:2x 哨兵触发轮：O-20261009-1845 机队记忆并集令收讫（bm-a 主机面已 executed·非本司派单·机件在场验=正本+同步脚本+poke 接线三件 ✓）+E57 H3 功率采样器窗内即耗毕（Tools/h3_power_sampler.py 被动 1s 采样·E46 边际法移植·冷加载/推理分段均值·下次本机 H3 实跑窗即挂）+F3 tools-drift 检出即修（idle_selfcheck=T61 10-08 入册漏注·双补注册 D 面 43 件）·任务板=tasks/TASKS.md",
-  "latest_artifact": "Tools/h3_power_sampler.py（200 非空行过闸 9.5KB·selftest 10/10+sanity 4s 实弹·qa/smoke-20261009-1919.log 7/7 PASS+png）·2026-10-09 19:19",
-  "next_milestone": "bm-c H3 样片收片窗（O-1746 SLA ~20:46 今晚·收片即 E56 bm-c 面对照增补+呈 CEO 地址）；OSS 收获窗 10-10 12:00；M55 呈报窗 10-14；N1 月末归集 10-31 22:43"
+  "updated_at": "2026-10-10 00:15",
+  "current_activity": "10-10 00:1x 哨兵轮：CEO 令族承接批——云端视频解禁令→mandate v3.1（22:2x CEO 令废止 O-1315 唯一禁面·正式镜头主力=云端 H3 Context-IR/Seedance）+音轨禁令→H3 workflow 480p.json 音频链剥离（构造性无音频）+bm-c 768P 片数据面 R- §七 增补；任务板=tasks/TASKS.md",
+  "latest_artifact": "Tools/iteration_prompt.txt mandate v3.1（云端科学使用律修法+音轨禁令面并入）+cph4/fleet/h3-local-test/h3_t2v_local_480p.json 无音频合规版（本地工作树备用资产）；2026-10-10 00:1x",
+  "next_milestone": "E57 H3 功率采样随窗挂载（本机 H3 实跑窗冷/暖各一→R- E_用 行实测换 242W 上限代理）；OSS 收获窗 10-10 12:00；M55 呈报窗 10-14；N1 月末归集 10-31 22:43"
 }

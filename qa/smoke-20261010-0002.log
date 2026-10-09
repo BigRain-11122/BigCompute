@@ -1,0 +1,38 @@
+BigCompute QA smoke test 20261010-0002 (orders L254 / charter v1)
+
+[gpu collector] FAIL -> gpu collector
+machine_borrowable=NOT-BORROWABLE[VRAM|COTENANT] vram_free=1624MiB(line>=6144MiB) cotenant_editors=2(line 0) (D-20261004-04 dual probe; decoupled from GREEN-IDLE loop state; R-41 fleet-row field)
+gpu report 2026-10-10 machine=bm-a: no samples today
+
+[ollama response] PASS -> ollama response
+answer='1+1 equals 2.' eval_count=8 61.08 tok/s
+residency: pre=FOREVER post=FOREVER (maintained)
+NAME                   ID              SIZE      PROCESSOR    CONTEXT    RUNNER      UNTIL   
+qwen2.5:7b-instruct    845dbda0ea48    5.1 GB    100% GPU     4096       llamacpp    Forever
+NAME                   ID              SIZE      PROCESSOR    CONTEXT    RUNNER      UNTIL   
+qwen2.5:7b-instruct    845dbda0ea48    5.1 GB    100% GPU     4096       llamacpp    Forever
+
+[queue rows] PASS -> queue rows
+main.md: 64 rows
+tech.md: 73 rows
+explore.md: 57 rows
+
+[cost ledger] PASS -> cost ledger
+selftest: math=True determinism=True count=ok (orders+quota-gate+count+cloud+borrow) -> PASS
+
+[rounds.log strict-decode] PASS -> rounds.log strict-decode
+strict utf-8 decode ok: 259786 bytes / 203 lines
+
+[resident QA serve 8792] PASS -> resident QA serve 8792
+health 200 status=ok anchors=20 server=resident-qa v1.0 (BigCompute MaaS consumer face) model=qwen2.5:7b-instruct
+
+[ledger tail integrity (BC-P-45)] PASS -> ledger tail integrity (BC-P-45)
+state/rounds.log: tail_nl=ok last_markers=1 last_len=920
+state/heartbeat.txt: tail_nl=ok last_markers=1 last_len=220
+HQ-FEEDBACK.md: tail_nl=ok last_markers=1 last_len=609
+state/proposals.md: tail_nl=ok last_markers=1 last_len=973
+state/queue/main.md: tail_nl=ok last_markers=1 last_len=391
+state/queue/tech.md: tail_nl=ok last_markers=1 last_len=860
+state/queue/explore.md: tail_nl=ok last_markers=1 last_len=761
+
+smoke verdict: 6/7 PASS (charter 4 + T25 + E41 + BC-P-45 no.8 probes)
