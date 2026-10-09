@@ -1,7 +1,7 @@
 {
   "company": "BigCompute",
-  "updated_at": "2026-10-09 19:07",
-  "current_activity": "10-09 19:0x 哨兵触发轮：H3 成本经济学首片数据回填毕（E56 步 2·J2 门开）——bm-a 首跑产物 ffprobe 自证（864×480/5.1667s/124 帧/AAC LC 双声道实证=O-1746 遗留验证点销）+E_电 ≈0.0658 kWh/条上界代理（电费金额 ⬜ Q3 铁律）；T73 跨窗归因收口（产物 prefix 实证=O-1746 bm-a 窗生成·本司客户端转备用资产）·任务板=tasks/TASKS.md",
-  "latest_artifact": "docs/research/R-20261009-h3-local-video-economics.md（步 2 回填版·§三 成本要素落数）+state/h3-local-econ-backfill-20261009-1901.txt（ffprobe 全量 JSON 自证证据）·2026-10-09 19:07",
+  "updated_at": "2026-10-09 19:21",
+  "current_activity": "10-09 19:1x-19:2x 哨兵触发轮：O-20261009-1845 机队记忆并集令收讫（bm-a 主机面已 executed·非本司派单·机件在场验=正本+同步脚本+poke 接线三件 ✓）+E57 H3 功率采样器窗内即耗毕（Tools/h3_power_sampler.py 被动 1s 采样·E46 边际法移植·冷加载/推理分段均值·下次本机 H3 实跑窗即挂）+F3 tools-drift 检出即修（idle_selfcheck=T61 10-08 入册漏注·双补注册 D 面 43 件）·任务板=tasks/TASKS.md",
+  "latest_artifact": "Tools/h3_power_sampler.py（200 非空行过闸 9.5KB·selftest 10/10+sanity 4s 实弹·qa/smoke-20261009-1919.log 7/7 PASS+png）·2026-10-09 19:19",
   "next_milestone": "bm-c H3 样片收片窗（O-1746 SLA ~20:46 今晚·收片即 E56 bm-c 面对照增补+呈 CEO 地址）；OSS 收获窗 10-10 12:00；M55 呈报窗 10-14；N1 月末归集 10-31 22:43"
 }

@@ -70,7 +70,7 @@ REGISTER = {
         "履约管线": ["Tools/fulfillment/test_pipeline.py"],
     },
 }
-DECLARED_TOOLS = 41  # Tools 根 py 申报数（盘点 §D·+openstd_render_probe〔tech T43〕入册后）
+DECLARED_TOOLS = 43  # Tools 根 py 申报数（盘点 §D·+h3_power_sampler〔E57〕+idle_selfcheck 补注册〔T61 10-08 漏注·F3 检出即修〕·10-09）
 
 
 def _measure(path):
