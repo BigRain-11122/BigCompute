@@ -24,6 +24,19 @@ incl. year).hexdigest().upper() (M37 §二 law, proven verbatim on GB/T
 42460-2023 + GB 45438-2025, mandatory GB carries no /T). A full-designation
 --std short-circuits the site list (ZERO-ROWS structural closure, T43);
 discovery chain = md5-direct > site-list fallback.
+T69: offset-landing jump law (T68 root-cause fix). The viewer scroll handler
+picks cachePage = first 0-based page i with pages[i].top-10 > scrollTop, then
+initImage(i) loads .page:eq(i) (0-based) = that page's OWN bg-token batch.
+Landing exactly at a page top (scrollTop = top) therefore always loads the
+NEXT page's batch - the batch-first blank root cause (T66 v1/v2 judged
+negative because pad-hop geometry still terminated on a top landing). Fix:
+land 20px ABOVE the target top (el.offsetTop - container - 20), inside the
+cachePage window [pages[k-1].top-10, pages[k].top-10) - loads the target
+batch on first visit, no rehop pad sequence needed. Tile counter fix: real
+popup-channel tiles are span.pdfImg-<row>-<col> (class "pdfImg-0-3", not
+exact "pdfImg") - selector is now span[class^="pdfImg"], closing the
+imgs=0/ready=false false-negative series (T55..T68). The T56/T66 re-visit
+fallback stays wired but fires only when the first visit is not tile-ready.
 Browser discovery: PLAYWRIGHT bundled chromium -> OPENSTD_BROWSER env ->
 system Chrome -> Edge (zero download, silent headless). Output confined to
 state/ of this repo; zero cross-repo writes (T43 law).
@@ -46,6 +59,10 @@ PRINTED_OFFSET = 4  # printed page N ~= PDF page N+4
 PREFETCH = 3        # prefetch law: current page + next ~3
 MAX_PAGES = 8       # bounded per invocation
 TILE_TIMEOUT_DEFAULT = 20
+OFFSET_LANDING = 20  # T69/T68 law: land this many px ABOVE the target page
+                     # top - cachePage window is [pages[k-1].top-10,
+                     # pages[k].top-10), so top-landing loads batch k+1
+                     # (batch-first blank root cause) and -20 loads batch k.
 
 JS_DISCOVER = """() => {
   const divs = [...document.querySelectorAll('div[id]')]
@@ -67,9 +84,9 @@ JS_SCROLL = """(p) => {
   while (c && c !== document.body && c.scrollHeight <= c.clientHeight + 10)
     c = c.parentElement;
   if (!c || c === document.body) return {ok: false};
-  c.scrollTop = el.offsetTop - c.offsetTop;
+  c.scrollTop = el.offsetTop - c.offsetTop - 20;
   const vis = Math.abs(el.getBoundingClientRect().top - c.getBoundingClientRect().top);
-  if (vis > 60) c.scrollTop = (p - 1) * 1308;
+  if (vis > 60) c.scrollTop = (p - 1) * 1308 - 20;
   return {ok: true, scrollTop: c.scrollTop};
 }"""
 
@@ -78,12 +95,20 @@ JS_TILES = """(p) => {
   if (!el) return null;
   const imgs = [...el.querySelectorAll('img')]
     .map(i => i.complete && i.naturalWidth > 0);
-  const spans = [...el.querySelectorAll('span.pdfImg')].map(s => {
+  const spans = [...el.querySelectorAll('span[class^="pdfImg"]')].map(s => {
     const bg = getComputedStyle(s).backgroundImage || '';
     return !!bg && bg !== 'none' && s.offsetWidth > 0;
   });
   return imgs.concat(spans);
 }"""
+
+JS_SCRIPT_FPRINT = """() => [...document.scripts].map(s => {
+  if (s.src) return 'src:' + s.src.split('/').pop();
+  const t = (s.textContent || '');
+  let h = 5381;
+  for (let i = 0; i < t.length; i++) { h = ((h * 33) ^ t.charCodeAt(i)) >>> 0; }
+  return 'inline:' + t.length + ':' + h;
+}).sort().join(' | ')"""
 
 JS_SEARCH = """() => [...document.querySelectorAll('a[href*="hcno="]')]
   .map(a => ({hcno: decodeURIComponent(a.href.split('hcno=')[1] || '').split('&')[0],
@@ -169,6 +194,19 @@ def rehop_plan(p0, total):
     if p0 + 1 <= total:
         return p0 + 1
     return None
+
+
+def viewer_cache_page(scroll_top, tops, guard_off=10):
+    """T68/T69 off-by-one law mirror (pure math, selftest S21a). The site
+    scroll handler picks cachePage = first 0-based i with tops[i]-guard_off >
+    scroll_top, then initImage(cachePage) loads .page:eq(cachePage) = that
+    page's OWN bg-token batch. Top-landing at page k (scroll_top == tops[k])
+    therefore loads k+1's batch (the batch-first blank); offset landing
+    tops[k]-20 lands inside [tops[k-1]-10, tops[k]-10) and loads k's batch."""
+    for i, t in enumerate(tops):
+        if t - guard_off > scroll_top:
+            return i
+    return len(tops) - 1
 
 
 def tiles_ready(states):
@@ -358,6 +396,17 @@ def cmd_render(a):
                 return 2
             log.append("dom_where=%s dom_pages=%s pageH_css=%s (law=%s)"
                        % (where, dom["pages"], dom["pageH"], DOC_PAGE_H))
+            # T69/T68(4): read-only viewer script fingerprint - src filenames
+            # + inline length:djb2 hash pairs; two documents sharing the same
+            # viewer template yield identical src: entries (the 37964-vs-45438
+            # same-mechanism corroboration, inline entries differ per-doc by
+            # design - token arrays etc.).
+            try:
+                log.append("scripts_fprint=%s"
+                           % (ctx.evaluate(JS_SCRIPT_FPRINT) or "")[:400])
+            except Exception:
+                log.append("scripts_fprint=eval-error")
+            p0_ready = False
             for p in pages:
                 t0 = time.time()
                 ctx.evaluate(JS_SCROLL, p)
@@ -371,6 +420,8 @@ def cmd_render(a):
                         break
                     pg.wait_for_timeout(400)
                 ready = tiles_ready(states)
+                if p == pages[0]:
+                    p0_ready = ready
                 shot = os.path.join(STATE, "%s-p%02d.png" % (prefix, p))
                 ctx.locator('[id="%d"]' % (p - 1)).screenshot(path=shot)
                 m = page_mapping(p)
@@ -389,32 +440,55 @@ def cmd_render(a):
             # a FORWARD near arrival (100% load evidence); backward arrivals
             # stay blank (far 16->09 fix1; near 10->09 v1 live-negative
             # 10-08). Blank first attempt png kept as -a1 evidence; canonical
-            # png = re-visit.
+            # png = re-visit. T69: with offset-landing the first visit now
+            # loads the target's own batch (T68 off-by-one root cause fixed),
+            # so the re-visit pad fires ONLY when the first visit is not
+            # tile-ready - first visit ready = canonical png, no pad needed.
             p0 = pages[0]
             a0 = os.path.join(STATE, "%s-p%02d.png" % (prefix, p0))
-            if os.path.exists(a0):
-                os.rename(a0, os.path.join(STATE, "%s-p%02d-a1.png" % (prefix, p0)))
-            hop = rehop_plan(p0, dom["pages"])
-            if hop is not None:
-                ctx.evaluate(JS_SCROLL, hop)
-                _mouse_stream(pg, ctx.locator('[id="%d"]' % (hop - 1)).bounding_box())
-                pg.wait_for_timeout(1500)
-            t0 = time.time()
-            ctx.evaluate(JS_SCROLL, p0)
-            _mouse_stream(pg, ctx.locator('[id="%d"]' % (p0 - 1)).bounding_box())
-            states, deadline = [], time.time() + a.tile_timeout
-            while time.time() < deadline:
-                states = ctx.evaluate(JS_TILES, p0) or []
-                if tiles_ready(states):
-                    break
-                pg.wait_for_timeout(400)
-            ready2 = tiles_ready(states)
-            ctx.locator('[id="%d"]' % (p0 - 1)).screenshot(path=a0)
-            log.append("rehop page=%d via_hop=%s imgs=%d ready=%s %.1fs -> %s (T66 forward-arrival law)"
-                       % (p0, hop if hop is not None else "self", len(states),
-                          ready2, time.time() - t0, os.path.basename(a0)))
-            if not ready2:
-                verdict, code = "TILES-TIMEOUT-PARTIAL", 1
+            if p0_ready:
+                log.append("rehop skipped page=%d first visit ready "
+                           "(T69 offset-landing)" % p0)
+            else:
+                if os.path.exists(a0):
+                    os.rename(a0, os.path.join(STATE, "%s-p%02d-a1.png"
+                                               % (prefix, p0)))
+                hop = rehop_plan(p0, dom["pages"])
+                if hop is not None:
+                    ctx.evaluate(JS_SCROLL, hop)
+                    _mouse_stream(pg, ctx.locator('[id="%d"]'
+                                                 % (hop - 1)).bounding_box())
+                    # T69b: poll the PAD page to tile-ready before
+                    # re-approaching p0 - T42's proven non-first path polls
+                    # every page to ready; a fixed 1.5s pad was judged
+                    # negative twice (T66 v2 + T69 first live run) while the
+                    # same geometry with a ready-polled predecessor loads the
+                    # shared batch. Pad-ready poll = the missing ingredient.
+                    hp_deadline = time.time() + a.tile_timeout
+                    while time.time() < hp_deadline:
+                        if tiles_ready(ctx.evaluate(JS_TILES, hop) or []):
+                            break
+                        pg.wait_for_timeout(400)
+                    pg.wait_for_timeout(400)
+                t0 = time.time()
+                ctx.evaluate(JS_SCROLL, p0)
+                _mouse_stream(pg, ctx.locator('[id="%d"]'
+                                              % (p0 - 1)).bounding_box())
+                states, deadline = [], time.time() + a.tile_timeout
+                while time.time() < deadline:
+                    states = ctx.evaluate(JS_TILES, p0) or []
+                    if tiles_ready(states):
+                        break
+                    pg.wait_for_timeout(400)
+                ready2 = tiles_ready(states)
+                ctx.locator('[id="%d"]' % (p0 - 1)).screenshot(path=a0)
+                log.append("rehop page=%d via_hop=%s imgs=%d ready=%s %.1fs"
+                           " -> %s (T66 forward-arrival law)"
+                           % (p0, hop if hop is not None else "self",
+                              len(states), ready2, time.time() - t0,
+                              os.path.basename(a0)))
+                if not ready2:
+                    verdict, code = "TILES-TIMEOUT-PARTIAL", 1
         except Exception as exc:
             print("RUN-ERROR error=%s verdict=HARD-FAIL" % str(exc)[:120])
             return 2
@@ -485,8 +559,24 @@ def cmd_selftest(a=None):
     check("S20b T66 v2 forward-arrival wired for ALL batch sizes (gate removed)",
           "def rehop_plan" in src and ("len(pages) " + "== 1") not in src
           and "via_hop=" in src and "T66 forward-arrival law" in src)
-    print("selftest: %s" % ("PASS" if ok == 22 else "FAIL"))
-    return 0 if ok == 22 else 1
+    tops = [i * 1644 for i in range(5)]
+    check("S21a T69 off-by-one math dual state (top-landing loads batch k+1,"
+          " offset-landing loads batch k)",
+          viewer_cache_page(tops[2], tops) == 3
+          and viewer_cache_page(tops[2] - 20, tops) == 2
+          and viewer_cache_page(tops[4] - 20, tops) == 4
+          and viewer_cache_page(-20, tops) == 0
+          and viewer_cache_page(tops[0], tops) == 1)
+    check("S21b T69 offset-landing wired in JS_SCROLL (both paths -20)",
+          "el.offsetTop - c.offsetTop - 20" in src
+          and "(p - 1) * 1308 - 20" in src
+          and "OFFSET_LANDING = 20" in src)
+    check("S21c T69 real-tile selector + conditional rehop + script fprint",
+          'span[class^="pdfImg"]' in src
+          and "first visit ready" in src
+          and "scripts_fprint=" in src)
+    print("selftest: %s" % ("PASS" if ok == 25 else "FAIL"))
+    return 0 if ok == 25 else 1
 
 
 def main():
