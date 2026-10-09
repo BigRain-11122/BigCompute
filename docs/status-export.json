@@ -1,7 +1,7 @@
 {
   "company": "BigCompute",
-  "updated_at": "2026-10-09 12:4x",
-  "current_activity": "10-09 12:4x 午班轮：tech T42 收口（GB 45438-2025 附录 E《文件元数据隐式标识格式》规范性附录 p17（印刷 13）全文逐字转录=七要素格式串+Label 取值 1/2/3+字符集条款 j+附录 F F.1/F.2 示例互证·b2b-no-label-delivery 技术格式锚升级指针级→原文级）——**任务板=tasks/TASKS.md（现役行认领制）**",
-  "latest_artifact": "state/w45438-appendixE-format-transcribe-20261009.txt（附录 E 原文级转录件）+docs/legal/b2b-no-label-delivery.md（技术格式锚升级）+qa/smoke-20261009-1221.log+png（QA 7/7 PASS）·2026-10-09 12:4x",
-  "next_milestone": "下窗首对象=T63 心跳 marker 收紧评估（正典窗呈批）或净窗开则 M25/T26 烘焙实弹（净窗闸 BLOCKED=Krea 产线借用面·顺延中）·次选 E51 OSS 续扫批——窗 ≤48h（12:43/22:43 双轨+令牌触发轮）"
+  "updated_at": "2026-10-09 12:3x",
+  "current_activity": "10-09 12:3x 哨兵轮：tech T63 心跳 marker 收紧评估毕（EVAL-PASS 三门·合成 merge 检出不降反升+587 行实扫误报类 93 行全消除·候选 regex 呈批件就绪待正典窗批·批前零改探针）+O-20261009-1227 全司逐审令收讫（本司在八线审查名单·实况面/台账鲜度/QA 7/7 就绪态）——**任务板=tasks/TASKS.md（现役行认领制）**",
+  "latest_artifact": "state/t63-marker-eval-20261009.txt（marker 评估证据件·误报类 93 行全消除零残留）+state/t63_marker_eval.py（评估件）+qa/smoke-20261009-1234.log+png（QA 7/7 PASS）·2026-10-09 12:3x",
+  "next_milestone": "下窗首对象=E51 OSS 续扫批（Blender Studio 官方线放宽词+AI 3D 资产管线族·OSS 六实体窗 10-10 12:00 内）或净窗开则 M25/T26 烘焙实弹（净窗闸 BLOCKED=mv0001 Krea 产线借用面·顺延中）——窗 ≤48h（12:43/22:43 双轨+令牌触发轮）"
 }
