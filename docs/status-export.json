@@ -1,7 +1,7 @@
 {
   "company": "BigCompute",
-  "updated_at": "2026-10-09 12:3x",
-  "current_activity": "10-09 12:3x 哨兵轮：tech T63 心跳 marker 收紧评估毕（EVAL-PASS 三门·合成 merge 检出不降反升+587 行实扫误报类 93 行全消除·候选 regex 呈批件就绪待正典窗批·批前零改探针）+O-20261009-1227 全司逐审令收讫（本司在八线审查名单·实况面/台账鲜度/QA 7/7 就绪态）——**任务板=tasks/TASKS.md（现役行认领制）**",
-  "latest_artifact": "state/t63-marker-eval-20261009.txt（marker 评估证据件·误报类 93 行全消除零残留）+state/t63_marker_eval.py（评估件）+qa/smoke-20261009-1234.log+png（QA 7/7 PASS）·2026-10-09 12:3x",
-  "next_milestone": "下窗首对象=E51 OSS 续扫批（Blender Studio 官方线放宽词+AI 3D 资产管线族·OSS 六实体窗 10-10 12:00 内）或净窗开则 M25/T26 烘焙实弹（净窗闸 BLOCKED=mv0001 Krea 产线借用面·顺延中）——窗 ≤48h（12:43/22:43 双轨+令牌触发轮）"
+  "updated_at": "2026-10-09 22:4x",
+  "current_activity": "10-09 22:43 夜班轮：E51① Blender Studio 官方线放宽词续扫收口——官方线正身定谳=projects.blender.org Gitea 域（「检索词过窄」真根因=域错位非词错）+GitHub 侧双 MCP 候选收获（blender-agent-studio/blender-mcp-bridge·MCP×DCC 域=本司 CLI 工具链同构接驳面→E53 深检）——**任务板=tasks/TASKS.md（现役行认领制）**",
+  "latest_artifact": "state/e51-blender-official-scan-20261009.md（E51① 续扫证据件·官方线定谳+双 MCP 候选+判负族五门如实）+qa/smoke-20261009-1303.log+png（QA 7/7 PASS）·2026-10-09 22:4x",
+  "next_milestone": "下轮首对象=E53：OH-20261008 续扫节推送件（群树竞态窗→worktree 正法）+双 MCP 仓五门深检；rolling30min IDLE 1.0%=Krea 借用窗缓解迹象→下轮 clean_window_probe 复核·净窗开则 M25/T26 run_bake 顶插——窗 ≤48h（12:43/22:43 双轨+令牌触发轮）"
 }
