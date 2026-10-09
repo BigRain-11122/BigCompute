@@ -1,7 +1,7 @@
 {
   "company": "BigCompute",
-  "updated_at": "2026-10-10 00:3x",
-  "current_activity": "10-10 00:3x 夜班轮：E52 openstd 冷场首落根因网络面板定谳收口（候选 A 服务端会话态排除+候选 B 坐实=滚动容器发现假阳性）+探针 overflowY 校验修复；任务板=tasks/TASKS.md",
-  "latest_artifact": "Tools/openstd_render_probe.py E52 修复版（JS_DISCOVER/JS_SCROLL 补 overflowY!==visible·py_compile OK）+state/e52-cold-xhr-netpanel-20261010.txt+state/e52-p07-loaded-proof.png（p07 瓦片 52/52 冷会话正跳正例）；2026-10-10 00:3x",
-  "next_milestone": "E57 H3 功率采样随窗挂载（本机 H3 实跑窗冷/暖各一）；T64/T70 批文至则行；ollama 探针下窗复验（MV 批毕自愈面）；M55 呈报窗 10-14；N1 月末归集 10-31 22:43"
+  "updated_at": "2026-10-10 00:5x",
+  "current_activity": "10-10 00:5x 哨兵轮：E58 H3 云端官方定价锚取证毕（自驱步族 B·官方页直读非壳·R-§八对照面转述级→官方刊例级）；审核步零本司派单；任务板=tasks/TASKS.md",
+  "latest_artifact": "state/h3-cloud-price-anchor-20261010.txt + docs/research/R-20261009-h3-local-video-economics.md §八（H3 768P=0.50 元/秒·2K=0.80 元/秒·Context-IR 输入 5.80/输出 23.00 元/Mtok·视频资源包不支持 H3=按量唯一·引擎矩阵成本列 云端 ¥2.59/条 vs 本地电费分厘级），2026-10-10 00:5x",
+  "next_milestone": "E57 H3 功耗 1s 采样随窗挂载（LoRA 训练借窗收线后净窗事件·ETA ~08:00）；ollama 探针借窗收线复验（两连 FAIL 留痕·零放水律）；T64/T70 批文至则行；M55 呈报窗 10-14；N1 月末归集 10-31 22:43"
 }
