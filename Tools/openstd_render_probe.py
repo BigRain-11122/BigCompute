@@ -37,6 +37,18 @@ popup-channel tiles are span.pdfImg-<row>-<col> (class "pdfImg-0-3", not
 exact "pdfImg") - selector is now span[class^="pdfImg"], closing the
 imgs=0/ready=false false-negative series (T55..T68). The T56/T66 re-visit
 fallback stays wired but fires only when the first visit is not tile-ready.
+E52 (verdict, cold-session network panel live 10-10): online-channel scroll
+container FALSE POSITIVE is the batch-first blank root cause. .pdfViewer is a
+content wrapper with overflow-y:visible (scrollHeight 62141 > clientHeight
+24932 - height-only walk stopped there; scrollTop assignment = silent no-op,
+target lazy-load never dispatched, viewGbImg never fired, tiles stay
+bg:none - landing math was irrelevant exactly as observed). Cold-session
+first XHR itself completes in 46ms (302 -> /bzgk/data/*.webp 200 -> blob
+mount), REJECTING the server-session-state candidate. Walk now additionally
+requires computed overflowY !== 'visible'; real online scroller =
+.pdfViewer parent (overflow-y:auto, 728px). Verified live in the same cold
+session: corrected scroll loads target page 52/52 tiles <8s (one webp per
+page - the viewGbImg "batch" is a single per-page request).
 Browser discovery: PLAYWRIGHT bundled chromium -> OPENSTD_BROWSER env ->
 system Chrome -> Edge (zero download, silent headless). Output confined to
 state/ of this repo; zero cross-repo writes (T43 law).
@@ -70,7 +82,8 @@ JS_DISCOVER = """() => {
   if (!divs.length) return null;
   let c = divs[0].parentElement, cont = false;
   while (c && c !== document.body) {
-    if (c.scrollHeight > c.clientHeight + 10) { cont = true; break; }
+    if (c.scrollHeight > c.clientHeight + 10 &&
+        getComputedStyle(c).overflowY !== 'visible') { cont = true; break; }
     c = c.parentElement;
   }
   return {pages: divs.length, first: divs[0].id, container: cont,
@@ -81,7 +94,9 @@ JS_SCROLL = """(p) => {
   const el = document.getElementById(String(p - 1));
   if (!el) return {ok: false};
   let c = el.parentElement;
-  while (c && c !== document.body && c.scrollHeight <= c.clientHeight + 10)
+  while (c && c !== document.body &&
+         (c.scrollHeight <= c.clientHeight + 10 ||
+          getComputedStyle(c).overflowY === 'visible'))
     c = c.parentElement;
   if (!c || c === document.body) return {ok: false};
   c.scrollTop = el.offsetTop - c.offsetTop - 20;
