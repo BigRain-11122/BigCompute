@@ -465,10 +465,16 @@ def cmd_render(a):
                     # same geometry with a ready-polled predecessor loads the
                     # shared batch. Pad-ready poll = the missing ingredient.
                     hp_deadline = time.time() + a.tile_timeout
+                    hp_states = []
                     while time.time() < hp_deadline:
-                        if tiles_ready(ctx.evaluate(JS_TILES, hop) or []):
+                        hp_states = ctx.evaluate(JS_TILES, hop) or []
+                        if tiles_ready(hp_states):
                             break
                         pg.wait_for_timeout(400)
+                    # T66 3-state window: pad ready state must be on record
+                    # (10-09 verdict: pad page zero-logging = blind spot).
+                    log.append("pad page=%d imgs=%d ready=%s"
+                               % (hop, len(hp_states), tiles_ready(hp_states)))
                     pg.wait_for_timeout(400)
                 t0 = time.time()
                 ctx.evaluate(JS_SCROLL, p0)
@@ -575,8 +581,10 @@ def cmd_selftest(a=None):
           'span[class^="pdfImg"]' in src
           and "first visit ready" in src
           and "scripts_fprint=" in src)
-    print("selftest: %s" % ("PASS" if ok == 25 else "FAIL"))
-    return 0 if ok == 25 else 1
+    check("S21d T66 pad-page ready-state logging (3-state blind-spot fix)",
+          "pad page=%d imgs=%d ready=%s" in src)
+    print("selftest: %s" % ("PASS" if ok == 26 else "FAIL"))
+    return 0 if ok == 26 else 1
 
 
 def main():

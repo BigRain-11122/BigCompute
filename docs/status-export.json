@@ -1,7 +1,7 @@
 {
   "company": "BigCompute",
-  "updated_at": "2026-10-09 11:0x",
-  "current_activity": "10-09 10:5x 排程轮：tech T69 偏移跳法工程接线毕（瓦片计数器修正=T55..T68 imgs=0 假阴性系列收口·37964 p04 verdict=OK 首达〔假判负态终结〕+T68④ viewer 模板 diff 销案+selftest 25/25）+验收判据第 5 负例判负留痕（45438 p09 首位三策略三空白=fetch 层另有根因→三态判别窗 T66 open 承载）——**任务板=tasks/TASKS.md（现役行认领制）**",
-  "latest_artifact": "Tools/openstd_render_probe.py v-T69（偏移跳法 JS_SCROLL 双路 -20+真瓦片选择器 span[class^=pdfImg]+条件化 rehop+scripts_fprint）+state/t69-verdict-20261009.txt（三策略三空白定谳件）+qa/smoke-20261009-1057.log+png（QA 7/7 PASS）·2026-10-09 11:0x",
-  "next_milestone": "下窗首对象=T66 承载三态判别窗（45438 批 6-13 冷场复跑：p06 首位触发批 [5-8]·逐位 ready 全录=区分 p09 专属/批级 fetch 失败/垫页就绪律三态+垫页 ready 态入日志）——窗 ≤48h（12:43/22:43 双轨+令牌触发轮）"
+  "updated_at": "2026-10-09 12:1x",
+  "current_activity": "10-09 12:0x 哨兵轮：tech T66 三态判别窗毕（45438 批 6-13 冷场复跑·「前白后绿」首位位置性终局定谳=p06 首访空白 10954B/p07-p13 全绿含历史空白页 p09 169377B/垫页 ready=True 新日志律 S21d/rehop 复访 p06=351212B canonical=根治判据复原路径达成+T69 rehop 判负归因收口=批组内后位暖场）——**任务板=tasks/TASKS.md（现役行认领制）**",
+  "latest_artifact": "state/t66-3state-verdict-20261009.txt（三态判别定谳件）+state/t66tri-45438-run.log（逐位 ready 全录）+state/w45438-t66tri-p06.png（351212B 复原 canonical）+Tools/openstd_render_probe.py（S21d 垫页 ready 日志律·selftest 26/26）+qa/smoke-20261009-1206.log+png（QA 7/7 PASS）·2026-10-09 12:1x",
+  "next_milestone": "下窗首对象=45438 附录 A-F 区消费（T42 附录消费窗·全通路径已备：非首位法+批构成律+rehop 兜底·附录 E 格式表=b2b 下一锚候选）或 E51 OSS 续扫批——窗 ≤48h（12:43/22:43 双轨+令牌触发轮）"
 }
