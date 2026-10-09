@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""round_score.py — 产品优先律轮计分器（D-20260929-07 ②③·P-2026-09-29-07·BC-P-24/T33 工程面·v1.1=D-20260930-12 口径勘正·v1.2=D-20260930-17/D-23 过程件降档+验证集判据·48h 窗）
+"""round_score.py — 产品优先律轮计分器（D-20260929-07 ②③·P-2026-09-29-07·BC-P-24/T33 工程面·v1.1=D-20260930-12 口径勘正·v1.2=D-20260930-17/D-23 过程件降档+验证集判据·v1.3=C-20261009-02 派单口径修复：0 类跨仓泛化+过程件扩域）
 
 计分律（Executive Protocol v1.1·CEO 原话锚「产出落地很少…结果早点出」）：
   2 分=能跑/能看/能用实物（可跑脚本/真实出数报告/可看账本）
@@ -17,6 +17,9 @@
       ——tick/count/seq/counter 类计数器=D-23 ③ 反例·不视为真实数字）方记 2·无则降 1
   0 类：心跳/日清类 md｜state/{heartbeat.txt,rounds.log,runbook.md,queue/*,proposals.md}
       ｜docs/status-export.json（export 刷新）｜qa/*｜Tools/iteration_prompt.txt｜Tools/skills/**
+      ｜v1.3 跨仓泛化族（C-20261009-02·验证集分歧正身）：*/os/state.json=他司 OS 循环态
+      ｜.codely-cli/engine-tick/*=引擎 tick 台账｜*/fleet/<短机号>.json=机队脉冲快照
+      （machine_id/ts/cpu/ram 簿记族·subject 实证=idle-fast/loop 簿记轮）
   1 类：研究报告类 md（research/ 下或 docs/ 下 R- 件·与心跳/日清类 md 分离计分）+其余实改
 commit 分=其变更文件类的 max；日/窗聚合=24h 滚动窗内 commit 分分布。
 
@@ -42,6 +45,12 @@ ZERO_EXACT = {
     "tools/iteration_prompt.txt",
 }
 ZERO_PREFIX = ("state/queue/", "qa/", "tools/skills/")
+# v1.3（C-20261009-02 派单·口径修复复跑）：0 类跨仓泛化——验证集 7 分歧件正身
+ZERO_RE = (
+    re.compile(r"(^|/)os/state\.json$"),            # 他司 OS 循环态（src/os/state.json·idle-fast/loop 簿记轮）
+    re.compile(r"^\.codely-cli/engine-tick/"),      # 引擎 tick 台账族
+    re.compile(r"(^|/)fleet/[a-z0-9]{1,3}\.json$"),  # 机队脉冲快照（machine_id/ts/cpu/ram 簿记）
+)
 # D-20260930-12 ①：2 档白名单扩展名（能看/能用实物面——成片/图集/数据集/网页）
 TWO_EXT = (".html", ".mp4", ".png", ".jsonl", ".csv", ".parquet")
 # state/*.json 内容闸哨兵（数值 1.5=与 int 可比·语义「1/2 之间待 blob 内容定谳」）
@@ -49,7 +58,9 @@ STATE_JSON = 1.5
 NUM_KEY = re.compile(r'"([^"]+)"\s*:\s*(-?\d[\d_.eE+]*)')
 TS_KEY = re.compile(r"time|date|stamp|epoch|updated|last|heartbeat|version|(^|_)ts($|_)|tick|count|seq|counter")
 # v1.2（D-20260930-17 ②）：过程件降档——「解阻塞/探测不等于交付」机械面
-PROCESS_PATH = re.compile(r"(_r\d+_?resolve|_resolve|_append|_probe|tick[_-]?claim|state[_-]?carry)[^/]*\.(py|ps1|cs)$")
+# v1.3（C-20261009-02）：扩域 results/_r<工单号>_* 草稿族（_r253bmc_amend_push/_codely_reorg
+#   验证集分歧正身——rebase 楔子解阻/重组脚本=过程件非交付）
+PROCESS_PATH = re.compile(r"((_r\d+_?resolve|_resolve|_append|_probe|tick[_-]?claim|state[_-]?carry)[^/]*|(^|/)results/_r\d+[^/]*)\.(py|ps1|cs)$")
 PROCESS_SUBJECT = re.compile(r"storm rescue|state carry|tick claim|_r\d+_resolve")
 
 
@@ -63,6 +74,8 @@ def classify_path(path):
     """返回 0/1/2/STATE_JSON（文件类·判据见模块 docstring·0 类名单优先于白名单防套利）。"""
     p = path.replace("\\", "/").lower()
     if p in ZERO_EXACT or p.startswith(ZERO_PREFIX):
+        return 0
+    if any(rx.search(p) for rx in ZERO_RE):
         return 0
     if p.endswith(".md"):
         return 1 if is_research_md(p) else 0
@@ -210,6 +223,15 @@ def _selftest():
     run("S7g 数字闸反例·只刷心跳+序号", json_has_real_numbers('{"heartbeat": 1760000000, "seq": 42}') is False)
     run("S7h 数字闸反例·tick 计数器", json_has_real_numbers('{"tick_count": 11, "counter": 3}') is False)
     run("S7i 数字闸正例·真实出数", json_has_real_numbers('{"mean": 93.93, "cv": 5.8, "p10": 82.09}') is True)
+    # S10 v1.3 跨仓泛化判据面（C-20261009-02 派单·验证集分歧正身 7 件）
+    run("S10a 他司 OS 态 src/os/state.json=0", classify_path("src/os/state.json") == 0)
+    run("S10b os/state.json 任意层级=0", classify_path("x/os/state.json") == 0)
+    run("S10c engine-tick 台账=0", classify_path(".codely-cli/engine-tick/tick-ledger.txt") == 0)
+    run("S10d 机队脉冲 fleet/b.json=0", classify_path("Design/configs/GLOBAL/fleet/b.json") == 0)
+    run("S10e src/os/loop.py 维持 2（回归守卫）", classify_path("src/os/loop.py") == 2)
+    run("S10f results/_r253bmc_amend_push.py=1", classify_path("results/_r253bmc_amend_push.py") == 1)
+    run("S10g results/_r253bmc_codely_reorg.py=1", classify_path("results/_r253bmc_codely_reorg.py") == 1)
+    run("S10h fleet 长名交付件不误伤=1", classify_path("cph4/fleet/mv0001-handover/outbound/CARVE-UPGRADE-bma.json") == 1)
     # S3 空变更集=0
     run("S3 空集=0", commit_score([]) == 0)
     # S4 判负面：全 0 commit 列表→IDLE-ALL-ZERO 判定面（纯函数判定·不碰 git）

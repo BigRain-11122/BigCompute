@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""score_validation.py — 计分器人工标注验证集工具（D-20260930-17 ①·D-20260930-23 ②·v1.2 验收硬判据）
+"""score_validation.py — 计分器人工标注验证集工具（D-20260930-17 ①·D-20260930-23 ②·v1.2 验收硬判据·v1.3=C-20261009-02 派单 %转义自修+--rescore 修后复验）
 
 律源：D-20260930-17 ①「随机抽 30 个 commit 由人（或独立于工具作者的一司）标注真实档位，
 算出工具的一致率与混淆矩阵，一致率 <85% 不得上判负面」；D-20260930-23 ②判据复述。
@@ -113,9 +113,39 @@ def compute_agreement(rows):
             "agree": agree, "agreement": agree / n_valid, "matrix": matrix, "pending": False}
 
 
-def do_agreement(set_path, json_path=None):
+def _rescore_row(r):
+    """v1.3（C-20261009-02 口径修复复跑）：按现行口径对单行重算 score（label 不动=独立面）。
+    优先 git show 全量路径（样本快照截 20 件防失真）·失守=以集内 paths 复算并单列。"""
+    rel = REPOS.get(r.get("repo"))
+    if not rel:
+        return None, False
+    repo = os.path.join(GROUP_ROOT, rel)
+    out = subprocess.run(
+        ["git", "-C", repo, "show", "--name-only", "--pretty=format:%s", r["short"]],
+        capture_output=True, text=True, encoding="utf-8", errors="replace",
+    )
+    if out.returncode == 0:
+        lines = out.stdout.splitlines()
+        subject = lines[0] if lines else ""
+        paths = [l.strip() for l in lines[1:] if l.strip()]
+        return commit_score(paths, r["short"], repo, subject=subject), True
+    return commit_score(r.get("paths", []), r["short"], repo, subject=r.get("subject", "")), False
+
+
+def do_agreement(set_path, json_path=None, rescore=False):
     with open(set_path, "r", encoding="utf-8") as f:
         rows = [json.loads(line) for line in f if line.strip()]
+    fallback = 0
+    if rescore:
+        for r in rows:
+            s, fetched = _rescore_row(r)
+            if s is None:
+                continue
+            if not fetched:
+                fallback += 1
+            r["score"] = s
+        if fallback:
+            print("WARN rescore 以集内 paths 复算 %d 行（git show 失守·诚实单列）" % fallback)
     res = compute_agreement(rows)
     total = len(rows)
     if res["pending"]:
@@ -129,11 +159,11 @@ def do_agreement(set_path, json_path=None):
     if res["bad"]:
         print("WARN 非法档位行跳过 %d（诚实报告）" % res["bad"])
     if res["agreement"] >= THRESHOLD:
-        print("VERDICT: AGREEMENT-OK %.1f%% (%d/%d) ≥85% 判负面可用（D-20260930-23 ②）"
+        print("VERDICT: AGREEMENT-OK %.1f%% (%d/%d) ≥85%% 判负面可用（D-20260930-23 ②）"
               % (pct, res["agree"], res["n_valid"]))
         code = 0
     else:
-        print("VERDICT: AGREEMENT-FAIL %.1f%% (%d/%d) <85% 禁用于点名（D-20260930-23 ②）"
+        print("VERDICT: AGREEMENT-FAIL %.1f%% (%d/%d) <85%% 禁用于点名（D-20260930-23 ②）"
               % (pct, res["agree"], res["n_valid"]))
         code = 1
     if json_path:
@@ -181,6 +211,25 @@ def _selftest():
             back = [json.loads(x) for x in f if x.strip()]
         res8 = compute_agreement(back)
         run("S8 JSONL 往返等值", res8["agreement"] == res["agreement"] and res8["matrix"] == res["matrix"])
+    # S9 v1.3 输出支路回归：FAIL/OK 双支路 % 转义（10-09 外审发现·C-20261009-02 %转义自修）
+    import io
+    import contextlib
+    with tempfile.TemporaryDirectory() as td:
+        p9 = os.path.join(td, "s9.jsonl")
+        with open(p9, "w", encoding="utf-8", newline="\n") as f:
+            for r in [{"score": 1, "label": 1}] * 24 + [{"score": 2, "label": 1}] * 6:
+                f.write(json.dumps(r, ensure_ascii=False) + "\n")
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            rc9 = do_agreement(p9)
+        run("S9a FAIL 支路 % 转义不炸 exit1", rc9 == 1 and "AGREEMENT-FAIL" in buf.getvalue())
+        with open(p9, "w", encoding="utf-8", newline="\n") as f:
+            for r in [{"score": 1, "label": 1}] * 27 + [{"score": 2, "label": 1}, {"score": 0, "label": 2}, {"score": 2, "label": 0}]:
+                f.write(json.dumps(r, ensure_ascii=False) + "\n")
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            rc9b = do_agreement(p9)
+        run("S9b OK 支路 % 转义不炸 exit0", rc9b == 0 and "AGREEMENT-OK" in buf.getvalue())
 
     n_pass = sum(1 for _, ok, _ in checks if ok)
     for name, ok, detail in checks:
@@ -201,13 +250,15 @@ def main():
     a = sub.add_parser("agreement", help="已标注集→一致率+混淆矩阵（一致率<85%%=exit 1 禁上判负面）")
     a.add_argument("--set", required=True)
     a.add_argument("--json", default=None)
+    a.add_argument("--rescore", action="store_true",
+                   help="修后复验（C-20261009-02）：按现行口径重算每行 score 再对账·label 不动=独立面")
     sub.add_parser("selftest", help="自测（合成夹具零 git 依赖）")
     args = ap.parse_args()
     if args.cmd == "selftest":
         sys.exit(_selftest())
     if args.cmd == "sample":
         sys.exit(do_sample(args.n, args.days, args.out))
-    sys.exit(do_agreement(args.set, args.json))
+    sys.exit(do_agreement(args.set, args.json, rescore=args.rescore))
 
 
 if __name__ == "__main__":
