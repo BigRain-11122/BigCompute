@@ -1,7 +1,7 @@
 # BigCompute runbook v0.18（<2KB·超线即压缩）
 
 ## 启动读序（只读本件）
-哨兵轮=定位新行·排程轮=mtime 快检零新行过；台账消费=D-20261001-03 正典=git fetch+show origin/main:<path>（禁 pull·禁写集团树·**工作树未推行=diff 补获**）；队列步=state/queue/ 现役行；收尾=刻痕（**一律 round_append.py·Add-Content 禁用=T24 二犯在案**）+rounds.log+QA+定向 commit+push（D-15）·日清 ≤3 行·append=round_append 唯一。
+哨兵轮=定位新行·排程轮=mtime 快检零新行过；台账消费=D-20261001-03 正典=git fetch+show origin/main:<path>（禁 pull·禁写集团树·**工作树未推行=diff 补获**）；队列步=state/queue/ 现役行；收尾=刻痕（**一律 round_append.py·Add-Content 禁用=T24 二犯在案**）+rounds.log+QA+定向 commit+push（D-15）·日清 ≤3 行·append=round_append 唯一（**--file=字面相对路径 state/heartbeat.txt|state/rounds.log·裸关键字=仓根散件 10-09 实锚已删**）。
 
 ## 当前优先
 - 10-09 18:5x 轮毕=**H3 本地 t2v 测试件预制毕**（O-1746 bm-a 同装面：下载 5/5 byte-exact 18:33 DONE→API workflow+发射客户端落 cph4/fleet/h3-local-test/·live 验证 PASS）。**下轮首对象=T73 H3 发射**（GPU 空窗〔显存 free ≥6GB 或 MV 批毕〕即 python cph4/fleet/h3-local-test/h3_t2v_client.py·首跑含 19.5G 模型加载 ~6min/片）或 T64 BC-P-58 批文执行步（批文至则行）/E51/E54 队头随窗·净窗开则 M25/T26 run_bake（探针 15min 滚动）·M55 呈报窗 10-14·M48 待 CEO 裁定·C-20261009-02 派单回执窗 10-10 00:00（四件已收口 BC-F-20261009-01 在案）·验证集 0/30 续催（BC-P-26）·提案面本窗足额（BC-P-54~59）。
