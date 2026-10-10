@@ -1,4 +1,6 @@
-# 月末归集执行单（month-end cost collection sheet）v1.0
+# 月末归集执行单（month-end cost collection sheet）v1.1
+
+> v1.1（2026-10-11 00:3x·E62 收线回净轮）：§二 增 S6 GPU 能耗剖面源（gpu_energy_profile.py·10-10 23:1x 工程件+E62 回净实证）+§三 电费要素分解行——工具面 month_end_collect.py S6 并入微步=tech T75（N1 窗 10-31 前有界承接·零跳窗）。
 
 > 定位：议程三轮循环**族 B 增量**（explore E25·新增即耗）。承接=R-20260928-compute-cost-economics 换算链「**月末归集回溯口径=结算唯一**」+「试点期回溯定价法防编造产能基准」的**执行面首件**；M2 定价确认包（pricing-confirmation-package-29.9-v1.md）「单位成本 v1 ⬜ 待首月末归集」的前置程序件。
 > 状态：**计划态执行单·零真实交易·零编造**。成本三要素（原值/电价/利用率）全 ⬜ 随物理凭证（Q3 铁律维持）。首窗=**2026-09-30 22:43 夜班轮**（首月末·预注册）。
@@ -17,12 +19,14 @@
 | S3 | 借算轨 | docs/ops/borrow-compute-lane-predesign-v1.md §七 | state/borrow-* 不存在=零生成（工程落地随 T-28 激活窗 10-05 呈批后·预注册门不跳） |
 | S4 | GPU 采集器 | `python Tools/gpu_idle_collector.py report` | n=49 avg=8.3% max=100% kpi=FLAG（<30% 唯一点名阈值挂 3 日滚动基线 09-27..29 n=107 avg=13.1%·C-20260929-02）·machine=bm-a 分机行 |
 | S5 | serve 自用面 | qa/smoke-*.log eval_count 序列+E12 锚（state/e12-anchor） | 自用面=**非商业面**注记常驻（计量真值=Ollama eval_count L0·tiktoken=估算口径注记） |
+| S6 | GPU 能耗剖面（v1.1 增） | `python Tools/gpu_energy_profile.py report --days 31 --baseline-range 2026-10-01,2026-10-08` | 10 月窗实测（10-11 00:33 实跑）：14 日 12.9621 kWh·日均 0.9259·安静带基线〔10-01..08〕0.8727→借用日 delta 10-09 +0.795/10-10 +0.5016（板卡面·**口径 A 对照面非结算**）·证据 state/gpu-energy-profile-20261011-003321.json |
 
 ## 三、月末行格式（轮账本月末附加行）
 
 - 商业面：tokens_mtok=0（计划态如实）·禁任何估充。
 - 自用面：eval_count 累计值+「**非商业产能·禁入结算产能基准**」标注（试点期回溯定价法同律）。
 - 成本三要素：原值/电价/利用率 全 ⬜（物理凭证未到·Q3 铁律=电价唯一合法源实缴账单·OSS 锚点永不入结算式=E19 定谳）。
+- 电费要素分解（v1.1 增·S6 源）：月 kWh 实测（S6）×实缴单价 ⬜+借用窗归因分列（10 月窗=10-09 +0.795/10-10 +0.5016 借用日 delta vs 安静带·内含 LoRA 训练 0.7948〔E59 单列〕+KF 批尾段 +0.0969〔23:04 中期快照 1.2774→终值 1.3743 差值法〕·borrow J4 未激活零记账维持 M48 ③ DRY-RUN）——**口径 A 对照面非结算**（结算唯一=口径 B·Q3 铁律）。
 - 单位成本 v1：结构式=M2 §二 核心式·落值双门见 §六 N3。
 
 ## 四、分级（计划态月 vs 试点后月）
