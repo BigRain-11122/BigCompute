@@ -11,9 +11,15 @@ power_w 序列做时序积分，出日均 kWh 实测面（估算口径=采样积
 - 采样积分法 = 15min 分辨率梯形积分；gap > GAP_CAP 秒的区间跳过不计（防停机窗虚增）。
 
 命令：
-- report [--days N]  解析样本 → 日表+均值 → state/gpu-energy-profile-<ts>.json
-- selftest           合成夹具回归（数学/跳gap/分日/分桶/确定性）
+- report [--days N] [--baseline-range A,B]  解析样本 → 日表+均值（可选基线对照层）→ state/gpu-energy-profile-<ts>.json
+- selftest           合成夹具回归（数学/跳gap/分日/分桶/确定性/基线层）
 纯只读：不写样本、零 GPU 动作、零新采集。
+
+E62 基线对照层（--baseline-range START,END，闭区间）：
+- 指定日区间内日均 kWh = 基线均值（先于显示过滤计算·口径一致律）→ 各日 delta_kwh 列
+  + 显示日 delta 合计 sum_delta_kwh_displayed。
+- 用途=借用窗日级增量对照面一命令化（E61 手工法收口）；口径 A 呈现/对照面专用，
+  非结算式（结算=实缴账单 Q3 铁律）；「哪些日=借用日」的归因仍归轮级人工（工具零启发式冻结）。
 """
 import argparse
 import datetime as dt
@@ -89,7 +95,7 @@ def integrate(rows):
     return total, per_day, n_int, n_skip, peak, span
 
 
-def report(path=SAMPLES, days=None, out=True):
+def report(path=SAMPLES, days=None, out=True, baseline=None):
     rows = load_rows(path)
     if len(rows) < 2:
         print("energy: no usable sample pairs (n=%d) — nothing to integrate" % len(rows))
@@ -99,9 +105,21 @@ def report(path=SAMPLES, days=None, out=True):
     idle_sum = idle_kwh(per_day)
     active_sum = active_kwh(per_day)
     mean_daily = total / n_days if n_days else 0.0
+    base_mean = base_n = None          # E62：基线层先于显示过滤（口径一致律）
+    if baseline:
+        ks = [k for k in per_day
+              if baseline[0] <= dt.date(*map(int, k.split("-"))) <= baseline[1]]
+        if ks:
+            base_mean = sum(per_day[k]["kwh"] for k in ks) / len(ks)
+            base_n = len(ks)
+        else:
+            print("  baseline-range matched 0 days — baseline fields omitted")
     if days:                      # 仅显示面过滤；总量/均值恒取全窗（口径一致律）
         keep = sorted(per_day)[-days:]
         per_day = {k: per_day[k] for k in keep}
+    if base_mean is not None:
+        for v in per_day.values():
+            v["delta_kwh"] = v["kwh"] - base_mean
     res = {
         "machine": MACHINE,
         "generated": dt.datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
@@ -119,6 +137,12 @@ def report(path=SAMPLES, days=None, out=True):
         "per_day": {k: {kk: round(vv, 4) for kk, vv in v.items()}
                     for k, v in sorted(per_day.items())},
     }
+    if base_mean is not None:
+        res["baseline_range"] = "%s..%s" % (baseline[0], baseline[1])
+        res["baseline_mean_daily_kwh"] = round(base_mean, 4)
+        res["baseline_days_n"] = base_n
+        res["sum_delta_kwh_displayed"] = round(
+            sum(v["kwh"] - base_mean for v in per_day.values()), 4)
     if out:
         ts = dt.datetime.now().strftime("%Y%m%d-%H%M%S")
         op = os.path.join(OUT_DIR, "gpu-energy-profile-%s.json" % ts)
@@ -129,6 +153,11 @@ def report(path=SAMPLES, days=None, out=True):
         print("  total=%.4f kWh over %d days -> mean_daily=%.4f kWh "
               "(idle=%.4f active=%.4f peak=%.1fW)" %
               (total, n_days, mean_daily, res["kwh_idle"], res["kwh_active"], peak))
+        if base_mean is not None:
+            print("  baseline[%s..%s]: mean_daily=%.4f kWh over %d days; "
+                  "sum_delta(displayed)=%+.4f kWh" %
+                  (baseline[0], baseline[1], base_mean, base_n,
+                   res["sum_delta_kwh_displayed"]))
         print("  json=%s" % op)
         res["json_path"] = op
     return res
@@ -200,7 +229,24 @@ def selftest():
         p = _mk(tmp, [(base, 10.0, 30.0)])
         assert report(path=p, out=False) is None, "S7 guard"
         ok += 1
-    print("selftest: %d/7 PASS" % ok)
+        # S8 基线对照层：区间内日均=基线·区间外 delta=日值-基线·合计=显示日 delta 和
+        d1 = [(dt.datetime(2026, 9, 28) + dt.timedelta(minutes=15 * i), 50.0, 100.0)
+              for i in range(4)]
+        d2 = [(dt.datetime(2026, 9, 29) + dt.timedelta(minutes=15 * i), 50.0, 200.0)
+              for i in range(4)]
+        p = _mk(tmp, d1 + d2)
+        r = report(path=p, out=False,
+                   baseline=(dt.date(2026, 9, 28), dt.date(2026, 9, 28)))
+        assert abs(r["baseline_mean_daily_kwh"] - 0.075) < 1e-9, "S8 base mean"
+        assert abs(r["per_day"]["2026-09-29"]["delta_kwh"] - 0.075) < 1e-4, "S8 delta"
+        assert abs(r["sum_delta_kwh_displayed"] - 0.075) < 1e-4, "S8 sum"
+        assert r["baseline_days_n"] == 1, "S8 n"
+        ok += 1
+        # S9 基线零命中日：字段省略零崩溃
+        r = report(path=p, out=False, baseline=(dt.date(2026, 1, 1), dt.date(2026, 1, 2)))
+        assert r is not None and r.get("baseline_mean_daily_kwh") is None, "S9 empty"
+        ok += 1
+    print("selftest: %d/9 PASS" % ok)
     return 0
 
 
@@ -208,11 +254,20 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("cmd", choices=["report", "selftest"])
     ap.add_argument("--days", type=int, default=None)
+    ap.add_argument("--baseline-range", default=None,
+                    help="START,END (YYYY-MM-DD): baseline mean from day range -> delta layer")
     ap.add_argument("--samples", default=SAMPLES)
     a = ap.parse_args()
     if a.cmd == "selftest":
         return selftest()
-    r = report(path=a.samples, days=a.days)
+    baseline = None
+    if a.baseline_range:
+        try:
+            s, e = a.baseline_range.split(",")
+            baseline = (dt.date(*map(int, s.split("-"))), dt.date(*map(int, e.split("-"))))
+        except Exception:
+            print("bad --baseline-range (expect YYYY-MM-DD,YYYY-MM-DD) — ignored")
+    r = report(path=a.samples, days=a.days, baseline=baseline)
     return 0 if r else 1
 
 

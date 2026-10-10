@@ -1,0 +1,39 @@
+BigCompute QA smoke test 20261010-2304 (orders L254 / charter v1)
+
+[gpu collector] PASS -> gpu collector
+machine_borrowable=NOT-BORROWABLE[VRAM|COTENANT] vram_free=599MiB(line>=6144MiB) cotenant_editors=4(line 0) (D-20261004-04 dual probe; decoupled from GREEN-IDLE loop state; R-41 fleet-row field)
+gpu report 2026-10-10 machine=bm-a: n=58 avg=47.3% max=100% kpi=PASS
+3-day rolling baseline (pre-registered, C-20260929-02): 2026-10-08..2026-10-10 n=239 avg=32.2% (call-out 30%; 70% target = directional ref)
+7-day benchmark (D-20260930-36 R-C1, head-firm gap line): 2026-10-04..2026-10-10 n=622 avg=13.8% -> BELOW-BENCH(<50% structural-failure line on 7-day avg, R-C1 D-20260930-36) (gap line only; sole call-out stays 30%; 70% target = directional ref pending R- threshold-calibration receipts)
+rolling 30-min window: n=2 avg=88.0% -> busy
+
+[ollama response] PASS -> ollama response
+answer='1+1 equals 2.' eval_count=8 0.45 tok/s
+residency: pre=LOST post=LOST (anomaly: not loaded after generate)
+NAME    ID    SIZE    PROCESSOR    CONTEXT    RUNNER    UNTIL
+NAME    ID    SIZE    PROCESSOR    CONTEXT    RUNNER    UNTIL
+
+[queue rows] PASS -> queue rows
+main.md: 66 rows
+tech.md: 73 rows
+explore.md: 61 rows
+
+[cost ledger] PASS -> cost ledger
+selftest: math=True determinism=True count=ok (orders+quota-gate+count+cloud+borrow) -> PASS
+
+[rounds.log strict-decode] PASS -> rounds.log strict-decode
+strict utf-8 decode ok: 272033 bytes / 211 lines
+
+[resident QA serve 8792] PASS -> resident QA serve 8792
+health 200 status=ok anchors=20 server=resident-qa v1.0 (BigCompute MaaS consumer face) model=qwen2.5:7b-instruct
+
+[ledger tail integrity (BC-P-45)] PASS -> ledger tail integrity (BC-P-45)
+state/rounds.log: tail_nl=ok last_markers=1 last_len=933
+state/heartbeat.txt: tail_nl=ok last_markers=0 last_len=169
+HQ-FEEDBACK.md: tail_nl=ok last_markers=1 last_len=482
+state/proposals.md: tail_nl=ok last_markers=1 last_len=517
+state/queue/main.md: tail_nl=ok last_markers=1 last_len=648
+state/queue/tech.md: tail_nl=ok last_markers=1 last_len=860
+state/queue/explore.md: tail_nl=ok last_markers=1 last_len=498
+
+smoke verdict: 7/7 PASS (charter 4 + T25 + E41 + BC-P-45 no.8 probes)

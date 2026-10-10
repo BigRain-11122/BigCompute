@@ -1,7 +1,7 @@
 {
   "company": "BigCompute",
-  "updated_at": "2026-10-10 22:5x",
-  "current_activity": "10-10 22:43 夜班排程轮：自驱族 B 增量 E61 跨司借用窗日级能耗全景锚（MV 产线借用两日回净·借算计价证据第二例）+审核步 @bm-c mv0001 KF 批零本司派单收讫；任务板=tasks/TASKS.md",
-  "latest_artifact": "R-20260928-compute-cost-economics 增量窗行 E61（借用增量 +1.20 kWh·1.98×/1.44× 基线）+证据 state/e61-borrow-window-energy-20261010.json，2026-10-10 22:5x",
-  "next_milestone": "批池首月 DRY-RUN 观察回访（M66·回访窗 ~11-0x·validate 月跑+30% 点名线对账）；M25/T26 烘焙实弹随净窗开口（CleanWindowProbe 15min 滚动在役·当前 BLOCKED）；E57 H3 功耗采样随窗；M55 补呈窗 10-14 兜底；N1 月末归集 10-31 22:43"
+  "updated_at": "2026-10-10 23:2x",
+  "current_activity": "10-10 23:1x 哨兵轮：自驱族 B 增量 E62 借用窗能耗增量对照面工程化（E61 手工法收口+E61 基线部分日伪值校正）；审核步=@bm-c mv0001 KF 批撤单零本司派单收讫；任务板=tasks/TASKS.md",
+  "latest_artifact": "Tools/gpu_energy_profile.py --baseline-range 基线对照层（selftest 9/9）+双基线证据 state/gpu-energy-profile-20261010-230341.json+230415.json（借用日增量校正 +0.69/+0.30·安静周三日全景 +1.86 kWh），2026-10-10 23:1x",
+  "next_milestone": "KF 批借用窗（10-10 23:0x bm-a 接管）收线后 E62 一命令回净=借算计价证据第三例；M66 批池首月 DRY-RUN 观察回访（~11-0x）；M25/T26 烘焙实弹随净窗开口（CleanWindowProbe 15min 滚动）；M55 补呈窗 10-14 兜底；N1 月末归集 10-31 22:43"
 }
