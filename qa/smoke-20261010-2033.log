@@ -1,0 +1,36 @@
+BigCompute QA smoke test 20261010-2033 (orders L254 / charter v1)
+
+[gpu collector] PASS -> gpu collector
+machine_borrowable=NOT-BORROWABLE[VRAM|COTENANT] vram_free=449MiB(line>=6144MiB) cotenant_editors=4(line 0) (D-20261004-04 dual probe; decoupled from GREEN-IDLE loop state; R-41 fleet-row field)
+gpu report 2026-10-10 machine=bm-a: n=48 avg=44.0% max=100% kpi=PASS
+3-day rolling baseline (pre-registered, C-20260929-02): 2026-10-08..2026-10-10 n=229 avg=30.9% (call-out 30%; 70% target = directional ref)
+7-day benchmark (D-20260930-36 R-C1, head-firm gap line): 2026-10-04..2026-10-10 n=612 avg=12.9% -> BELOW-BENCH(<50% structural-failure line on 7-day avg, R-C1 D-20260930-36) (gap line only; sole call-out stays 30%; 70% target = directional ref pending R- threshold-calibration receipts)
+rolling 30-min window: n=2 avg=100.0% -> busy
+
+[ollama response] FAIL -> ollama response
+ollama probe failed: TimeoutError('timed out')
+
+[queue rows] PASS -> queue rows
+main.md: 65 rows
+tech.md: 73 rows
+explore.md: 60 rows
+
+[cost ledger] PASS -> cost ledger
+selftest: math=True determinism=True count=ok (orders+quota-gate+count+cloud+borrow) -> PASS
+
+[rounds.log strict-decode] PASS -> rounds.log strict-decode
+strict utf-8 decode ok: 267446 bytes / 208 lines
+
+[resident QA serve 8792] PASS -> resident QA serve 8792
+health 200 status=ok anchors=20 server=resident-qa v1.0 (BigCompute MaaS consumer face) model=qwen2.5:7b-instruct
+
+[ledger tail integrity (BC-P-45)] PASS -> ledger tail integrity (BC-P-45)
+state/rounds.log: tail_nl=ok last_markers=1 last_len=1239
+state/heartbeat.txt: tail_nl=ok last_markers=1 last_len=87
+HQ-FEEDBACK.md: tail_nl=ok last_markers=1 last_len=430
+state/proposals.md: tail_nl=ok last_markers=1 last_len=517
+state/queue/main.md: tail_nl=ok last_markers=1 last_len=379
+state/queue/tech.md: tail_nl=ok last_markers=1 last_len=860
+state/queue/explore.md: tail_nl=ok last_markers=1 last_len=601
+
+smoke verdict: 6/7 PASS (charter 4 + T25 + E41 + BC-P-45 no.8 probes)
