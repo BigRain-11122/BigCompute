@@ -41,3 +41,14 @@
 ## 附：数据指针（全既有件直引）
 
 state/gpu_idle_metrics.jsonl｜state/self-drive-metrics-*.json｜docs/ops/batch-pool-stock-v1.jsonl｜Tools/batch_pool.py（J1-J6·selftest 12）｜state/clean-window-log.jsonl｜qa/smoke-20261004-2234.log+png（22:43 轮 6/6）+qa/smoke-20261004-1217.log+png（12:43 轮）｜docs/_trash/（56 件 63.4MB）｜GPU 三尺/loadline 实测行=本包各面内嵌（Tools/gpu_idle_collector.py 2026-10-04 12:1x+12:4x T44+22:5x M47+**10-05 22:47 v1.2 一命令复刷**）｜**v1.2 刷新证据=state/review-pkg-refresh-20261005-224x.txt（Tools/review_pkg_refresh.py·tech T49）**
+
+## v1.3 裁定回执节（2026-10-10 20:3x·C-20261010-03 ③ @BigCompute 承接·回执=BC-F-20261010-03）
+
+**裁定到达=委员会批量代决案 C-20261010-03 ③（10-10 18:0x·7/7 过会·CEO 否决窗至 10-17 12:00）**——本呈批包四决策项全部裁定·承接态行级回填：
+
+- **①GPU 观察 A/B 收口+情景 C 生效=回收份额转配（消费按候选①批池 lane 扩容·consumer_plan 指名）**：收口注记毕——观察期（DRY-RUN 09-28 起）闭合；情景 C 已于 10-06 CEO 回收令触发在册（FluxVerse HOLD 份额回收）；转配消费面=批池 lane 扩容备货随消费方指名（consumer_plan 指名律 J4 维持·指名即备货）。
+- **②批池激活放行（J1-J6 判据+validate 唯一验收口+30% 满载点名线执法维持+首月 DRY-RUN 观察回访）**：承接毕——观察期起算 10-10·回访窗 ~11-0x（main.md M66 常备行承载：validate 月跑+30% 点名线月度对账+回访报告呈批面）；护栏执法=让路律序〔CEO 用机 pause＞机队视频产线＞批池·R-50 实证在册〕——当前机面=MV 视频产线在跑〔20:1x 实测 util 100%·VRAM 余 296MiB·净窗 BLOCKED 探针计数延续〕→批池第三序零派活=合规态；O-20261010-2006 算力全解禁·放开并行默认态注记在册（同机多 lane 并行合法·借池 verdict 绿灯自由认领）。
+- **③_trash 删除面=TrashGuard 既有判例放行轮转：执行毕（10-10 20:2x）**——sha256 manifest 56 行自证〔state/trash-purge-manifest-20261010.txt·合计 66,485,359B〕→盘面删除 docs/_trash/auto-saves/ 毕〔56 件·观察窗 09-28→10-10=12 天＞7 天判据过〕→.gitignore 行保留〔git 零污染维持〕·T-20260928-30 同轮 done。
+- **④净窗证据面=M25/T26 烘焙实弹随净窗开口兑现（不新设协调窗不挤占他司让路面）**：维持——CleanWindowProbe 15min 滚动在役·非净窗自动 BLOCKED exit 3 机械执法在位·零新设协调窗；本包 §④ BLOCKED 频率证据随探针延续滚动（净窗开口即 run_bake.ps1 双路一命令兑现）。
+
+**回执通道**：BC-F-20261010-03=HQ-FEEDBACK 日清区 10-10 20:3x 行（回执窗 ≤48h 兑现·裁定 18:0x→回执 20:3x≈2.6h）。
