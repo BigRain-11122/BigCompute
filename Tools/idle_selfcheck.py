@@ -31,6 +31,9 @@ VRAM≥6GB〕→ 领池检（fleet/backlog 可领行计数）→ 池空拉本司
      达预注册 ≤30min 预算）——锁存去重（同异常签名只告警一次防 tick 风暴）·恢复=
      清锁存静默·正常零追加（预注册「正常静默」）·pause 豁免同 J6 双条件·
      OrderSentinel 自身失能=自探盲区如实记（其态由轮频探针 J6 覆盖）
+  J8 py_cpu 实读（O-20261011-0012 ⅴ 承接·tech T76）：Win32_Processor
+     LoadPercentage 单发只读快照（locale 无关·审计面报 py_cpu 字段）——满载线
+     执法判据面在 BigMoney GM 窗（本司=审计报数字段）·失败=-1.0 不判忙闲
 
 用法：
   python Tools/idle_selfcheck.py check       # 每轮自检步（iteration_loop.ps1 内建）
@@ -107,6 +110,22 @@ def probe_vram_free_mb():
         return min(vals) if vals else -1
     except Exception:
         return -1
+
+
+def probe_py_cpu():
+    """J8（T76·O-20261011-0012 ⅴ）：CPU 利用率% 实读——Win32_Processor
+    LoadPercentage 单发快照（多槽取均值·locale 无关）。失败=-1.0（不判忙闲）。"""
+    ps = ("Get-CimInstance Win32_Processor -ErrorAction SilentlyContinue | "
+          "Measure-Object -Property LoadPercentage -Average | "
+          "ForEach-Object { $_.Average }")
+    try:
+        out = subprocess.run(["powershell", "-NoProfile", "-Command", ps],
+                             capture_output=True, text=True, timeout=10,
+                             encoding="utf-8", errors="replace")
+        val = float(out.stdout.strip())
+        return round(val, 1)
+    except Exception:
+        return -1.0
 
 
 def probe_serve_liveness(url=OLLAMA_TAGS_URL, timeout=2):
@@ -279,6 +298,7 @@ def night_task_watch(states=None, latch_path=LATCH_FILE, recorder=None):
 def check():
     ram_pct = probe_ram_free_pct()
     vram_mb = probe_vram_free_mb()
+    py_cpu = probe_py_cpu()
     green_idle = (ram_pct >= RAM_FREE_PCT_MIN and vram_mb >= VRAM_FREE_MB_MIN)
     pool = count_pool_claimable()
     q_open = count_queue_open()
@@ -308,6 +328,7 @@ def check():
     st["last_verdict"] = verdict
     st["last_check"] = time.strftime("%Y-%m-%d %H:%M:%S")
     st["last_read"] = {"ram_free_pct": ram_pct, "vram_free_mb": vram_mb,
+                       "py_cpu": py_cpu,
                        "pool_claimable": pool, "queue_open": q_open,
                        "serve_alive": serve_alive, "serve_detail": serve_detail,
                        "task_face": task_face,
@@ -316,11 +337,12 @@ def check():
     save_state(st)
 
     line = ("%s idle_selfcheck: verdict=%s ram_free_pct=%s vram_free_mb=%s "
+            "py_cpu=%s "
             "pool_claimable=%d queue_open=%d consecutive_idle=%d "
             "idle_rounds=%d agenda_starved=%s serve_alive=%s serve_detail=%s"
             " task_face=%s"
             % (time.strftime("%Y-%m-%d %H:%M:%S"), verdict, ram_pct,
-               vram_mb, pool, q_open, st["consecutive_idle"],
+               vram_mb, py_cpu, pool, q_open, st["consecutive_idle"],
                st["idle_rounds"], str(starved).lower(),
                str(serve_alive).lower(), serve_detail, task_face))
     code, msg = append_heartbeat(line)
@@ -436,6 +458,11 @@ def selftest():
         print("J7 night-watch: alert=%d dedup=%d resig=%d recover=%d "
               "pause=%d alerts=%d latch-cleared=%s"
               % (r1, r2, r3, r4, r5, len(rec), not os.path.exists(lat)))
+
+    # J8 py_cpu（T76·O-20261011-0012 ⅴ）：只读真跑——float 且 [-1.0 或 0..100]
+    cpu = probe_py_cpu()
+    print("J8 py_cpu probe: %s" % cpu)
+    ok &= isinstance(cpu, float) and (cpu == -1.0 or 0.0 <= cpu <= 100.0)
     print("SELFTEST %s" % ("PASS" if ok else "FAIL"))
     return 0 if ok else 1
 

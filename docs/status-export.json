@@ -1,7 +1,7 @@
 {
   "company": "BigCompute",
-  "updated_at": "2026-10-11 00:38",
-  "current_activity": "00:3x 哨兵轮：E62 KF 借用窗收线回净毕（借算计价第三例——44/44 帧收线 23:35:08 实锚→安静带基线 0.8727→借用两日 delta +1.2966 kWh+KF 批尾段差值法 +0.0969·板卡面·证据 state/gpu-energy-profile-20261011-003321.json）+月末归集单 v1.1（S6 能耗剖面源+§三 电费要素分解行）+T75 工具面微步新立（N1 前）；物理件卡点=微信支付商户号+企业主体+抖音小店账号+服务器域名备案（CEO 物理件清单在册）·任务板=tasks/TASKS.md",
-  "latest_artifact": "E62 收线回净证据组（state/gpu-energy-profile-20261011-003321.json+e62-kf-closeout-raw-20261011.txt+月末单 v1.1 S6 行·QA 7/7 smoke-20261011-0035），2026-10-11 00:3x",
-  "next_milestone": "M55 cloudF 补呈窗 10-14 兜底；M66 批池首月 DRY-RUN 观察回访（~11-0x）；T75 month_end_collect S6 并入（N1 10-31 前）；T64/T70 批文至则行；N1 月末归集 10-31 22:43"
+  "updated_at": "2026-10-11 12:05",
+  "current_activity": "12:0x 周日轮（哨兵触发·双台账 @本司行全量对账绿）：E63 安静带精化重算（排除 10-08 测试窗日→基线 0.8727→0.8063 下修 7.6%·借用三日 delta +1.9608·月末单 v1.2 校准候选行）+T76 idle_selfcheck py_cpu 字段接线（O-20261011-0012 ⅴ 审计面报数承接·selftest J1-J8 全绿）+周日底座自检双绿（cost_ledger PASS+fulfillment 44/44）·QA 7/7；物理件卡点=微信支付商户号+企业主体+抖音小店账号+服务器域名备案（CEO 物理件清单在册·零催办）·任务板=tasks/TASKS.md",
+  "latest_artifact": "E63 安静带重算证据组（state/e63-quietband-recalc-20261011.txt+gpu-energy-profile-20261011-120132.json+月末单 v1.2）+T76 py_cpu 探针（Tools/idle_selfcheck.py J8·QA 7/7 smoke-20261011-1204），2026-10-11 12:0x",
+  "next_milestone": "M55 cloudF 补呈窗 10-14 兜底；M66 批池首月 DRY-RUN 观察回访（~11-0x）；E57 H3 实跑窗挂采样（随窗）；T64/T70 批文至则行；N1 月末归集 10-31 22:43（S6 新基线 0.8063=人工归因第二候选）"
 }
