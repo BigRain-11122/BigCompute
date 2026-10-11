@@ -10,6 +10,8 @@
 （Tools/serve_sla_baseline.py series 产能窗基线·E28 头部声明的消费方接线·非商业产能注记常驻）。
 S6=gpu_energy_profile report 只读 subprocess+最新 profile JSON 月窗切片（v1.1 增·T75·E62 工程件只读复用零跨件改本体·
 口径 A 对照面非结算注记常驻）。
+S4b=GPU 样本×声明借用窗月窗 self/borrowed 分列（v1.2 增·T77 步③·BC-P-62 消费接线——复用 gpu_idle_collector 既有件
+load_samples/load_borrow_windows/borrow_covered_dates 零重建零跨件改本体·M66 月度对账供数·self=30% 执行线读数面）。
 N2 零编造律结构性落地：成本三要素（原值/电价/利用率）恒 ⬜（物理凭证前任何估算/外部锚/OSS 数据禁入）；
 单位成本 v1 恒 ⬜（N3 双门=凭证齐+真实商业 tokens 归集·定价确认权=CEO·本件零计算零落值零定价动作）。
 命令全只读零新台账：产出=state/month-end-<YYYYMM>.json 报告件（月末行快照·非台账·不入任何结算式）。
@@ -70,9 +72,18 @@ def parse_cloud_summary(text):
 
 # ---------- S3 借算轨存在性（E23 预设计 §七·零生成态） ----------
 
-def s3_borrow_state():
-    files = sorted(p.name for p in (ROOT / "state").glob("borrow-*")) if (ROOT / "state").exists() else []
-    return {"files": files, "generated": len(files)}
+DECLARED_LEDGER = "borrow-windows.jsonl"  # BC-P-62 日级声明台账（T77）≠ E23 记账轨生成件
+
+
+def s3_borrow_state(files=None):
+    """borrow-* 盘点：声明台账（borrow-windows.jsonl·T77 步① 立）与记账轨生成件分列——
+    声明台账非记账轨零生成内容（无金额/工单行）·不入 generated 计数（J4 零生成态如实）。"""
+    if files is None:
+        files = sorted(p.name for p in (ROOT / "state").glob("borrow-*")) if (ROOT / "state").exists() else []
+    declared = [f for f in files if f == DECLARED_LEDGER]
+    gen = [f for f in files if f != DECLARED_LEDGER]
+    return {"files": gen, "generated": len(gen), "declared_ledger": declared,
+            "note": "borrow-windows.jsonl=BC-P-62 声明台账（T77）·非 E23 记账轨生成件·generated 计数排除（J4 零生成态如实）"}
 
 
 # ---------- S4 GPU report 解析（纯函数） ----------
@@ -87,6 +98,60 @@ def parse_gpu_report(text):
     if r:
         out["roll3"] = {"span": f"{r.group(1)}..{r.group(2)}", "n": int(r.group(3)), "avg_pct": float(r.group(4))}
     return out
+
+
+# ---------- S4b GPU self/borrowed 月窗分列（v1.2 增·T77 步③·BC-P-62 消费接线） ----------
+
+def windows_in_month(bw_rows, month):
+    """声明借用窗中与本月的重叠行（纯函数·月窗切片=M66 月度对账供数面）。"""
+    first = month + "-01"
+    y, m = int(month[:4]), int(month[5:])
+    nxt = datetime.date(y + (1 if m == 12 else 0), (m % 12) + 1, 1).isoformat()
+    out = []
+    for w in bw_rows or []:
+        d0, d1 = str(w.get("date_from", "")), str(w.get("date_to", ""))
+        if d0 < nxt and d1 >= first:
+            out.append({"id": w.get("id"), "date_from": d0, "date_to": d1,
+                        "consumer": w.get("consumer")})
+    return out
+
+
+def month_borrow_split(sample_rows, covered_dates, month):
+    """月窗样本按声明借用日分列 self/borrowed（纯函数·日级人工声明零启发式·E62 归因律同源）。
+    self=30% 执行线读数面；borrowed=借出负载不计自产（BC-P-62 口径）。"""
+    rows = [r for r in (sample_rows or [])
+            if str(r.get("ts", "")).startswith(month + "-")]
+    self_rows = [r for r in rows if str(r["ts"])[:10] not in covered_dates]
+    borrow_rows = [r for r in rows if str(r["ts"])[:10] in covered_dates]
+
+    def face(rs):
+        days = sorted({str(r["ts"])[:10] for r in rs})
+        return {"n": len(rs),
+                "avg_pct": round(sum(r["util_pct"] for r in rs) / len(rs), 1) if rs else None,
+                "days": days}
+
+    return {"available": True, "month": month,
+            "self": face(self_rows), "borrowed": face(borrow_rows)}
+
+
+def s4b_borrow_split(month, sample_rows=None, bw_rows=None):
+    """S4b 源（只读）：collector 既有件复用（load_samples/load_borrow_windows/
+    borrow_covered_dates 零重建）×月窗分列；sample_rows/bw_rows 注入位=selftest 离线夹具；
+    导入失败=available False 降级如实（N2 零编造）。"""
+    try:
+        import gpu_idle_collector as gic  # 同目录既有件·模块级零副作用
+    except Exception:
+        return {"available": False,
+                "note": "S4b 分列源不可用（collector 模块导入失败·N2 零编造）"}
+    if sample_rows is None:
+        sample_rows = gic.load_samples()
+    if bw_rows is None:
+        bw_rows = gic.load_borrow_windows()
+    split = month_borrow_split(sample_rows, gic.borrow_covered_dates(bw_rows), month)
+    split["windows_in_month"] = windows_in_month(bw_rows, month)
+    split["note"] = ("BC-P-62 声明台账=日级人工声明零启发式（E62 归因律同源）"
+                     "·self=30% 执行线读数面·借出负载不计自产·M66 月度对账供数")
+    return split
 
 
 # ---------- S5 自用面解析（纯函数·月过滤） ----------
@@ -229,7 +294,7 @@ def s6_energy(month, days=None, baseline_range=None, report_text=None, profile_d
 
 # ---------- 月末行组装（§三 预注册格式·N2/N3 门内建） ----------
 
-def assemble(month, s1, s2, s3, s4, s5, now_iso, s6=None):
+def assemble(month, s1, s2, s3, s4, s5, now_iso, s6=None, s4b=None):
     commercial_mtok = s1["consumed_mtok"]  # 商业面=S1 配额轨 consumed（计划态=0·如实禁估充）
     three_elements = {k: None for k in COST_ELEMENTS}  # 恒 ⬜·Q3 铁律
     n3_credential = all(v is not None for v in three_elements.values())
@@ -257,6 +322,22 @@ def assemble(month, s1, s2, s3, s4, s5, now_iso, s6=None):
         chain_n = 6
     elif s6 is not None and not s6.get("available"):
         s6_seg = "｜S6 能耗剖面源=不可用降级如实（N2 零编造·采集面缺）"
+    s4b_seg = ""
+    if s4b is not None:
+        if s4b.get("available"):
+            wins = s4b.get("windows_in_month") or []
+            s = s4b.get("self") or {}
+            b = s4b.get("borrowed") or {}
+            s_avg = "%.1f%%" % s["avg_pct"] if s.get("avg_pct") is not None else "-"
+            b_avg = "%.1f%%" % b["avg_pct"] if b.get("avg_pct") is not None else "-"
+            wins_txt = ("借用窗 " + "/".join(str(w.get("id")) for w in wins)) if wins \
+                else "零声明借用窗=全月 SELF 口径"
+            s4b_seg = (f"｜S4b GPU self/borrowed 分列（BC-P-62 声明台账·日级人工声明零启发式）"
+                       f"=SELF n={s.get('n', 0)} avg={s_avg}（{len(s.get('days') or [])} 日·30% 执行线读数面）"
+                       f"vs 借用 n={b.get('n', 0)} avg={b_avg}（{len(b.get('days') or [])} 日·{wins_txt}"
+                       f"·借出负载不计自产·M66 月度对账供数）")
+        else:
+            s4b_seg = "｜S4b GPU self/borrowed 分列=源不可用降级如实（N2 零编造）"
     chain_tail = f"机械链 {chain_n}/6 就绪" if s6 is not None else "机械链 5/6 就绪（S6 未采）"
     line = (
         f"[month-end {month} planning-state light line · E25] "
@@ -267,7 +348,7 @@ def assemble(month, s1, s2, s3, s4, s5, now_iso, s6=None):
         f"S2 云端 rows={s2['rows']}·J4 零接线维持｜S3 借算 generated={s3['generated']}（E23 预注册门不跳）｜"
         f"S4 GPU {gpu.get('machine','-')} n={gpu.get('n','-')} avg={gpu.get('avg_pct','-')}% kpi={gpu.get('kpi','-')}"
         f"（30% 唯一点名阈值·3 日滚动基线 n={g.get('n','-')} avg={g.get('avg_pct','-')}%·C-20260929-02）"
-        f"{s6_seg}｜"
+        f"{s4b_seg}{s6_seg}｜"
         f"成本三要素 原值/电价/利用率=⬜⬜⬜（Q3 铁律·电价唯一合法源=实缴账单）｜"
         f"单位成本 v1=⬜（N3 双门 {n3_gate}）｜{chain_tail}"
     )
@@ -275,7 +356,7 @@ def assemble(month, s1, s2, s3, s4, s5, now_iso, s6=None):
         "month": month, "collected_at": now_iso, "mode": "planning_state_light",
         "sheet": "docs/ops/month-end-cost-collection-sheet-v1.md",
         "sources": {"s1_quota": s1, "s2_cloud": s2, "s3_borrow": s3, "s4_gpu": gpu,
-                    "s5_selfuse": s5, "s6_energy": s6},
+                    "s5_selfuse": s5, "s6_energy": s6, "s4b_borrow_split": s4b},
         "n2_zero_fabrication": {"cost_three_elements": three_elements,
                                 "unit_cost_v1": None, "n3_gate": n3_gate,
                                 "note": "N2：任何 ⬜ 不以估算/外部锚/OSS 数据回填（口径 A=呈现面专用）"},
@@ -292,11 +373,12 @@ def cmd_run(month):
     s4 = parse_gpu_report(_run_tool(["Tools/gpu_idle_collector.py", "report"]))
     s5 = _s5_real(month)
     s6 = s6_energy(month)
-    payload = assemble(month, s1, s2, s3, s4, s5, now_iso, s6=s6)
+    s4b = s4b_borrow_split(month)
+    payload = assemble(month, s1, s2, s3, s4, s5, now_iso, s6=s6, s4b=s4b)
     out = ROOT / "state" / f"month-end-{month.replace('-', '')}.json"
     out.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(json.dumps({"month": month, "report": str(out.relative_to(ROOT)),
-                      "sources_ok": 6}, ensure_ascii=False))
+                      "sources_ok": 7}, ensure_ascii=False))
     print("MONTH-END LINE:")
     print(payload["month_end_line"])
     return 0
@@ -325,6 +407,11 @@ def cmd_selftest():
     check("S1 解析=计划态四零", s1["consumed_mtok"] == 0 and s1["rails"].startswith("accounting rail"))
     s2 = parse_cloud_summary(s2_fix)
     check("S2 解析=rows/pending 零·J4 在文", s2["rows"] == 0 and "J4" in s2["wiring"])
+    s3a = s3_borrow_state(files=["borrow-windows.jsonl"])
+    s3b = s3_borrow_state(files=["borrow-windows.jsonl", "borrow-cost-ledger.jsonl"])
+    check("S3 盘点=声明台账排除（generated 0·declared 1）·真记账轨生成件计入",
+          s3a["generated"] == 0 and s3a["declared_ledger"] == ["borrow-windows.jsonl"]
+          and s3b["generated"] == 1 and s3b["files"] == ["borrow-cost-ledger.jsonl"])
     s4 = parse_gpu_report(s4_fix)
     check("S4 解析=分机行+滚动基线", s4["machine"] == "bm-a" and s4["n"] == 59 and s4["kpi"] == "FLAG"
           and s4["roll3"]["n"] == 117 and s4["roll3"]["avg_pct"] == 13.0)
@@ -390,8 +477,52 @@ def cmd_selftest():
                   s6={"available": False, "note": "S6 能耗剖面源不可用（报告未解析出·采集面缺或工具失败）·月末行降级如实（N2 零编造）"})
     check("S6 不可用=降级行+机械链 5/6（N2 零编造）", "S6 能耗剖面源=不可用" in p5["month_end_line"]
           and "机械链 5/6" in p5["month_end_line"])
-    print(f"selftest: {ok[0]}/15 PASS" if ok[0] == 15 else f"selftest: FAIL ({ok[0]}/15)")
-    return 0 if ok[0] == 15 else 1
+    ssamp_fix = [{"ts": "2026-10-01T10:00:00", "util_pct": 10.0},
+                 {"ts": "2026-10-01T11:00:00", "util_pct": 20.0},
+                 {"ts": "2026-10-09T10:00:00", "util_pct": 90.0},
+                 {"ts": "2026-10-10T10:00:00", "util_pct": 70.0},
+                 {"ts": "2026-11-01T10:00:00", "util_pct": 99.0}]
+    covered_fix = {"2026-10-08", "2026-10-09", "2026-10-10", "2026-11-01", "2026-11-02"}
+    sp = month_borrow_split(ssamp_fix, covered_fix, "2026-10")
+    check("S4b 月窗分列=self n=2 avg=15.0%·借用 n=2 avg=80.0%·他月排除·借用日分列",
+          sp["self"]["n"] == 2 and sp["self"]["avg_pct"] == 15.0
+          and sp["self"]["days"] == ["2026-10-01"]
+          and sp["borrowed"]["n"] == 2 and sp["borrowed"]["avg_pct"] == 80.0
+          and sp["borrowed"]["days"] == ["2026-10-09", "2026-10-10"])
+    sbw_fix = [{"id": "BW-001", "date_from": "2026-10-08", "date_to": "2026-10-08", "consumer": "H3 test"},
+               {"id": "BW-002", "date_from": "2026-10-09", "date_to": "2026-10-10", "consumer": "KF batch"},
+               {"id": "BW-003", "date_from": "2026-11-01", "date_to": "2026-11-02", "consumer": "next month"}]
+    wm = windows_in_month(sbw_fix, "2026-10")
+    check("S4b 窗月窗切片=10 月内 BW-001/002·他月窗排除", [w["id"] for w in wm] == ["BW-001", "BW-002"])
+    s4b_fix = dict(sp, windows_in_month=wm,
+                   note="BC-P-62 声明台账=日级人工声明零启发式（E62 归因律同源）·self=30% 执行线读数面·借出负载不计自产·M66 月度对账供数")
+    p6 = assemble("2026-10", s1, s2, {"files": [], "generated": 0}, s4, s5, "T3",
+                  s6=s6_fix, s4b=s4b_fix)
+    check("S4b 并入月末行=self/借用分列+借用窗行+payload 源携带",
+          "S4b GPU self/borrowed 分列" in p6["month_end_line"]
+          and "SELF n=2 avg=15.0%" in p6["month_end_line"]
+          and "借用 n=2 avg=80.0%" in p6["month_end_line"]
+          and "借用窗 BW-001/BW-002" in p6["month_end_line"]
+          and p6["sources"]["s4b_borrow_split"]["self"]["n"] == 2)
+    p7 = assemble("2026-10", s1, s2, {"files": [], "generated": 0}, s4, s5, "T3",
+                  s6=s6_fix, s4b={"available": True, "month": "2026-10",
+                                  "self": {"n": 3, "avg_pct": 12.0, "days": ["2026-10-01"]},
+                                  "borrowed": {"n": 0, "avg_pct": None, "days": []},
+                                  "windows_in_month": [], "note": "zero"})
+    check("S4b 零声明借用窗=全月 SELF 口径行（borrowed n=0 avg=-）",
+          "零声明借用窗=全月 SELF 口径" in p7["month_end_line"]
+          and "借用 n=0 avg=-" in p7["month_end_line"])
+    p8 = assemble("2026-10", s1, s2, {"files": [], "generated": 0}, s4, s5, "T3",
+                  s6=s6_fix, s4b={"available": False,
+                                  "note": "S4b 分列源不可用（collector 模块导入失败·N2 零编造）"})
+    check("S4b 源不可用=降级行如实（N2 零编造）",
+          "S4b GPU self/borrowed 分列=源不可用降级如实" in p8["month_end_line"])
+    p9 = assemble("2026-10", s1, s2, {"files": [], "generated": 0}, s4, s5, "T3",
+                  s6=s6_fix, s4b=s4b_fix)
+    check("确定性=S4b 段双跑一致", p6["month_end_line"] == p9["month_end_line"])
+    total = 22
+    print(f"selftest: {ok[0]}/{total} PASS" if ok[0] == total else f"selftest: FAIL ({ok[0]}/{total})")
+    return 0 if ok[0] == total else 1
 
 
 def main():
