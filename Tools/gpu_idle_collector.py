@@ -89,6 +89,8 @@ BATCH_POOL = os.path.join(HERE, "..", "docs", "ops",
 RESIDENT_LANES = [("serve-ollama", "http://127.0.0.1:11434/"),
                   ("resident-qa-8792", "http://127.0.0.1:8792/health")]
 BORROW_VRAM_MIN_MIB = 6144    # D-20261004-04: VRAM headroom >= 6GB line
+BORROW_LEDGER = os.path.join(HERE, "..", "state",
+                             "borrow-windows.jsonl")  # BC-P-62 manual ledger
 COTENANT_EXE = "tuanjie.exe"   # exact image name (clean-window gate mirror)
 DISPATCH_COOLDOWN_MIN = 30
 DISPATCH_HEADER = ("# GPU idle observation log (T-20260928-28; DRY-RUN per "
@@ -168,6 +170,96 @@ def bench_verdict(avg):
     return ("BELOW-BENCH(<50%% structural-failure line on %d-day avg, "
             "R-C1 D-20260930-36)" % BENCH_DAYS if avg < BENCH_PCT
             else "AT-OR-ABOVE-BENCH(R-C1 50%% line, D-20260930-36)")
+
+
+def load_borrow_windows(path=BORROW_LEDGER):
+    """BC-P-62 T77: manual day-level borrowing-window declarations.
+    Attribution source = round-level human declaration (orders dispatch
+    lines / round-ledger rows transcribed verbatim); zero heuristics,
+    same attribution law as E62 energy bookkeeping. Malformed rows are
+    skipped, never fatal to the report."""
+    rows = []
+    if os.path.exists(path):
+        with open(path, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith("#"):
+                    try:
+                        rows.append(json.loads(line))
+                    except ValueError:
+                        pass
+    return rows
+
+
+def borrow_covered_dates(windows):
+    """Inclusive calendar-date set covered by declared borrow windows."""
+    cov = set()
+    for w in windows:
+        try:
+            d0 = datetime.date.fromisoformat(str(w["date_from"]))
+            d1 = datetime.date.fromisoformat(str(w["date_to"]))
+        except (KeyError, ValueError):
+            continue
+        while d0 <= d1:
+            cov.add(d0.isoformat())
+            d0 += datetime.timedelta(days=1)
+    return cov
+
+
+def self_caliber_split(samples, covered):
+    """BC-P-62: day-level split per manual declaration (no per-tick
+    heuristics). A mixed co-tenant day inside a declared window is
+    conservatively excluded from the self enforcement caliber."""
+    self_rows = [r for r in samples if r["ts"][:10] not in covered]
+    borrow_rows = [r for r in samples if r["ts"][:10] in covered]
+    return self_rows, borrow_rows
+
+
+SELF_APPS_MARK = ("ollama", "llama-server", "llama.cpp")
+COMPUTE_APPS_MARK = ("python", "tuanjie", "blender", "comfy", "krea")
+# BC-P-62 step 2 (machine fact, 10-11 live run): WDDM exposes compute
+# app NAMES but masks per-process GPU memory (used_memory column reads
+# [N/A] for every row), so the corroboration face is PRESENCE COUNTS
+# by process image, not MiB. Self face = the serve fleet family
+# (ollama runner / llama-server preloader). Borrowed compute is marked
+# by known compute-framework images (python=ComfyUI/portable batch
+# clients, Tuanjie=editor bakes/render, blender/comfy/krea family).
+# Desktop graphics noise (explorer/Chrome/Feishu/...) is excluded
+# from both faces; marker undercount is conservative and accepted --
+# declared borrow windows remain the SOLE attribution source (zero
+# heuristics law, E62). Corroboration only; util is never split.
+
+
+def apps_classify(text):
+    """Parse `--query-compute-apps` csv text -> per-face presence
+    counts. Memory column optional ([N/A] on WDDM). Malformed /
+    permission-masked rows are skipped defensively."""
+    self_n = compute_n = 0
+    for line in text.strip().splitlines():
+        parts = [p.strip() for p in line.split(",")]
+        if len(parts) < 2 or not parts[0].isdigit():
+            continue
+        low = parts[1].lower()
+        if any(m in low for m in SELF_APPS_MARK):
+            self_n += 1
+        elif any(m in low for m in COMPUTE_APPS_MARK):
+            compute_n += 1
+    return {"self_n": self_n, "compute_n": compute_n}
+
+
+def query_compute_apps():
+    """BC-P-62 step 2: one read-only nvidia-smi compute-apps snapshot.
+    None on any failure (corroboration must never break sampling)."""
+    try:
+        out = subprocess.run(
+            ["nvidia-smi", "--query-compute-apps=pid,process_name,"
+             "used_memory", "--format=csv,noheader,nounits"],
+            capture_output=True, text=True, timeout=30)
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if out.returncode != 0:
+        return None
+    return apps_classify(out.stdout)
 
 
 def queue_head_pointer():
@@ -366,10 +458,18 @@ def cmd_sample():
     os.makedirs(UTIL_DIR, exist_ok=True)
     row = {"ts": now().isoformat(timespec="seconds")}
     row.update(m)
+    apps = query_compute_apps()   # BC-P-62 step 2: process-face fields
+    if apps is not None:
+        row["apps_self_n"] = apps["self_n"]
+        row["apps_compute_n"] = apps["compute_n"]
     with open(SAMPLES, "a", encoding="utf-8") as f:
         f.write(json.dumps(row) + "\n")
-    print("sample ok: util=%.0f%% mem=%.0fMiB power=%.2fW"
-          % (m["util_pct"], m["mem_used_mib"], m["power_w"]))
+    print("sample ok: util=%.0f%% mem=%.0fMiB power=%.2fW%s"
+          % (m["util_pct"], m["mem_used_mib"], m["power_w"],
+             "" if apps is None else
+             " apps_self=%dn apps_compute=%dn (BC-P-62 corroboration "
+             "face; per-proc MiB masked on WDDM)"
+             % (apps["self_n"], apps["compute_n"])))
     print(maybe_dispatch(load_samples()))
     return 0
 
@@ -399,6 +499,44 @@ def cmd_report():
           "%s..%s n=%d avg=%.1f%% (call-out 30%%; 70%% target = "
           "directional ref)" % (ROLL_DAYS, r3_days[-1], r3_days[0],
                                 len(r3), r3avg))
+    # BC-P-62 T77: borrow-window split. The 30% call-out ENFORCEMENT
+    # caliber reads the self caliber; declared borrow days are excluded
+    # (manual ledger, day-level). Main kpi= line above stays full
+    # caliber for regex compatibility; this section is the enforcement
+    # read for the round-ledger gpu field + M66 monthly reconciliation.
+    bw = load_borrow_windows()
+    if bw:
+        cov = borrow_covered_dates(bw)
+        hit = sorted(set(r3_days) & cov)
+        for w in bw:
+            print("borrow-window declared: %s..%s consumer=%s "
+                  "(source=%s)"
+                  % (w.get("date_from"), w.get("date_to"),
+                     w.get("consumer"), w.get("source")))
+        if hit:
+            self_rows, borrow_rows = self_caliber_split(r3, cov)
+            if self_rows:
+                savg = sum(r["util_pct"] for r in self_rows) \
+                    / len(self_rows)
+                print("3-day rolling SELF caliber (BC-P-62; call-out "
+                      "ENFORCEMENT caliber): n=%d avg=%.1f%% -> %s "
+                      "(declared borrow days excluded: %s)"
+                      % (len(self_rows), savg, callout_verdict(savg),
+                         ",".join(hit)))
+            else:
+                print("3-day rolling SELF caliber: n=0 -> "
+                      "BORROW-COVERED (rolling window fully inside "
+                      "declared borrowing windows: %s; 30%% call-out "
+                      "suspended this window -- lent-out load is not "
+                      "self production and not an idle failure; "
+                      "full-caliber line above stays for transparency)"
+                      % ",".join(hit))
+            if borrow_rows:
+                bravg = sum(r["util_pct"] for r in borrow_rows) \
+                    / len(borrow_rows)
+                print("borrow-window caliber (informational): n=%d "
+                      "avg=%.1f%% (lent-out load; NOT read by the 30%% "
+                      "enforcement line)" % (len(borrow_rows), bravg))
     b7_days = roll_dates(BENCH_DAYS)
     b7 = [r for r in rows if r["ts"].startswith(b7_days)]
     b7avg = (sum(r["util_pct"] for r in b7) / len(b7)) if b7 else avg
@@ -550,6 +688,57 @@ def cmd_selftest():
     assert b_avg >= CALL_PCT, "3-day avg 33.3% must clear the line"
     assert callout_verdict(s_avg).startswith("FLAG"), "20% same-day FLAGS"
     assert callout_verdict(b_avg) == "PASS", "33.3% baseline PASSes"
+    # BC-P-62 T77: borrow-window split math (manual day-level ledger)
+    bw_fix = [{"date_from": "2026-09-27", "date_to": "2026-09-28",
+               "consumer": "fixture-lane", "source": "fixture"}]
+    cov = borrow_covered_dates(bw_fix)
+    assert cov == {"2026-09-27", "2026-09-28"}, \
+        "coverage spans date_from..date_to inclusively"
+    assert borrow_covered_dates([]) == set(), \
+        "empty declaration ledger -> zero coverage (back-compat)"
+    bad_bw = [{"date_from": "not-a-date", "date_to": "2026-09-28"}]
+    assert borrow_covered_dates(bad_bw) == set(), \
+        "malformed rows are skipped, never fatal"
+    s_rows, br_rows = self_caliber_split(in3, cov)
+    assert len(s_rows) == 1 and s_rows[0]["util_pct"] == 40.0, \
+        "self caliber keeps only non-declared days (09-26 fixture)"
+    assert len(br_rows) == 2, \
+        "declared days (09-27/09-28) go to the borrow side"
+    cov_all = borrow_covered_dates([{"date_from": "2026-09-26",
+                                      "date_to": "2026-09-28"}])
+    s_none, br_all = self_caliber_split(in3, cov_all)
+    assert not s_none and len(br_all) == 3, \
+        "fully covered rolling window -> self caliber n=0 (BORROW-COVERED)"
+    s_avg_fix = sum(r["util_pct"] for r in s_rows) / len(s_rows)
+    assert callout_verdict(s_avg_fix) == "PASS", \
+        "self-only 40% must still clear the 30% line unaided"
+    s_low, _ = self_caliber_split(
+        [{"ts": "2026-09-26T10:00:00", "util_pct": 20.0}], set())
+    assert callout_verdict(
+        sum(r["util_pct"] for r in s_low) / len(s_low)).startswith("FLAG"), \
+        "borrow exclusion must not mask a true self-caliber FLAG"
+    # BC-P-62 step 2: compute-apps process-face classification
+    apps = apps_classify("1234, C:\\x\\ollama app.exe, [N/A]\n"
+                         "5678, C:\\y\\llama-server.exe, [N/A]\n"
+                         "9999, C:\\z\\python_embeded\\python.exe, "
+                         "[N/A]\n"
+                         "8888, C:\\w\\Editor\\Tuanjie.exe, [N/A]\n")
+    assert apps["self_n"] == 2, \
+        "ollama/llama-server family counts as self face (WDDM [N/A])"
+    assert apps["compute_n"] == 2, \
+        "python/Tuanjie compute-framework images count as borrowed face"
+    noise = apps_classify("111, C:\\Windows\\explorer.exe, [N/A]\n"
+                          "222, C:\\Chrome\\chrome.exe, [N/A]\n")
+    assert noise == {"self_n": 0, "compute_n": 0}, \
+        "desktop graphics noise is excluded from both faces"
+    assert apps_classify("") == {"self_n": 0, "compute_n": 0}, \
+        "no compute apps -> zero face (idle state)"
+    junk = apps_classify("[N/A], [N/A], [N/A]\nnot,parts\n")
+    assert junk == {"self_n": 0, "compute_n": 0}, \
+        "permission-masked and malformed rows skip defensively"
+    live = query_compute_apps()
+    assert live is None or set(live) == {"self_n", "compute_n"}, \
+        "live probe (when present) keeps the schema"
     assert _parse_last_ts("| 2026-09-28T09:33:28 | IDLE x | y |") == \
         datetime.datetime(2026, 9, 28, 9, 33, 28), "dispatch ts parse"
     assert _parse_last_ts("not a dispatch row") is None, "non-row -> None"
@@ -642,7 +831,8 @@ def cmd_selftest():
           "baseline/7-day R-C1 benchmark line/dispatch-ts parse/"
           "O-015 loadline time-share+pool census+probe guard/"
           "T44 machine-borrowable dual probe/"
-          "T46 machine-profile data-source row ok")
+          "T46 machine-profile data-source row/"
+          "T77 BC-P-62 borrow-window split+compute-apps face ok")
     return 0
 
 
