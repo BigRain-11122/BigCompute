@@ -57,3 +57,5 @@
 ## 七 承接链
 
 任务板 T-22（族 A 二轮 ✅）→提案面 BC-P-11（机队 MaaS 扩面试点·本轮新立）+风险台账 R-37 立行（tailnet 服务端口暴露面）+tech T9 manifest 分发纪律（扩面模型分发同源·L0-L3 不变）+族 C R- §四（记账轨对接在册）。
+## 八 增量窗口行（行级追加）
+- 2026-10-11 13:0x 窗（哨兵触发轮·族 A 轮转归位）：**U240 常驻契约活体审计件落地**（Tools/serve_contract_audit.py·explore E65 新增即耗）——实弹四发现：①residency=PASS〔常驻 qwen2.5:7b-instruct·expires_at=0001-01-01T00:00:00Z 零时哨兵=keep_alive:-1 实锚〕②**num_ctx 静默缩窗首例双侧面活体复核**〔native=32768（api/show POST 面 model_info qwen2.context_length）vs effective=4096（ollama ps CONTEXT 列）→face=shrunk ratio=0.125——§二五项之 3「num_ctx 跨机契约行」执法证据件：R-20260928 首发现「4096≠32768」由单侧注册值升双侧面机测〕③在册清单自滚动基线首档 10 模型〔含 bge-m3/qwen3.5:9b-16k/qwen3.8:27b-8k 等共驻模型在册·非本司自测归属如实注记·后续漂移 face 可测〕④headroom vram_free 4584MiB（J2 ≥1.5GB 借算门 informational）。工具面发现=本机 Ollama 版 /api/show 为 POST 面（GET=405→首跑半档 native=None 静默吞 405·改 POST 双侧面全通——版本 API 面注记）。selftest 14/14 PASS·证据 state/serve-contract-audit-20261011-130416.json（半档 130350=GET 面保留审计链）·零 GPU 生成·纯只读。消费面=§二 num_ctx 契约行执法回填+E28/R-50 借窗归因旁证（serve 活体四点一次采齐）。
