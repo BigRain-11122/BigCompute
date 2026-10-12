@@ -48,6 +48,7 @@ QA_DIR = os.path.join(ROOT, "qa")
 QUEUE_DIR = os.path.join(ROOT, "state", "queue")
 QUEUE_FILES = ("main.md", "tech.md", "explore.md")
 OLLAMA_URL = "http://localhost:11434/api/generate"
+OLLAMA_TAGS_URL = "http://localhost:11434/api/tags"
 OLLAMA_MODEL = "qwen2.5:7b-instruct"
 RESIDENT_QA_URL = "http://127.0.0.1:8792/health"
 
@@ -107,7 +108,19 @@ def probe_ollama():
     records residency before/after. If residency was lost, the generate
     call itself reloads the model (auto-load) and the log line records
     the restore; residency no longer depends on default keep_alive.
+
+    BC-P-60: /api/tags pre-check (2s, read-only). tags unreachable = bare
+    FAIL fast (serve down, no 180s burn); tags 200 + generate timeout =
+    BORROW-WINDOW label in the except branch (saturation env state, serve
+    alive; precedent 10-10 23:1x / 10-12 00:2x+09:55).
     """
+    try:
+        with urllib.request.urlopen(
+                urllib.request.Request(OLLAMA_TAGS_URL), timeout=2) as tr:
+            tr.read()
+    except Exception as e:  # noqa: BLE001 - probe must not crash pipeline
+        return False, ("ollama probe failed: /api/tags unreachable "
+                       "(serve down, bare FAIL per BC-P-60): %r" % e)
     rc0, ps_pre = run(["ollama", "ps"], timeout=60)
     pre = parse_residency(ps_pre)
     body = json.dumps({"model": OLLAMA_MODEL, "prompt": "1+1?",
@@ -140,7 +153,16 @@ def probe_ollama():
                   % (text, ec, tps, res, ps_pre.strip(), ps_post.strip()))
         return bool(text), detail
     except Exception as e:  # noqa: BLE001 - probe must not crash pipeline
-        return False, "ollama probe failed: %r" % e
+        # BC-P-60: tags 200 + generate failure = borrow-window saturation
+        # env state (labeled), tags unreachable = bare FAIL (serve down).
+        try:
+            with urllib.request.urlopen(
+                    urllib.request.Request(OLLAMA_TAGS_URL), timeout=2) as tr:
+                tr.read()
+            return False, ("ollama probe failed: BORROW-WINDOW "
+                           "(tags=200, generate-timeout): %r" % e)
+        except Exception:
+            return False, "ollama probe failed: %r" % e
 
 
 def probe_queues():

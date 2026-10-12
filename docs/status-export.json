@@ -1,7 +1,7 @@
 {
   "company": "BigCompute",
-  "updated_at": "2026-10-11 23:0x",
-  "current_activity": "23:0x 夜班排程轮：审核步=C-20261011-03 @BigCompute M48 四决策项 T1 终局定谳双仓落账腿毕（M48 行 T1 细化段+BC-P-39 翻面裁定毕+回执 BC-F-20261011-01）+C-20261011-02 空转防治机制知悉（bm-a 部署腿 O 令在飞·OrderSentinel 至令即承）+C-20261011-01 排满派工表零本司直接派单；队列步=E57 顺挂实弹=专辑 KN 29 单 i2v 窗 1s 功耗采样 attach（16h detached·PID 40744·纯只读零派活）；物理件卡点=微信支付商户号+抖音小店账号+服务器域名备案（CEO 物理件清单在册·零催办）·任务板=tasks/TASKS.md",
-  "latest_artifact": "C-20261011-03 双仓落账（本仓 M48 行 T1 终局细化段+BC-P-39 行翻面裁定毕）+state/h3-power-h3_album_kn-20261011-225307.jsonl（E57 专辑 i2v 窗功耗序列采样中），2026-10-11 23:0x",
-  "next_milestone": "空转防治 bm-a 部署腿 O 令承接（至令即部署 fleet-oversight 消费步·OrderSentinel 15min 扫描在役）；N1 月末归集 10-31 22:43 一命令（S1-S6 六源+S4b 借用分列首入月账）；M66 批池首月观察回访 ~11-0x；E57 收线轮 report 消费（E_电 实测换 242W 上界代理）；M55 呈报窗 10-14 兜底；T64/T70 批文至则行"
+  "updated_at": "2026-10-12 11:0x",
+  "current_activity": "10:5x 哨兵接续轮（晨轮 10:0x 被杀·遗件补提交收口）：E57 归因勘正（11.1h 采样窗=LLM 常驻服务 qwen2.5:14b-8k 10.5GB pin·非 KN i2v——三证=ollama 实读+ComfyUI 零完成+盘上零落片）+E64 BW-003 借用窗收线（10-11 delta +0.7908 kWh·E66 registry 同步）；BC-P-60 批活转化=qa_smoke ollama 探针 BORROW-WINDOW 自动标注（首弹 qa/smoke-20261012-1057）；采样器 PID 40744 随轮杀连坐死（10:00:26·16h 有界未达·断采自愈候选 BC-P-65）；物理件待信收结算商户号+抖音小店账号+服务器域名备案（CEO 物理件清单在册·零催办）；任务板=tasks/TASKS.md",
+  "latest_artifact": "Tools/qa_smoke.py BC-P-60 转化（/api/tags 2s 预检+异常分支 BORROW-WINDOW 标注·首弹实锚 qa/smoke-20261012-1057.log）+E64 BW-003 收线证据 state/gpu-energy-profile-20261012-095450.json+E57 全文件收尾 state/h3-window-energy-llmserve-fullfile-20261012-105x.txt（delta +1.006546 与锚 +1.0048 一致），2026-10-12 11:0x",
+  "next_milestone": "E57 per-clip E_电 实测顺延至真实 i2v 窗（本机未起·重挂采样器照原法）；N1 月末归集 10-31 22:43 一命令；M66 批池首月观察回访 ~11-0x；M55 呈报窗 10-14 兜底；T64/T70 批文至则行"
 }
