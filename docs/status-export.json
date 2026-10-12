@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-10-13 00:2x",
- "current_activity": "00:1x-00:2x 哨兵轮：审核步=D-20261013-01 核销批 31 收讫（本司日清族收讫+BC-P-68 追认采纳）+D-02 Phase 0 交卷·orders 尾行全 MV 域零本司派单；队列步=夜停执法 #5（runner 第7例+serve 父双杀·VRAM 9323→4227 free 7771）+BW-006 借用日声明（O-2330 ③ 导演席情绪帧库夜窗·自动执法腿 15min tick 接管整夜·腿首战 collector 报告内当场 ENFORCED-KILL）+E62 价法 10-13 窗毕核（10-12 delta +0.6167 kWh）",
- "latest_artifact": "state/borrow-windows.jsonl（BW-006 行）+state/borrow-runner-enforce-log.jsonl（执法账 #7）+state/e62-bw005-closure-20261013.txt+state/gpu-energy-profile-20261013-002017.json（E62 毕核）+state/collector-report-r13-0015.txt（腿首战证据）·2026-10-13 00:2x",
- "next_milestone": "随窗：BW-006 借用日执法账滚动观察+导演席烧制实况（O-2330 ③）；明晨=车道法态验证不 enable 双任务（O-2215）+CEO 让路态验证；T64/T70 批文至则行；M66 批池月窗 ~11-0x；N1 月末归集 10-31 22:43 一命令"
+ "updated_at": "2026-10-13 03:2x",
+ "current_activity": "03:1x-03:2x 哨兵轮：审核步=orders 唯一新行 O-2330 执行件（Seedance 救场波·bma 导演席域）零本司派单·decisions 零新行；队列步=BW-006 随窗观察升级为根修件——夜停执法腿 16 连打地鼠归因（三层链 ollama app→serve→llama-server 自动重载 FOREVER pin）+双面修法落地（执法腿 keep_alive:0 API 驱步先于杀+QA 夜停门改夜窗判据不看 runner 在否）+实弹 pin-evicted=1→VRAM 9240→4160MiB（5.1G 归还 KF 车道）+T84 re-pin 客户端归因新立（90 秒重 pin 实锚·嫌疑导演席窗）",
+ "latest_artifact": "Tools/gpu_idle_collector.py（_ollama_evict_pins+enforce evict 先序+selftest 扩 4 断言）+Tools/qa_smoke.py（夜停门夜窗判据）+qa/smoke-20261013-0320.log+png（QA 7/7·夜停门新分支 NIGHT-STOP-AWARE 首证）+state/borrow-runner-enforce-log.jsonl（pin-evicted 执法账首两笔）·2026-10-13 03:2x",
+ "next_milestone": "随窗：BW-006 借用日执法账滚动（evict 后 tick 静默=修法成立判据）+T84 re-pin 客户端归因（tick 间隔内 5.1G 占用归因）；明晨 08:00=出窗复归手动执法+车道法态验证不 enable 双任务（O-2215）+CEO 让路态验证；T64/T70 批文至则行；M66 批池月窗 ~11-0x；N1 月末归集 10-31 22:43 一命令"
 }

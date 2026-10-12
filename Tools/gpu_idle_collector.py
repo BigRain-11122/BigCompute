@@ -293,13 +293,55 @@ def _taskkill_llama():
         return False
 
 
+OLLAMA_PS_URL = "http://127.0.0.1:11434/api/ps"
+OLLAMA_GEN_URL = "http://127.0.0.1:11434/api/generate"
+
+
+def _ollama_evict_pins():
+    """Enforcement step 0 (BW-006 10-13 live-fire): the ollama serve
+    parent auto-RELOADS any keep_alive=-1 pinned model the instant the
+    engine child dies (16 kills 02:03-03:03, respawn ~46s after each
+    kill), so name-kills alone are whack-a-mole. A keep_alive=0 no-op
+    generate per loaded model drops the pin, so serve has nothing to
+    reload while staying alive (tags liveness = T82 design intent).
+    Returns the count of pins evicted; any probe error -> 0
+    (fail-open to the legacy kill-only path)."""
+    evicted = 0
+    try:
+        import urllib.request
+        with urllib.request.urlopen(
+                urllib.request.Request(OLLAMA_PS_URL), timeout=5) as r:
+            names = [m.get("name") for m in
+                     (json.loads(r.read().decode("utf-8"))
+                      .get("models") or [])]
+        for name in names:
+            if not name:
+                continue
+            body = json.dumps({"model": name, "keep_alive": 0,
+                               "stream": False}).encode("utf-8")
+            req = urllib.request.Request(
+                OLLAMA_GEN_URL, data=body,
+                headers={"Content-Type": "application/json"})
+            with urllib.request.urlopen(req, timeout=30):
+                pass
+            evicted += 1
+    except Exception:  # noqa: BLE001 - evict must never break the tick
+        pass
+    return evicted
+
+
 def borrow_runner_enforce(today, cov, tasklist_text, tasks_disabled,
-                          hour, kill_fn):
+                          hour, kill_fn, evict_fn=None):
     """BC-P-68 T82 pure gate: kill the SELF-lane runner ONLY when
     three conditions all hold (night window 22:00-08:00 + covered
     borrow day + both OLLAMA_TASKS Disabled). Daytime keeps the
     WARN-only sentinel (CEO personal-use exception face). Probe
     failure (None) or not-disabled (False) -> fail-open NO kill.
+    evict_fn (BW-006 10-13 amendment): called FIRST; a keep_alive=0
+    API evict of pinned models removes the serve-parent reload
+    trigger so the kill actually holds between ticks. Success face
+    = evicted OR killed; engine auto-exits after a clean evict, so
+    kill_fn reporting False there is not a failure.
     Returns the decision line, or None when no face applies."""
     if today not in cov:
         return None
@@ -315,14 +357,22 @@ def borrow_runner_enforce(today, cov, tasklist_text, tasks_disabled,
         return ("borrow-window runner enforce: NO-KILL "
                 "(night + runner present but serve tasks not "
                 "Disabled; sentinel WARN stands)")
+    evicted = 0
+    if evict_fn is not None:
+        try:
+            evicted = int(evict_fn() or 0)
+        except Exception:  # noqa: BLE001
+            evicted = 0
     killed = bool(kill_fn()) if kill_fn is not None else False
-    if killed:
+    if evicted or killed:
         return ("borrow-window runner enforce: ENFORCED-KILL "
                 "llama-server.exe (night-stop O-20261012-1115 + "
-                "lane law O-20261012-2215; night + borrow day + "
-                "tasks disabled; re-probe at next tick)")
-    return ("borrow-window runner enforce: KILL-FAILED (taskkill "
-            "error; next 15-min tick retries)")
+                "lane law O-20261012-2215; pin-evicted=%d; kill=%s; "
+                "serve parent kept for tags liveness; re-probe at "
+                "next tick)" % (evicted, "yes" if killed else
+                                "auto-exit-after-evict"))
+    return ("borrow-window runner enforce: KILL-FAILED (evict=0, "
+            "taskkill error; next 15-min tick retries)")
 
 
 def _append_enforce_log(line):
@@ -350,7 +400,8 @@ def borrow_runner_enforce_tick(emit, tl=None):
     cov = borrow_covered_dates(bw)
     line = borrow_runner_enforce(
         now().date().isoformat(), cov, tl,
-        _ollama_tasks_disabled(), now().hour, _taskkill_llama)
+        _ollama_tasks_disabled(), now().hour, _taskkill_llama,
+        _ollama_evict_pins)
     if line:
         _append_enforce_log(line)
         emit(line)
@@ -936,6 +987,43 @@ def cmd_selftest():
         "2026-10-11", cov_fix2,
         "llama-server.exe  1  Console", True, 23, _kill_yes) is None, \
         "day outside borrow windows -> no enforcement face"
+    # BW-006 10-13 amendment: evict-first path (pin eviction removes
+    # the serve-parent reload trigger; engine auto-exits -> kill=NO)
+    order = []
+
+    def _evict_two():
+        order.append("evict")
+        return 2
+
+    def _kill_after_evict():
+        order.append("kill")
+        return False
+
+    ev_line = borrow_runner_enforce(
+        "2026-10-13", borrow_covered_dates(
+            [{"date_from": "2026-10-13", "date_to": "2026-10-13"}]),
+        "llama-server.exe  28404 Console", True, 3,
+        _kill_after_evict, _evict_two)
+    assert ev_line and "ENFORCED-KILL" in ev_line and \
+        "pin-evicted=2" in ev_line and \
+        "auto-exit-after-evict" in ev_line, \
+        "evict success + engine auto-exit -> ENFORCED line with counts"
+    assert order == ["evict", "kill"], \
+        "evict MUST run before kill (pin drop precedes process kill)"
+    assert "KILL-FAILED" in borrow_runner_enforce(
+        "2026-10-13", borrow_covered_dates(
+            [{"date_from": "2026-10-13", "date_to": "2026-10-13"}]),
+        "llama-server.exe  1  Console", True, 3,
+        lambda: False, lambda: 0), \
+        "evict=0 + kill fail -> KILL-FAILED line (next tick retries)"
+    def _evict_raises():
+        raise RuntimeError("ps unreadable")
+    assert "ENFORCED-KILL" in borrow_runner_enforce(
+        "2026-10-13", borrow_covered_dates(
+            [{"date_from": "2026-10-13", "date_to": "2026-10-13"}]),
+        "llama-server.exe  1  Console", True, 3,
+        _kill_yes, _evict_raises), \
+        "evict_fn exception -> fail-open to kill-only path (0 evicted)"
     # BC-P-62 step 2: compute-apps process-face classification
     apps = apps_classify("1234, C:\\x\\ollama app.exe, [N/A]\n"
                          "5678, C:\\y\\llama-server.exe, [N/A]\n"

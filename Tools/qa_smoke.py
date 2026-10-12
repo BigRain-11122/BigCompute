@@ -107,12 +107,22 @@ def _night_stop_active():
     CEO night stop (5G 让位 KF 批) and competing with the night batch.
     Any query failure fails open to the normal full probe (never fail
     closed into a fake PASS). Live-fire precedent: 10-12 20:4x the
-    untouched probe respawned llama-server PID 62960 within one run."""
+    untouched probe respawned llama-server PID 62960 within one run.
+
+    10-13 live-fire amendment (BW-006): the ollama serve parent
+    auto-RELOADS keep_alive=-1 pinned models, so a runner present at
+    night is a BC-P-68 enforcement target, not a live lane -- and a
+    generate call here would re-pin ~5GB (16-kill whack-a-mole,
+    03:03:39 kill vs 03:04:25 respawn). Night hours + KeepWarm
+    Disabled -> night-stop face regardless of runner presence."""
     try:
         rc, out = run(["schtasks", "/query", "/tn", "MiniGameOllamaKeepWarm",
                        "/fo", "CSV", "/nh"], timeout=15)
         if rc != 0 or '"Disabled"' not in out:
             return False
+        h = datetime.datetime.now().hour
+        if h >= 22 or h < 8:
+            return True
         rc2, tl = run(["tasklist", "/fi", "IMAGENAME eq llama-server.exe"],
                       timeout=15)
         return rc2 == 0 and "llama-server.exe" not in tl
@@ -149,8 +159,10 @@ def probe_ollama():
         return True, ("ollama probe: NIGHT-STOP-AWARE PASS "
                       "(O-20261012-2025): daemon-only check (tags=200); "
                       "generation skipped — KeepWarm task disabled + "
-                      "llama-server not resident (CEO night stop: 5G for "
-                      "KF batch; morning re-enable self-heals full probe)")
+                      "night window (CEO night stop: 5G for KF batch; a "
+                      "resident runner is a BC-P-68 enforcement target, "
+                      "generate would re-pin it; morning re-enable "
+                      "self-heals full probe)")
     rc0, ps_pre = run(["ollama", "ps"], timeout=60)
     pre = parse_residency(ps_pre)
     body = json.dumps({"model": OLLAMA_MODEL, "prompt": "1+1?",
