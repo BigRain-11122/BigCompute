@@ -6,7 +6,7 @@
 ## 当前优先
 - **晨窗交接 v2（O-20261012-2215 车道法凌驾·22:4x 夜班轮改写）**：明晨**不 enable MiniGameOllama 双任务**——bm-a 车道=白天零 GPU（O-20261012-2215/C-20261012-03 过会即生效）+O-20261012-1115 常态（llama-server 停·MiniGame 云端继续·35B 归 bm-c 分时段）凌驾旧 enable 行；明晨动作=CEO 让路态验证+BW-005 收线观察（批点火则 E62 价法一命令收线）。
 - **夜停执法序律（10-12 20:49:44 拆台实锚）**：夜停=①disable 双任务→②杀 runner（llama-server）→③QA——顺序颠倒=QA generate 击发 ollama serve 父进程重生 runner；执法后必过 collector report 哨兵行（T80 借窗 runner absent OK）复验；本夜禁重启 llama-server（CEO 夜停令·批窗在跑）。
-- 随窗：E57 采样器随真 i2v 窗（BC-P-65 候选）/M25/T26 净窗探针滚动/E54 needs-based/T64/T70 批文至则行。
+- 随窗：E57 已收线（i2v 首单 error=INT8 文件截断·per-clip ⬜ 待 bm-c 真窗·R-53=bm-c 同源风险已立行）/M25/T26 净窗探针滚动/E54 needs-based/T64/T70 批文至则行。
 - M66 批池首月观察 ~11-0x；N1=10-31 22:43 一命令；A 档硬门=M21 表；开店物理件待 CEO；三队列 open=15（全外部窗 blocked·禁造活）；思考预算律在役（O-030）；qa 第 7 位=T37；R-48 缓解=fetch+diff；编码损判定=字节级前置（T67）；night_watch 哨在役（T62）。
 
 ## 常设判据/红线速查
