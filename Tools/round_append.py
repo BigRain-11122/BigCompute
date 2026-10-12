@@ -16,14 +16,24 @@ utf-8 显式编码唯一写入路径——轮账本/心跳 append 一律走本�
   J3 目标不存在时创建（utf-8 无 BOM·LF 行尾）
   J4 尾行守卫（T50·HQ-FEEDBACK 04/05 行合并判例）：既有文件尾字节非 \\n 时
      先补一个换行再追加——防新行并入既有尾行（合并=行账本可读性损·10-05 即修实证）
+  J5 双时标 lint（T81·BC-P-45 写入侧升格·10-12 复发实锚）：目标行 HH:MM
+     正则计数 ≥2 → 拒写 exit 4（与 qa_smoke no.8 读侧探针同判据镜像）——
+     事故类=自身时标+二手 HH:MM 引用并线（22:5x 刻痕引 20:49:44 类）；
+     改写法=二手时刻一律 x 形（20:49x / 23:2x）或去冒号。lint 自身异常
+     =fail-closed 拒写。检查单→lint→脚本断言链闭环（10-13 CEO 令）。
 """
 import argparse
 import io
 import os
+import re
 import sys
 import tempfile
 
 BUDGET_NOTE = "append 唯一路径：本工具（python utf-8）——shell Add-Content 禁用"
+
+# 读侧 qa_smoke no.8（BC-P-45）heartbeat marker 同判据——写侧镜像（闸一致）
+HHMM_RE = re.compile(r"\d{2}:\d{2}")
+DUAL_TS_LIMIT = 2
 
 
 def _read_strict(path):
@@ -39,7 +49,7 @@ def _read_strict(path):
 
 
 def append_line(path, line):
-    """返回 (exit_code, message)。exit 0=APPENDED / 2=DUPLICATE / 3=CORRUPT。"""
+    """返回 (exit_code, message)。exit 0=APPENDED / 2=DUPLICATE / 3=CORRUPT / 4=DUAL-TS。"""
     raw, text = _read_strict(path)
     if text is None:
         try:
@@ -50,6 +60,15 @@ def append_line(path, line):
         last = [l for l in text.splitlines() if l.strip()]
         if last and last[-1] == line:
             return 2, "DUPLICATE-SKIP: --line 与末非空行一致（幂等护栏，零追加）"
+    # J5 双时标 lint（T81·BC-P-45 写入侧升格）：HH:MM 计数 ≥2 → 拒写 fail-closed
+    try:
+        n_ts = len(HHMM_RE.findall(line))
+    except Exception as e:  # lint 自身异常 = fail-closed 拒写（宁拒不写）
+        return 4, "LINT-ERROR: 双时标 lint 自身异常——fail-closed 拒写（%s）" % e
+    if n_ts >= DUAL_TS_LIMIT:
+        return 4, ("DUAL-TIMESTAMP-REJECT: 目标行含 %d 处 HH:MM（≥%d）——二手时标引用面"
+                   "（BC-P-45 升格·与 qa_smoke no.8 读侧同判据）·改写：二手时刻一律 x 形"
+                   "（如 20:49x / 23:2x / 15:1x-22:3x）或去冒号后重试") % (n_ts, DUAL_TS_LIMIT)
     # J4 尾行守卫：既有尾字节非 \n 时先补换行，防新行并入既有尾行（T50 判例）
     tail_nl_fix = bool(text) and not raw.endswith(b"\n")
     with io.open(path, "a", encoding="utf-8", newline="") as f:
@@ -101,6 +120,19 @@ def _selftest():
         c, m = append_line(p3, "行C")
         txt4 = open(p3, "rb").read().decode("utf-8")
         run("S6 正常尾零动作", c == 0 and txt4 == "行A（尾无换行）\n行B（追加行）\n行C\n" and "tail_nl_fix" not in m, m)
+        # S7 二手引用行拒写（J5·事故类正身：自身完整时标+二手 HH:MM 并线=2 处）
+        before = open(p3, "rb").read()
+        c, m = append_line(p3, "22:55 刻痕：第三方复活被杀（20:49:44 击发实锚）")
+        run("S7 二手引用行拒写 exit4", c == 4 and "DUAL-TIMESTAMP" in m and open(p3, "rb").read() == before, m)
+        # S8 融合行拒写（两行并一形态）
+        c, m = append_line(p3, "22:43 排程轮行（22:50 轮尾行并入=融合形态）")
+        run("S8 融合行拒写 exit4", c == 4 and open(p3, "rb").read() == before, m)
+        # S9 单时标行过（自身时标唯一）
+        c, m = append_line(p3, "22:55 刻痕：队列步毕·单时标验证行")
+        run("S9 单时标行过", c == 0 and open(p3, "rb").read().endswith("22:55 刻痕：队列步毕·单时标验证行\n".encode("utf-8")), m)
+        # S10 x 形引用过（二手时刻 x 形=纪律正写法·J5 放行面）
+        c, m = append_line(p3, "23:0x 刻痕：复活实锚（20:49x 击发·22:3x 再执法）")
+        run("S10 x形引用过", c == 0 and "23:0x" in open(p3, "rb").read().decode("utf-8"), m)
 
     n_pass = sum(1 for _, ok, _ in checks if ok)
     for name, ok, detail in checks:
