@@ -100,6 +100,26 @@ def parse_residency(ps_text):
     return "LOST"
 
 
+def _night_stop_active():
+    """O-20261012-2025 night-stop gate: MiniGameOllamaKeepWarm task
+    Disabled AND no llama-server.exe process. In that state a generate
+    call would auto-load the model and re-pin ~5GB VRAM — undoing the
+    CEO night stop (5G 让位 KF 批) and competing with the night batch.
+    Any query failure fails open to the normal full probe (never fail
+    closed into a fake PASS). Live-fire precedent: 10-12 20:4x the
+    untouched probe respawned llama-server PID 62960 within one run."""
+    try:
+        rc, out = run(["schtasks", "/query", "/tn", "MiniGameOllamaKeepWarm",
+                       "/fo", "CSV", "/nh"], timeout=15)
+        if rc != 0 or '"Disabled"' not in out:
+            return False
+        rc2, tl = run(["tasklist", "/fi", "IMAGENAME eq llama-server.exe"],
+                      timeout=15)
+        return rc2 == 0 and "llama-server.exe" not in tl
+    except Exception:
+        return False
+
+
 def probe_ollama():
     """Charter 2: local Ollama serve answers a real prompt.
 
@@ -113,6 +133,10 @@ def probe_ollama():
     FAIL fast (serve down, no 180s burn); tags 200 + generate timeout =
     BORROW-WINDOW label in the except branch (saturation env state, serve
     alive; precedent 10-10 23:1x / 10-12 00:2x+09:55).
+
+    O-20261012-2025 night-stop gate: tags=200 + KeepWarm Disabled +
+    llama-server absent -> liveness-only PASS (generation skipped; the
+    morning task re-enable self-heals the full probe).
     """
     try:
         with urllib.request.urlopen(
@@ -121,6 +145,12 @@ def probe_ollama():
     except Exception as e:  # noqa: BLE001 - probe must not crash pipeline
         return False, ("ollama probe failed: /api/tags unreachable "
                        "(serve down, bare FAIL per BC-P-60): %r" % e)
+    if _night_stop_active():
+        return True, ("ollama probe: NIGHT-STOP-AWARE PASS "
+                      "(O-20261012-2025): daemon-only check (tags=200); "
+                      "generation skipped — KeepWarm task disabled + "
+                      "llama-server not resident (CEO night stop: 5G for "
+                      "KF batch; morning re-enable self-heals full probe)")
     rc0, ps_pre = run(["ollama", "ps"], timeout=60)
     pre = parse_residency(ps_pre)
     body = json.dumps({"model": OLLAMA_MODEL, "prompt": "1+1?",

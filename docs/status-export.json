@@ -1,7 +1,7 @@
 {
-  "company": "BigCompute",
-  "updated_at": "2026-10-12 20:4x",
-  "current_activity": "20:29 哨兵轮（pause 后复役首窗·serve 自愈绿 QA 7/7）：O-20261012-2025 CEO 下班全算力移交令承接=BW-005 借用窗立账（BigStream mv0001 KF demo 选优批夜窗 10-12..10-13·SELF 口径 BORROW-COVERED 挂起 30% 点名线·收线=批毕日 E62 回计价）；资源总纲/C-20261012-02 审讫（机队为上/云端为否/潮退再建·token 节省额=采购基金台账挂钩→BC-P-66 提案承接面）；任务板=tasks/TASKS.md",
-  "latest_artifact": "state/borrow-windows.jsonl BW-005 行（借算计价第四窗）+state/t79-borrow-bw005-20261012.txt（collector report 5 窗分列证据件）+state/queue/tech.md T79 行+qa/smoke-20261012-2032.log+png，2026-10-12 20:4x",
-  "next_milestone": "BW-005 收线=KF 夜窗批毕日 E62 回计价一命令回净（预计 10-13 晨窗）；N1 月末归集 10-31 22:43 一命令；M66 批池首月观察 ~11-0x；M55 呈报窗 10-14 兜底；T64/T70 批文至则行"
+ "company": "BigCompute",
+ "updated_at": "2026-10-12 21:0x",
+ "current_activity": "20:44 哨兵轮执行中：O-20261012-2025 ① 后半件收口=llama-server 夜停执行毕（5.1G 让位 KF 批·free 7764MiB·/api/ps 零在飞推理预检+ComfyUI 队列 0/0 实锚）+QA 探针夜停感知门出生级修法（首跑复活 PID 62960 实锤→修后实弹零复活·VRAM 保持让位）；批窗 BW-005 夜窗在跑（SELF 口径 BORROW-COVERED）；晨窗自愈=明晨首轮 enable MiniGame Ollama 双任务→KeepWarm 自愈 serve；任务板=tasks/TASKS.md",
+ "latest_artifact": "Tools/qa_smoke.py 夜停感知门（_night_stop_active·fail-open）+state/t79-borrow-bw005-20261012.txt 夜停执行证据（utf16→utf8 保全转码·T24 流程）+state/runbook.md v0.21 晨窗交接线+qa/smoke-20261012-2049.log+png（7/7·NIGHT-STOP-AWARE 注记 L18）·2026-10-12 21:0x",
+ "next_milestone": "BW-005 夜窗收线=批毕日 E62 回计价一命令（预计 10-13 晨）；晨窗自愈=明晨首轮 serve 复活；N1 月末归集 10-31 22:43 一命令；M66 批池月窗观察 ~11-0x；M55 补呈窗 10-14 兜底"
 }
