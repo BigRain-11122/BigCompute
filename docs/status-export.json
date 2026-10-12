@@ -1,7 +1,7 @@
 {
   "company": "BigCompute",
-  "updated_at": "2026-10-12 11:2x",
-  "current_activity": "11:1x 哨兵轮（P1 告警自查令）：11:14:50 P1 task_liveness probe-error 同轮根治（tech T78 done）——根因=py_cpu=83% CPU 争用拖过 timeout=15s 瞬时假警报·双修=probe_task_states 重试退避+serve P1 pause 豁免+selftest J6r 全绿；◎CEO 用机让路律 pause 11:17-11:20 执行（三任务 Disabled+llama-server/ollama 清+VRAM 11.8G→2G+CEO 前台应用群接管）——本机生产全停·循环静默至「全面开工」resume（他机照常全力运转）·pause 态禁造活三队列 open 39 持平；任务板=tasks/TASKS.md",
-  "latest_artifact": "Tools/idle_selfcheck.py P1 假警报根治批（probe_task_states 重试退避 attempts=2/3s+_run 注入面+check() serve P1 pause 律性豁免+selftest J6r 双断言·pause 态真跑 check()=task_face=pause-exempt 零假 P1）+tech 行 state/queue/tech.md T78+QA qa/smoke-20261012-1122.log+png，2026-10-12 11:2x",
-  "next_milestone": "CEO「全面开工」resume 令即首轮复验（探针链全绿+serve 自愈+GPU report 复跑+M25/T26 净窗重探）；N1 月末归集 10-31 22:43 一命令；M66 批池首月观察 ~11-0x；M55 呈报窗 10-14 兜底；T64/T70 批文至则行"
+  "updated_at": "2026-10-12 20:4x",
+  "current_activity": "20:29 哨兵轮（pause 后复役首窗·serve 自愈绿 QA 7/7）：O-20261012-2025 CEO 下班全算力移交令承接=BW-005 借用窗立账（BigStream mv0001 KF demo 选优批夜窗 10-12..10-13·SELF 口径 BORROW-COVERED 挂起 30% 点名线·收线=批毕日 E62 回计价）；资源总纲/C-20261012-02 审讫（机队为上/云端为否/潮退再建·token 节省额=采购基金台账挂钩→BC-P-66 提案承接面）；任务板=tasks/TASKS.md",
+  "latest_artifact": "state/borrow-windows.jsonl BW-005 行（借算计价第四窗）+state/t79-borrow-bw005-20261012.txt（collector report 5 窗分列证据件）+state/queue/tech.md T79 行+qa/smoke-20261012-2032.log+png，2026-10-12 20:4x",
+  "next_milestone": "BW-005 收线=KF 夜窗批毕日 E62 回计价一命令回净（预计 10-13 晨窗）；N1 月末归集 10-31 22:43 一命令；M66 批池首月观察 ~11-0x；M55 呈报窗 10-14 兜底；T64/T70 批文至则行"
 }
