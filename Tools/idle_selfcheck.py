@@ -143,26 +143,34 @@ def probe_serve_liveness(url=OLLAMA_TAGS_URL, timeout=2):
         return False, type(e).__name__
 
 
-def probe_task_states(names):
+def probe_task_states(names, _run=None, attempts=2, retry_wait=3.0):
     """J6（T61/BC-P-57）：schtasks 态只读探——Get-ScheduledTask State 枚举
-    （locale 无关）。返回 {name: state}；缺失任务/查询失败 → Absent/ProbeError。"""
+    （locale 无关）。返回 {name: state}；缺失任务/查询失败 → Absent/ProbeError。
+    瞬时失败重试一次（10-12 11:14 判例：py_cpu=83% 争用把 Get-ScheduledTask
+    拖过 timeout=15s→假 P1「检测面失明」）；重试尽仍败 → ProbeError（真失明
+    面维持 P1 不豁免）。_run=selftest 注入面。"""
+    run_fn = _run or subprocess.run
     ps = ("Get-ScheduledTask -TaskName %s -ErrorAction SilentlyContinue | "
           "ForEach-Object { $_.TaskName + '=' + $_.State }"
           % ",".join("'%s'" % n for n in names))
-    try:
-        out = subprocess.run(["powershell", "-NoProfile", "-Command", ps],
-                             capture_output=True, text=True, timeout=15,
-                             encoding="utf-8", errors="replace")
-        states = {}
-        for line in out.stdout.splitlines():
-            if "=" in line:
-                k, v = line.split("=", 1)
-                states[k.strip()] = v.strip()
-        for n in names:
-            states.setdefault(n, "Absent")
-        return states
-    except Exception:
-        return {n: "ProbeError" for n in names}
+    for attempt in range(attempts):
+        try:
+            out = run_fn(["powershell", "-NoProfile", "-Command", ps],
+                         capture_output=True, text=True, timeout=15,
+                         encoding="utf-8", errors="replace")
+            states = {}
+            for line in out.stdout.splitlines():
+                if "=" in line:
+                    k, v = line.split("=", 1)
+                    states[k.strip()] = v.strip()
+            for n in names:
+                states.setdefault(n, "Absent")
+            return states
+        except Exception:
+            if attempt + 1 >= attempts:
+                break
+            time.sleep(retry_wait)
+    return {n: "ProbeError" for n in names}
 
 
 def classify_task_face(states):
@@ -348,9 +356,11 @@ def check():
     code, msg = append_heartbeat(line)
     print(line)
     print("append: code=%d %s" % (code, msg))
-    if not serve_alive:
+    if not serve_alive and not pause_mode:
         # BC-P-55：serve 死亡 → P1 轮报告行（共租户受损预警·修复面=净重启托盘链
-        # 配方在案 M57·自动执行随批非自决）
+        # 配方在案 M57·自动执行随批非自决）。pause 律性豁免（10-12 11:1x 判例：
+        # machine-state pause 必杀 llama-server/Ollama=合法下线非事故·观测行
+        # serve_alive/detail 常驻保留·只豁免假 P1）。
         p1 = ("%s P1 serve_liveness: OLLAMA DOWN detail=%s — 共租户"
               "（BigMoney L1/BigLife QA/bge-m3）受损预警·修复=净重启托盘链"
               "（M57 配方）·自动重启随批（BC-P-55）"
@@ -436,6 +446,34 @@ def selftest():
     ok &= (c_solo == (False, ["BigCompute-OSLoop"]))
     ok &= (c_run == (False, []))
     ok &= all(live_t.get(n) for n in TASK_LIVENESS_PROBE)
+
+    # J6r probe retry（10-12 11:14 判例）：瞬时失败一次→重试救回零 ProbeError；
+    # 持续失败→ProbeError（真失明面不豁免）。_run 注入零真实副作用。
+    class _SimTO(Exception):
+        pass
+
+    def _flaky_run(*a, **k):
+        _flaky_run.n += 1
+        if _flaky_run.n == 1:
+            raise _SimTO("simulated transient stall")
+
+        class _O:
+            stdout = "\n".join("%s=Ready" % n for n in MACHINE_PAUSE_SET)
+        return _O()
+    _flaky_run.n = 0
+
+    def _dead_run(*a, **k):
+        raise _SimTO("simulated persistent failure")
+
+    st_r = probe_task_states(MACHINE_PAUSE_SET, _run=_flaky_run,
+                             attempts=2, retry_wait=0)
+    st_d = probe_task_states(MACHINE_PAUSE_SET, _run=_dead_run,
+                             attempts=2, retry_wait=0)
+    j6r_rec = all(st_r.get(n) == "Ready" for n in MACHINE_PAUSE_SET)
+    j6r_dead = all(st_d.get(n) == "ProbeError" for n in MACHINE_PAUSE_SET)
+    print("J6r probe retry: transient-recovered=%s calls=%d persistent-blind=%s"
+          % (j6r_rec, _flaky_run.n, j6r_dead))
+    ok &= j6r_rec and (_flaky_run.n == 2) and j6r_dead
 
     # J7 night-watch（T62·R-51 缓解③）：锁存去重哨夹具——temp 锁存+注入
     # recorder·零真实 heartbeat/latch 副作用（五路径：新告警/去重/签名变更/

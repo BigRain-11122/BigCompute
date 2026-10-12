@@ -1,7 +1,7 @@
 {
   "company": "BigCompute",
-  "updated_at": "2026-10-12 11:0x",
-  "current_activity": "10:5x 哨兵接续轮（晨轮 10:0x 被杀·遗件补提交收口）：E57 归因勘正（11.1h 采样窗=LLM 常驻服务 qwen2.5:14b-8k 10.5GB pin·非 KN i2v——三证=ollama 实读+ComfyUI 零完成+盘上零落片）+E64 BW-003 借用窗收线（10-11 delta +0.7908 kWh·E66 registry 同步）；BC-P-60 批活转化=qa_smoke ollama 探针 BORROW-WINDOW 自动标注（首弹 qa/smoke-20261012-1057）；采样器 PID 40744 随轮杀连坐死（10:00:26·16h 有界未达·断采自愈候选 BC-P-65）；物理件待信收结算商户号+抖音小店账号+服务器域名备案（CEO 物理件清单在册·零催办）；任务板=tasks/TASKS.md",
-  "latest_artifact": "Tools/qa_smoke.py BC-P-60 转化（/api/tags 2s 预检+异常分支 BORROW-WINDOW 标注·首弹实锚 qa/smoke-20261012-1057.log）+E64 BW-003 收线证据 state/gpu-energy-profile-20261012-095450.json+E57 全文件收尾 state/h3-window-energy-llmserve-fullfile-20261012-105x.txt（delta +1.006546 与锚 +1.0048 一致），2026-10-12 11:0x",
-  "next_milestone": "E57 per-clip E_电 实测顺延至真实 i2v 窗（本机未起·重挂采样器照原法）；N1 月末归集 10-31 22:43 一命令；M66 批池首月观察回访 ~11-0x；M55 呈报窗 10-14 兜底；T64/T70 批文至则行"
+  "updated_at": "2026-10-12 11:2x",
+  "current_activity": "11:1x 哨兵轮（P1 告警自查令）：11:14:50 P1 task_liveness probe-error 同轮根治（tech T78 done）——根因=py_cpu=83% CPU 争用拖过 timeout=15s 瞬时假警报·双修=probe_task_states 重试退避+serve P1 pause 豁免+selftest J6r 全绿；◎CEO 用机让路律 pause 11:17-11:20 执行（三任务 Disabled+llama-server/ollama 清+VRAM 11.8G→2G+CEO 前台应用群接管）——本机生产全停·循环静默至「全面开工」resume（他机照常全力运转）·pause 态禁造活三队列 open 39 持平；任务板=tasks/TASKS.md",
+  "latest_artifact": "Tools/idle_selfcheck.py P1 假警报根治批（probe_task_states 重试退避 attempts=2/3s+_run 注入面+check() serve P1 pause 律性豁免+selftest J6r 双断言·pause 态真跑 check()=task_face=pause-exempt 零假 P1）+tech 行 state/queue/tech.md T78+QA qa/smoke-20261012-1122.log+png，2026-10-12 11:2x",
+  "next_milestone": "CEO「全面开工」resume 令即首轮复验（探针链全绿+serve 自愈+GPU report 复跑+M25/T26 净窗重探）；N1 月末归集 10-31 22:43 一命令；M66 批池首月观察 ~11-0x；M55 呈报窗 10-14 兜底；T64/T70 批文至则行"
 }
