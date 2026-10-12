@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-10-12 23:5x",
- "current_activity": "23:4x-23:5x 哨兵轮：审核步=O-2330 机队+云端全量榨干令一行收讫（云波双产在飞·零本司直接派单·本司面=BW-005 借窗前提保位+价法）；队列步=BW-005 复察点火确认（queue pos82 H3 fl2va INT8 768P+history 83 全 success）+E57 采样器重挂真窗（PID 52104·8h 有界）+E62 价法中期快照（10-12 delta +0.5345）+BC-P-69 探针自动化提案入面",
- "latest_artifact": "state/bw005-ignite-observe-20261012-2345.txt（点火证据件）+state/h3-power-h3_deadline_i2v-20261012-234849.jsonl（1s 采样在飞·PID 52104）+state/gpu-energy-profile-20261012-234725.json（E62 中期快照）+qa/smoke-20261012-2349.log（7/7 PASS）·2026-10-12 23:5x",
- "next_milestone": "E57 窗毕轮：queue 回零锚→h3_window_energy.py 一命令 per-clip E_电 实测（晨窗 CEO 08:30 成片死线前）；BW-005 价法收线=10-13 借日 delta 终核；明晨=车道法态验证不 enable 双任务（O-2215）；T64/T70 批文至则行；N1 月末归集 10-31 22:43"
+ "updated_at": "2026-10-13 00:2x",
+ "current_activity": "00:1x-00:2x 哨兵轮：审核步=D-20261013-01 核销批 31 收讫（本司日清族收讫+BC-P-68 追认采纳）+D-02 Phase 0 交卷·orders 尾行全 MV 域零本司派单；队列步=夜停执法 #5（runner 第7例+serve 父双杀·VRAM 9323→4227 free 7771）+BW-006 借用日声明（O-2330 ③ 导演席情绪帧库夜窗·自动执法腿 15min tick 接管整夜·腿首战 collector 报告内当场 ENFORCED-KILL）+E62 价法 10-13 窗毕核（10-12 delta +0.6167 kWh）",
+ "latest_artifact": "state/borrow-windows.jsonl（BW-006 行）+state/borrow-runner-enforce-log.jsonl（执法账 #7）+state/e62-bw005-closure-20261013.txt+state/gpu-energy-profile-20261013-002017.json（E62 毕核）+state/collector-report-r13-0015.txt（腿首战证据）·2026-10-13 00:2x",
+ "next_milestone": "随窗：BW-006 借用日执法账滚动观察+导演席烧制实况（O-2330 ③）；明晨=车道法态验证不 enable 双任务（O-2215）+CEO 让路态验证；T64/T70 批文至则行；M66 批池月窗 ~11-0x；N1 月末归集 10-31 22:43 一命令"
 }
