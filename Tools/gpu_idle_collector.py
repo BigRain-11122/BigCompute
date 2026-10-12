@@ -239,6 +239,123 @@ def _tasklist_llama():
         return ""
 
 
+# BC-P-68 T82: night-window AUTO re-enforcement of the CEO night-stop
+# law. Live-fire precedent 10-12: the SELF-lane runner (llama-server)
+# was respawned 4x inside the BW-005 borrow window via third-party
+# ollama API calls (20:49 / 22:39 / 22:48 + 23:1x re-observation),
+# each stealing ~5.1G VRAM from the lent-out KF lane -- manual
+# per-round re-enforcement cannot hold the lane between ticks, so
+# the 15-min sample tick (BigCompute-GPU-IdleWatch) carries the
+# enforcement leg. Order basis = executing existing CEO orders, not
+# new legislation: O-20261012-1115 night-stop norm + O-20261012-2215
+# lane law (bm-a daytime zero GPU) + O-20261012-2025 item 1 (night
+# window lent to the KF batch; 08:30 film deadline O-20261012-2305).
+NIGHT_START_H = 22
+NIGHT_END_H = 8
+OLLAMA_TASKS = ("MiniGameOllamaServe", "MiniGameOllamaKeepWarm")
+ENFORCE_LOG = os.path.join(HERE, "..", "state",
+                           "borrow-runner-enforce-log.jsonl")
+
+
+def _schtasks_state_text(task_name):
+    """Fail-open read-only probe: schtasks LIST text or None."""
+    try:
+        out = subprocess.run(
+            ["schtasks", "/query", "/tn", task_name, "/fo", "LIST"],
+            capture_output=True, timeout=15)
+        if out.returncode != 0:
+            return None
+        return out.stdout.decode("gb18030", "replace")
+    except Exception:  # noqa: BLE001 - probe must never kill report
+        return None
+
+
+def _ollama_tasks_disabled():
+    """True iff BOTH serve tasks read Disabled; None = probe fail."""
+    for t in OLLAMA_TASKS:
+        txt = _schtasks_state_text(t)
+        if txt is None:
+            return None
+        if not ("Disabled" in txt or "\u7981\u7528" in txt):
+            return False
+    return True
+
+
+def _taskkill_llama():
+    """Enforcement leg: kill llama-server.exe by image name only
+    (serve parent kept for tags liveness). True on reported success."""
+    try:
+        out = subprocess.run(
+            ["taskkill", "/im", "llama-server.exe", "/f"],
+            capture_output=True, timeout=15)
+        return out.returncode == 0
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def borrow_runner_enforce(today, cov, tasklist_text, tasks_disabled,
+                          hour, kill_fn):
+    """BC-P-68 T82 pure gate: kill the SELF-lane runner ONLY when
+    three conditions all hold (night window 22:00-08:00 + covered
+    borrow day + both OLLAMA_TASKS Disabled). Daytime keeps the
+    WARN-only sentinel (CEO personal-use exception face). Probe
+    failure (None) or not-disabled (False) -> fail-open NO kill.
+    Returns the decision line, or None when no face applies."""
+    if today not in cov:
+        return None
+    if "llama-server.exe" not in (tasklist_text or ""):
+        return None
+    if not (hour >= NIGHT_START_H or hour < NIGHT_END_H):
+        return None
+    if tasks_disabled is None:
+        return ("borrow-window runner enforce: FAIL-OPEN no kill "
+                "(night + runner present but task-state probe "
+                "unreadable; sentinel WARN stands)")
+    if tasks_disabled is not True:
+        return ("borrow-window runner enforce: NO-KILL "
+                "(night + runner present but serve tasks not "
+                "Disabled; sentinel WARN stands)")
+    killed = bool(kill_fn()) if kill_fn is not None else False
+    if killed:
+        return ("borrow-window runner enforce: ENFORCED-KILL "
+                "llama-server.exe (night-stop O-20261012-1115 + "
+                "lane law O-20261012-2215; night + borrow day + "
+                "tasks disabled; re-probe at next tick)")
+    return ("borrow-window runner enforce: KILL-FAILED (taskkill "
+            "error; next 15-min tick retries)")
+
+
+def _append_enforce_log(line):
+    """Audit trail: one JSONL row per enforcement decision; best
+    effort -- logging must never break the tick."""
+    try:
+        rec = {"ts": now().isoformat(timespec="seconds"),
+               "line": line}
+        with open(ENFORCE_LOG, "a", encoding="utf-8") as f:
+            f.write(json.dumps(rec) + "\n")
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def borrow_runner_enforce_tick(emit, tl=None):
+    """Shared three-condition enforcement entry for the 15-min
+    sample tick and report; emits/logs only when a face applies."""
+    bw = load_borrow_windows()
+    if not bw:
+        return
+    if tl is None:
+        tl = _tasklist_llama()
+    if "llama-server.exe" not in tl:
+        return
+    cov = borrow_covered_dates(bw)
+    line = borrow_runner_enforce(
+        now().date().isoformat(), cov, tl,
+        _ollama_tasks_disabled(), now().hour, _taskkill_llama)
+    if line:
+        _append_enforce_log(line)
+        emit(line)
+
+
 def self_caliber_split(samples, covered):
     """BC-P-62: day-level split per manual declaration (no per-tick
     heuristics). A mixed co-tenant day inside a declared window is
@@ -485,6 +602,9 @@ def cmd_profile():
 
 
 def cmd_sample():
+    # BC-P-68 T82: lane protection first, independent of GPU probe
+    # health; tick = BigCompute-GPU-IdleWatch every 15 min.
+    borrow_runner_enforce_tick(print)
     m = query_gpu()
     if m is None:
         return 1
@@ -546,9 +666,11 @@ def cmd_report():
                   "(source=%s)"
                   % (w.get("date_from"), w.get("date_to"),
                      w.get("consumer"), w.get("source")))
-        sent = borrow_runner_sentinel(today, cov, _tasklist_llama())
+        tl = _tasklist_llama()
+        sent = borrow_runner_sentinel(today, cov, tl)
         if sent:
             print(sent)
+        borrow_runner_enforce_tick(print, tl)
         if hit:
             self_rows, borrow_rows = self_caliber_split(r3, cov)
             if self_rows:
@@ -769,6 +891,51 @@ def cmd_selftest():
         "2026-10-11", cov_fix2, "llama-server.exe  1  Console") \
         is None, \
         "day outside declared windows -> no sentinel line (None)"
+    # BC-P-68 T82: three-condition enforcement gate (pure contract)
+    en_calls = []
+
+    def _kill_yes():
+        en_calls.append(1)
+        return True
+
+    en_line = borrow_runner_enforce(
+        "2026-10-12", cov_fix2,
+        "llama-server.exe  14352 Console  1  4300 K", True, 23,
+        _kill_yes)
+    assert en_line and "ENFORCED-KILL" in en_line and \
+        len(en_calls) == 1, \
+        "night(23h) + covered + disabled + present -> auto-kill fires"
+    assert borrow_runner_enforce(
+        "2026-10-12", cov_fix2,
+        "llama-server.exe  1  Console", True, 22, _kill_yes) and \
+        len(en_calls) == 2, \
+        "night boundary 22:00 fires too"
+    assert borrow_runner_enforce(
+        "2026-10-12", cov_fix2,
+        "llama-server.exe  1  Console", True, 8, _kill_yes) is None \
+        and len(en_calls) == 2, \
+        "daytime boundary 08:00 -> WARN-only, no kill"
+    assert borrow_runner_enforce(
+        "2026-10-12", cov_fix2,
+        "llama-server.exe  1  Console", True, 12, _kill_yes) is None \
+        and len(en_calls) == 2, \
+        "midday -> WARN-only (CEO personal-use exception face)"
+    assert "FAIL-OPEN" in borrow_runner_enforce(
+        "2026-10-12", cov_fix2,
+        "llama-server.exe  1  Console", None, 23, _kill_yes), \
+        "task-state probe failure -> fail-open NO kill"
+    assert "NO-KILL" in borrow_runner_enforce(
+        "2026-10-12", cov_fix2,
+        "llama-server.exe  1  Console", False, 23, _kill_yes), \
+        "serve tasks not disabled -> NO-KILL (service lane active)"
+    assert "KILL-FAILED" in borrow_runner_enforce(
+        "2026-10-12", cov_fix2,
+        "llama-server.exe  1  Console", True, 23, lambda: False), \
+        "taskkill error -> KILL-FAILED line (next tick retries)"
+    assert borrow_runner_enforce(
+        "2026-10-11", cov_fix2,
+        "llama-server.exe  1  Console", True, 23, _kill_yes) is None, \
+        "day outside borrow windows -> no enforcement face"
     # BC-P-62 step 2: compute-apps process-face classification
     apps = apps_classify("1234, C:\\x\\ollama app.exe, [N/A]\n"
                          "5678, C:\\y\\llama-server.exe, [N/A]\n"
