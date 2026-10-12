@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-10-12 22:4x",
- "current_activity": "22:43 夜班轮：O-20261012-2215 机队定岗令承接=runbook 晨窗交接改写（bm-a 车道法·白天零 GPU·明晨不 enable 双任务）；BW-005 KF 批点火实况=未点火·夜停拆台实锤（20:49:44 QA generate 重生 runner 静默 1.7h）→再执法杀 runner=free 8232MiB KF 批就绪；任务板=tasks/TASKS.md",
- "latest_artifact": "Tools/gpu_idle_collector.py 借窗 runner 哨兵行（T80/BC-P-67·selftest+3 断言 PASS·live report runner absent OK）+state/bw005-ignite-observe-20261012-2232.txt 拆台取证+夜停再执法证据·2026-10-12 22:4x",
- "next_milestone": "BW-005 夜窗收线=批毕日 E62 回计价一命令（预计 10-13 晨）；晨窗=CEO 让路态验证（不 enable 双任务·车道法）；N1 月末归集 10-31 22:43 一命令；M66 批池月窗观察 ~11-0x；M55 补呈窗 10-14 兜底"
+ "updated_at": "2026-10-12 22:5x",
+ "current_activity": "22:43 夜班正轮后加轮：BW-005 KF 批复察=未点火维持（queue 0/0）；夜停再执法 #3——llama-server 22:39:05 第三方击发源复活（早于上轮 QA 修复面=击发源非本司探针·ollama app 托盘常驻=结构性通道）→杀→collector 哨兵行 runner absent OK 复验·VRAM 释放 5.1G free 7175=KF 批前提复就绪；任务板=tasks/TASKS.md",
+ "latest_artifact": "state/bw005-ignite-observe-20261012-2244.txt（第三方击发源取证+再执法实锚）+docs/risk-register.md R-52 行（夜停令被复活通道架空）+state/proposals.md BC-P-68（借窗 runner 自动再执法提案·呈批）·2026-10-12 22:5x",
+ "next_milestone": "BW-005 夜窗收线=批毕日 E62 回计价一命令（预计 10-13 晨）；BC-P-68 批活判据过闸审（下轮）；T81 BC-P-45 写入侧升格（round_append 双时标 lint·复发即升格）；晨窗=CEO 让路态验证（不 enable 双任务·车道法）；N1 月末归集 10-31 22:43；M66 批池月窗观察 ~11-0x；M55 补呈窗 10-14 兜底"
 }
