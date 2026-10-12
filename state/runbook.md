@@ -4,7 +4,8 @@
 哨兵轮=定位新行·排程轮=mtime 快检零新行即过；台账=git fetch+show origin/main:<path>（禁 pull·禁写集团树·未推行=diff 补获）；队列步=state/queue/ 现役行；收尾=刻痕（round_append.py 唯一·--file=字面相对路径·Add-Content 禁用）+rounds.log+QA+定向 add+commit+push；日清 ≤3 行。
 
 ## 当前优先
-- **晨窗自愈（O-20261012-2025① 已执行 10-12 20:4x）**：llama-server 夜停毕（5.1G 让位 KF 批·free 7764MiB·证据 state/t79-borrow-bw005-20261012.txt）→**明晨首个轮逐名 enable MiniGameOllamaServe+KeepWarm（/tn 逗号多名禁）→KeepWarm 自愈 serve**；本夜禁重启 llama-server（CEO 夜停令·批窗在跑）。
+- **晨窗交接 v2（O-20261012-2215 车道法凌驾·22:4x 夜班轮改写）**：明晨**不 enable MiniGameOllama 双任务**——bm-a 车道=白天零 GPU（O-20261012-2215/C-20261012-03 过会即生效）+O-20261012-1115 常态（llama-server 停·MiniGame 云端继续·35B 归 bm-c 分时段）凌驾旧 enable 行；明晨动作=CEO 让路态验证+BW-005 收线观察（批点火则 E62 价法一命令收线）。
+- **夜停执法序律（10-12 20:49:44 拆台实锚）**：夜停=①disable 双任务→②杀 runner（llama-server）→③QA——顺序颠倒=QA generate 击发 ollama serve 父进程重生 runner；执法后必过 collector report 哨兵行（T80 借窗 runner absent OK）复验；本夜禁重启 llama-server（CEO 夜停令·批窗在跑）。
 - 随窗：E57 采样器随真 i2v 窗（BC-P-65 候选）/M25/T26 净窗探针滚动/E54 needs-based/T64/T70 批文至则行。
 - M66 批池首月观察 ~11-0x；N1=10-31 22:43 一命令；A 档硬门=M21 表；开店物理件待 CEO；三队列 open=15（全外部窗 blocked·禁造活）；思考预算律在役（O-030）；qa 第 7 位=T37；R-48 缓解=fetch+diff；编码损判定=字节级前置（T67）；night_watch 哨在役（T62）。
 

@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-10-12 21:0x",
- "current_activity": "20:44 哨兵轮执行中：O-20261012-2025 ① 后半件收口=llama-server 夜停执行毕（5.1G 让位 KF 批·free 7764MiB·/api/ps 零在飞推理预检+ComfyUI 队列 0/0 实锚）+QA 探针夜停感知门出生级修法（首跑复活 PID 62960 实锤→修后实弹零复活·VRAM 保持让位）；批窗 BW-005 夜窗在跑（SELF 口径 BORROW-COVERED）；晨窗自愈=明晨首轮 enable MiniGame Ollama 双任务→KeepWarm 自愈 serve；任务板=tasks/TASKS.md",
- "latest_artifact": "Tools/qa_smoke.py 夜停感知门（_night_stop_active·fail-open）+state/t79-borrow-bw005-20261012.txt 夜停执行证据（utf16→utf8 保全转码·T24 流程）+state/runbook.md v0.21 晨窗交接线+qa/smoke-20261012-2049.log+png（7/7·NIGHT-STOP-AWARE 注记 L18）·2026-10-12 21:0x",
- "next_milestone": "BW-005 夜窗收线=批毕日 E62 回计价一命令（预计 10-13 晨）；晨窗自愈=明晨首轮 serve 复活；N1 月末归集 10-31 22:43 一命令；M66 批池月窗观察 ~11-0x；M55 补呈窗 10-14 兜底"
+ "updated_at": "2026-10-12 22:4x",
+ "current_activity": "22:43 夜班轮：O-20261012-2215 机队定岗令承接=runbook 晨窗交接改写（bm-a 车道法·白天零 GPU·明晨不 enable 双任务）；BW-005 KF 批点火实况=未点火·夜停拆台实锤（20:49:44 QA generate 重生 runner 静默 1.7h）→再执法杀 runner=free 8232MiB KF 批就绪；任务板=tasks/TASKS.md",
+ "latest_artifact": "Tools/gpu_idle_collector.py 借窗 runner 哨兵行（T80/BC-P-67·selftest+3 断言 PASS·live report runner absent OK）+state/bw005-ignite-observe-20261012-2232.txt 拆台取证+夜停再执法证据·2026-10-12 22:4x",
+ "next_milestone": "BW-005 夜窗收线=批毕日 E62 回计价一命令（预计 10-13 晨）；晨窗=CEO 让路态验证（不 enable 双任务·车道法）；N1 月末归集 10-31 22:43 一命令；M66 批池月窗观察 ~11-0x；M55 补呈窗 10-14 兜底"
 }

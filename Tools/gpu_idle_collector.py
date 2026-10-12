@@ -206,6 +206,39 @@ def borrow_covered_dates(windows):
     return cov
 
 
+def borrow_runner_sentinel(today, cov, tasklist_text):
+    """BC-P-67 T80: borrow-window SELF-lane runner sentinel.
+
+    During a declared GPU borrow window the SELF-lane model runner
+    (llama-server.exe) must be absent (lane lent out). Live-fire
+    precedent 10-12 20:49:44: an out-of-order QA generate call
+    respawned the runner via the ollama serve parent and silently
+    undid the CEO night stop for ~1.7h until a human observation
+    caught it. Pure helper: returns the report line for the
+    covered-day case, None otherwise; caller owns the probe.
+    """
+    if today not in cov:
+        return None
+    present = "llama-server.exe" in (tasklist_text or "")
+    if present:
+        return ("borrow-window runner sentinel: WARN runner PRESENT "
+                "during borrow window (SELF-lane asset competing "
+                "with the lent-out lane; re-enforce night stop or "
+                "migrate per O-20261012-2215 lane law)")
+    return "borrow-window runner sentinel: runner absent OK"
+
+
+def _tasklist_llama():
+    """Read-only presence probe for llama-server.exe; fail-open ""."""
+    try:
+        out = subprocess.run(
+            ["tasklist", "/fi", "IMAGENAME eq llama-server.exe"],
+            capture_output=True, text=True, timeout=15)
+        return out.stdout or ""
+    except Exception:  # noqa: BLE001 - probe must never kill report
+        return ""
+
+
 def self_caliber_split(samples, covered):
     """BC-P-62: day-level split per manual declaration (no per-tick
     heuristics). A mixed co-tenant day inside a declared window is
@@ -513,6 +546,9 @@ def cmd_report():
                   "(source=%s)"
                   % (w.get("date_from"), w.get("date_to"),
                      w.get("consumer"), w.get("source")))
+        sent = borrow_runner_sentinel(today, cov, _tasklist_llama())
+        if sent:
+            print(sent)
         if hit:
             self_rows, borrow_rows = self_caliber_split(r3, cov)
             if self_rows:
@@ -717,6 +753,22 @@ def cmd_selftest():
     assert callout_verdict(
         sum(r["util_pct"] for r in s_low) / len(s_low)).startswith("FLAG"), \
         "borrow exclusion must not mask a true self-caliber FLAG"
+    # BC-P-67 T80: borrow-window runner sentinel (pure contract)
+    cov_fix2 = borrow_covered_dates([{"date_from": "2026-10-12",
+                                      "date_to": "2026-10-13"}])
+    assert borrow_runner_sentinel(
+        "2026-10-12", cov_fix2,
+        "llama-server.exe  40156 Console  1  4300 K").startswith(
+        "borrow-window runner sentinel: WARN"), \
+        "runner present on covered borrow day -> WARN line"
+    assert borrow_runner_sentinel(
+        "2026-10-12", cov_fix2, "INFO: no tasks are running") == \
+        "borrow-window runner sentinel: runner absent OK", \
+        "runner absent on covered borrow day -> OK line"
+    assert borrow_runner_sentinel(
+        "2026-10-11", cov_fix2, "llama-server.exe  1  Console") \
+        is None, \
+        "day outside declared windows -> no sentinel line (None)"
     # BC-P-62 step 2: compute-apps process-face classification
     apps = apps_classify("1234, C:\\x\\ollama app.exe, [N/A]\n"
                          "5678, C:\\y\\llama-server.exe, [N/A]\n"
