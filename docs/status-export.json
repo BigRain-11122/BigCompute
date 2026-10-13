@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-10-13 22:3x",
- "current_activity": "22:29 哨兵触发轮：审核步=O-20261013-2215 CEO CPU 常设开放令+意义门承接（bm-a 工作日白天 CPU 面解禁·意义门四闸挂批池观察面·py≥70% 哨兵在役确认）+O-2200/O-2230 MV 域令收讫；队列步=E67 BW-006 借用窗收线＝10-13 实测 active_kwh 0.0 零实耗收线（E62 一命令回净）+BW-007 导演席 V3 白时段+今夜窗立账",
- "latest_artifact": "state/e67-bw006-closeout-20261013.txt（BW-006 收线证据件：10-13 active 0.0+逐日 delta 对照+12h 采集缺口如实注记+BW-007 立账判据）+state/borrow-windows.jsonl BW-007 行+runbook v0.22+M69/T85/BC-P-71 三新行·2026-10-13 22:3x",
- "next_milestone": "明夜窗=T85 CPU 触发面核查（O-2215 ① 承接链）+M25/T26 净窗随窗（bm-a GPU 今夜=监督+装配位·烧制在 bm-c）；T64/T70 批文至则行；M66 批池月窗 ~11-0x（意义门四闸已挂）；N1 月末归集=10-31 22:43 一命令；M55 补呈窗 10-14 兜底"
+ "updated_at": "2026-10-13 23:1x",
+ "current_activity": "23:0x 哨兵触发轮：审核步=O-20261013-2245 云端放开令收讫（本司云端 token 科学使用律 v3.1 既有法全覆盖·浪费纪律五项在役一致·零新法条）；队列步=T85 CPU 触发面核查毕（O-2215 ① 承接链工程面）",
+ "latest_artifact": "Tools/idle_selfcheck.py J9 cpu-lane 闲判（CPU 车道=RAM 单闸·GREEN-IDLE GPU 车道预注册判据不动·饥饿计数闸收窄+心跳/状态件增 cpu_lane_idle 字段·selftest J1-J9 PASS+live 实弹）+T86 消费面广播核查件·2026-10-13 23:1x",
+ "next_milestone": "T86 J9 消费面广播核查（只读·下窗随窗）+M25/T26 净窗随窗；T64/T70 批文至则行；M66 批池月窗 ~11-0x（意义门四闸已挂）；N1 月末归集=10-31 22:43 一命令；M55 补呈窗 10-14 兜底"
 }

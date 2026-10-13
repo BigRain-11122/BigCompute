@@ -274,10 +274,13 @@ TAIL_PROBE_FILES = (
     ("state/rounds.log", r"\d{4}-\d{2}-\d{2}( [\d:.x]+)? tokens"),
     ("state/heartbeat.txt", r"\d{2}:\d{2}"),
     ("HQ-FEEDBACK.md", "\u65e5\u6e05[:\uff1a]"),
-    ("state/proposals.md", r"\| BC-P-\d+"),
-    ("state/queue/main.md", r"\| M\d+"),
-    ("state/queue/tech.md", r"\| T\d+"),
-    ("state/queue/explore.md", r"\| E\d+"),
+    # BC-P-45 判例（10-13 T86 行实锚）：ID 形锚=「| <编号> |」整胞——裸
+    # \| T\d+ 会把证据胞里合法的「| T85 行+…」开头误计成第二行 ID（假
+    # merged-rows FAIL）；真合并行的第二行 ID 恒为整胞形态仍命中双计。
+    ("state/proposals.md", r"\| BC-P-\d+ \|"),
+    ("state/queue/main.md", r"\| M\d+ \|"),
+    ("state/queue/tech.md", r"\| T\d+ \|"),
+    ("state/queue/explore.md", r"\| E\d+ \|"),
 )
 
 

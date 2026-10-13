@@ -34,6 +34,10 @@ VRAM≥6GB〕→ 领池检（fleet/backlog 可领行计数）→ 池空拉本司
   J8 py_cpu 实读（O-20261011-0012 ⅴ 承接·tech T76）：Win32_Processor
      LoadPercentage 单发只读快照（locale 无关·审计面报 py_cpu 字段）——满载线
      执法判据面在 BigMoney GM 窗（本司=审计报数字段）·失败=-1.0 不判忙闲
+  J9 cpu-lane 闲判（T85·O-20261013-2215 ① 承接链）：CPU 车道=RAM 单闸
+     （classify_cpu_lane_idle）·GREEN-IDLE（GPU 车道·§8.2 预注册双闸）不动
+     ——10-10 18:26 判例「vram_free 闸误挡纯 CPU 批」触发面修复·饥饿计数闸
+     随 CPU 面常开（O-2215）收窄为 RAM 单闸
 
 用法：
   python Tools/idle_selfcheck.py check       # 每轮自检步（iteration_loop.ps1 内建）
@@ -188,6 +192,20 @@ def classify_task_face(states):
     return False, alerts
 
 
+def classify_cpu_lane_idle(ram_pct, ram_min=RAM_FREE_PCT_MIN):
+    """J9（T85·O-20261013-2215 ① 承接链）：CPU 车道闲判=RAM 单闸·VRAM 无关。
+
+    10-10 18:26 判例修复面：纯 CPU 批的 idle 触发不应被 vram_free 闸误挡——
+    O-2215 后 CPU 面=三机 24/7 常开（工作日白天解禁），VRAM 被 GPU 生产面/CEO
+    用机占满时 CPU 车道仍应达「闲」档领活。GREEN-IDLE（§8.2 预注册）维持
+    RAM+VRAM 双闸=GPU 车道判据不动；本函数=CPU 车道判据（RAM 单闸·阈值复用
+    预注册值零新调参）。车道级 lane 路由（fleet-nodes.json lane 字段）=集团
+    工具面在役（10-12 定岗令 IdleWatch v2），本字段=机级 lane 感知闲判供
+    消费面读取。
+    """
+    return ram_pct >= ram_min
+
+
 def count_pool_claimable(backlog_path=BACKLOG):
     """J2：备货池可领行数（含「可领」且未 claimed@——池律原文行尾记账）。"""
     if not os.path.exists(backlog_path):
@@ -308,6 +326,7 @@ def check():
     vram_mb = probe_vram_free_mb()
     py_cpu = probe_py_cpu()
     green_idle = (ram_pct >= RAM_FREE_PCT_MIN and vram_mb >= VRAM_FREE_MB_MIN)
+    cpu_idle = classify_cpu_lane_idle(ram_pct)
     pool = count_pool_claimable()
     q_open = count_queue_open()
     serve_alive, serve_detail = probe_serve_liveness()
@@ -322,7 +341,10 @@ def check():
                       else "ok"))
 
     st = load_state()
-    if green_idle and pool == 0 and q_open == 0:
+    # T85（O-2215 ①）：饥饿面闸=cpu_idle（RAM 单闸·CPU 车道常开）——green_idle
+    # ⊂ cpu_idle（GPU 车道闲 ⊆ CPU 车道闲），VRAM 忙而 RAM 闲时纯 CPU 面照算
+    # 饥饿计数（10-10 18:26 判例：VRAM 闸误挡纯 CPU 批的触发面修复）。
+    if cpu_idle and pool == 0 and q_open == 0:
         # 达档且无单可领无议程可拉 → 饥荒面：连击计数与 idle_rounds 递增（§9.6.2）
         st["consecutive_idle"] = st.get("consecutive_idle", 0) + 1
         if st["consecutive_idle"] >= CONSECUTIVE_TRIGGER:
@@ -336,7 +358,7 @@ def check():
     st["last_verdict"] = verdict
     st["last_check"] = time.strftime("%Y-%m-%d %H:%M:%S")
     st["last_read"] = {"ram_free_pct": ram_pct, "vram_free_mb": vram_mb,
-                       "py_cpu": py_cpu,
+                       "py_cpu": py_cpu, "cpu_lane_idle": cpu_idle,
                        "pool_claimable": pool, "queue_open": q_open,
                        "serve_alive": serve_alive, "serve_detail": serve_detail,
                        "task_face": task_face,
@@ -345,13 +367,13 @@ def check():
     save_state(st)
 
     line = ("%s idle_selfcheck: verdict=%s ram_free_pct=%s vram_free_mb=%s "
-            "py_cpu=%s "
+            "py_cpu=%s cpu_lane_idle=%s "
             "pool_claimable=%d queue_open=%d consecutive_idle=%d "
             "idle_rounds=%d agenda_starved=%s serve_alive=%s serve_detail=%s"
             " task_face=%s"
             % (time.strftime("%Y-%m-%d %H:%M:%S"), verdict, ram_pct,
-               vram_mb, py_cpu, pool, q_open, st["consecutive_idle"],
-               st["idle_rounds"], str(starved).lower(),
+               vram_mb, py_cpu, str(cpu_idle).lower(), pool, q_open,
+               st["consecutive_idle"], st["idle_rounds"], str(starved).lower(),
                str(serve_alive).lower(), serve_detail, task_face))
     code, msg = append_heartbeat(line)
     print(line)
@@ -501,6 +523,16 @@ def selftest():
     cpu = probe_py_cpu()
     print("J8 py_cpu probe: %s" % cpu)
     ok &= isinstance(cpu, float) and (cpu == -1.0 or 0.0 <= cpu <= 100.0)
+
+    # J9 cpu-lane idle（T85·O-2215 ① 承接链·10-10 18:26 判例）：RAM 单闸夹具——
+    # ①阈值上下沿；②10-10 误挡案复现=RAM 闲+VRAM 忙→GREEN-IDLE 假 busy 而
+    # CPU 车道达闲档（触发不再被 VRAM 闸挡）。
+    c_hi, c_lo = classify_cpu_lane_idle(50.0), classify_cpu_lane_idle(30.0)
+    vr_busy_gate = (50.0 >= RAM_FREE_PCT_MIN and 1024 < VRAM_FREE_MB_MIN)
+    ok &= (c_hi is True) and (c_lo is False) and (vr_busy_gate is True)
+    print("J9 cpu-lane idle: ram50=%s ram30=%s vram-busy-unblock=%s "
+          "(GREEN-IDLE gate unchanged: RAM>=%s%% AND VRAM>=%dMiB)"
+          % (c_hi, c_lo, vr_busy_gate, RAM_FREE_PCT_MIN, VRAM_FREE_MB_MIN))
     print("SELFTEST %s" % ("PASS" if ok else "FAIL"))
     return 0 if ok else 1
 
