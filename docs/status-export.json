@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-10-14 13:1x",
- "current_activity": "13:0x 哨兵轮：审核步翻案=orders 7ba65da 实锤本日 12:0x 九模型删除事件为受 CEO「老模型都给我删了」令的部署窗清理批→T90 夜窗恢复计划按内嵌条款暂停呈批（8 缺额零回拉=恢复违清除令）；四司 :11434 404 风暴消费面冲突已呈日清 P1（裁决面=委员会/CEO-PROXY）；任务板=tasks/TASKS.md",
- "latest_artifact": "T90/M71/R-54 三行级勘正（受令实锤翻案+暂停呈批）+日清 P1 呈报行+QA 7/7=qa/smoke-20261014-1303.log+png·2026-10-14 13:1x",
- "next_milestone": "今晚夜窗=①V100 P0 35B MoE 卸载实测（T89·≥30 字/秒验收·模型源就绪零下载等待）②BC-P-75 探针批文面复核③四司 404 裁决落地执行（批文至则行：迁移知会或特批恢复）；M66 批池月窗 ~11-0x；N1 月末归集=10-31 22:43 一命令（S1-S6 六源）"
+ "updated_at": "2026-10-14 13:4x",
+ "current_activity": "13:3x 午班轮：T92 收口=orders 7ba65da 车道变更正典刷新（35B coder :8090 活体三针探测 36.7 tok/s 实测锚+R-20260929-fleet §一 bm-a 行改写/§八 增量行+empowerment-catalog §一/§二.3 注记）+T93 新立=:8090 L1 消费计量轨对接预设计（usage 回执已实证·cost_ledger 口径 B 盲区）；任务板=tasks/TASKS.md",
+ "latest_artifact": "state/t92-coder-probe-20261014.txt（35B coder live 探测证据件·36.7 tok/s）+QA 6/7=qa/smoke-20261014-1332.log+png（1 FAIL=8792 ResidentQA·M71 清库已知在案面·等批文裁决非新破坏）·2026-10-14 13:3x",
+ "next_milestone": "今晚夜窗=①V100 P0 35B MoE 卸载实测（T89·≥30 字/秒验收·模型源就绪零下载等待）②四司 404 裁决落地执行（批文至则行）③T90 批文面维持；M66 批池月窗 ~11-0x；N1 月末归集=10-31 22:43 一命令（S1-S6 六源）"
 }

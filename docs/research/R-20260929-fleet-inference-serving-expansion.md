@@ -12,7 +12,7 @@
 
 | 机 | 硬件锚（P-2026-09-27-03 实测定谳） | 服务位现状/建议级 | 数据面属性 |
 |---|---|---|---|
-| bm-a（本机） | 32 核·RAM 空闲 54GB·4070S 12GB | 现役=7b Q4_K_M 5.1GB GPU 常驻 Forever（U240 标准样机·num_ctx 4096）·实测带=7b GPU 档 89.3 tok/s/Bonsai CPU 档 3.20/ngl32 档 4.89-5.47 | 本司自测（首轮 R-+T-31 锚引用） |
+| bm-a（本机） | 32 核·RAM 空闲 54GB·4070S 12GB | 现役（10-14 车道变更 orders 7ba65da）=**35B coder 常驻 :8090**（Qwen3.6-35B-A3B UD-IQ4_XS 17.7G·llama.cpp b11429 --n-cpu-moe·~2.9G VRAM 档·36.7 tok/s 10-14 live 实测〔state/t92-coder-probe-20261014.txt〕·看门狗 bm-a-CoderServe）+7b 工作马 qwen2.5:7b-instruct 共租回拉在役（12:30·U240 标准样机沿革）；实测带沿革=7b GPU 档 89.3 tok/s/Bonsai CPU 档 3.20/ngl32 档 4.89-5.47 | 本司自测（首轮 R-+T-31 锚引用+10-14 live 复测） |
 | bm-b | 16 核·RAM 23.9GB·3070 8GB | b serve 在跑（他司产线活载）·常驻 7b Q4_K_M 权重 5.1GB<8GB 理论可载=**建议级 ⬜**（KV+ctx 预算后判·headroom ≥1.5GB 判据适用） | 台账转述·非自测 |
 | bm-c | 32 核·RAM 23.9GB·3070 魔改 16GB（唯一 16GB 档） | 27B 级实验位候选（E15 呈报包 v1 在册·ngl99 全档重验=E17 承接）+7b 常驻并行可能（16−5.1−5.95=4.95GB 余量·KV 预算后判 ⬜） | 台账转述·非自测 |
 
@@ -59,3 +59,4 @@
 任务板 T-22（族 A 二轮 ✅）→提案面 BC-P-11（机队 MaaS 扩面试点·本轮新立）+风险台账 R-37 立行（tailnet 服务端口暴露面）+tech T9 manifest 分发纪律（扩面模型分发同源·L0-L3 不变）+族 C R- §四（记账轨对接在册）。
 ## 八 增量窗口行（行级追加）
 - 2026-10-11 13:0x 窗（哨兵触发轮·族 A 轮转归位）：**U240 常驻契约活体审计件落地**（Tools/serve_contract_audit.py·explore E65 新增即耗）——实弹四发现：①residency=PASS〔常驻 qwen2.5:7b-instruct·expires_at=0001-01-01T00:00:00Z 零时哨兵=keep_alive:-1 实锚〕②**num_ctx 静默缩窗首例双侧面活体复核**〔native=32768（api/show POST 面 model_info qwen2.context_length）vs effective=4096（ollama ps CONTEXT 列）→face=shrunk ratio=0.125——§二五项之 3「num_ctx 跨机契约行」执法证据件：R-20260928 首发现「4096≠32768」由单侧注册值升双侧面机测〕③在册清单自滚动基线首档 10 模型〔含 bge-m3/qwen3.5:9b-16k/qwen3.8:27b-8k 等共驻模型在册·非本司自测归属如实注记·后续漂移 face 可测〕④headroom vram_free 4584MiB（J2 ≥1.5GB 借算门 informational）。工具面发现=本机 Ollama 版 /api/show 为 POST 面（GET=405→首跑半档 native=None 静默吞 405·改 POST 双侧面全通——版本 API 面注记）。selftest 14/14 PASS·证据 state/serve-contract-audit-20261011-130416.json（半档 130350=GET 面保留审计链）·零 GPU 生成·纯只读。消费面=§二 num_ctx 契约行执法回填+E28/R-50 借窗归因旁证（serve 活体四点一次采齐）。
+- 2026-10-14 13:3x 窗（午班轮·tech T92 承接）：**bm-a 推理车道变更正典刷新（orders 7ba65da）**——35B coder 常驻上岗（Qwen3.6-35B-A3B UD-IQ4_XS 17.7G·llama.cpp b11429 --n-cpu-moe·:8090 双槽 8k·看门狗 bm-a-CoderServe PT10M）+9 老模型族 CEO 令清库 38.6G（bge-m3 嵌入件留任·多司共用清单事故 M71 勘正归因）+7b 工作马 12:30 共租回拉在役；live 复测=**36.7 tok/s**（55tok/1.5s·thinking off·与部署回执 36-38 字/s 档一致）〔state/t92-coder-probe-20261014.txt〕；§一 bm-a 行已同步改写（实测带沿革保留 89.3/3.20/4.89-5.47 旧锚不删）。消费面=集团 L1 路由（中档/代码→:8090）+resource-chain §9.1 bm-a 行同源（他司正典·只读注记）。
