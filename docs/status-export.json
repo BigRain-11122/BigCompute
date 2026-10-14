@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-10-14 11:5x",
- "current_activity": "11:5x 哨兵触发轮：serve P1 事故验复收口（11:44 探针 URLError→22s 更新器自拉起 version=0.40.3→11:47 QA 生成面全绿·M57 净重启零需求）；BC-P-74 探针复拍判定提案入面+T88 批后执行步新立；审核步 orders 11:2x 新行（@bm-c GPU=MV-only）非本司派单零动作",
- "latest_artifact": "state/serve-updater-restart-20261014.txt（serve 事故验复证据：时间线+更新器环归因+v0.40.4 悬剑）+qa/smoke-20261014-1147.log+png（7/7 PASS）·2026-10-14 11:5x",
- "next_milestone": "M66 批池月窗 ~11-0x（validate 唯一验收口·意义门四闸已挂）；N1 月末归集=10-31 22:43 一命令（S1-S6 六源）；10-16 治理窗回访（30% 点名线三尺并行+满载哨兵）"
+ "updated_at": "2026-10-14 12:1x",
+ "current_activity": "12:1x 排程接续轮：P1 serve 模型清单消失事故处置步①诊断毕（9 模型族 ~40GB 盘面直删仅剩 bge-m3·四兄弟司循环 404 风暴实锚·零单边重拉=CEO 工作窗让路·步②夜窗恢复 pending）+V100 P0 前置三步毕（RAM 代际 DDR5-5600 96GB PASS 超预期→今晚夜窗 35B MoE 卸载实测 ≥30 字/秒）",
+ "latest_artifact": "state/serve-env-drift-20261014-1206.txt（P1 事故全程证据：时间线+直删通道判定+四客户端 404 实锚+E69 归因勘正）+state/v100-p0-preflight-raw-20261014.txt（V100 P0 RAM/引擎/模型源前置证据）·2026-10-14 12:1x",
+ "next_milestone": "今晚夜窗双联窗=serve 按消费方优先序恢复（7b 首拉+U240 复锚）+V100 P0 35B MoE 卸载实测（验收 ≥30 字/秒·证据回执 spec P0 行）；M66 批池月窗 ~11-0x；N1 月末归集=10-31 夜班一命令（S1-S6 六源）"
 }
