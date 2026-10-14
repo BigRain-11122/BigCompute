@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-10-14 13:4x",
- "current_activity": "13:3x 午班轮：T92 收口=orders 7ba65da 车道变更正典刷新（35B coder :8090 活体三针探测 36.7 tok/s 实测锚+R-20260929-fleet §一 bm-a 行改写/§八 增量行+empowerment-catalog §一/§二.3 注记）+T93 新立=:8090 L1 消费计量轨对接预设计（usage 回执已实证·cost_ledger 口径 B 盲区）；任务板=tasks/TASKS.md",
- "latest_artifact": "state/t92-coder-probe-20261014.txt（35B coder live 探测证据件·36.7 tok/s）+QA 6/7=qa/smoke-20261014-1332.log+png（1 FAIL=8792 ResidentQA·M71 清库已知在案面·等批文裁决非新破坏）·2026-10-14 13:3x",
- "next_milestone": "今晚夜窗=①V100 P0 35B MoE 卸载实测（T89·≥30 字/秒验收·模型源就绪零下载等待）②四司 404 裁决落地执行（批文至则行）③T90 批文面维持；M66 批池月窗 ~11-0x；N1 月末归集=10-31 22:43 一命令（S1-S6 六源）"
+ "updated_at": "2026-10-14 14:0x",
+ "current_activity": "14:0x 排程轮：T93 done=:8090 L1 本地推理计量轨上线（cost_ledger L1 四命令=月闸+usage 回执唯一 token 源 J2 同律+settle 月末归集回填）·live 首笔真实入账",
+ "latest_artifact": "Tools/cost_ledger.py（L1 轨新增+selftest PASS 含 l1 段）+live 首笔 tx L1-20261014-BC-01（usage=19+2 tokens 实测入账·state/cost-l1-ledger.jsonl）+QA 7/7=qa/smoke-20261014-1403.log+png（2026-10-14 14:0x）",
+ "next_milestone": "今夜夜窗=T89 V100 P0 35B MoE 卸载实测（≥30 字/秒验收线·前置①②③全就绪）+T90 恢复案裁决回执（四司 404 消费面·委员会/CEO-PROXY）+批文族 T64/T70/T87/T88 至则行（窗 ≤48h）"
 }

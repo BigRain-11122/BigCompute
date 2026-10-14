@@ -64,6 +64,20 @@ price enters ONLY via month-end bill backfill (J2), never at entry time):
   python Tools/cost_ledger.py borrow-settle --month 2026-10 --unit-cost-b 2.0 --ref ME-202610
   python Tools/cost_ledger.py borrow-summary [--month 2026-10]
 
+L1 local-inference metering lane (tech T93 / R-20260929-fleet-inference-
+expansion; endpoint = bm-a :8090 llama.cpp OpenAI-compatible face, lane
+routing = orders 7ba65da L1 mid/code tier). Usage receipt is the ONLY legal
+token source (J2 parity): prompt/completion tokens are recorded verbatim
+and the mtok amount is DERIVED, never hand-entered; unit price enters
+only via month-end collection settle (l1-settle, caliber-B real cost
+allocation), never at entry time; monthly cap gate = l1-budget:
+  python Tools/cost_ledger.py l1-budget --month 2026-10 --cap-mtok 200
+  python Tools/cost_ledger.py l1-record --tx-id L1-0001 --consumer bigdomain \
+      --model qwen3.6-35b --prompt-tokens 800 --completion-tokens 1200
+  python Tools/cost_ledger.py l1-settle --month 2026-10 --unit-cost-b 1.8 \
+      --ref N1-202610
+  python Tools/cost_ledger.py l1-summary [--month 2026-10]
+
 Encoding rule: this file stays PURE ASCII (group coding law).
 """
 import argparse
@@ -80,6 +94,8 @@ CLEDGER = os.path.join(HERE, "..", "state", "cloud-cost-ledger.jsonl")
 CBUDGET = os.path.join(HERE, "..", "state", "cloud-budget.json")
 BLEDGER = os.path.join(HERE, "..", "state", "borrow-cost-ledger.jsonl")
 BBUDGET = os.path.join(HERE, "..", "state", "borrow-budget.json")
+L1LEDGER = os.path.join(HERE, "..", "state", "cost-l1-ledger.jsonl")
+L1BUDGET = os.path.join(HERE, "..", "state", "cost-l1-budget.json")
 FUND_ACCRUAL_DEFAULT = 10.0
 FUND_TARGET_DEFAULT = 3500.0
 
@@ -654,8 +670,160 @@ def borrow_summary(args, ledger=BLEDGER, budget=BBUDGET):
     }
 
 
+# -------------------------------------------------- L1 local-inference lane
+# L1 metering rail (tech T93): :8090 llama.cpp OpenAI-compatible face.
+# - usage receipt (prompt/completion tokens) is the ONLY legal token source
+#   (J2 parity with cloud lane): amount_mtok is DERIVED from the receipt,
+#   never hand-entered, so no estimate can pollute the rail.
+# - unit price NEVER at entry (J2): cost_b_cny stays null until the
+#   month-end collection settle (l1-settle) backfills caliber-B real cost.
+# - monthly cap gate mirrors cloud lane: over-cap needs --ceo-approved.
+
+def l1_budget(args, path=L1BUDGET):
+    data = _load_budget(path)
+    prev = data.get(args.month)
+    data[args.month] = args.cap_mtok
+    _save_budget(data, path)
+    return {"status": "ok", "month": args.month,
+            "cap_mtok": args.cap_mtok, "prev_cap_mtok": prev}
+
+
+def l1_record(args, ledger=L1LEDGER, budget=L1BUDGET):
+    rows = _load_rows(ledger)
+    for r in rows:
+        if r.get("tx_id") == args.tx_id:
+            return {"status": "duplicate", "tx_id": args.tx_id, "row": r}
+    if args.prompt_tokens < 0 or args.completion_tokens < 0:
+        return {"status": "invalid_usage", "tx_id": args.tx_id,
+                "note": "negative token count rejected"}
+    month = _month_of(args.date)
+    amount_mtok = (args.prompt_tokens + args.completion_tokens) / 1000000.0
+    used_mtd = round(sum(r.get("amount_mtok", 0.0) for r in rows
+                         if r.get("month") == month), 6)
+    cap = _load_budget(budget).get(month)
+    over = cap is not None and (used_mtd + amount_mtok) > cap
+    if over and not args.ceo_approved:
+        return {"status": "blocked_over_l1_budget", "month": month,
+                "cap_mtok": cap, "used_mtd_mtok": used_mtd,
+                "attempt_mtok": round(amount_mtok, 6),
+                "note": "monthly L1-lane budget gate: over-cap entry "
+                        "needs --ceo-approved (tech T93)"}
+    row = {
+        "tx_id": args.tx_id,
+        "date": args.date,
+        "month": month,
+        "type": "l1",
+        "consumer": args.consumer,
+        "lane": "l1_local_inference",
+        "endpoint": args.endpoint,
+        "model": args.model,
+        "prompt_tokens": args.prompt_tokens,
+        "completion_tokens": args.completion_tokens,
+        "amount_mtok": round(amount_mtok, 6),
+        "unit_cost_b_cny": None,       # J2: filled only by l1-settle
+        "cost_b_cny": None,
+        "receipt_status": "pending_conversion",
+        "settlement_caliber": "B",
+        "reason": args.reason,
+        "ref": None,                   # set by l1-settle
+        "ceo_approved": bool(args.ceo_approved),
+        "tokens_local": args.prompt_tokens + args.completion_tokens,
+        "tokens_api": 0,
+        "api_reason": "-",
+    }
+    _append_row(ledger, row)
+    return {"status": "ok_ceo_approved_over_cap" if over else "ok", "row": row,
+            "month_used_mtok": round(used_mtd + amount_mtok, 6),
+            "month_cap_mtok": cap}
+
+
+def l1_settle(args, ledger=L1LEDGER):
+    """Month-end retroactive settle: the caliber-B collection (N1 month-end
+    cost allocation) is the ONLY legal unit-price source for local
+    inference; flips pending_conversion -> converted for the month."""
+    rows = _load_rows(ledger)
+    hit = 0
+    for r in rows:
+        if (r.get("type") == "l1" and r.get("month") == args.month
+                and r.get("receipt_status") == "pending_conversion"):
+            r["unit_cost_b_cny"] = round(args.unit_cost_b, 6)
+            r["cost_b_cny"] = round(r.get("amount_mtok", 0.0)
+                                    * args.unit_cost_b, 4)
+            r["receipt_status"] = "converted"
+            r["ref"] = args.ref
+            hit += 1
+    if hit:
+        _ensure_state(ledger)
+        with open(ledger, "w", encoding="utf-8") as fh:
+            for r in rows:
+                fh.write(json.dumps(r, sort_keys=True, ensure_ascii=True) + "\n")
+    return {"status": "ok" if hit else "no_pending_rows",
+            "month": args.month, "unit_cost_b_cny": round(args.unit_cost_b, 6),
+            "ref": args.ref, "converted_rows": hit}
+
+
+def l1_summary(args, ledger=L1LEDGER, budget=L1BUDGET):
+    rows = _load_rows(ledger)
+    if args.month:
+        rows = [r for r in rows if r.get("month") == args.month]
+    per = {}
+    for r in rows:
+        if r.get("type") != "l1":
+            continue
+        key = (r.get("consumer", "-"), r.get("model", "-"))
+        c = per.setdefault(key, {"amount_mtok": 0.0, "converted_mtok": 0.0,
+                                  "cost_b_cny": 0.0, "pending_rows": 0,
+                                  "converted_rows": 0})
+        amt = r.get("amount_mtok", 0.0)
+        c["amount_mtok"] += amt
+        if r.get("receipt_status") == "converted":
+            c["converted_mtok"] += amt
+            c["cost_b_cny"] += r.get("cost_b_cny") or 0.0
+            c["converted_rows"] += 1
+        else:
+            c["pending_rows"] += 1
+    face = {}
+    for key, c in per.items():
+        face["%s|%s" % key] = {
+            "amount_mtok": round(c["amount_mtok"], 6),
+            "converted_mtok": round(c["converted_mtok"], 6),
+            "cost_b_cny": round(c["cost_b_cny"], 4),
+            "pending_rows": c["pending_rows"],
+            "converted_rows": c["converted_rows"],
+        }
+    totals = {
+        "amount_mtok": round(sum(c["amount_mtok"] for c in per.values()), 6),
+        "cost_converted_b_cny": round(
+            sum(c["cost_b_cny"] for c in per.values()), 4),
+        "pending_conversion_rows": sum(c["pending_rows"] for c in per.values()),
+        "converted_rows": sum(c["converted_rows"] for c in per.values()),
+    }
+    month_face = {}
+    if args.month:
+        cap = _load_budget(budget).get(args.month)
+        used_mtd = round(sum(r.get("amount_mtok", 0.0) for r in rows
+                             if r.get("type") == "l1"), 6)
+        month_face = {
+            "month": args.month,
+            "cap_mtok": cap,
+            "used_mtok": used_mtd,
+            "remaining_mtok": None if cap is None else round(cap - used_mtd, 6),
+            "over_cap_ceo_approved_tx": sum(
+                1 for r in rows
+                if r.get("type") == "l1" and r.get("ceo_approved")),
+        }
+    return {
+        "consumer_model": face,
+        "totals": totals,
+        "month_face": month_face,
+        "settlement_caliber": "B_only; unit price only via l1-settle",
+        "lane_note": "usage receipt = only legal token source (J2 parity)",
+    }
+
+
 def _selftest():
     order_results, quota_results, cloud_results, borrow_results = [], [], [], []
+    l1_results = []
     for run in (1, 2):
         tmp = os.path.join(tempfile.gettempdir(), "bc_ledger_selftest_%d.jsonl" % run)
         qtmp = os.path.join(tempfile.gettempdir(), "bc_quota_selftest_%d.jsonl" % run)
@@ -664,7 +832,9 @@ def _selftest():
         cbtmp = os.path.join(tempfile.gettempdir(), "bc_cloud_budget_%d.json" % run)
         btmp = os.path.join(tempfile.gettempdir(), "bc_borrow_selftest_%d.jsonl" % run)
         bbtmp = os.path.join(tempfile.gettempdir(), "bc_borrow_budget_%d.json" % run)
-        for p in (tmp, qtmp, qbtmp, ctmp, cbtmp, btmp, bbtmp):
+        l1tmp = os.path.join(tempfile.gettempdir(), "bc_l1_selftest_%d.jsonl" % run)
+        l1btmp = os.path.join(tempfile.gettempdir(), "bc_l1_budget_%d.json" % run)
+        for p in (tmp, qtmp, qbtmp, ctmp, cbtmp, btmp, bbtmp, l1tmp, l1btmp):
             if os.path.isfile(p):
                 os.remove(p)
 
@@ -858,7 +1028,63 @@ def _selftest():
             and abs(bsumm["month_face"]["used_mtok"] - 11.0) < 1e-6
         )
         borrow_results.append((borrow_ok, brows, bsumm))
-        for p in (tmp, qtmp, qbtmp, ctmp, cbtmp, btmp, bbtmp):
+
+        # L1 lane synthetic dry-run (tech T93: usage receipt = only token
+        # source, derived mtok, monthly gate, settle-only unit price)
+        lb = Q()
+        lb.month, lb.cap_mtok = "2026-09", 0.0015   # 1500 tokens cap
+        l1_budget(lb, path=l1btmp)
+
+        def l1rec(tx, pt, ct_, approved=False):
+            qq = Q()
+            qq.tx_id, qq.date = tx, "2026-09-28"
+            qq.consumer, qq.model = "bigdomain", "qwen3.6-35b"
+            qq.prompt_tokens, qq.completion_tokens = pt, ct_
+            qq.endpoint, qq.reason, qq.ceo_approved = "127.0.0.1:8090", "selftest", approved
+            return l1_record(qq, ledger=l1tmp, budget=l1btmp)
+
+        r1 = l1rec("L1", 300, 700)                # 1000 tok = 0.001 mtok -> ok
+        r2 = l1rec("L2", 300, 700)                # 2000 tok > 20-cap -> gate
+        r3 = l1rec("L2", 300, 700, approved=True)  # over cap, CEO approved
+        r4 = l1rec("L5", -1, 5)                   # negative usage rejected
+        r5 = l1rec("L1", 300, 700)                 # duplicate tx_id -> no new row
+        lrows_pre = _load_rows(l1tmp)
+        lj2_ok = all(r.get("unit_cost_b_cny") is None
+                     and r.get("cost_b_cny") is None
+                     and r.get("receipt_status") == "pending_conversion"
+                     for r in lrows_pre)
+        lset = Q()
+        lset.month, lset.unit_cost_b, lset.ref = "2026-09", 2.0, "N1-202609"
+        t1 = l1_settle(lset, ledger=l1tmp)
+        lrows = _load_rows(l1tmp)
+        lsargs = Q()
+        lsargs.month = "2026-09"
+        lsumm = l1_summary(lsargs, ledger=l1tmp, budget=l1btmp)
+        ll = lsumm["consumer_model"]["bigdomain|qwen3.6-35b"]
+        l1_ok = (
+            r1["status"] == "ok"
+            and abs(r1["row"]["amount_mtok"] - 0.001) < 1e-9
+            and r1["row"]["tokens_local"] == 1000
+            and r1["row"]["tokens_api"] == 0
+            and r2["status"] == "blocked_over_l1_budget"
+            and r3["status"] == "ok_ceo_approved_over_cap"
+            and r4["status"] == "invalid_usage"
+            and r5["status"] == "duplicate"
+            and len(lrows_pre) == 2
+            and lj2_ok
+            and t1["converted_rows"] == 2
+            and all(r.get("receipt_status") == "converted" for r in lrows)
+            and all(r.get("ref") == "N1-202609" for r in lrows)
+            and abs(lrows[0]["cost_b_cny"] - 0.002) < 0.0001
+            and abs(ll["amount_mtok"] - 0.002) < 1e-9
+            and abs(ll["cost_b_cny"] - 0.004) < 0.0001
+            and ll["pending_rows"] == 0 and ll["converted_rows"] == 2
+            and abs(lsumm["totals"]["amount_mtok"] - 0.002) < 1e-9
+            and lsumm["totals"]["pending_conversion_rows"] == 0
+            and lsumm["month_face"]["over_cap_ceo_approved_tx"] == 1
+        )
+        l1_results.append((l1_ok, lrows, lsumm))
+        for p in (tmp, qtmp, qbtmp, ctmp, cbtmp, btmp, bbtmp, l1tmp, l1btmp):
             os.remove(p)
     # token-count face: estimation caliber; absence is visible, not a math fail
     class C:
@@ -901,12 +1127,17 @@ def _selftest():
         == json.dumps(borrow_results[1][1], sort_keys=True)
         and json.dumps(borrow_results[0][2], sort_keys=True)
         == json.dumps(borrow_results[1][2], sort_keys=True)
+        and json.dumps(l1_results[0][1], sort_keys=True)
+        == json.dumps(l1_results[1][1], sort_keys=True)
+        and json.dumps(l1_results[0][2], sort_keys=True)
+        == json.dumps(l1_results[1][2], sort_keys=True)
     )  # order_id differs by design; determinism = identical math on all else
     math_ok = (order_results[0][0] and order_results[1][0]
                and quota_results[0][0] and quota_results[1][0]
                and cloud_results[0][0] and cloud_results[1][0]
-               and borrow_results[0][0] and borrow_results[1][0])
-    print("selftest: math=%s determinism=%s count=%s (orders+quota-gate+count+cloud+borrow) -> %s"
+               and borrow_results[0][0] and borrow_results[1][0]
+               and l1_results[0][0] and l1_results[1][0])
+    print("selftest: math=%s determinism=%s count=%s (orders+quota-gate+count+cloud+borrow+l1) -> %s"
           % (math_ok, same, count_status,
              "PASS" if (math_ok and same and count_ok) else "FAIL"))
     return 0 if (math_ok and same and count_ok) else 1
@@ -1004,13 +1235,32 @@ def main():
     bs.add_argument("--ref", required=True)
     bsu = sub.add_parser("borrow-summary")
     bsu.add_argument("--month", default=None)
+    l1b = sub.add_parser("l1-budget")
+    l1b.add_argument("--month", required=True)
+    l1b.add_argument("--cap-mtok", dest="cap_mtok", type=float, required=True)
+    l1r = sub.add_parser("l1-record")
+    l1r.add_argument("--tx-id", dest="tx_id", required=True)
+    l1r.add_argument("--consumer", required=True)
+    l1r.add_argument("--model", required=True)
+    l1r.add_argument("--prompt-tokens", dest="prompt_tokens", type=int, required=True)
+    l1r.add_argument("--completion-tokens", dest="completion_tokens", type=int, required=True)
+    l1r.add_argument("--endpoint", default="127.0.0.1:8090")
+    l1r.add_argument("--reason", default="-")
+    l1r.add_argument("--date", default=None)
+    l1r.add_argument("--ceo-approved", dest="ceo_approved", action="store_true")
+    l1s = sub.add_parser("l1-settle")
+    l1s.add_argument("--month", required=True)
+    l1s.add_argument("--unit-cost-b", dest="unit_cost_b", type=float, required=True)
+    l1s.add_argument("--ref", required=True)
+    l1su = sub.add_parser("l1-summary")
+    l1su.add_argument("--month", default=None)
     ct = sub.add_parser("count")
     ct.add_argument("--text", default=None)
     ct.add_argument("--file", default=None)
     ct.add_argument("--encoding", default="cl100k_base")
     sub.add_parser("selftest")
     args = p.parse_args()
-    if getattr(args, "date", None) is None and args.cmd in ("add", "quota-issue", "quota-consume", "cloud-entry", "borrow-entry"):
+    if getattr(args, "date", None) is None and args.cmd in ("add", "quota-issue", "quota-consume", "cloud-entry", "borrow-entry", "l1-record"):
         import datetime
         args.date = datetime.date.today().isoformat()
     if args.cmd == "add":
@@ -1043,6 +1293,14 @@ def main():
         out = borrow_settle(args)
     elif args.cmd == "borrow-summary":
         out = borrow_summary(args)
+    elif args.cmd == "l1-budget":
+        out = l1_budget(args)
+    elif args.cmd == "l1-record":
+        out = l1_record(args)
+    elif args.cmd == "l1-settle":
+        out = l1_settle(args)
+    elif args.cmd == "l1-summary":
+        out = l1_summary(args)
     elif args.cmd == "count":
         out = count_tokens(args)
     else:
