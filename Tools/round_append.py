@@ -83,6 +83,10 @@ def append_line(path, line):
         msg += " tail_nl_fix=1（既有尾行缺换行已补——J4 守卫）"
     return 0, msg
 
+# T95 note (2026-10-14): the J4/J5 write-side guards here cover python
+# appends only; non-canonical shell writes (leading newline + no trailing
+# newline, 14:0x case) are surfaced read-side by qa_smoke probe no.8
+# third check (tail-12 empty-line sniff) - detectability contract.
 
 def _selftest():
     checks = []

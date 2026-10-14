@@ -288,9 +288,11 @@ def probe_ledger_tails():
     """BC-P-45 (probe no.8): git-tracked ledger tail integrity.
 
     Read-side complement to the write-side round_append J4 guard:
-    per file assert (a) last byte is a newline and (b) the last line
+    per file assert (a) last byte is a newline, (b) the last line
     holds at most one row/date marker (>= 2 = suspected merged lines,
-    e.g. two queue rows or two daily-clean entries fused into one).
+    e.g. two queue rows or two daily-clean entries fused into one),
+    and (c) no empty line inside the last 12 lines (T95: non-canonical
+    append residue, 14:0x case).
     Pure read, zero writes, zero new ledgers.
     """
     fails, detail = [], []
@@ -318,12 +320,26 @@ def probe_ledger_tails():
         tail_nl = raw.endswith(b"\n")
         if not tail_nl:
             fails.append("%s: trailing newline missing" % rel)
+        # T95 (2026-10-14): tail-region empty-line sniff. The rows filter
+        # above hides stray blank lines, so a non-canonical append that
+        # emits "\n"+entry (14:0x case) leaves an invisible artifact at
+        # position -3. All legit appends are single-line entries/table
+        # rows (round_append writes line+"\n" always), so any empty line
+        # inside the last 12 lines is write-path damage residue.
+        raw_lines = raw.split(b"\n")
+        if tail_nl:
+            raw_lines = raw_lines[:-1]
+        empt = [i for i, ln in enumerate(raw_lines[-12:]) if not ln.strip()]
+        if empt:
+            fails.append("%s: %d empty line(s) in tail-12 "
+                         "(non-canonical write residue?)" % (rel, len(empt)))
         if n_mark >= 2:
             fails.append("%s: %d markers in last line (merged rows?)"
                          % (rel, n_mark))
-        detail.append("%s: tail_nl=%s last_markers=%d last_len=%d"
-                      % (rel, "ok" if tail_nl else "MISSING", n_mark,
-                         len(last)))
+        detail.append("%s: tail_nl=%s tail_empty=%d last_markers=%d "
+                      "last_len=%d"
+                      % (rel, "ok" if tail_nl else "MISSING", len(empt),
+                         n_mark, len(last)))
     ok = not fails
     out = "\n".join(detail)
     if fails:
