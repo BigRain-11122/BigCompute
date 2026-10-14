@@ -81,6 +81,7 @@ allocation), never at entry time; monthly cap gate = l1-budget:
 Encoding rule: this file stays PURE ASCII (group coding law).
 """
 import argparse
+import datetime
 import json
 import os
 import sys
@@ -222,6 +223,15 @@ def _month_of(date_str):
     return str(date_str)[:7]
 
 
+def _resolve_date(date_str):
+    """T94: empty-date fallback shared by the four lane entry faces
+    (quota/cloud/borrow/l1). main() already defaults CLI --date to today;
+    direct calls bypassing main() land here instead, so a None/'' date
+    resolves to today's ISO instead of leaking month='None' dirty rows
+    (T93 live first-tx anchor)."""
+    return date_str if date_str else datetime.date.today().isoformat()
+
+
 def _load_budget(path=QBUDGET):
     if os.path.isfile(path):
         with open(path, "r", encoding="utf-8") as fh:
@@ -275,7 +285,8 @@ def quota_issue(args, ledger=QLEDGER, budget=QBUDGET):
     for r in rows:
         if r.get("tx_id") == args.tx_id:
             return {"status": "duplicate", "tx_id": args.tx_id, "row": r}
-    month = _month_of(args.date)
+    date_str = _resolve_date(args.date)
+    month = _month_of(date_str)
     issued_mtd = round(sum(r.get("amount_mtok", 0.0) for r in rows
                            if r.get("type") == "issue"
                            and r.get("month") == month), 6)
@@ -289,7 +300,7 @@ def quota_issue(args, ledger=QLEDGER, budget=QBUDGET):
                         "--ceo-approved (BC-F-20260925-01)"}
     row = {
         "tx_id": args.tx_id,
-        "date": args.date,
+        "date": date_str,
         "month": month,
         "type": "issue",
         "consumer": args.consumer,
@@ -321,10 +332,11 @@ def quota_consume(args, ledger=QLEDGER):
     if args.amount_mtok > bal:
         return {"status": "insufficient_balance", "consumer": args.consumer,
                 "balance_mtok": bal, "attempt_mtok": args.amount_mtok}
+    date_str = _resolve_date(args.date)
     row = {
         "tx_id": args.tx_id,
-        "date": args.date,
-        "month": _month_of(args.date),
+        "date": date_str,
+        "month": _month_of(date_str),
         "type": "consume",
         "consumer": args.consumer,
         "amount_mtok": round(args.amount_mtok, 6),
@@ -402,7 +414,8 @@ def cloud_entry(args, ledger=CLEDGER, budget=CBUDGET):
     for r in rows:
         if r.get("tx_id") == args.tx_id:
             return {"status": "duplicate", "tx_id": args.tx_id, "row": r}
-    month = _month_of(args.date)
+    date_str = _resolve_date(args.date)
+    month = _month_of(date_str)
     used_mtd = round(sum(r.get("amount_mtok", 0.0) for r in rows
                          if r.get("month") == month), 6)
     cap = _load_budget(budget).get(month)
@@ -415,7 +428,7 @@ def cloud_entry(args, ledger=CLEDGER, budget=CBUDGET):
                         "needs --ceo-approved (cloud-cost-lane-predesign s4)"}
     row = {
         "tx_id": args.tx_id,
-        "date": args.date,
+        "date": date_str,
         "month": month,
         "type": "cloud",
         "consumer": args.consumer,
@@ -545,7 +558,8 @@ def borrow_entry(args, ledger=BLEDGER, budget=BBUDGET):
     for r in rows:
         if r.get("tx_id") == args.tx_id:
             return {"status": "duplicate", "tx_id": args.tx_id, "row": r}
-    month = _month_of(args.date)
+    date_str = _resolve_date(args.date)
+    month = _month_of(date_str)
     used_mtd = round(sum(r.get("tokens_mtok", 0.0) for r in rows
                          if r.get("month") == month), 6)
     cap = _load_budget(budget).get(month)
@@ -559,7 +573,7 @@ def borrow_entry(args, ledger=BLEDGER, budget=BBUDGET):
                         "predesign s4; D-20260925-10)"}
     row = {
         "tx_id": args.tx_id,
-        "date": args.date,
+        "date": date_str,
         "month": month,
         "type": "borrow",
         "lender_dept": args.lender_dept,
@@ -696,7 +710,8 @@ def l1_record(args, ledger=L1LEDGER, budget=L1BUDGET):
     if args.prompt_tokens < 0 or args.completion_tokens < 0:
         return {"status": "invalid_usage", "tx_id": args.tx_id,
                 "note": "negative token count rejected"}
-    month = _month_of(args.date)
+    date_str = _resolve_date(args.date)
+    month = _month_of(date_str)
     amount_mtok = (args.prompt_tokens + args.completion_tokens) / 1000000.0
     used_mtd = round(sum(r.get("amount_mtok", 0.0) for r in rows
                          if r.get("month") == month), 6)
@@ -710,7 +725,7 @@ def l1_record(args, ledger=L1LEDGER, budget=L1BUDGET):
                         "needs --ceo-approved (tech T93)"}
     row = {
         "tx_id": args.tx_id,
-        "date": args.date,
+        "date": date_str,
         "month": month,
         "type": "l1",
         "consumer": args.consumer,
@@ -824,6 +839,7 @@ def l1_summary(args, ledger=L1LEDGER, budget=L1BUDGET):
 def _selftest():
     order_results, quota_results, cloud_results, borrow_results = [], [], [], []
     l1_results = []
+    t94_results = []
     for run in (1, 2):
         tmp = os.path.join(tempfile.gettempdir(), "bc_ledger_selftest_%d.jsonl" % run)
         qtmp = os.path.join(tempfile.gettempdir(), "bc_quota_selftest_%d.jsonl" % run)
@@ -1084,6 +1100,55 @@ def _selftest():
             and lsumm["month_face"]["over_cap_ceo_approved_tx"] == 1
         )
         l1_results.append((l1_ok, lrows, lsumm))
+
+        # T94: direct-call date=None fallback probes (quota/cloud/borrow/l1
+        # four tracks; CLI face already covered in main()). Fallback must
+        # land rows on today's date/month -- never month='None' dirty rows.
+        t94_today = datetime.date.today().isoformat()
+        t94_month = t94_today[:7]
+        tq = Q()
+        tq.tx_id, tq.date, tq.consumer = "Q-T94", None, "t94probe"
+        tq.amount_mtok, tq.unit_cost_b_cny = 0.5, 1.0
+        tq.reason, tq.ref, tq.ceo_approved = "t94", "-", False
+        rq94 = quota_issue(tq, ledger=qtmp, budget=qbtmp)
+        tqc = Q()
+        tqc.tx_id, tqc.date, tqc.consumer = "QC-T94", None, "t94probe"
+        tqc.amount_mtok, tqc.unit_cost_b_cny = 0.2, 1.0
+        tqc.reason, tqc.ref = "t94", "-"
+        tqc.tokens_local, tqc.tokens_api, tqc.api_reason = 100, 0, "t94"
+        rqc94 = quota_consume(tqc, ledger=qtmp)
+        tc = Q()
+        tc.tx_id, tc.date, tc.consumer = "C-T94", None, "t94probe"
+        tc.lane, tc.task_ref, tc.amount_mtok = "selftest", "T94", 0.1
+        tc.reason, tc.ceo_approved = "t94", False
+        tc.tokens_local, tc.tokens_api, tc.api_reason = 100, 0, "t94"
+        rc94 = cloud_entry(tc, ledger=ctmp, budget=cbtmp)
+        tb = Q()
+        tb.tx_id, tb.date = "BW-T94", None
+        tb.lender_dept, tb.borrower_dept = "bigcompute", "bigstream"
+        tb.machine_id, tb.work_type = "bm-a", "selftest"
+        tb.tokens_mtok, tb.quota_debit_mtok = 0.1, 0.1
+        tb.timeout_rule, tb.return_rule = "48h", "on-request"
+        tb.verdict_source, tb.reason, tb.ceo_approved = "selftest", "t94", False
+        rb94 = borrow_entry(tb, ledger=btmp, budget=bbtmp)
+        tl = Q()
+        tl.tx_id, tl.date = "L1-T94", None
+        tl.consumer, tl.model = "t94probe", "qwen3.6-35b"
+        tl.prompt_tokens, tl.completion_tokens = 10, 10
+        tl.endpoint, tl.reason, tl.ceo_approved = "127.0.0.1:8090", "t94", False
+        rl94 = l1_record(tl, ledger=l1tmp, budget=l1btmp)
+        t94_rows = [r for r in (_load_rows(qtmp) + _load_rows(ctmp)
+                                + _load_rows(btmp) + _load_rows(l1tmp))
+                    if str(r.get("tx_id", "")).endswith("-T94")]
+        t94_ok = (
+            rq94["status"] == "ok" and rqc94["status"] == "ok"
+            and rc94["status"] == "ok" and rb94["status"] == "ok"
+            and rl94["status"] == "ok"
+            and len(t94_rows) == 5
+            and all(r.get("date") == t94_today for r in t94_rows)
+            and all(r.get("month") == t94_month for r in t94_rows)
+        )
+        t94_results.append(t94_ok)
         for p in (tmp, qtmp, qbtmp, ctmp, cbtmp, btmp, bbtmp, l1tmp, l1btmp):
             os.remove(p)
     # token-count face: estimation caliber; absence is visible, not a math fail
@@ -1137,10 +1202,11 @@ def _selftest():
                and cloud_results[0][0] and cloud_results[1][0]
                and borrow_results[0][0] and borrow_results[1][0]
                and l1_results[0][0] and l1_results[1][0])
-    print("selftest: math=%s determinism=%s count=%s (orders+quota-gate+count+cloud+borrow+l1) -> %s"
-          % (math_ok, same, count_status,
-             "PASS" if (math_ok and same and count_ok) else "FAIL"))
-    return 0 if (math_ok and same and count_ok) else 1
+    t94_all = t94_results[0] and t94_results[1]
+    print("selftest: math=%s determinism=%s count=%s t94date=%s (orders+quota-gate+count+cloud+borrow+l1+t94date) -> %s"
+          % (math_ok, same, count_status, t94_all,
+             "PASS" if (math_ok and same and count_ok and t94_all) else "FAIL"))
+    return 0 if (math_ok and same and count_ok and t94_all) else 1
 
 
 def main():

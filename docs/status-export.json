@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-10-14 14:0x",
- "current_activity": "14:0x 排程轮：T93 done=:8090 L1 本地推理计量轨上线（cost_ledger L1 四命令=月闸+usage 回执唯一 token 源 J2 同律+settle 月末归集回填）·live 首笔真实入账",
- "latest_artifact": "Tools/cost_ledger.py（L1 轨新增+selftest PASS 含 l1 段）+live 首笔 tx L1-20261014-BC-01（usage=19+2 tokens 实测入账·state/cost-l1-ledger.jsonl）+QA 7/7=qa/smoke-20261014-1403.log+png（2026-10-14 14:0x）",
- "next_milestone": "今夜夜窗=T89 V100 P0 35B MoE 卸载实测（≥30 字/秒验收线·前置①②③全就绪）+T90 恢复案裁决回执（四司 404 消费面·委员会/CEO-PROXY）+批文族 T64/T70/T87/T88 至则行（窗 ≤48h）"
+ "updated_at": "2026-10-14 14:4x",
+ "current_activity": "14:3x 哨兵轮：T94 done=cost_ledger 四轨 date=None 兜底加固（直调面防 month 脏行·selftest 负例面）+QA 尾行完整性红→T52 修复器即修 7/7 复验",
+ "latest_artifact": "Tools/cost_ledger.py（_resolve_date helper+五 entry 接线+selftest t94date 负例面·双跑 PASS×2）+证据 state/t94-date-guard-20261014.txt+QA 7/7=qa/smoke-20261014-1439.log+png（2026-10-14 14:4x）",
+ "next_milestone": "今夜夜窗三联=T89 V100 P0 35B MoE 卸载实测（≥30 字/秒验收线·前置全就绪）+T90 恢复案裁决回执（四司 404 消费面·委员会/CEO-PROXY）+批文族 T64/T70/T87/T88 至则行（窗 ≤48h）"
 }
