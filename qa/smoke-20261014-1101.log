@@ -1,0 +1,46 @@
+BigCompute QA smoke test 20261014-1101 (orders L254 / charter v1)
+
+[gpu collector] PASS -> gpu collector
+machine_borrowable=NOT-BORROWABLE[VRAM|COTENANT] vram_free=421MiB(line>=6144MiB) cotenant_editors=2(line 0) (D-20261004-04 dual probe; decoupled from GREEN-IDLE loop state; R-41 fleet-row field)
+gpu report 2026-10-14 machine=bm-a: n=44 avg=66.8% max=100% kpi=PASS
+3-day rolling baseline (pre-registered, C-20260929-02): 2026-10-12..2026-10-14 n=156 avg=43.8% (call-out 30%; 70% target = directional ref)
+borrow-window declared: 2026-10-08..2026-10-08 consumer=MV 产线 H3 本地 i2v 测试窗（mv-carve 工作面·480P/768P 测试批） (source=rounds.log E63 行「借用三日 +1.9608」归因+安静带基线排除日（--baseline-range 10-01,10-07 排除 10-08 测试窗日）)
+borrow-window declared: 2026-10-09..2026-10-10 consumer=MV 产线 KF 关键帧批（bm-a 本地接管 44 镜·Krea2 turbo·44/44 收线 10-10 23:35:08） (source=orders 2026-10-10 23:0x @bm-c 撤单行（bm-a 本地接管）+rounds.log E62 借用窗收线回计价第三例（10-09 +0.795/10-10 +0.5016 kWh·LoRA 0.7948 单列 E59）)
+borrow-window declared: 2026-10-11..2026-10-11 consumer=BigStream 短视频部/MV 产线本机 GPU 共租窗（meme KF-P/KF-N 关键帧+i2v 在产） (source=rounds.log 12:0x 轮 gpu 分机行「MV/KF 借用窗抬升如实归因」+heartbeat idle_selfcheck 12:14 busy（vram_free 329MiB·cotenant 高载）实锚)
+borrow-window declared: 2026-10-12..2026-10-12 consumer=借出负载·归因勘正 2026-10-12 09:5x：实测=LLM 常驻服务负载（ollama qwen2.5:14b-8k·10.5GB VRAM pin·连续推理 util 97%）——原声明「BigStream 专辑 KN i2v 本地窗」未起（VRAM 被 LLM 占满·H3 int8 19.5GB 不可载·ComfyUI 8188 窗内零完成+盘上零 KN 落片实证）；日级借用声明维持（非 SELF 负载如实·E57 采样器续采至 14:53） (source=orders O-20261011-21xx 专辑令行（点火令在册）+E57 采样数据归因勘正实锚（state/h3-window-energy-llmserve-interim-20261012-0958.json+ollama /api/ps 实读）)
+borrow-window declared: 2026-10-12..2026-10-13 consumer=BigStream mv0001 KF demo 选优批夜窗（bm-a seeds 9012-9014 选优批+E01c 落笔近特·O-20261012-2025 CEO 下班全算力移交令双机 KF 种子分工·夜窗提前开 20:2x·i2v 本地 INT8 双机段同令后续） (source=orders O-20261012-2025（origin ac305c5·10-12 20:2x 行）+起点态实测 20:3x（GPU util 1%/used 8770MiB·llama-server PID 74832 在跑+ComfyUI PID 10336 在位=批未点火前置态）)
+borrow-window declared: 2026-10-13..2026-10-13 consumer=BigStream mv0001 男主情绪基准帧库烧制夜窗（O-20261012-2330 ③ bm-a 夜窗 GPU·jman LoRA RAW 52 步不可行则 turbo 草版·怔住/心动/凝望/释然/决心 5-7 张·导演席窗） (source=orders O-20261012-2330 ③ bm-a 夜窗 GPU=男主情绪基准帧库烧制行（origin 6a5e0cf·10-12 23:3x）+起点态实测 10-13 00:14:52（GPU util 1%/used 9323MiB 含 llama-server PID 74648 复活第7例→执法 #5 双杀后 used 4227/free 7771=导演席烧制前置就绪）)
+borrow-window declared: 2026-10-13..2026-10-14 consumer=导演席 mv0001 V3 冲刺 bm-a 段（午后 fullres 接力批 7/7 locked seeds 1344×768 jman0.6·orders 6851396 19:41 实锚）+21:0x CEO 下班全算力窗本机段（O-20261013-2200 bm-a=监督+装配端调度·CPU 面） (source=orders 6851396（10-13 19:41 @bm-a V3 fullres 7/7 relay）+O-20261013-2100 CEO 下班全算力令+O-20261013-2200 全本地验证令（bm-a=监督+装配端调度在役）)
+borrow-window runner sentinel: WARN runner PRESENT during borrow window (SELF-lane asset competing with the lent-out lane; re-enforce night stop or migrate per O-20261012-2215 lane law)
+3-day rolling SELF caliber: n=0 -> BORROW-COVERED (rolling window fully inside declared borrowing windows: 2026-10-12,2026-10-13,2026-10-14; 30% call-out suspended this window -- lent-out load is not self production and not an idle failure; full-caliber line above stays for transparency)
+borrow-window caliber (informational): n=156 avg=43.8% (lent-out load; NOT read by the 30% enforcement line)
+7-day benchmark (D-20260930-36 R-C1, head-firm gap line): 2026-10-08..2026-10-14 n=496 avg=36.9% -> BELOW-BENCH(<50% structural-failure line on 7-day avg, R-C1 D-20260930-36) (gap line only; sole call-out stays 30%; 70% target = directional ref pending R- threshold-calibration receipts)
+rolling 30-min window: n=2 avg=49.5% -> IDLE
+
+[ollama response] FAIL -> ollama response
+ollama probe failed: BORROW-WINDOW (tags=200, generate-timeout): TimeoutError('timed out')
+
+[queue rows] PASS -> queue rows
+main.md: 69 rows
+tech.md: 87 rows
+explore.md: 67 rows
+
+[cost ledger] PASS -> cost ledger
+selftest: math=True determinism=True count=ok (orders+quota-gate+count+cloud+borrow) -> PASS
+
+[rounds.log strict-decode] PASS -> rounds.log strict-decode
+strict utf-8 decode ok: 303824 bytes / 240 lines
+
+[resident QA serve 8792] PASS -> resident QA serve 8792
+health 200 status=ok anchors=20 server=resident-qa v1.0 (BigCompute MaaS consumer face) model=qwen2.5:7b-instruct
+
+[ledger tail integrity (BC-P-45)] PASS -> ledger tail integrity (BC-P-45)
+state/rounds.log: tail_nl=ok last_markers=1 last_len=471
+state/heartbeat.txt: tail_nl=ok last_markers=0 last_len=192
+HQ-FEEDBACK.md: tail_nl=ok last_markers=0 last_len=1853
+state/proposals.md: tail_nl=ok last_markers=1 last_len=535
+state/queue/main.md: tail_nl=ok last_markers=1 last_len=667
+state/queue/tech.md: tail_nl=ok last_markers=1 last_len=230
+state/queue/explore.md: tail_nl=ok last_markers=1 last_len=722
+
+smoke verdict: 6/7 PASS (charter 4 + T25 + E41 + BC-P-45 no.8 probes)
