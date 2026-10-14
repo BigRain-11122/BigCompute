@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-10-14 12:1x",
- "current_activity": "12:1x 排程接续轮：P1 serve 模型清单消失事故处置步①诊断毕（9 模型族 ~40GB 盘面直删仅剩 bge-m3·四兄弟司循环 404 风暴实锚·零单边重拉=CEO 工作窗让路·步②夜窗恢复 pending）+V100 P0 前置三步毕（RAM 代际 DDR5-5600 96GB PASS 超预期→今晚夜窗 35B MoE 卸载实测 ≥30 字/秒）",
- "latest_artifact": "state/serve-env-drift-20261014-1206.txt（P1 事故全程证据：时间线+直删通道判定+四客户端 404 实锚+E69 归因勘正）+state/v100-p0-preflight-raw-20261014.txt（V100 P0 RAM/引擎/模型源前置证据）·2026-10-14 12:1x",
- "next_milestone": "今晚夜窗双联窗=serve 按消费方优先序恢复（7b 首拉+U240 复锚）+V100 P0 35B MoE 卸载实测（验收 ≥30 字/秒·证据回执 spec P0 行）；M66 批池月窗 ~11-0x；N1 月末归集=10-31 夜班一命令（S1-S6 六源）"
+ "updated_at": "2026-10-14 12:2x",
+ "current_activity": "12:2x 哨兵轮：P1 serve 清单事故步③风险行 R-54 立行（E2·四司 404 风暴+/api/delete 零门禁盲区）+步②恢复预备件 Tools/serve_restore_manifest.py 落位（selftest 5/5+消费方序清单缺 9 毕·夜窗闸白窗 REFUSED=让路执法）",
+ "latest_artifact": "Tools/serve_restore_manifest.py（M71 步②夜窗一命令恢复正身）+state/serve-restore-manifest-20261014-121924.json（缺 9 消费方序清单）·2026-10-14 12:2x",
+ "next_milestone": "今晚夜窗三联=①serve 按消费方优先序恢复 9 模型（T90·7b 首拉+U240 复锚）②V100 P0 35B MoE 卸载实测（≥30 字/秒验收）③BC-P-75 探针批文面复核；M66 批池月窗 ~11-0x；N1 月末归集=10-31 夜班一命令（S1-S6 六源）"
 }

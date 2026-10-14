@@ -1,0 +1,23 @@
+=== qa smoke partial 2026-10-14 12:2x (charter 4 faces / ollama generate face=HELD per M71 incident ③) ===
+ts: 2026-10-14 12:20:44
+--- face1 GPU collector report ---
+PASS
+machine_borrowable=NOT-BORROWABLE[COTENANT] vram_free=8311MiB(line>=6144MiB) cotenant_editors=2(line 0) (D-20261004-04 dual probe; decoupled from GREEN-IDLE loop state; R-41 fleet-row field)
+gpu report 2026-10-14 machine=bm-a: n=50 avg=61.1% max=100% kpi=PASS
+3-day rolling baseline (pre-registered, C-20260929-02): 2026-10-12..2026-10-14 n=162 avg=42.9% (call-out 30%; 70% target = directional ref)
+--- face2 ollama（生成面=HELD：/api/generate 缺模自动拉副作用禁触发 per M71 ③·只读 tags 面） ---
+tags 200 inventory_n=1 [bge-m3:latest]（事故态如实：基线 10→现 1·恢复=T90 夜窗）
+HELD-AS-EXPECTED（生成面禁触发面=HELD 合法态·M71 ③）
+--- face3 三队列 ≥3 ---
+main.md open-ish=8
+tech.md open-ish=11
+explore.md open-ish=10
+total=29 PASS
+--- face4 cost ledger selftest ---
+PASS selftest: math=True determinism=True count=ok (orders+quota-gate+count+cloud+borrow) -> PASS
+--- 本轮产品件证据 ---
+RESTORE-MANIFEST baseline=10 live=1 missing=9 -> state\serve-restore-manifest-20261014-122045.json
+  pull-order qwen2.5:7b-instruct
+  pull-order qwen2.5:14b-8k
+  pull-order qwen3:8b
+VERDICT: PASS（3/4 部分验+ollama 生成面 HELD 合法态）
