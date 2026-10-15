@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-10-15 12:5x",
- "current_activity": "12:43 午班轮：10-14 23:0x 被杀轮验真代收（T89 V100 P0 夜窗实测毕）+O-20261015-1200 云端 token 严管令承接（mandate v3.1→v3.2）+O-20261015-1055/1030/1230/1235 收讫知悉+C-20261015-01 never-idle 合规注记",
- "latest_artifact": "Tools/p0_moe_measure.py 预注册测量件+state/v100-p0-verdict-20261014.txt（P0 35B MoE 卸载跨跑均值 31.6 字/秒 ≥30 验收线 PASS·双 JSON 在档）+R-55 V100 采购风险群镜像入 docs/risk-register.md（patrol bigcompute 席旗即销）（2026-10-15 12:5x）",
- "next_milestone": "M71 四司 :11434 404 消费面冲突裁决回执（T90 paused 呈批中·委员会/CEO-PROXY 窗）+V100 到货 spec §7 三关验收+72h 换退窗起算（CEO 采购在途）+N1 月末归集=10-31 22:43 一命令（S1-S6 六源）"
+ "updated_at": "2026-10-15 13:5x",
+ "current_activity": "13:5x 哨兵轮：T96 七台账空行普查+外科清创（深部残留 5 处坐实全清·内容零触碰）+qa_smoke no.8 合成负例 selftest 模式落地（4/4）；审核步=O-20261015-1235/1250 记忆双令收讫零本司派单（机队推广派单=@bm-b/@bm-c）",
+ "latest_artifact": "Tools/ledger_blank_census.py（census/debride/selftest 三命令·selftest 8/8）+state/ledger-blank-census-20261015-134753.json（七台账普查清创证据·damage 5→0）+qa/smoke-20261015-1349.log+png（2026-10-15 13:5x）",
+ "next_milestone": "M71 四司 :11434 404 消费面冲突裁决回执（T90 paused 呈批中·委员会/CEO-PROXY 窗）+随窗批文族 T64/T70/T87/T88 至则行+M66 批池月窗回访 ~11-0x+N1 月末归集=10-31 22:43 一命令（S1-S6 六源）"
 }

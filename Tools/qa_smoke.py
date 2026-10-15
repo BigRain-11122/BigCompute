@@ -30,8 +30,9 @@ is a faithful zero-edit render of the real command output (declaration
 BC-F-20260928-03, group patrol to adjudicate; charter red line:
 fabrication = P1).
 
-Usage: python Tools/qa_smoke.py
+Usage: python Tools/qa_smoke.py [--selftest]
 Exit 0 = all pass; 1 = at least one fail (fix = next round top priority).
+--selftest runs probe no.8 against synthetic damaged fixtures only (T96).
 Encoding rule: this file stays PURE ASCII (group coding law).
 """
 import datetime
@@ -284,7 +285,7 @@ TAIL_PROBE_FILES = (
 )
 
 
-def probe_ledger_tails():
+def probe_ledger_tails(root=None):
     """BC-P-45 (probe no.8): git-tracked ledger tail integrity.
 
     Read-side complement to the write-side round_append J4 guard:
@@ -293,11 +294,13 @@ def probe_ledger_tails():
     e.g. two queue rows or two daily-clean entries fused into one),
     and (c) no empty line inside the last 12 lines (T95: non-canonical
     append residue, 14:0x case).
-    Pure read, zero writes, zero new ledgers.
+    Pure read, zero writes, zero new ledgers. root param lets the
+    selftest run the exact probe code against temp fixtures (T96).
     """
+    root = root or ROOT
     fails, detail = [], []
     for rel, marker in TAIL_PROBE_FILES:
-        path = os.path.join(ROOT, *rel.split("/"))
+        path = os.path.join(root, *rel.split("/"))
         if not os.path.exists(path):
             fails.append("%s missing" % rel)
             detail.append("%s: MISSING" % rel)
@@ -347,7 +350,81 @@ def probe_ledger_tails():
     return ok, out
 
 
+def selftest_tails():
+    """T96: synthetic negative fixtures for probe no.8 (a)(b)(c).
+
+    The live probe only ever sees healthy ledgers, so a regression in
+    the tail checks would surface as a false PASS. This selftest builds
+    the full seven-path TAIL_PROBE_FILES layout in a temp dir (real
+    ledgers are never touched), injects one known damage signature per
+    scenario, and asserts the probe fails on exactly that signature:
+      A clean     -> probe PASS
+      B tail-12 blank (T95 14:0x class)      -> "empty line(s) in tail-12"
+      C merged last line (10-04/05 class)    -> "2 markers in last line"
+      D missing trailing newline (T24 class) -> "trailing newline missing"
+    """
+    import shutil
+    import tempfile
+
+    clean = {
+        "state/rounds.log": "2026-10-15 13:00 tokens: local=1 api=0\n",
+        "state/heartbeat.txt": "13:00 round heartbeat ok\n",
+        "HQ-FEEDBACK.md": "## 日清：无待报\n",
+        "state/proposals.md": "| BC-P-99 | 2026-10-15 | x |\n",
+        "state/queue/main.md": "| M99 | 2026-10-15 | x |\n",
+        "state/queue/tech.md": "| T99 | 2026-10-15 | x |\n",
+        "state/queue/explore.md": "| E99 | 2026-10-15 | x |\n",
+    }
+
+    def build(tmp, damage=None):
+        for rel, text in clean.items():
+            text = dict(clean)[rel]
+            if damage and rel == damage[0]:
+                text = damage[1]
+            path = os.path.join(tmp, *rel.split("/"))
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            with open(path, "w", encoding="utf-8", newline="") as f:
+                f.write(text)
+
+    results = []
+
+    def scenario(label, damage, want_ok, needle):
+        tmp = tempfile.mkdtemp(prefix="qa-tails-selftest-")
+        try:
+            build(tmp, damage)
+            ok, detail = probe_ledger_tails(root=tmp)
+            good = ok == want_ok and (needle is None or needle in detail)
+            results.append(good)
+            print("  [%s] %s (ok=%s)" % ("PASS" if good else "FAIL",
+                                        label, ok))
+            if not good:
+                print("    detail: %s" % detail.replace("\n", " | "))
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+
+    print("qa_smoke probe no.8 selftest (T96 - synthetic fixtures, "
+          "real ledgers untouched)")
+    scenario("A clean seven-ledger layout -> PASS", None, True, None)
+    scenario("B tail-12 blank -> FAIL empty-line",
+             ("state/rounds.log",
+              "2026-10-15 13:00 tokens: local=1 api=0\n\n"),
+             False, "empty line(s) in tail-12")
+    scenario("C merged last line -> FAIL 2 markers",
+             ("state/proposals.md",
+              "| BC-P-99 | 2026-10-15 | x |\n"
+              "| BC-P-99 | x | BC-P-98 | 2026-10-15 | fused |\n"),
+             False, "2 markers in last line")
+    scenario("D missing trailing newline -> FAIL tail_nl",
+             ("state/heartbeat.txt", "13:00 round heartbeat ok"),
+             False, "trailing newline missing")
+    print("selftest verdict: %d/%d PASS"
+          % (len([r for r in results if r]), len(results)))
+    return 0 if all(results) else 1
+
+
 def main():
+    if len(sys.argv) > 1 and sys.argv[1] == "--selftest":
+        return selftest_tails()
     os.makedirs(QA_DIR, exist_ok=True)
     ts = datetime.datetime.now().strftime("%Y%m%d-%H%M")
     log_path = os.path.join(QA_DIR, "smoke-%s.log" % ts)
