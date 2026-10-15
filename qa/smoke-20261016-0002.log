@@ -1,0 +1,38 @@
+BigCompute QA smoke test 20261016-0002 (orders L254 / charter v1)
+
+[gpu collector] FAIL -> gpu collector
+machine_borrowable=NOT-BORROWABLE[VRAM|COTENANT] vram_free=1466MiB(line>=6144MiB) cotenant_editors=4(line 0) (D-20261004-04 dual probe; decoupled from GREEN-IDLE loop state; R-41 fleet-row field)
+gpu report 2026-10-16 machine=bm-a: no samples today
+
+[ollama response] PASS -> ollama response
+answer='1 + 1 = 2. 😊\n\nBut if you\'re asking in a playful or philosophical way—like "what does 1+1 mean' eval_count=32 81.78 tok/s
+residency: pre=FOREVER post=FOREVER (maintained)
+NAME                 ID              SIZE      PROCESSOR    CONTEXT    RUNNER      UNTIL   
+qwen3:4b-instruct    0edcdef34593    3.9 GB    100% GPU     4096       llamacpp    Forever
+NAME                 ID              SIZE      PROCESSOR    CONTEXT    RUNNER      UNTIL   
+qwen3:4b-instruct    0edcdef34593    3.9 GB    100% GPU     4096       llamacpp    Forever
+
+[queue rows] PASS -> queue rows
+main.md: 71 rows
+tech.md: 101 rows
+explore.md: 69 rows
+
+[cost ledger] PASS -> cost ledger
+selftest: math=True determinism=True count=ok t94date=True (orders+quota-gate+count+cloud+borrow+l1+t94date) -> PASS
+
+[rounds.log strict-decode] PASS -> rounds.log strict-decode
+strict utf-8 decode ok: 317136 bytes / 255 lines
+
+[resident QA serve 8792] PASS -> resident QA serve 8792
+health 200 status=ok anchors=20 server=resident-qa v1.0 (BigCompute MaaS consumer face) model=qwen3.6-35b
+
+[ledger tail integrity (BC-P-45)] PASS -> ledger tail integrity (BC-P-45)
+state/rounds.log: tail_nl=ok tail_empty=0 last_markers=1 last_len=510
+state/heartbeat.txt: tail_nl=ok tail_empty=0 last_markers=0 last_len=99
+HQ-FEEDBACK.md: tail_nl=ok tail_empty=0 last_markers=0 last_len=409
+state/proposals.md: tail_nl=ok tail_empty=0 last_markers=1 last_len=1085
+state/queue/main.md: tail_nl=ok tail_empty=0 last_markers=1 last_len=535
+state/queue/tech.md: tail_nl=ok tail_empty=0 last_markers=1 last_len=385
+state/queue/explore.md: tail_nl=ok tail_empty=0 last_markers=1 last_len=270
+
+smoke verdict: 6/7 PASS (charter 4 + T25 + E41 + BC-P-45 no.8 probes)

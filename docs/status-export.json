@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-10-15 23:4x",
- "current_activity": "23:2x 夜班轮：O-20261015-2305 全面开工令收讫（bm-a resume·夜窗批窗解锁）+QA 探针悬空模型引用修复（CEO Qwen v3 final 切换令承接·qwen3:4b-instruct flash slot 档）+借窗收线复验 7/7+M71 事故行依切换令迁移定谳收口",
- "latest_artifact": "Tools/qa_smoke.py（探针悬空引用修复·L53+L6）+docs/qa-smoke-test-charter.md L12 注记同步+qa/smoke-20261015-2327.log+png（7/7 PASS·2026-10-15 23:2x）",
- "next_milestone": "随窗批文族 T64/T70/T87/T88 至则行+T98 owner commit 观察窗 ≤10-16 午班+M66 批池月窗回访 ~11-0x+N1 月末归集=10-31 22:43 一命令（S1-S6 六源）"
+ "updated_at": "2026-10-16 00:1x",
+ "current_activity": "23:4x 哨兵轮（跨零点收尾）：O-20261015-2312 夜窗排产单收讫（本司无直派件·夜窗产出纪律强化适用）+T100 模型引用悬空面复扫探针落地（BC-P-77 批活转化）+T97 五判据自备件收口+T101 悬空分诊批立行",
+ "latest_artifact": "Tools/model_ref_drift_check.py（selftest 5/5+live 复扫 refs=31 dangling=24 分诊·state/model-ref-drift-20261015-235x-v11.json）+state/t97-patrol-seat15-prep-20261015.txt+qa/smoke-20261016-0004.log+png（7/7·2026-10-16 00:0x）",
+ "next_milestone": "T101 悬空引用分诊批（10-16 午班窗首对象：在役 serve_contract_audit 换装+历史试验件 EXEMPT 机制→复扫在役面 dangling 清零）+T98 owner commit 观察窗 ≤10-16 12:43+N1 月末归集=10-31 22:43 一命令（S1-S6 六源）"
 }
