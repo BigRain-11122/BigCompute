@@ -234,12 +234,12 @@ def cmd_selftest(args):
     check("keepalive expiring", keepalive_verdict("2026-10-11T13:30:00Z") == "expiring")
     check("keepalive not_loaded/empty", keepalive_verdict("") == "not_loaded")
     raw_ctx = ("NAME ID SIZE PROCESSOR CONTEXT EXPIRES\n"
-               "qwen3:8b abc123 7.4GB 100% GPU 8192 4 minutes from now")
+               "qwen3:4b-instruct abc123 3.9GB 100% GPU 4096 4 minutes from now")
     m = parse_ollama_ps_context(raw_ctx)
-    check("ollama_ps ctx parse", m.get("qwen3:8b") == 8192)
-    raw_noctx = "NAME ID SIZE PROCESSOR\nqwen3:8b abc123 7.4GB 100% GPU"
+    check("ollama_ps ctx parse", m.get("qwen3:4b-instruct") == 4096)
+    raw_noctx = "NAME ID SIZE PROCESSOR\nqwen3:4b-instruct abc123 3.9GB 100% GPU"
     m2 = parse_ollama_ps_context(raw_noctx)
-    check("ollama_ps no-ctx col → None field", m2.get("qwen3:8b") is None)
+    check("ollama_ps no-ctx col → None field", m2.get("qwen3:4b-instruct") is None)
     check("ollama_ps empty robust", parse_ollama_ps_context("") == {})
     show = {"model_info": {"qwen3.context_length": 40960, "general.architecture": "qwen3"}}
     check("native ctx extract", find_native_ctx(show) == 40960)

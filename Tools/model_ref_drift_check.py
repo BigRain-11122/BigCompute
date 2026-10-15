@@ -13,7 +13,9 @@ vs live /api/tags 清单对照 → 悬空引用报告。
 判据（预注册）：
   J1 纯只读：扫描面零写零生成调用（/api/tags 唯一网络面·2s 超时·零自动拉模副作用）
   J2 fail-open：API 不可达 → 引用标 UNVERIFIED 照常出报告（探针坏不阻塞轮·T44 同律）
-  J3 悬空判定：引用名 ∉ live tags → DANGLING（restore 备用件等意图性引用由消费侧注记）
+  J3 悬空判定：引用名 ∉ live tags → DANGLING；EXEMPT_HISTORICAL 文件集（T101② moot
+     清单/历史试验探针）→ EXEMPT-HISTORICAL informational 态不计 dangling（在役面判据
+     =dangling 清零·豁免面单列）
   J4 owner-face 只报告不触碰（T98 同仓单执行体退避律）
 局限（v1.1 注记）：自件跳过（self fixtures 不自扫）；字符串字面量面（f-string/变量
 拼接/注释外引用不扫）；bare 名按已知家族前缀集匹配+双形态归一（bare 名 ↔ live tag 基名）；
@@ -47,6 +49,18 @@ BARE_BLOCKLIST = {"llama-server", "llama-server.exe", "llama.cpp",
                  "qwen", "qwen3", "qwen3.context_length"}
 # 非 ollama 车道模型（llama-server :8090 面·v3 final 迁移正身）→ LANE-8090 态
 NON_OLLAMA_LANES = {"qwen3.6-35b"}
+# EXEMPT_HISTORICAL（T101②）：意图性/历史试验件豁免集——文件级（整件为 moot 清单或
+# 已收线历史试验探针·引用删除模型=对象正身非悬空缺陷·消费侧注记面）：
+#   serve_restore_manifest = T90 moot 正身（CEO v3 final 切换令=恢复 apply 永久停用·清单留库备用）
+#   其余五件 = 历史试验探针（对象=已删旧档·试验已收线归档·live 改写无意义）
+EXEMPT_HISTORICAL = {
+    "serve_restore_manifest.py": "T90 moot master list (intentional deleted-model registry)",
+    "bonsai_fleet_trial_probe.py": "historical trial probe (M13 bonsai trial)",
+    "e12_package_anchor_probe.py": "historical trial probe (E12 package anchor)",
+    "inference_energy_anchor.py": "historical trial probe (E39/E46 energy anchor)",
+    "q8_trial_probe.py": "historical trial probe (T15 Q8 tier)",
+    "serve_concurrency_probe.py": "historical trial probe (E31 concurrency baseline)",
+}
 
 
 def extract_refs(path):
@@ -104,17 +118,20 @@ def fetch_live_tags(url=OLLAMA_TAGS_URL, timeout=2):
 
 
 def classify(scan, live_tags):
-    """J3 分类 → report dict（api 不可达 → UNVERIFIED 面）。"""
+    """J3 分类 → report dict（api 不可达 → UNVERIFIED 面·EXEMPT-HISTORICAL 不计 dangling）。"""
     report = {"generated_ts": time.strftime("%Y-%m-%dT%H:%M:%S"),
               "api_available": live_tags is not None,
               "live_tags": sorted(live_tags) if live_tags is not None else None,
               "files": {}, "totals": {"refs": 0, "live": 0, "dangling": 0,
-                                      "unverified": 0, "lane-8090": 0}}
+                                      "unverified": 0, "lane-8090": 0,
+                                      "exempt-historical": 0}}
     for fname, refs in scan.items():
         rows = []
         for name, kind, lineno in refs:
             if live_tags is None:
                 status = "UNVERIFIED"
+            elif fname in EXEMPT_HISTORICAL:
+                status = "EXEMPT-HISTORICAL"
             elif name in NON_OLLAMA_LANES:
                 status = "LANE-8090"
             elif name in live_tags or (":" not in name and any(
@@ -139,9 +156,9 @@ def cmd_check(args):
     with io.open(out_path, "w", encoding="utf-8", newline="\n") as f:
         json.dump(report, f, ensure_ascii=False, indent=1, sort_keys=True)
     t = report["totals"]
-    print("MODEL-REF-DRIFT files=%d refs=%d live=%d dangling=%d unverified=%d lane-8090=%d" % (
+    print("MODEL-REF-DRIFT files=%d refs=%d live=%d dangling=%d unverified=%d lane-8090=%d exempt-historical=%d" % (
         len(report["files"]), t["refs"], t["live"], t["dangling"], t["unverified"],
-        t["lane-8090"]))
+        t["lane-8090"], t["exempt-historical"]))
     if live is None:
         print("API-UNAVAILABLE: fail-open J2 -> UNVERIFIED report written")
     else:
@@ -156,7 +173,7 @@ def cmd_check(args):
 
 
 def _selftest():
-    """S1-S5 合成夹具离线断言（零网络·J 式确定性）。"""
+    """S1-S6 合成夹具离线断言（零网络·J 式确定性）。"""
     ok = [0]
 
     def check(cond, label):
@@ -207,6 +224,14 @@ def _selftest():
                         {"bge-m3:latest", "qwen3:4b-instruct"})
         stripped = lambda r: {k: v for k, v in r.items() if k != "generated_ts"}
         check(stripped(rep3) == stripped(rep), "determinism double-run")
+        # S6 exempt-historical（T101②：豁免文件引用删除模型=EXEMPT-HISTORICAL 非 dangling）
+        exempt_name = "serve_restore_manifest.py"
+        rep4 = classify({exempt_name: [("qwen2.5:7b-instruct", "tagged", 45)]},
+                        {"bge-m3:latest", "qwen3:4b-instruct"})
+        check(rep4["files"][exempt_name][0]["status"] == "EXEMPT-HISTORICAL"
+              and rep4["totals"]["dangling"] == 0
+              and rep4["totals"]["exempt-historical"] == 1,
+              "exempt-historical not counted as dangling")
     print("SELFTEST %d/%d PASS" % (ok[0], ok[0]))
     return 0
 
