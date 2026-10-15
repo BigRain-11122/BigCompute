@@ -3,7 +3,7 @@
 
 Runs the four BigCompute charter checks (docs/qa-smoke-test-charter.md):
  1. GPU collector runs and produces data (gpu_idle_collector.py report)
- 2. Ollama real response (local serve probe, qwen2.5:7b-instruct)
+ 2. Ollama real response (local serve probe, qwen3:4b-instruct)
  3. three queue files each hold >= 3 todo rows (state/queue/*.md)
  4. cost ledger maintained (cost_ledger.py selftest PASS)
  5. rounds.log strict UTF-8 decode integrity (tech T25 / BC-P-16 / T24:
@@ -50,7 +50,7 @@ QUEUE_DIR = os.path.join(ROOT, "state", "queue")
 QUEUE_FILES = ("main.md", "tech.md", "explore.md")
 OLLAMA_URL = "http://localhost:11434/api/generate"
 OLLAMA_TAGS_URL = "http://localhost:11434/api/tags"
-OLLAMA_MODEL = "qwen2.5:7b-instruct"
+OLLAMA_MODEL = "qwen3:4b-instruct"  # flash-slot resident per Qwen v3 final switchover (O-20261015-1335/1500; old qwen2.5 family deleted by CEO order -- stale ref would auto-repull a deleted model)
 RESIDENT_QA_URL = "http://127.0.0.1:8792/health"
 
 PNG_PS_TEMPLATE = r"""

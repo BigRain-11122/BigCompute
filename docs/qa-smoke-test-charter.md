@@ -9,7 +9,7 @@
 | # | 判据 | 实测口径 |
 |---|---|---|
 | 1 | GPU 采集器跑通出数 | `python Tools/gpu_idle_collector.py report` 零退出+当日有样本+日均对账行出数（30% 唯一点名阈值·C-20260929-02） |
-| 2 | Ollama 真响应 | 本地 11434 `/api/generate` 真请求真响应（qwen2.5:7b-instruct·eval_count tok/s 实测记录） |
+| 2 | Ollama 真响应 | 本地 11434 `/api/generate` 真请求真响应（qwen3:4b-instruct〔Qwen v3 final 切换后 flash slot 常驻档·O-20261015-1335/1500·旧 qwen2.5 家族已删·判据本体不变仅模型注记随切换令同步〕·eval_count tok/s 实测记录） |
 | 3 | 三队列 ≥3 条 | state/queue/main.md、tech.md、explore.md 各 ≥3 条待办行 |
 | 4 | 成本账本在维护 | `python Tools/cost_ledger.py selftest` PASS（口径 B 结算唯一） |
 
