@@ -78,6 +78,14 @@ allocation), never at entry time; monthly cap gate = l1-budget:
       --ref N1-202610
   python Tools/cost_ledger.py l1-summary [--month 2026-10]
 
+SLI-8 cloud-consumption line (BC-P-76 batch activation; mechanism-map
+sec.4; carrier for token-economy v3.0 strict-management judgment lines:
+weekly cloud line continuously visible + attribution violations = 0.
+Pure read-only aggregation over the existing cloud/l1 rails; the deeper
+four-field audit stays with Tools/cloud_attribution_audit.py, criteria
+mirrored so the headline count cannot drift):
+  python Tools/cost_ledger.py sliline [--month 2026-10]
+
 Encoding rule: this file stays PURE ASCII (group coding law).
 """
 import argparse
@@ -836,10 +844,70 @@ def l1_summary(args, ledger=L1LEDGER, budget=L1BUDGET):
     }
 
 
+# --- SLI-8 cloud-consumption line (BC-P-76 batch activation) -------------
+# Mirrors Tools/cloud_attribution_audit.py ATTR_FIELDS/EMPTY_MARKS so the
+# headline violation count cannot drift from the deep audit tool.
+SLI_ATTR_FIELDS = ("tx_id", "consumer", "lane", "task_ref")
+SLI_EMPTY_MARKS = {"", "-", "none", "null", "n/a", "tbd"}
+
+
+def _sli_attr_violations(rows):
+    out = []
+    for r in rows:
+        for f in SLI_ATTR_FIELDS:
+            v = r.get(f)
+            if v is None or str(v).strip().lower() in SLI_EMPTY_MARKS:
+                out.append({"tx_id": r.get("tx_id"), "field": f})
+    return out
+
+
+def sli_line(args, cpath=CLEDGER, l1path=L1LEDGER):
+    """One-command SLI-8 evidence line (read-only, no new ledgers).
+
+    Aggregates the month's cloud-rail and l1-rail rows and counts the
+    cloud-rail attribution violations with the audit tool's criteria.
+    Zero-state (no rows at all) is the strict-management default face:
+    the local CLI loop launches nothing to the cloud, so zero rows and
+    zero violations are the natural baseline (P-09 evidence chain).
+    """
+    month = getattr(args, "month", None) or datetime.date.today().strftime("%Y-%m")
+    crows = [r for r in _load_rows(cpath) if r.get("month") == month]
+    l1rows = [r for r in _load_rows(l1path) if r.get("month") == month]
+    viol = _sli_attr_violations(crows)
+    cloud_zero = len(crows) == 0 and len(l1rows) == 0
+    verdict = ("SLI8-GREEN-ZERO-STATE" if cloud_zero and not viol
+               else ("SLI8-GREEN" if not viol else "SLI8-ATTRIBUTION-VIOLATIONS"))
+    return {
+        "month": month,
+        "cloud": {
+            "rows": len(crows),
+            "amount_mtok_total": round(
+                sum(r.get("amount_mtok", 0.0) for r in crows), 6),
+            "last_date": max((r.get("date", "") for r in crows),
+                             default=None),
+        },
+        "l1_local": {
+            "rows": len(l1rows),
+            "amount_mtok_total": round(
+                sum(r.get("amount_mtok", 0.0) for r in l1rows), 6),
+            "last_date": max((r.get("date", "") for r in l1rows),
+                             default=None),
+        },
+        "attribution_violations": len(viol),
+        "attribution_violation_rows": viol,
+        "verdict": verdict,
+        "sli_ref": "mechanism-map sec.4 SLI-8 cloud-consumption line (BC-P-76)",
+        "baseline_note": "strict-management default face: local loop zero "
+                         "cloud launches; whitelist-window entries land in "
+                         "the cloud rail with 4-field attribution",
+    }
+
+
 def _selftest():
     order_results, quota_results, cloud_results, borrow_results = [], [], [], []
     l1_results = []
     t94_results = []
+    sli_results = []
     for run in (1, 2):
         tmp = os.path.join(tempfile.gettempdir(), "bc_ledger_selftest_%d.jsonl" % run)
         qtmp = os.path.join(tempfile.gettempdir(), "bc_quota_selftest_%d.jsonl" % run)
@@ -1149,6 +1217,53 @@ def _selftest():
             and all(r.get("month") == t94_month for r in t94_rows)
         )
         t94_results.append(t94_ok)
+
+        # SLI-8 segment (BC-P-76): dedicated temp rails -> data face +
+        # violation face + zero-state face, all in one command
+        stmp = os.path.join(tempfile.gettempdir(),
+                            "bc_sli_cloud_%d.jsonl" % run)
+        sltmp = os.path.join(tempfile.gettempdir(),
+                             "bc_sli_l1_%d.jsonl" % run)
+        for p in (stmp, sltmp):
+            if os.path.isfile(p):
+                os.remove(p)
+        _append_row(stmp, {"tx_id": "S1", "month": "2026-09",
+                           "date": "2026-09-27", "type": "cloud",
+                           "consumer": "bigcompute", "lane": "openrouter",
+                           "task_ref": "T-1", "amount_mtok": 1.5,
+                           "reason": "selftest"})
+        _append_row(stmp, {"tx_id": "S2", "month": "2026-09",
+                           "date": "2026-09-28", "type": "cloud",
+                           "consumer": "bigcompute", "lane": "openrouter",
+                           "task_ref": "-", "amount_mtok": 0.5,
+                           "reason": "selftest"})
+        _append_row(sltmp, {"tx_id": "L1S", "month": "2026-09",
+                            "date": "2026-09-29", "type": "l1",
+                            "consumer": "bigdomain",
+                            "model": "qwen3.6-35b",
+                            "amount_mtok": 0.002})
+        sargs = Q()
+        sargs.month = "2026-09"
+        sli = sli_line(sargs, cpath=stmp, l1path=sltmp)
+        zero = sli_line(sargs, cpath=stmp + ".absent", l1path=sltmp + ".absent")
+        sli_ok = (
+            sli["cloud"]["rows"] == 2
+            and abs(sli["cloud"]["amount_mtok_total"] - 2.0) < 1e-9
+            and sli["cloud"]["last_date"] == "2026-09-28"
+            and sli["l1_local"]["rows"] == 1
+            and abs(sli["l1_local"]["amount_mtok_total"] - 0.002) < 1e-9
+            and sli["l1_local"]["last_date"] == "2026-09-29"
+            and sli["attribution_violations"] == 1
+            and sli["attribution_violation_rows"][0]["field"] == "task_ref"
+            and sli["verdict"] == "SLI8-ATTRIBUTION-VIOLATIONS"
+            and zero["cloud"]["rows"] == 0
+            and zero["l1_local"]["rows"] == 0
+            and zero["attribution_violations"] == 0
+            and zero["verdict"] == "SLI8-GREEN-ZERO-STATE"
+        )
+        sli_results.append(sli_ok)
+        os.remove(stmp)
+        os.remove(sltmp)
         for p in (tmp, qtmp, qbtmp, ctmp, cbtmp, btmp, bbtmp, l1tmp, l1btmp):
             os.remove(p)
     # token-count face: estimation caliber; absence is visible, not a math fail
@@ -1203,10 +1318,11 @@ def _selftest():
                and borrow_results[0][0] and borrow_results[1][0]
                and l1_results[0][0] and l1_results[1][0])
     t94_all = t94_results[0] and t94_results[1]
-    print("selftest: math=%s determinism=%s count=%s t94date=%s (orders+quota-gate+count+cloud+borrow+l1+t94date) -> %s"
-          % (math_ok, same, count_status, t94_all,
-             "PASS" if (math_ok and same and count_ok and t94_all) else "FAIL"))
-    return 0 if (math_ok and same and count_ok and t94_all) else 1
+    sli_all = sli_results[0] and sli_results[1]
+    print("selftest: math=%s determinism=%s count=%s t94date=%s sli8=%s (orders+quota-gate+count+cloud+borrow+l1+t94date+sli8) -> %s"
+          % (math_ok, same, count_status, t94_all, sli_all,
+             "PASS" if (math_ok and same and count_ok and t94_all and sli_all) else "FAIL"))
+    return 0 if (math_ok and same and count_ok and t94_all and sli_all) else 1
 
 
 def main():
@@ -1320,6 +1436,8 @@ def main():
     l1s.add_argument("--ref", required=True)
     l1su = sub.add_parser("l1-summary")
     l1su.add_argument("--month", default=None)
+    sl = sub.add_parser("sliline")
+    sl.add_argument("--month", default=None)
     ct = sub.add_parser("count")
     ct.add_argument("--text", default=None)
     ct.add_argument("--file", default=None)
@@ -1367,6 +1485,8 @@ def main():
         out = l1_settle(args)
     elif args.cmd == "l1-summary":
         out = l1_summary(args)
+    elif args.cmd == "sliline":
+        out = sli_line(args)
     elif args.cmd == "count":
         out = count_tokens(args)
     else:
