@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-10-16 21:2x",
- "current_activity": "21:1x 哨兵轮：E70 BW 借用窗收线鲜度门落地（首跑检出 3 行缺正式收线标记→行保全补账→FRESH-GREEN 7/7）·任务板=tasks/TASKS.md",
- "latest_artifact": "Tools/borrow_window_freshness.py（收线鲜度门·selftest 11/11）+qa/smoke-20261016-2121.log+png（QA 7/7·2026-10-16 21:21）",
- "next_milestone": "22:43 夜班正轮：随窗批文族（T64/T70/T87/T88 至则行）+净窗开则 M25/T26 烘焙实弹+N1 月末归集=10-31 22:43 一命令（S1-S6 六源就绪）+M66 批池月窗回访 ~11-0x（任务板=tasks/TASKS.md）"
+ "updated_at": "2026-10-16 21:5x",
+ "current_activity": "21:4x 哨兵轮：BC-P-78 批活转化=T105 idle_selfcheck J11 陈旧 M 态守卫落地（selftest J1-J11 全绿+首弹实锚=owner face resident_qa_server.py 龄 ~30h P2 行+日粒度锁存）；队列态=tasks/TASKS.md",
+ "latest_artifact": "Tools/idle_selfcheck.py J11 stale-m 守卫（六路径断言 PASS·qa/smoke-20261016-215x.log+png）+state/stale-m.latch.json（2026-10-16 21:50）",
+ "next_milestone": "22:43 夜班正轮（随窗批文族 T64/T70/T87/T88 至则行+净窗开则 M25/T26 烘焙实弹）+N1 月末归集=10-31 22:43 一命令（S1-S6 六源就绪）+M66 批池月窗 ~11-0x"
 }

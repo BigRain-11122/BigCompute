@@ -38,6 +38,11 @@ VRAM≥6GB〕→ 领池检（fleet/backlog 可领行计数）→ 池空拉本司
      （classify_cpu_lane_idle）·GREEN-IDLE（GPU 车道·§8.2 预注册双闸）不动
      ——10-10 18:26 判例「vram_free 闸误挡纯 CPU 批」触发面修复·饥饿计数闸
      随 CPU 面常开（O-2215）收窄为 RAM 单闸
+  J11 stale-m 守卫（T105·BC-P-78 批活化·T98 承继·J10 位保留给 BC-P-75）：
+     他方会话工作面陈旧 M 态探针——git status --short 工作树 M 件 × mtime 龄
+     >24h → P2 心跳行（日清承载）；自产 M 件按轮收尾定向 commit 纪律必为新鲜
+     态=年龄闸即「非本轮产出」判别器；日粒度锁存去重（同文件同日一警防 tick
+     风暴）·恢复清锁存静默·正常零追加·探针坏=缺省行零阻塞（fail-open）
 
 用法：
   python Tools/idle_selfcheck.py check       # 每轮自检步（iteration_loop.ps1 内建）
@@ -63,6 +68,11 @@ ROUND_APPEND = os.path.join(PROJECT, "Tools", "round_append.py")
 BACKLOG = os.path.abspath(os.path.join(
     PROJECT, "..", "..", "quant", "BigMoney", "fleet", "backlog.md"))
 QUEUE_DIR = os.path.join(PROJECT, "state", "queue")
+# J11（T105·BC-P-78）：陈旧 M 态守卫常量——真实 git 路径优先（PATH git=
+# gitsilent 转发器吞 stdout·10-08 判例·探针零输出=假净面）
+STALE_M_LATCH = os.path.join(PROJECT, "state", "stale-m.latch.json")
+STALE_M_AGE_HOURS = 24.0  # BC-P-78 预注册阈值（自产 M 必新鲜=判别器）
+GIT_REAL = os.environ.get("GIT_REAL", r"C:\Program Files\Git\cmd\git.exe")
 
 # §8.2 旗标判据（resource-chain L101·预注册·禁调参不经立法）
 RAM_FREE_PCT_MIN = 40.0
@@ -321,6 +331,90 @@ def night_task_watch(states=None, latch_path=LATCH_FILE, recorder=None):
     return 1
 
 
+def _git_status_short(repo_root=None, _run=None):
+    """J11 辅件：git status --short 只读采集——真实 git 路径优先（PATH git=
+    gitsilent 转发器吞 stdout·10-08 判例·零输出=假净面）；失败/超时=None。"""
+    if repo_root is None:
+        repo_root = PROJECT
+    git = GIT_REAL if os.path.exists(GIT_REAL) else "git"
+    runner = _run or (lambda cmd: subprocess.run(
+        cmd, capture_output=True, text=True, encoding="utf-8",
+        errors="replace", timeout=10, cwd=repo_root))
+    try:
+        r = runner([git, "status", "--short"])
+        if r.returncode != 0:
+            return None
+        return (r.stdout or "")
+    except Exception:
+        return None
+
+
+def stale_m_watch(repo_root=None, age_hours=STALE_M_AGE_HOURS,
+                  latch_path=STALE_M_LATCH, recorder=None,
+                  _run=None, _stat=None):
+    """J11（T105·BC-P-78 批活化·T98 承继）：他方会话工作面陈旧 M 态守卫。
+    判据=git status --short 工作树 M 件（XY 第二列=M）× mtime 龄 >age_hours
+    → P2 心跳行（日清承载）。自产 M 件按轮收尾定向 commit 纪律必为新鲜态
+    （龄 <24h）=年龄闸即「非本轮产出」判别器（BC-P-78 判据原文）。日粒度
+    锁存去重：同文件同日只告警一次（防 tick 风暴）；恢复（离开陈旧 M 态）=
+    锁存清空静默；正常=零追加（预注册「正常静默」）；探针坏=缺省行零阻塞
+    （fail-open）。返回 1=有告警，0=静默/无/探针坏。pythonw 安全零 print。"""
+    if repo_root is None:
+        repo_root = PROJECT
+    out = _git_status_short(repo_root, _run)
+    if out is None:
+        return 0  # fail-open：探针坏=缺省行零阻塞（BC-P-78 判据原文）
+    getmtime = _stat or os.path.getmtime
+    stale = {}
+    for ln in out.splitlines():
+        if len(ln) < 4 or ln[1] != "M":  # ' M'/'MM'/'AM'=工作树 M；??/A /R 不计
+            continue
+        path = ln[3:].strip().strip('"')
+        if not path:
+            continue
+        try:
+            mt = getmtime(os.path.join(repo_root, path))
+        except Exception:
+            continue  # 单件失明=跳过不阻塞（fail-open 同精神）
+        age_h = (time.time() - mt) / 3600.0
+        if age_h > age_hours:
+            stale[path] = age_h
+    prev = {}
+    if os.path.exists(latch_path):
+        try:
+            with open(latch_path, encoding="utf-8") as f:
+                prev = json.load(f)
+        except Exception:
+            prev = ""
+    if isinstance(prev, str):  # 旧态/坏态容错
+        prev = {}
+    today = time.strftime("%Y-%m-%d")
+    fresh = [(p, stale[p]) for p in sorted(stale) if prev.get(p) != today]
+    new_latch = {p: d for p, d in prev.items() if p in stale}
+    for p in stale:
+        new_latch[p] = today  # 仍在陈旧态→锁存续鲜（同日去重·次日再警）
+    try:
+        if new_latch:
+            with open(latch_path, "w", encoding="utf-8") as f:
+                json.dump(new_latch, f)
+        elif os.path.exists(latch_path):
+            os.unlink(latch_path)  # 恢复=清锁存静默（J7 同型）
+    except Exception:
+        pass
+    if not fresh:
+        return 0
+    sig = "、".join("%s(龄%.0fh)" % (p, a) for p, a in fresh)
+    line = ("%s P2 stale-m: %s — 他方会话在飞件滞留工作树超 %gh（owner "
+            "commit 未落·BC-P-78 守卫·日粒度去重·T98 承继）·修复面=执笔窗"
+            "收口或日清承载〔J11〕"
+            % (time.strftime("%Y-%m-%d %H:%M:%S"), sig, age_hours))
+    if recorder is not None:
+        recorder(line)  # selftest 注入面（零真实 heartbeat 副作用）
+    else:
+        append_heartbeat(line)
+    return 1
+
+
 def check():
     ram_pct = probe_ram_free_pct()
     vram_mb = probe_vram_free_mb()
@@ -410,6 +504,13 @@ def check():
         code3, msg3 = append_heartbeat(p1t)
         print(p1t)
         print("append-p1t: code=%d %s" % (code3, msg3))
+    # J11（T105·BC-P-78·T98 承继）：陈旧 M 态守卫——非本轮产出 M 件龄 >24h
+    # → P2 行（日粒度去重·fail-open 缺省行零阻塞·自产 M 必新鲜不触发）。
+    try:
+        if stale_m_watch() == 1:
+            print("J11 stale-m: P2 alert appended (see heartbeat)")
+    except Exception:
+        pass
     return 0 if code in (0, 2) else 1
 
 
@@ -533,6 +634,42 @@ def selftest():
     print("J9 cpu-lane idle: ram50=%s ram30=%s vram-busy-unblock=%s "
           "(GREEN-IDLE gate unchanged: RAM>=%s%% AND VRAM>=%dMiB)"
           % (c_hi, c_lo, vr_busy_gate, RAM_FREE_PCT_MIN, VRAM_FREE_MB_MIN))
+
+    # J11 stale-m（T105·BC-P-78·T98 承继）：六路径夹具——工作树 M 解析（?? /A
+    # 不计）/陈旧告警/同日去重/新鲜不告警+恢复清锁存/探针坏 fail-open。temp
+    # 锁存+注入 _run/_stat/recorder·零真实 heartbeat/latch 副作用。
+    class _RO:
+        def __init__(self, out, rc=0):
+            self.stdout, self.returncode = out, rc
+
+    def _f_old(cmd):
+        return _RO(" M Tools/owner_face.py\n?? new.txt\nA  staged.txt\n")
+
+    def _f_fresh(cmd):
+        return _RO(" M Tools/young.py\n")
+
+    def _f_fail(cmd):
+        raise RuntimeError("simulated probe failure")
+
+    _old_mt = time.time() - 48 * 3600
+    with tempfile.TemporaryDirectory() as td:
+        lat2 = os.path.join(td, "slatch")
+        rec2 = []
+        a1 = stale_m_watch(td, latch_path=lat2, recorder=rec2.append,
+                           _run=_f_old, _stat=lambda p: _old_mt)
+        a2 = stale_m_watch(td, latch_path=lat2, recorder=rec2.append,
+                           _run=_f_old, _stat=lambda p: _old_mt)
+        a3 = stale_m_watch(td, latch_path=lat2, recorder=rec2.append,
+                           _run=_f_fresh, _stat=lambda p: time.time())
+        a4 = stale_m_watch(td, latch_path=lat2, recorder=rec2.append,
+                           _run=_f_fail, _stat=lambda p: _old_mt)
+        ok &= (a1, a2, a3, a4) == (1, 0, 0, 0)
+        ok &= (len(rec2) == 1) and ("stale-m" in rec2[0]) and \
+              ("owner_face" in rec2[0]) and ("P2" in rec2[0])
+        ok &= not os.path.exists(lat2)  # 恢复=清锁存（a3 后零陈旧）
+        print("J11 stale-m: stale=%d dedup=%d fresh-recover=%d failopen=%d "
+              "alerts=%d latch-cleared=%s"
+              % (a1, a2, a3, a4, len(rec2), not os.path.exists(lat2)))
     print("SELFTEST %s" % ("PASS" if ok else "FAIL"))
     return 0 if ok else 1
 
