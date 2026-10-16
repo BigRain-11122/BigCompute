@@ -4,8 +4,9 @@
 
 背景（T99 判例）：CEO Qwen v3 final 切换令删除旧 qwen2.5 家族后，qa_smoke.py OLLAMA_MODEL
 硬编码悬空（满探针路径 /api/generate 缺模自动拉副作用=违清除令面）——同类面防复发探针：
-本仓 Tools/*.py（含 resident_qa_server.py owner-face·只读不碰 T98 退避律）模型名引用字面量
-vs live /api/tags 清单对照 → 悬空引用报告。
+本仓 Tools/**/*.py 递归面（含 resident_qa_server.py owner-face·只读不碰 T98 退避律；T102
+v1.2 由单层 Tools/*.py 扩为递归——Tools/fulfillment/*.py L2 轻量契约族原为盲区）模型名引用
+字面量 vs live /api/tags 清单对照 → 悬空引用报告。
 
 用法：python Tools/model_ref_drift_check.py check [--out <json>]
       python Tools/model_ref_drift_check.py selftest
@@ -32,7 +33,7 @@ import tempfile
 import time
 
 OLLAMA_TAGS_URL = "http://127.0.0.1:11434/api/tags"
-TOOLS_GLOB = os.path.join("Tools", "*.py")
+TOOLS_GLOB = os.path.join("Tools", "**", "*.py")  # T102 v1.2：递归面（fulfillment 等子目录入扫）
 
 # TAGGED_RE：带 tag 引用（"qwen2.5:7b-instruct" 形）；前缀黑名单=MIME/scheme 非模型形
 TAGGED_RE = re.compile(r'["\']([a-z][a-z0-9._+\-]*:[a-z0-9._+\-]+)["\']')
@@ -93,15 +94,18 @@ def extract_refs(path):
     return refs
 
 
-def scan_tools(tools_glob=TOOLS_GLOB):
-    """Tools/*.py 全扫 → {relpath: [(name, kind, lineno), ...]}。"""
+def scan_tools(tools_glob=TOOLS_GLOB, base_dir="Tools"):
+    """Tools/**/*.py 递归全扫 → {relpath（含子目录·posix 分隔）: [(name, kind, lineno), ...]}。"""
     out = {}
-    for path in sorted(glob.glob(tools_glob)):
+    for path in sorted(glob.glob(tools_glob, recursive=True)):
+        if not os.path.isfile(path):
+            continue
         if os.path.basename(path) == os.path.basename(__file__):
             continue  # v1.1：自件跳过（self fixtures 不自扫）
         refs = extract_refs(path)
         if refs:
-            out[os.path.basename(path)] = refs
+            key = os.path.relpath(path, base_dir).replace(os.sep, "/")
+            out[key] = refs
     return out
 
 
@@ -130,8 +134,8 @@ def classify(scan, live_tags):
         for name, kind, lineno in refs:
             if live_tags is None:
                 status = "UNVERIFIED"
-            elif fname in EXEMPT_HISTORICAL:
-                status = "EXEMPT-HISTORICAL"
+            elif fname in EXEMPT_HISTORICAL or os.path.basename(fname) in EXEMPT_HISTORICAL:
+                status = "EXEMPT-HISTORICAL"  # v1.2：子目录键 basename 归一（T102）
             elif name in NON_OLLAMA_LANES:
                 status = "LANE-8090"
             elif name in live_tags or (":" not in name and any(
@@ -173,7 +177,7 @@ def cmd_check(args):
 
 
 def _selftest():
-    """S1-S6 合成夹具离线断言（零网络·J 式确定性）。"""
+    """S1-S8 合成夹具离线断言（零网络·J 式确定性）。"""
     ok = [0]
 
     def check(cond, label):
@@ -232,6 +236,24 @@ def _selftest():
               and rep4["totals"]["dangling"] == 0
               and rep4["totals"]["exempt-historical"] == 1,
               "exempt-historical not counted as dangling")
+        # S7 递归子目录覆盖（T102 v1.2：预注册 fulfillment 假模型引用夹具——单层 glob 盲区面）
+        sub = os.path.join(td, "fulfillment", "fixture_fulfillment.py")
+        os.makedirs(os.path.dirname(sub), exist_ok=True)
+        with io.open(sub, "w", encoding="utf-8") as f:
+            f.write('L2_STALE = "qwen2.5:7b-instruct"  # pre-registered fulfillment stale ref\n'
+                    'FLASH = "qwen3:4b-instruct"\n')
+        scan = scan_tools(os.path.join(td, "**", "*.py"), base_dir=td)
+        sub_key = "fulfillment/fixture_fulfillment.py"
+        check(sub_key in scan and scan.get("fixture.py") is not None
+              and sorted(r[0] for r in scan[sub_key]) == ["qwen2.5:7b-instruct", "qwen3:4b-instruct"],
+              "recursive subdir fulfillment fixture coverage (posix subpath key)")
+        # S8 子目录豁免 basename 归一（子路径键 vs EXEMPT_HISTORICAL 单层键名互认）
+        sub_exempt_key = "nested/serve_restore_manifest.py"
+        rep5 = classify({sub_exempt_key: [("qwen2.5:7b-instruct", "tagged", 3)]},
+                        {"qwen3:4b-instruct"})
+        check(rep5["files"][sub_exempt_key][0]["status"] == "EXEMPT-HISTORICAL"
+              and rep5["totals"]["dangling"] == 0,
+              "exempt-historical basename normalize in subdir key")
     print("SELFTEST %d/%d PASS" % (ok[0], ok[0]))
     return 0
 
@@ -243,7 +265,7 @@ def main():
         pass
     p = argparse.ArgumentParser(description="Tools model reference drift check (T100)")
     sub = p.add_subparsers(dest="cmd", required=True)
-    c = sub.add_parser("check", help="scan Tools/*.py vs live /api/tags")
+    c = sub.add_parser("check", help="scan Tools/**/*.py vs live /api/tags")
     c.add_argument("--out", default=None)
     c.add_argument("--tools-glob", default=None)
     sub.add_parser("selftest", help="offline synthetic fixtures")

@@ -338,12 +338,14 @@ class Generator(ABC):
     """Asset generator interface.
 
     Real adapter (design doc steps 3-4): the token router - L1 lookup
-    tables for deterministic params, L2 local Ollama qwen2.5:7b for
-    structured JSON blueprints, L3 cloud GLM as a budget-gated fallback
-    (0.05 CNY per order cap) - followed by Unity batch template
-    assembly rendering PNG (props/characters) or MP4 (rooms). The
-    contract stays generate(order) -> Artifact; fill TokenUsage so the
-    ledger rows stay truthful.
+    tables for deterministic params, L2 local text lane for structured
+    JSON blueprints (ollama flash slot qwen3:4b-instruct; heavy
+    blueprint lane = :8090 Qwen3.6-35B, CEO Qwen v3 final switch), L3
+    cloud GLM as a budget-gated fallback (0.05 CNY per order cap) -
+    followed by Unity batch template assembly rendering PNG
+    (props/characters) or MP4 (rooms). The contract stays
+    generate(order) -> Artifact; fill TokenUsage so the ledger rows
+    stay truthful.
     """
 
     @abstractmethod
