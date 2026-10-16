@@ -70,7 +70,7 @@ REGISTER = {
         "履约管线": ["Tools/fulfillment/test_pipeline.py"],
     },
 }
-DECLARED_TOOLS = 43  # Tools 根 py 申报数（盘点 §D·+h3_power_sampler〔E57〕+idle_selfcheck 补注册〔T61 10-08 漏注·F3 检出即修〕·10-09）
+DECLARED_TOOLS = 51  # Tools 根 py 申报数（盘点 §D·10-16 E70 轮 F3 检出累计漂移即修〔T61 同例〕：43→51=10-09 基线后七件具名 inference_energy_anchor〔E46〕/h3_window_energy〔E57〕/p0_moe_measure〔T89〕/serve_restore_manifest〔M71〕/ledger_blank_census〔T96〕/model_ref_drift_check〔T100〕/borrow_window_freshness〔E70〕+基线计数勘正 1）
 
 
 def _measure(path):

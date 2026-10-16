@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-10-16 20:5x",
- "current_activity": "20:4x 哨兵轮：C-03 回访窗基线审计复跑（本司行维持绿·sync PASS/conflict 0）+BW-007 借用窗收线回净（10-14 实测 delta +0.8513 kWh·滞后两日补办）·任务板=tasks/TASKS.md",
- "latest_artifact": "state/fleet-audit-c03-revisit-20261016.txt（fleet-workspace-audit v1.1 复跑回访证据）+state/gpu-energy-profile-20261016-204855.json（BW-007 收线终值）+qa/smoke-20261016-2048.log+png（7/7·2026-10-16 20:48）",
+ "updated_at": "2026-10-16 21:2x",
+ "current_activity": "21:1x 哨兵轮：E70 BW 借用窗收线鲜度门落地（首跑检出 3 行缺正式收线标记→行保全补账→FRESH-GREEN 7/7）·任务板=tasks/TASKS.md",
+ "latest_artifact": "Tools/borrow_window_freshness.py（收线鲜度门·selftest 11/11）+qa/smoke-20261016-2121.log+png（QA 7/7·2026-10-16 21:21）",
  "next_milestone": "22:43 夜班正轮：随窗批文族（T64/T70/T87/T88 至则行）+净窗开则 M25/T26 烘焙实弹+N1 月末归集=10-31 22:43 一命令（S1-S6 六源就绪）+M66 批池月窗回访 ~11-0x（任务板=tasks/TASKS.md）"
 }
