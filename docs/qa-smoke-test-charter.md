@@ -23,6 +23,9 @@
 
 - 5. rounds.log UTF-8 解码完整性（tech T25/BC-P-16：shell Add-Content GBK 乱码复发=当轮暴露，append 走 round_append 唯一）。
 - 6. resident QA serve 8792 /health（E41·O-20260930-1645+1656 CEO 观察窗后端：CEO 可见面静默死=当轮暴露不待点击）。
+- 7.（预留位维持：云端 attribution 审计探针——T37·随首笔实缴云账单 J4 窗接线·勿预接线。）
+- 8. git-tracked 台账尾行完整性（BC-P-45/T51/T95：七台账尾换行断言+合并行嗅探+尾区空行嗅探——写侧 round_append J4/J5 之外的损伤面当轮暴露；合成负例夹具自检=`qa_smoke --selftest`〔T96〕）。
+- 9. L1 coder 车道 :8090 活体（T106·O-20261015-1335/1500 Qwen v3 final 迁移后：GET /v1/models 只读探活〔零生成零 GPU 负载·PASS=200+≥1 模型在册〕——四消费车道〔BigLife 年轮/MV 分镜/8792 后端/BigMoney advisor〕主干动脉死=当轮暴露不待消费方失败）。
 
 ## 四、执行律
 

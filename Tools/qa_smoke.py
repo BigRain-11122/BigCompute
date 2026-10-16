@@ -22,6 +22,15 @@ Runs the four BigCompute charter checks (docs/qa-smoke-test-charter.md):
     so tail damage from any other writer (shell Add-Content, manual
     edits; T24 GBK line and the 10-04/05 proposals.md row merge are
     the precedent classes) surfaces here in the round it happens
+ 9. L1 coder lane :8090 liveness (T106, O-20261015-1335/1500 Qwen v3
+    final switchover): llama.cpp :8090 (Qwen3.6-35B-A3B) is now the L1
+    route for four consumer lanes (BigLife year-ring / MV storyboard /
+    resident QA 8792 backend / BigMoney advisor); the group CoderServe
+    watchdog keeps the process alive but nothing in this suite watched
+    the lane itself (8792 /health answers without exercising the
+    model), so a dead :8090 would surface only as consumer failures.
+    Read-only GET /v1/models, no generation, zero GPU load.
+    PASS = HTTP 200 + at least one model id listed.
 
 Writes qa/smoke-<ts>.log with raw outputs + a self-judge verdict, then
 renders that exact log content to qa/smoke-<ts>.png via .NET
@@ -52,6 +61,7 @@ OLLAMA_URL = "http://localhost:11434/api/generate"
 OLLAMA_TAGS_URL = "http://localhost:11434/api/tags"
 OLLAMA_MODEL = "qwen3:4b-instruct"  # flash-slot resident per Qwen v3 final switchover (O-20261015-1335/1500; old qwen2.5 family deleted by CEO order -- stale ref would auto-repull a deleted model)
 RESIDENT_QA_URL = "http://127.0.0.1:8792/health"
+CODER_SERVE_URL = "http://127.0.0.1:8090/v1/models"
 
 PNG_PS_TEMPLATE = r"""
 $ErrorActionPreference='Stop'
@@ -271,6 +281,37 @@ def probe_resident_qa():
                        "priority)" % e)
 
 
+def probe_l1_coder_serve():
+    """Probe no.9 (T106): L1 coder lane :8090 liveness, read-only.
+
+    O-20261015-1335/1500 Qwen v3 final switchover made llama.cpp :8090
+    (Qwen3.6-35B-A3B) the L1 route for four consumer lanes (BigLife
+    year-ring / MV storyboard / resident QA 8792 backend / BigMoney
+    advisor). The group-deployed CoderServe watchdog (PT10M, PID lock)
+    keeps the process alive, but nothing in this suite watched the lane
+    itself: 8792 /health answers without exercising the model, so a
+    dead :8090 would surface only as downstream consumer failures.
+    GET /v1/models only - no generation, zero GPU load, 5s timeout.
+    PASS = HTTP 200 + at least one model id in the listing.
+    Pre-check 2026-10-16 22:0x: 200 + Qwen3.6-35B-A3B-UD-IQ4_XS.gguf.
+    """
+    try:
+        with urllib.request.urlopen(CODER_SERVE_URL, timeout=5) as r:
+            body = r.read().decode("utf-8", errors="replace")
+        data = json.loads(body)
+        models = [m.get("id") for m in (data.get("data") or [])
+                  if isinstance(m, dict) and m.get("id")]
+        ok = r.status == 200 and bool(models)
+        return ok, ("http %d /v1/models: %d model(s) listed "
+                    "(L1 coder lane alive; consumers: BigLife year-ring "
+                    "/ MV storyboard / resident-QA-8792 backend / "
+                    "BigMoney advisor)" % (r.status, len(models)))
+    except Exception as e:  # noqa: BLE001 - probe must not crash pipeline
+        return False, ("L1 coder serve 8090 LOST: %r "
+                       "(four consumer lanes degraded - fix next "
+                       "round top priority)" % e)
+
+
 TAIL_PROBE_FILES = (
     ("state/rounds.log", r"\d{4}-\d{2}-\d{2}( [\d:.x]+)? tokens"),
     ("state/heartbeat.txt", r"\d{2}:\d{2}"),
@@ -433,6 +474,7 @@ def main():
               ("queue rows", probe_queues), ("cost ledger", probe_ledger),
               ("rounds.log strict-decode", probe_rounds_log),
               ("resident QA serve 8792", probe_resident_qa),
+              ("L1 coder serve 8090", probe_l1_coder_serve),
               ("ledger tail integrity (BC-P-45)", probe_ledger_tails)]
     lines, passed = [], 0
     lines.append("BigCompute QA smoke test %s (orders L254 / charter v1)"
