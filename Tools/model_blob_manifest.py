@@ -11,7 +11,12 @@ Commands:
   dedup      跨模型并集分析：逐模型拷贝量合计 vs 唯一集拷贝量+共享 blob 明细
   verify     J2 完整性门：全量 SHA256 重哈希 vs manifest digest（--quick=仅 size 面）
              → 基线 JSON 落盘（分发前完整性基线·W4/T9 分发日即用）
-  selftest   合成夹具断言（并集/节约数学+digest→路径映射+缺件检出+verify 四态）
+  preflight  BC-P-70 点火前关键权重一命令预检：--path P [--expect-bytes N]
+             [--expect-sha256 HEX] [--magic gguf|safetensors]——缺档/尺寸不符/
+             sha 不匹配/magic 不符=PREFLIGHT_FAIL exit 1（零点火·R-53 INT8 DiT
+             截断 17.01GB 烧废首单判例防再发·烧窗/借用窗点火/机队 CDN 拉取线用）
+  selftest   合成夹具断言（并集/节约数学+digest→路径映射+缺件检出+verify 四态
+             +preflight 四门）
 
 零分发动作（DRY-RUN 同律）；blobs 目录只读；无网络。
 """
@@ -214,6 +219,94 @@ def cmd_verify(root, quick=False, out=None):
     return 0 if verdict == "VERIFY_GREEN" else 1
 
 
+def _magic_check(path, magic):
+    """文件头 magic 只读检查：gguf=首 4B 'GGUF'；safetensors=头 8B 小端头长合理域
+
+    返回 (ok_or_None, detail)：None=未知 magic 名（usage error 态）。"""
+    try:
+        if magic == "gguf":
+            with open(path, "rb") as f:
+                head = f.read(4)
+            return head == b"GGUF", head.hex()
+        if magic == "safetensors":
+            with open(path, "rb") as f:
+                raw = f.read(8)
+            if len(raw) != 8:
+                return False, "short-header"
+            hsize = int.from_bytes(raw, "little")
+            ok = 2 <= hsize <= 100_000_000  # JSON 头部长度合理域（截断/错件检出）
+            return ok, "header_len=%d" % hsize
+        return None, "unknown-type"
+    except OSError as e:
+        return False, "io-error:%s" % e
+
+
+def cmd_preflight(path, expect_bytes=None, expect_sha256=None, magic=None, out=None):
+    """BC-P-70 点火前关键权重预检（R-53 INT8 DiT 截断烧废首单判例防再发）
+
+    判据四门：缺档/尺寸不符/sha 不匹配/magic 不符 → PREFLIGHT_FAIL exit 1（零点火）；
+    无期望参数时=exists-only 浅检（如实标注零深检·禁冒充完整门）。
+    消费模式=orders 行「大小校验字节数」+源件 sha（跨机 CDN 拉取线同律）。
+    """
+    t0 = time.time()
+    checks = []
+
+    def mark(name, status, **kw):
+        checks.append(dict(check=name, status=status, **kw))
+
+    fail = False
+    if not os.path.exists(path):
+        mark("exists", "MISSING")
+        fail = True
+    else:
+        size = os.path.getsize(path)
+        mark("exists", "OK", actual_b=size)
+        if expect_bytes is not None:
+            if size != expect_bytes:
+                mark("size", "SIZE_MISMATCH", expect_b=expect_bytes, actual_b=size)
+                fail = True
+            else:
+                mark("size", "OK", expect_b=expect_bytes)
+        if magic:
+            head_ok, why = _magic_check(path, magic)
+            if head_ok is None:
+                print("ERROR: unknown --magic type (gguf|safetensors)")
+                return 2
+            mark("magic", "OK" if head_ok else "MAGIC_MISMATCH", type=magic, detail=why)
+            fail = fail or (not head_ok)
+        if expect_sha256:
+            want = expect_sha256.lower().split(":")[-1]
+            actual = sha256_file(path)
+            if actual == want:
+                mark("sha256", "OK", expect=want)
+            else:
+                mark("sha256", "HASH_MISMATCH", expect=want, actual=actual)
+                fail = True
+    elapsed = time.time() - t0
+    verdict = "PREFLIGHT_GREEN" if not fail else "PREFLIGHT_FAIL"
+    print("preflight path=%s" % path)
+    for c in checks:
+        print("  [%s] %s" % (c["check"], c["status"]))
+    print("verdict=%s  elapsed=%.2fs" % (verdict, elapsed))
+    payload = {
+        "ts": time.strftime("%Y-%m-%d %H:%M:%S"),
+        "machine": "bm-a",
+        "tool": "model_blob_manifest.py preflight",
+        "path": path,
+        "expect_bytes": expect_bytes,
+        "expect_sha256": expect_sha256,
+        "magic": magic,
+        "verdict": verdict,
+        "checks": checks,
+        "elapsed_s": round(elapsed, 2),
+    }
+    if out:
+        with open(out, "w", encoding="utf-8") as f:
+            json.dump(payload, f, ensure_ascii=False, indent=1)
+        print("json=%s" % out)
+    return 0 if not fail else 1
+
+
 def _selftest():
     import tempfile
 
@@ -289,7 +382,49 @@ def _selftest():
         assert st2["sha256:" + corrupt_hex] == "OK_QUICK", "quick 面只核 size——哈希坏件 size 同则不可见（如实分立）"
         assert st2["sha256:" + gone_hex] == "MISSING", st2
 
-    print("selftest PASS (union/savings math + digest->path mapping + missing-blob detect + verify 4-state)")
+    # 5) preflight 四门端到端（BC-P-70·R-53 截断判例防再发）
+    with tempfile.TemporaryDirectory() as td:
+        pf = os.path.join(td, "weights.gguf")
+        blob = b"GGUF" + b"\x00" * 20  # 24B
+        with open(pf, "wb") as f:
+            f.write(blob)
+        real_sha = hashlib.sha256(blob).hexdigest()
+        rep = os.path.join(td, "pf.json")
+        # 全门过（size+sha+magic）
+        assert cmd_preflight(pf, expect_bytes=24, expect_sha256=real_sha, magic="gguf", out=rep) == 0
+        with open(rep, encoding="utf-8") as f:
+            assert json.load(f)["verdict"] == "PREFLIGHT_GREEN"
+        # 截断模拟：expected 大于 actual → SIZE_MISMATCH FAIL（R-53 病理面）
+        assert cmd_preflight(pf, expect_bytes=25, out=rep) == 1
+        with open(rep, encoding="utf-8") as f:
+            d = json.load(f)
+        assert d["verdict"] == "PREFLIGHT_FAIL"
+        assert any(c["check"] == "size" and c["status"] == "SIZE_MISMATCH" for c in d["checks"])
+        # sha 不符
+        assert cmd_preflight(pf, expect_sha256="0" * 64, out=rep) == 1
+        # 缺档
+        assert cmd_preflight(os.path.join(td, "gone.gguf"), out=rep) == 1
+        # magic 负例（非 GGUF 内容冒 GGUF 名）
+        pf2 = os.path.join(td, "fake.gguf")
+        with open(pf2, "wb") as f:
+            f.write(b"NOTG" + b"\x00" * 20)
+        assert cmd_preflight(pf2, magic="gguf", out=rep) == 1
+        # safetensors 头正例+短头负例（截断面）
+        st = os.path.join(td, "model.safetensors")
+        with open(st, "wb") as f:
+            f.write((4).to_bytes(8, "little") + b"{}{}")
+        assert cmd_preflight(st, magic="safetensors", out=rep) == 0
+        with open(st, "wb") as f:
+            f.write(b"\xff" * 4)
+        assert cmd_preflight(st, magic="safetensors", out=rep) == 1
+        # exists-only 浅检过（无期望参数·如实标注零深检）
+        assert cmd_preflight(pf, out=rep) == 0
+        with open(rep, encoding="utf-8") as f:
+            assert json.load(f)["verdict"] == "PREFLIGHT_GREEN"
+        # 未知 magic 名=usage error exit 2
+        assert cmd_preflight(pf, magic="zip", out=rep) == 2
+
+    print("selftest PASS (union/savings math + digest->path mapping + missing-blob detect + verify 4-state + preflight 4-gate)")
     return 0
 
 
@@ -297,6 +432,25 @@ def main(argv):
     cmd = argv[1] if len(argv) > 1 else ""
     if cmd == "selftest":
         return _selftest()
+    if cmd == "preflight":
+        # BC-P-70：preflight 不依赖 ollama models root（任意路径权重文件）
+        if "--path" not in argv:
+            print("usage: preflight --path P [--expect-bytes N] [--expect-sha256 HEX] [--magic gguf|safetensors] [--out PATH]")
+            return 1
+
+        def arg(name, cast=None):
+            if name not in argv:
+                return None
+            v = argv[argv.index(name) + 1]
+            return cast(v) if cast else v
+
+        return cmd_preflight(
+            arg("--path"),
+            expect_bytes=arg("--expect-bytes", int),
+            expect_sha256=arg("--expect-sha256"),
+            magic=arg("--magic"),
+            out=arg("--out"),
+        )
     root = models_root()
     if not os.path.isdir(root):
         print(f"ERROR: models root not found: {root}")
@@ -309,7 +463,7 @@ def main(argv):
         quick = "--quick" in argv
         out = argv[argv.index("--out") + 1] if "--out" in argv else None
         return cmd_verify(root, quick=quick, out=out)
-    print("usage: model_blob_manifest.py list|dedup|verify [--quick] [--out PATH]|selftest")
+    print("usage: model_blob_manifest.py list|dedup|verify [--quick] [--out PATH]|preflight --path P [--expect-bytes N] [--expect-sha256 HEX] [--magic gguf|safetensors] [--out PATH]|selftest")
     return 1
 
 
