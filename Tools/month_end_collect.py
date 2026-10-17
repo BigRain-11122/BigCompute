@@ -12,6 +12,8 @@ S6=gpu_energy_profile report 只读 subprocess+最新 profile JSON 月窗切片�
 口径 A 对照面非结算注记常驻）。
 S4b=GPU 样本×声明借用窗月窗 self/borrowed 分列（v1.2 增·T77 步③·BC-P-62 消费接线——复用 gpu_idle_collector 既有件
 load_samples/load_borrow_windows/borrow_covered_dates 零重建零跨件改本体·M66 月度对账供数·self=30% 执行线读数面）。
+S7=L1 本地推理计量轨（v1.3 增·tech T113）：cost_ledger l1-summary 只读（:8090 四文本车道 usage 回执=唯一 token 源·
+T93/J2 同律）——2026-10-15 v3 final 迁移后自用消费面的月末归集补口·单位价恒空=口径 B（l1-settle=N1 唯一回填通道）。
 N2 零编造律结构性落地：成本三要素（原值/电价/利用率）恒 ⬜（物理凭证前任何估算/外部锚/OSS 数据禁入）；
 单位成本 v1 恒 ⬜（N3 双门=凭证齐+真实商业 tokens 归集·定价确认权=CEO·本件零计算零落值零定价动作）。
 命令全只读零新台账：产出=state/month-end-<YYYYMM>.json 报告件（月末行快照·非台账·不入任何结算式）。
@@ -306,9 +308,41 @@ def s6_energy(month, days=None, baseline_range=None, report_text=None, profile_d
             "note": "口径 A 对照面非结算（结算唯一=口径 B·Q3 铁律·电价唯一合法源=实缴账单）·正向 delta 日=借用窗归因候选分列"}
 
 
+# ---------- S7 L1 本地推理计量轨（v1.3 增·T113·T93 轨只读消费） ----------
+
+def parse_l1_summary(text):
+    """cost_ledger l1-summary 输出解析（纯函数·selftest 复用）。"""
+    d = json.loads(text)
+    t = d.get("totals", {}) or {}
+    return {"totals": {"amount_mtok": t.get("amount_mtok", 0),
+                       "cost_converted_b_cny": t.get("cost_converted_b_cny", 0),
+                       "pending_conversion_rows": t.get("pending_conversion_rows", 0),
+                       "converted_rows": t.get("converted_rows", 0)},
+            "consumer_model": d.get("consumer_model", {}) or {},
+            "month_face": d.get("month_face", {}) or {},
+            "settlement_caliber": d.get("settlement_caliber", ""),
+            "lane_note": d.get("lane_note", "")}
+
+
+def s7_l1(month, summary_text=None):
+    """S7 源（只读）：cost_ledger l1-summary --month subprocess（:8090 L1 计量轨·T93）。
+    summary_text 注入位=selftest 离线夹具；解析失败=available False 降级如实（N2 零编造）。"""
+    if summary_text is None:
+        summary_text = _run_tool(["Tools/cost_ledger.py", "l1-summary", "--month", month])
+    try:
+        parsed = parse_l1_summary(summary_text)
+    except Exception:
+        return {"available": False,
+                "note": "S7 L1 轨源不可用（l1-summary 未解析出·N2 零编造）"}
+    parsed["available"] = True
+    parsed["note"] = ("L1 本地推理轨（:8090 四文本车道·usage 回执=唯一 token 源 J2 同律·T93）"
+                      "·单位价恒空=口径 B·l1-settle=N1 唯一回填通道·2026-10-15 v3 final 迁移后自用消费面")
+    return parsed
+
+
 # ---------- 月末行组装（§三 预注册格式·N2/N3 门内建） ----------
 
-def assemble(month, s1, s2, s3, s4, s5, now_iso, s6=None, s4b=None):
+def assemble(month, s1, s2, s3, s4, s5, now_iso, s6=None, s4b=None, s7=None):
     commercial_mtok = s1["consumed_mtok"]  # 商业面=S1 配额轨 consumed（计划态=0·如实禁估充）
     three_elements = {k: None for k in COST_ELEMENTS}  # 恒 ⬜·Q3 铁律
     n3_credential = all(v is not None for v in three_elements.values())
@@ -357,7 +391,28 @@ def assemble(month, s1, s2, s3, s4, s5, now_iso, s6=None, s4b=None):
                        f"·借出负载不计自产·M66 月度对账供数）")
         else:
             s4b_seg = "｜S4b GPU self/borrowed 分列=源不可用降级如实（N2 零编造）"
-    chain_tail = f"机械链 {chain_n}/6 就绪" if s6 is not None else "机械链 5/6 就绪（S6 未采）"
+    s7_seg = ""
+    if s7 is not None:
+        if s7.get("available"):
+            t7 = s7.get("totals") or {}
+            rows7 = t7.get("pending_conversion_rows", 0) + t7.get("converted_rows", 0)
+            mf7 = s7.get("month_face") or {}
+            cap7 = mf7.get("cap_mtok")
+            cap_seg7 = str(cap7) if cap7 is not None else "未设"
+            s7_seg = (f"｜S7 L1 本地推理轨（:8090 usage 回执=唯一 token 源·T93）=rows {rows7}"
+                      f"·amount {t7.get('amount_mtok', 0):.6f} Mtok（pending {t7.get('pending_conversion_rows', 0)}"
+                      f"/converted {t7.get('converted_rows', 0)}）·月闸 cap={cap_seg7} used={mf7.get('used_mtok', 0):.6f}"
+                      f"（单位价恒空=口径 B·l1-settle=N1 唯一回填通道）")
+        else:
+            s7_seg = "｜S7 L1 本地推理轨=源不可用降级如实（N2 零编造）"
+    if s7 is not None and s7.get("available"):
+        chain_n += 1
+    missing = []
+    if s6 is None:
+        missing.append("S6 未采")
+    if s7 is None:
+        missing.append("S7 未采")
+    chain_tail = f"机械链 {chain_n}/7 就绪" + (f"（{'·'.join(missing)}）" if missing else "")
     line = (
         f"[month-end {month} planning-state light line · E25] "
         f"商业面 tokens_mtok={commercial_mtok}（S1 配额轨·计划态如实·禁估充 N2）｜"
@@ -367,7 +422,7 @@ def assemble(month, s1, s2, s3, s4, s5, now_iso, s6=None, s4b=None):
         f"S2 云端 rows={s2['rows']}·J4 零接线维持｜S3 借算 generated={s3['generated']}（E23 预注册门不跳）｜"
         f"S4 GPU {gpu.get('machine','-')} n={gpu.get('n','-')} avg={gpu.get('avg_pct','-')}% kpi={gpu.get('kpi','-')}"
         f"（30% 唯一点名阈值·3 日滚动基线 n={g.get('n','-')} avg={g.get('avg_pct','-')}%·C-20260929-02）"
-        f"{s4b_seg}{s6_seg}｜"
+        f"{s4b_seg}{s6_seg}{s7_seg}｜"
         f"成本三要素 原值/电价/利用率=⬜⬜⬜（Q3 铁律·电价唯一合法源=实缴账单）｜"
         f"单位成本 v1=⬜（N3 双门 {n3_gate}）｜{chain_tail}"
     )
@@ -375,7 +430,8 @@ def assemble(month, s1, s2, s3, s4, s5, now_iso, s6=None, s4b=None):
         "month": month, "collected_at": now_iso, "mode": "planning_state_light",
         "sheet": "docs/ops/month-end-cost-collection-sheet-v1.md",
         "sources": {"s1_quota": s1, "s2_cloud": s2, "s3_borrow": s3, "s4_gpu": gpu,
-                    "s5_selfuse": s5, "s6_energy": s6, "s4b_borrow_split": s4b},
+                    "s5_selfuse": s5, "s6_energy": s6, "s4b_borrow_split": s4b,
+                    "s7_l1_local_inference": s7},
         "n2_zero_fabrication": {"cost_three_elements": three_elements,
                                 "unit_cost_v1": None, "n3_gate": n3_gate,
                                 "note": "N2：任何 ⬜ 不以估算/外部锚/OSS 数据回填（口径 A=呈现面专用）"},
@@ -393,11 +449,12 @@ def cmd_run(month):
     s5 = _s5_real(month)
     s6 = s6_energy(month)
     s4b = s4b_borrow_split(month)
-    payload = assemble(month, s1, s2, s3, s4, s5, now_iso, s6=s6, s4b=s4b)
+    s7 = s7_l1(month)
+    payload = assemble(month, s1, s2, s3, s4, s5, now_iso, s6=s6, s4b=s4b, s7=s7)
     out = ROOT / "state" / f"month-end-{month.replace('-', '')}.json"
     out.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(json.dumps({"month": month, "report": str(out.relative_to(ROOT)),
-                      "sources_ok": 7}, ensure_ascii=False))
+                      "sources_ok": 8}, ensure_ascii=False))
     print("MONTH-END LINE:")
     print(payload["month_end_line"])
     return 0
@@ -487,15 +544,15 @@ def cmd_selftest():
     p3 = assemble("2026-09", s1, s2, {"files": [], "generated": 0}, s4, s5, "T1", s6=s6_fix)
     check("确定性=双跑一致（含 S6 段）", p1["month_end_line"] == p3["month_end_line"])
     p4 = assemble("2026-10", s1, s2, {"files": [], "generated": 0}, s4, s5, "T1", s6=s6_fix)
-    check("S6 并入月末行=月 kWh+安静带+正向 delta 分列+机械链 6/6",
+    check("S6 并入月末行=月 kWh+安静带+正向 delta 分列+机械链 6/7",
           "S6 能耗剖面" in p4["month_end_line"] and "月 2.9178 kWh" in p4["month_end_line"]
-          and "机械链 6/6 就绪" in p4["month_end_line"]
+          and "机械链 6/7 就绪" in p4["month_end_line"]
           and p4["sources"]["s6_energy"]["month_slice"]["month_kwh"] == 2.9178
           and "10-09 +0.795" in p4["month_end_line"])
     p5 = assemble("2026-10", s1, s2, {"files": [], "generated": 0}, s4, s5, "T1",
                   s6={"available": False, "note": "S6 能耗剖面源不可用（报告未解析出·采集面缺或工具失败）·月末行降级如实（N2 零编造）"})
-    check("S6 不可用=降级行+机械链 5/6（N2 零编造）", "S6 能耗剖面源=不可用" in p5["month_end_line"]
-          and "机械链 5/6" in p5["month_end_line"])
+    check("S6 不可用=降级行+机械链 5/7（N2 零编造）", "S6 能耗剖面源=不可用" in p5["month_end_line"]
+          and "机械链 5/7" in p5["month_end_line"])
     ssamp_fix = [{"ts": "2026-10-01T10:00:00", "util_pct": 10.0},
                  {"ts": "2026-10-01T11:00:00", "util_pct": 20.0},
                  {"ts": "2026-10-09T10:00:00", "util_pct": 90.0},
@@ -539,7 +596,41 @@ def cmd_selftest():
     p9 = assemble("2026-10", s1, s2, {"files": [], "generated": 0}, s4, s5, "T3",
                   s6=s6_fix, s4b=s4b_fix)
     check("确定性=S4b 段双跑一致", p6["month_end_line"] == p9["month_end_line"])
-    total = 22
+    l1_fix = ('{"consumer_model": {"bigdomain|Qwen3.6-35B-A3B": {"amount_mtok": 0.000021, '
+              '"converted_mtok": 0.0, "cost_b_cny": 0.0, "pending_rows": 1, "converted_rows": 0}}, '
+              '"totals": {"amount_mtok": 0.000021, "cost_converted_b_cny": 0.0, '
+              '"pending_conversion_rows": 1, "converted_rows": 0}, '
+              '"month_face": {"month": "2026-10", "cap_mtok": 200, "used_mtok": 0.000021, '
+              '"remaining_mtok": 199.999979, "over_cap_ceo_approved_tx": 0}, '
+              '"settlement_caliber": "B_only; unit price only via l1-settle", '
+              '"lane_note": "usage receipt = only legal token source (J2 parity)"}')
+    l7 = parse_l1_summary(l1_fix)
+    check("S7 解析=totals/月闸/口径在文", l7["totals"]["amount_mtok"] == 0.000021
+          and l7["totals"]["pending_conversion_rows"] == 1
+          and l7["month_face"]["cap_mtok"] == 200 and "l1-settle" in l7["settlement_caliber"])
+    s7_fix = s7_l1("2026-10", summary_text=l1_fix)
+    p10 = assemble("2026-10", s1, s2, {"files": [], "generated": 0}, s4, s5, "T4",
+                   s6=s6_fix, s4b=s4b_fix, s7=s7_fix)
+    check("S7 并入月末行=rows/amount/月闸+机械链 7/7 就绪",
+          "S7 L1 本地推理轨" in p10["month_end_line"]
+          and "rows 1" in p10["month_end_line"]
+          and "amount 0.000021 Mtok" in p10["month_end_line"]
+          and "cap=200" in p10["month_end_line"]
+          and "机械链 7/7 就绪" in p10["month_end_line"]
+          and p10["sources"]["s7_l1_local_inference"]["totals"]["amount_mtok"] == 0.000021)
+    p11 = assemble("2026-10", s1, s2, {"files": [], "generated": 0}, s4, s5, "T4",
+                   s6=s6_fix, s4b=s4b_fix,
+                   s7={"available": False, "note": "S7 L1 轨源不可用（l1-summary 未解析出·N2 零编造）"})
+    check("S7 源不可用=降级行如实+机械链不增（N2 零编造）",
+          "S7 L1 本地推理轨=源不可用降级如实" in p11["month_end_line"]
+          and "机械链 6/7 就绪" in p11["month_end_line"]
+          and "S7 未采" not in p11["month_end_line"])
+    p12 = assemble("2026-10", s1, s2, {"files": [], "generated": 0}, s4, s5, "T4",
+                   s6=s6_fix, s4b=s4b_fix, s7=s7_fix)
+    check("确定性=S7 段双跑一致", p10["month_end_line"] == p12["month_end_line"])
+    check("S7 垃圾文本=解析失败降级 available False",
+          s7_l1("2026-10", summary_text="not json")["available"] is False)
+    total = 27
     print(f"selftest: {ok[0]}/{total} PASS" if ok[0] == total else f"selftest: FAIL ({ok[0]}/{total})")
     return 0 if ok[0] == total else 1
 
