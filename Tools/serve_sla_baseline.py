@@ -9,7 +9,12 @@ R-20260929-resident-serving-throughput-stability（R-39）手工双态分析的�
                E36 实跑 4 热嫌疑 3 伪〔自探针采样伪影 util=100×2+孤立 power 峰·吞吐正常〕唯一真漂移
                =09-29 14:20 点 25.16 tok/s·纯热单证 flips=4 误伤 vs 双证 flips=1 全中）
            → 净窗基线 mean/CV/P10 + 竞争窗对照 + SLA 判读行 + JSON 落盘 state/
-- selftest: 合成夹具断言（分类/双证翻类/伪阳性保护/数学/无样本窗豁免/确定性）·temp 夹具零真实状态污染
+           v1.2 栈代际闸（v3 final 迁移 2026-10-15 承接·O-20261015-1335/1500 orders L1068）：
+           - --since/--until YYYYMMDD[-HHMM] 时窗过滤（旧 qwen2.5:7b 栈与新 qwen3:4b flash slot 栈
+             的 tok/s 不可比——跨 2026-10-15 15:00 边界的全史聚合=口径混串·N1 S5 消费须月窗+分栈呈现）
+           - 逐日志提取常驻探针模型名（ollama ps Forever 行首 token·fail-open=unknown）→
+             models 计数 + stacks 分栈 net/contended 统计（混串可见化·零启发式）
+- selftest: 合成夹具断言（分类/双证翻类/伪阳性保护/数学/无样本窗豁免/确定性/模型提取/时窗过滤/分栈）·temp 夹具零真实状态污染
 
 零 GPU 占用（纯日志面）·数据源=qa_smoke 每轮自产+GPU-IdleWatch 既有样本零新采集
 消费方=月末归集执行单 S5 产能窗基线（E25·N1）+BC-P-12 双态 SLA 承诺结构+BC-P-04/11 数据前置
@@ -37,6 +42,8 @@ DEGRADED_TOK_S = 50.0            # 降级带线（净窗 P10~82 vs 竞争带 29.
 
 SMOKE_TS_RE = re.compile(r"BigCompute QA smoke test (\d{8}-\d{4})")
 TOKS_RE = re.compile(r"eval_count=(\d+)\s+([\d.]+) tok/s")
+# 常驻探针模型提取：ollama ps 输出的 Forever 行首 token（v1.2·fail-open None=unknown）
+FOREVER_RE = re.compile(r"^(\S+).*Forever", re.MULTILINE)
 
 
 def _pct(vals):
@@ -51,11 +58,11 @@ def _pct(vals):
 
 
 def parse_smoke_points(qa_dir):
-    """[(ts, tok_s, log_name)]——头行取时标·eval_count 行取 tok/s·缺匹配日志跳过如实计"""
+    """[(ts, tok_s, log_name, model)]——头行取时标·eval_count 行取 tok/s·Forever 行取常驻模型名·缺匹配日志跳过如实计"""
     pts, n_logs = [], 0
     for log in sorted(qa_dir.glob("smoke-*.log")):
         n_logs += 1
-        ts, tok = None, None
+        ts, tok, model = None, None, None
         try:
             text = log.read_text(encoding="utf-8", errors="replace")
         except OSError:
@@ -66,8 +73,11 @@ def parse_smoke_points(qa_dir):
         m = TOKS_RE.search(text)
         if m:
             tok = float(m.group(2))
+        m = FOREVER_RE.search(text)
+        if m:
+            model = m.group(1)
         if ts and tok:
-            pts.append((ts, tok, log.name))
+            pts.append((ts, tok, log.name, model))
     return pts, n_logs
 
 
@@ -95,20 +105,20 @@ def classify(points, samples, join_window_min=JOIN_WINDOW_MIN, threshold=NET_MEM
     竞争态 = ①显存越线（mem>7500）或 ②降级+热双证（热=util≥30 或 power≥80，且 tok/s<50）。
     双证律防伪阳性：E36 实跑纯热单证 flips=4 含 3 采样伪影误伤（吞吐正常不翻）·双证 flips=1 全中。"""
     out = []
-    for ts, tok, name in points:
+    for ts, tok, name, model in points:
         near = None
         for gts, util, mem, pw in samples:
             if abs((gts - ts).total_seconds()) <= join_window_min * 60:
                 if near is None or abs((gts - ts).total_seconds()) < abs((near[0] - ts).total_seconds()):
                     near = (gts, util, mem, pw)
         if near is None:
-            out.append({"ts": ts, "tok_s": tok, "log": name, "state": "no_sample",
+            out.append({"ts": ts, "tok_s": tok, "log": name, "model": model, "state": "no_sample",
                         "mem_mib": None, "util": None, "power": None})
         else:
             hot = (near[1] is not None and near[1] >= HOT_UTIL_PCT) or \
                   (near[3] is not None and near[3] >= HOT_POWER_W)
             state = "contended" if (near[2] > threshold or (hot and tok < DEGRADED_TOK_S)) else "net"
-            out.append({"ts": ts, "tok_s": tok, "log": name, "state": state,
+            out.append({"ts": ts, "tok_s": tok, "log": name, "model": model, "state": state,
                         "mem_mib": near[2], "util": near[1], "power": near[3]})
     return out
 
@@ -123,38 +133,72 @@ def stats(vals):
             "p10": round(_pct(vals), 2), "min": min(vals), "max": max(vals)}
 
 
-def build(qa_dir, samples_path):
+def _parse_cut(s):
+    """--since/--until 解析：YYYYMMDD 或 YYYYMMDD-HHMM（非法输入 SystemExit fail-fast）"""
+    if not s:
+        return None
+    for fmt in ("%Y%m%d-%H%M", "%Y%m%d"):
+        try:
+            return datetime.strptime(s, fmt)
+        except ValueError:
+            continue
+    raise SystemExit(f"invalid --since/--until: {s} (expect YYYYMMDD or YYYYMMDD-HHMM)")
+
+
+def build(qa_dir, samples_path, since=None, until=None):
     points, n_logs = parse_smoke_points(qa_dir)
     samples = load_gpu_samples(samples_path)
     rows = classify(points, samples)
+    rows = [r for r in rows
+            if (since is None or r["ts"] >= since) and (until is None or r["ts"] <= until)]
     net = stats([r["tok_s"] for r in rows if r["state"] == "net"])
     cont = stats([r["tok_s"] for r in rows if r["state"] == "contended"])
     ratio = round(cont["mean"] / net["mean"], 2) if (net["mean"] and cont["mean"]) else None
+    models = {}
+    for r in rows:
+        models[r["model"] or "unknown"] = models.get(r["model"] or "unknown", 0) + 1
+    stacks = {}
+    for m in sorted(models):
+        stacks[m] = {
+            "net": stats([r["tok_s"] for r in rows if r["state"] == "net" and (r["model"] or "unknown") == m]),
+            "contended": stats([r["tok_s"] for r in rows if r["state"] == "contended" and (r["model"] or "unknown") == m]),
+        }
     return {
         "generated": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "n_logs": n_logs, "n_points": len(rows),
         "n_no_sample": sum(1 for r in rows if r["state"] == "no_sample"),
+        "since": since.strftime("%Y-%m-%d %H:%M") if since else None,
+        "until": until.strftime("%Y-%m-%d %H:%M") if until else None,
+        "models": models, "stacks": stacks,
+        "stack_note": "per-resident-model split (v1.2); cross-stack aggregate is caliber-mixed "
+                      "since 2026-10-15 15:00 v3-final migration (O-20261015-1335/1500 orders L1068)",
         "threshold_mem_mib": NET_MEM_THRESHOLD_MIB, "join_window_min": JOIN_WINDOW_MIN,
         "rule": "mem>7500 OR (hot AND tok<50) — BC-P-15 dual-criterion (E36 preaudit rule 3)",
         "hot_util_pct": HOT_UTIL_PCT, "hot_power_w": HOT_POWER_W, "degraded_tok_s": DEGRADED_TOK_S,
         "net": net, "contended": cont, "contended_to_net_ratio": ratio,
         "span": [rows[0]["ts"].strftime("%Y-%m-%d %H:%M"), rows[-1]["ts"].strftime("%Y-%m-%d %H:%M")] if rows else None,
         "points": [{"ts": r["ts"].strftime("%Y-%m-%d %H:%M"), "tok_s": r["tok_s"],
-                    "state": r["state"], "mem_mib": r["mem_mib"], "log": r["log"]} for r in rows],
+                    "state": r["state"], "mem_mib": r["mem_mib"], "model": r["model"],
+                    "log": r["log"]} for r in rows],
     }
 
 
-def cmd_series(_args):
-    rep = build(QA_DIR, GPU_SAMPLES)
+def cmd_series(args):
+    since, until = _parse_cut(args.since), _parse_cut(args.until)
+    rep = build(QA_DIR, GPU_SAMPLES, since=since, until=until)
     out = OUT_DIR / ("serve-sla-baseline-" + datetime.now().strftime("%Y%m%d-%H%M") + ".json")
     out.write_text(json.dumps(rep, ensure_ascii=False, indent=1), encoding="utf-8")
     n, c = rep["net"], rep["contended"]
+    cut = (f" since={rep['since']}" if rep["since"] else "") + (f" until={rep['until']}" if rep["until"] else "")
     print(f"serve SLA baseline (logs={rep['n_logs']} points={rep['n_points']} "
-          f"no_sample={rep['n_no_sample']} span={rep['span']})")
+          f"no_sample={rep['n_no_sample']} span={rep['span']}{cut})")
     print(f"net-window : n={n['n']} mean={n['mean']} tok/s CV={n['cv_pct']}% "
           f"P10={n['p10']} min={n['min']} max={n['max']}")
     print(f"contended  : n={c['n']} mean={c['mean']} tok/s min={c['min']} max={c['max']}"
-          + (f" ({rep['contended_to_net_ratio']}x net)" if rep['contended_to_net_ratio'] else ""))
+          + (f" ({rep['contended_to_net_ratio']}x net)" if rep["contended_to_net_ratio"] else ""))
+    print("stacks     : " + (" | ".join(
+        f"{m} n={v['net']['n'] + v['contended']['n']} net={v['net']['mean']}"
+        for m, v in rep["stacks"].items()) or "n/a"))
     print("verdict    : " + (
         f"净窗基线 {n['mean']} tok/s · CV {n['cv_pct']}%（BC-P-12 双态承诺结构数据前置·"
         f"月末归集 S5 产能窗基线）· 竞争窗 {rep['contended_to_net_ratio']}x=降级免责条款实证"
@@ -184,6 +228,11 @@ def _write_fixture(d):
     for name, (head, toks) in logs.items():
         body = head + (toks or "answer missing\n")
         (qa / name).write_text(body, encoding="utf-8")
+    # v1.2 模型身份夹具：ollama ps Forever 行（0002=旧 7b 栈·1500=新 flash slot 栈）
+    with (qa / "smoke-20260929-0002.log").open("a", encoding="utf-8") as f:
+        f.write("qwen2.5:7b-instruct    abc123456789    5.1 GB    100% GPU     4096    Forever\n")
+    with (qa / "smoke-20260929-1500.log").open("a", encoding="utf-8") as f:
+        f.write("qwen3:4b-instruct    0edcdef34593    3.9 GB    100% GPU     4096       llamacpp    Forever\n")
     gpu = d / "state" / "gpu-util"
     gpu.mkdir(parents=True)
     rows = [
@@ -225,11 +274,27 @@ def cmd_selftest(_args):
         ok.append(("false-positive guard: 热但吞吐正常不翻（E36 三伪同律）",
                    r1500["state"] == "net"))
         # 远样本豁免：+30min 无样本点 → no_sample
-        far = classify([(datetime(2026, 9, 29, 23, 0), 50.0, "far.log")], load_gpu_samples(smp))
+        far = classify([(datetime(2026, 9, 29, 23, 0), 50.0, "far.log", None)], load_gpu_samples(smp))
         ok.append(("no_sample: outside 15min join window excluded", far[0]["state"] == "no_sample"))
         net = stats([95.10, 93.90, 103.07])
         ok.append(("math: net mean=97.36 CV=4.2% (n=3 P10=min)", net["mean"] == 97.36 and net["cv_pct"] == 4.2))
+        # v1.2 模型身份提取： Forever 行首 token·fail-open None
+        pts_by = {p[2]: p for p in pts}
+        ok.append(("model extract: 0002=qwen2.5:7b-instruct / 1500=qwen3:4b-instruct / 1301=fail-open None",
+                   pts_by["smoke-20260929-0002.log"][3] == "qwen2.5:7b-instruct"
+                   and pts_by["smoke-20260929-1500.log"][3] == "qwen3:4b-instruct"
+                   and pts_by["smoke-20260928-1301.log"][3] is None))
+        # v1.2 时窗过滤： since=20260929-1100 → 3 点（11:06/14:20/15:00）·span 起点随切
+        r_cut = build(qa_dir, smp, since=datetime(2026, 9, 29, 11, 0))
+        ok.append(("since-filter: 20260929-1100 -> 3 points span starts 11:06",
+                   r_cut["n_points"] == 3 and r_cut["span"][0] == "2026-09-29 11:06"
+                   and r_cut["since"] == "2026-09-29 11:00"))
+        # v1.2 分栈统计： 旧栈 net mean=95.10（0002 单点）·新栈 net mean=103.07（1500 单点）
         r1 = build(qa_dir, smp)
+        ok.append(("stacks split: qwen2.5:7b-instruct net=95.10 / qwen3:4b-instruct net=103.07 / unknown n=4",
+                   r1["stacks"]["qwen2.5:7b-instruct"]["net"]["mean"] == 95.1
+                   and r1["stacks"]["qwen3:4b-instruct"]["net"]["mean"] == 103.07
+                   and r1["models"]["unknown"] == 4))
         ok.append(("determinism: double build identical",
                    json.dumps(r1, sort_keys=True) == json.dumps(build(qa_dir, smp), sort_keys=True)))
         ok.append(("rule meta: BC-P-15 双判据字段入报告 JSON",
@@ -249,8 +314,11 @@ def main():
         pass
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
-    sub.add_parser("series", help="解析烟测×GPU 样本序列 → 双态 SLA 基线报告+JSON")
-    sub.add_parser("selftest", help="合成夹具断言（分类/数学/豁免/确定性）")
+    sp = sub.add_parser("series", help="解析烟测×GPU 样本序列 → 双态 SLA 基线报告+JSON")
+    sp.add_argument("--since", default=None,
+                    help="时窗起 YYYYMMDD[-HHMM]（栈代际闸：跨 2026-10-15 迁移边界的聚合=口径混串）")
+    sp.add_argument("--until", default=None, help="时窗止 YYYYMMDD[-HHMM]")
+    sub.add_parser("selftest", help="合成夹具断言（分类/数学/豁免/确定性/模型提取/时窗/分栈）")
     args = ap.parse_args()
     return cmd_selftest(args) if args.cmd == "selftest" else cmd_series(args)
 

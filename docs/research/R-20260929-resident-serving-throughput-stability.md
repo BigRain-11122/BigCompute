@@ -73,3 +73,22 @@
 - **S2**：双态判读复验=下一他司产线高峰日（工作日日间）竞争窗探针 P10 ≤60 维持（预测成立）。
 - **S3**：长生成对照=下一次 E12 型探针（≥90 token 生成）与短探针同窗偏差 ≤15%。
 - **S4**：机队面=BC-P-11 批后 bm-b 首自领回填净窗基线（他机数值=台账转述非自测律维持）。
+
+## 九、增量窗行（2026-10-17 · v1.2 栈代际闸 · E73/族 A）
+
+**触发**：CEO Qwen v3 final 切换令（O-20261015-1335/1500·orders L1068）删除旧 qwen2.5 家族→常驻探针栈 qwen2.5:7b-instruct（5.1GB）→qwen3:4b-instruct flash slot（3.9GB）换代——tok/s 序列跨 2026-10-15 15:00 边界的聚合=口径混串（不同模型不可比）。E49 滚动律（呈报窗/月末窗开口时 series 复跑）+10-31 N1 S5 消费窗前置收口。
+
+**工程面（三件全绿）**：
+- `Tools/serve_sla_baseline.py` v1.2：①`--since/--until YYYYMMDD[-HHMM]` 时窗过滤（栈代际闸）②逐日志常驻探针模型提取（ollama ps Forever 行首 token·fail-open unknown）③报告 `models` 计数+`stacks` 分栈 net/contended 统计（混串可见化零启发式）④selftest 6→12/12 PASS（模型提取/时窗过滤/分栈三新断言）。
+- `Tools/month_end_collect.py` S5：series 调用增 `--since 月首`（月窗限定·S5 月度口径修正）+parse_sla_series 增 stacks 捕获（net=None fail-open）+月末行 SLA 段加分栈呈现——selftest 22/22 回归 PASS+run --month 2026-10 exit 0。
+- `Tools/sla_drift_preaudit.py`：classify_mem_only 四元组适配（slb.parse_smoke_points 增维连带）——selftest PASS+live check 复跑绿。
+
+**数据面（新栈首锚·2026-10-15 23:27 → 10-17 08:55·n=15）**：
+- **净窗 n=0 如实**：迁移后 15 点全落共租 VRAM 窗（mem>7500 恒真=4-5 Tuanjie 编辑器常驻态）——旧栈净窗判据（mem 单维）在新栈常态下无净窗可归类。
+- **新栈共租窗均值 123.93 tok/s**（min 70.21/max 148.93）——**超旧 7b 栈全史净窗基线 98.91**（体积降 5.1→3.9GB+速度升·共租窗内吞吐反升=4b 档位特性）。
+- 全史分栈披露：qwen2.5:7b-instruct n=199 net=98.91｜qwen3:4b-instruct n=14 net=None（净窗未开）｜qwen2.5:14b-8k n=2 net=87.53｜bge-m3 n=1/unknown n=6。
+- 10 月月窗（N1 S5 预演直出）：7b n=119 net=99.95｜4b n=14 net=None——月末行已带分栈段。
+
+**观察位（预注册·N1 口径冻结零触碰）**：新栈净窗基线的判据重校候选（mem>7500 单维对新栈失准=共租 VRAM 恒态下净窗 n=0 或为常态·compute 维判据候选）——**N1 10-31 前零口径变更**（BC-P-15 月末口径冻结律维持）·重校窗预注册=N1 后首窗呈批（BC-P-15 同通道）。
+
+**消费面**：10-31 N1 一命令 S5（月窗+分栈代际闸在位）·BC-P-12 双态承诺结构（新栈基线待净窗事件/重校后呈）·E49 滚动律维持。证据=state/sla-newstack-anchor-20261015plus-20261017.json+state/e73-sla-stackgen-20261017.txt+state/serve-sla-baseline-20261017-0905.json（全史分栈）。

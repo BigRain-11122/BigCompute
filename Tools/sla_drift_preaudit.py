@@ -29,7 +29,7 @@ def classify_mem_only(points, samples, join_window_min=slb.JOIN_WINDOW_MIN):
     BC-P-15 落地后 slb.classify 已升双判据——本件 net_now 仍须展示 mem-only 基线
     （预注册前后对照的「前」面）·敏感性表从 mem-only net 行起算翻转。"""
     out = []
-    for ts, tok, name in points:
+    for ts, tok, name, model in points:  # v1.2 4 元组适配（slb.parse_smoke_points 增模型身份）
         near = None
         for gts, util, mem, pw in samples:
             if abs((gts - ts).total_seconds()) <= join_window_min * 60:

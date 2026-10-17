@@ -185,18 +185,30 @@ def collect_s5(log_texts, month, anchors=None, sla=None):
 
 
 def parse_sla_series(text):
-    """E28 Tools/serve_sla_baseline.py series 输出解析（净窗/竞争窗双态+JSON 指针）。"""
+    """E28 serve_sla_baseline.py series 输出解析（净窗/竞争窗双态+分栈 stacks+JSON 指针）。
+    v1.2：stacks 捕获=栈代际混串可见化（2026-10-15 v3 final 迁移后 7b/4b 不可比）。"""
     n = re.search(r"net-window : n=(\d+) mean=([\d.]+) tok/s CV=([\d.]+)% P10=([\d.]+)", text)
     c = re.search(r"contended  : n=(\d+) mean=([\d.]+) tok/s min=([\d.]+) max=([\d.]+)", text)
+    s = re.search(r"stacks     : (.+)", text)
     j = re.search(r"json\s+: (.+\.json)", text)
     if not n:
         return None
+    stacks = None
+    if s:
+        stacks = []
+        for part in s.group(1).split("|"):
+            mm = re.match(r"\s*(\S+) n=(\d+) net=([\d.]+|None)", part.strip())
+            if mm:
+                stacks.append({"model": mm.group(1), "n": int(mm.group(2)),
+                               "net_mean_tok_s": float(mm.group(3)) if mm.group(3) != "None" else None})
     return {"net": {"n": int(n.group(1)), "mean_tok_s": float(n.group(2)),
                    "cv_pct": float(n.group(3)), "p10": float(n.group(4))},
             "contended": {"n": int(c.group(1)), "mean_tok_s": float(c.group(2)),
                           "min_tok_s": float(c.group(3)), "max_tok_s": float(c.group(4))} if c else None,
+            "stacks": stacks,
             "json": j.group(1) if j else None,
-            "note": "双态 SLA 基线（E28）·非商业产能·分类规则 mem>7500MiB 单维=E28 续窗候选（util/power 精化）·随窗滚动"}
+            "note": "双态 SLA 基线（E28 v1.2）·月窗限定（--since 月首）·分栈呈现=2026-10-15 v3 final "
+                    "迁移代际闸（7b 旧栈与 4b flash slot 不可比·跨栈聚合=口径混串）·随窗滚动"}
 
 
 def _s5_real(month):
@@ -209,7 +221,9 @@ def _s5_real(month):
             anchors.append({"file": p.name, "E_package_tokens": d.get("E_package_tokens")})
         except Exception:
             anchors.append({"file": p.name, "E_package_tokens": None})
-    sla = parse_sla_series(_run_tool(["Tools/serve_sla_baseline.py", "series"]))
+    # v1.2 栈代际闸：月窗限定（--since 月首·S5 月度口径）+报告面分栈呈现（跨 2026-10-15 迁移边界可见化）
+    sla = parse_sla_series(_run_tool(["Tools/serve_sla_baseline.py", "series",
+                                      "--since", month.replace("-", "") + "01"]))
     return collect_s5(log_texts, month, anchors, sla)
 
 
@@ -308,8 +322,13 @@ def assemble(month, s1, s2, s3, s4, s5, now_iso, s6=None, s4b=None):
     if sla:
         c = sla.get("contended") or {}
         ratio = f"{c['mean_tok_s'] / sla['net']['mean_tok_s']:.2f}x" if c and sla["net"]["mean_tok_s"] else "-"
-        sla_seg = (f"｜产能窗 SLA 基线（E28）=净窗 n={sla['net']['n']} mean={sla['net']['mean_tok_s']} tok/s "
-                   f"CV={sla['net']['cv_pct']}%·竞争 {ratio}（非商业产能·分类精化=E28 续窗候选）")
+        stacks_seg = ""
+        if sla.get("stacks"):
+            stacks_seg = "·分栈 " + "/".join(
+                f"{st['model']} n={st['n']} net={st['net_mean_tok_s']}" for st in sla["stacks"])
+        sla_seg = (f"｜产能窗 SLA 基线（E28 v1.2·月窗）=净窗 n={sla['net']['n']} mean={sla['net']['mean_tok_s']} tok/s "
+                   f"CV={sla['net']['cv_pct']}%·竞争 {ratio}{stacks_seg}"
+                   f"（非商业产能·栈代际闸=2026-10-15 v3 final 迁移后 7b/4b 分栈呈现）")
     s6_seg, chain_n = "", 5
     if s6 and s6.get("available") and s6.get("month_slice"):
         ms = s6["month_slice"]
