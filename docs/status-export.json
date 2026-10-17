@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-10-17 00:2x",
- "current_activity": "00:0x 哨兵轮：10-16 23:5x 本地故障→云端恢复律收讫（④本司自检=域内零停摆等修件零动作）+队列步=BC-P-76 批活转化 sliline；队列=tasks/TASKS.md",
- "latest_artifact": "Tools/cost_ledger.py sliline 子命令（SLI-8 云端消耗线一命令·selftest 全绿含 sli8 段+live=SLI8-GREEN〔cloud 0 行严管默认面/l1 1 行实测/attribution 违例 0〕·2026-10-17 00:0x）+证据 state/sli8-20261017-000444.json",
- "next_milestone": "10-18 周日轮=sliline 首消费（SLI-8 对账行入轮账本+底座自检双绿）·N1 月末归集=10-31 22:43 一命令（S1-S6 六源就绪·BC-P-80 前置预演 10-30）·M66 批池月窗 ~11-0x"
+ "updated_at": "2026-10-17 11:2x",
+ "current_activity": "11:0x 哨兵轮：审核零本司派单+队列步=BC-P-84 批活转化（机队 LLM 路由消费方须知一页件）；队列=tasks/TASKS.md",
+ "latest_artifact": "docs/ops/fleet-llm-routing-note-v1.md（机队 LLM 路由消费方一页件·bm-c ollama 端点退役迁移窗：:8090 端点契约七条+num_ctx 契约行族属勘正+吞吐双带活体锚=独占窗 36.7 tok/s〔t92〕vs 共租饱和窗 0.57-0.59 tok/s E2E 双跑·2026-10-17 11:1x）+证据 state/e77-l1-live-probe-20261017.json",
+ "next_milestone": "10-18 周日轮=sliline 首消费（SLI-8 对账行+底座自检双绿+周产出分+@本司行全量对账）·N1 月末归集=10-31 22:43 一命令（S1-S6 六源就绪·BC-P-80 前置预演 10-30）·M66 批池月窗 ~11-0x"
 }
