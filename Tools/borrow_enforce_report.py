@@ -16,19 +16,32 @@ state/borrow-runner-enforce-log.jsonl（审计账）——本件=该账的只读
   J2 按日期分组 rollup：count/first/last/事件分类计数（确定性·同账同出）
   J3 strict UTF-8 读（损行=定位报错 exit 3·T24 前置门同律）
   J4 纯只读：目标账档字节零改（selftest 断言）
+  J5 T115 coder 面细化：FAIL-OPEN 独立分类（其行文含「sentinel WARN
+     stands」子串·按词表序先判 FAIL-OPEN 防误并入 WARN=探针失明禁盲杀
+     面可见化）+ coder-exempt=%d 解析聚合（事件数 events + 累计豁免
+     进程数 spared）——T114 交叉误伤修（10-14 BW-007 夜按名杀连杀
+     :8090 coder 8 笔）的执法账消费面；报告级非破坏·账行零改
 """
 import argparse
 import hashlib
 import io
 import json
 import os
+import re
 import sys
 import tempfile
 
 LOG_REL = "state/borrow-runner-enforce-log.jsonl"
 
 # 事件分类（与 gpu_idle_collector 执法腿写面同词表·前缀匹配）
-EVENT_KINDS = ("ENFORCED-KILL", "KILL-FAILED", "NO-KILL", "WARN")
+# T115：FAIL-OPEN 置于 WARN 前——其行文含「sentinel WARN stands」子串，
+# 词表序先判 FAIL-OPEN 方不误并入 WARN（探针失明禁盲杀面独立可见化）
+EVENT_KINDS = ("ENFORCED-KILL", "KILL-FAILED", "FAIL-OPEN", "NO-KILL", "WARN")
+
+# T114 写面新字段：ENFORCED-KILL 行带 targets=N coder-exempt=N；
+# NO-KILL coder-exempt 行带 coder-exempt=N（仅 coder 面在场）。
+# T115 消费面：解析聚合为 events（提及行数）+ spared（累计豁免进程数）
+CE_RE = re.compile(r"coder-exempt=(\d+)")
 
 
 def _read_entries(path):
@@ -67,7 +80,8 @@ def rollup(entries, days=None):
     for e in entries:
         date = str(e.get("ts", ""))[:10]
         g = by_date.setdefault(date, {"date": date, "count": 0, "first": None,
-                                      "last": None, "kinds": {}})
+                                      "last": None, "kinds": {},
+                                      "ce_events": 0, "ce_spared": 0})
         g["count"] += 1
         if g["first"] is None or str(e["ts"]) < g["first"]:
             g["first"] = str(e["ts"])
@@ -75,6 +89,10 @@ def rollup(entries, days=None):
             g["last"] = str(e["ts"])
         kind = _classify(str(e.get("line", "")))
         g["kinds"][kind] = g["kinds"].get(kind, 0) + 1
+        m = CE_RE.search(str(e.get("line", "")))
+        if m:  # T115：coder 豁免面聚合（新格式行才有·旧格式行零计）
+            g["ce_events"] += 1
+            g["ce_spared"] += int(m.group(1))
     rows = sorted(by_date.values(), key=lambda r: r["date"])
     if days:
         rows = rows[-days:]
@@ -93,8 +111,13 @@ def render_report(path, days=None):
     lines = ["borrow-runner enforce rollup: %d entries, %d night-group(s)" % (total, len(rows))]
     for r in rows:
         kinds = " ".join("%s=%d" % (k, v) for k, v in sorted(r["kinds"].items()))
-        lines.append("  %s count=%d first=%s last=%s %s"
-                     % (r["date"], r["count"], r["first"], r["last"], kinds))
+        extra = ""
+        if r.get("ce_events"):
+            extra = " coder-exempt: events=%d spared=%d" % (r["ce_events"],
+                                                            r["ce_spared"])
+        lines.append("  %s count=%d first=%s last=%s %s%s"
+                     % (r["date"], r["count"], r["first"], r["last"],
+                        kinds, extra))
     return 0, "\n".join(lines)
 
 
@@ -140,6 +163,34 @@ def _selftest():
             f.write('{"ts": "x", "line": "ok"}\n'.encode("utf-8") + "中文损行".encode("gbk"))
         c4, t4 = render_report(p2)
         run("S6 损行前置门 exit3", c4 == 3 and "CORRUPT" in t4, "")
+        # S7 T115 coder 面细化：FAIL-OPEN 独立分类（行文含「sentinel
+        # WARN stands」子串=词表序先判防误并）+ coder-exempt 解析聚合
+        p3 = os.path.join(td, "t114.jsonl")
+        fx114 = [
+            {"ts": "2026-10-14T22:03:00", "line": "borrow-window runner enforce: ENFORCED-KILL llama-server.exe (night-stop O-20261012-1115 + lane law O-20261012-2215; pin-evicted=2; kill=yes; targets=1 coder-exempt=1; serve parent kept for tags liveness; re-probe at next tick)"},
+            {"ts": "2026-10-14T23:18:00", "line": "borrow-window runner enforce: NO-KILL coder-exempt (only coder-face llama-server present, coder-exempt=2; :8090 resident exempt per CEO order 7ba65da; ollama-face sentinel WARN stands)"},
+            {"ts": "2026-10-14T23:33:00", "line": "borrow-window runner enforce: FAIL-OPEN no kill (night + runner present but task-state probe unreadable; sentinel WARN stands)"},
+        ]
+        with io.open(p3, "w", encoding="utf-8", newline="") as f:
+            for e in fx114:
+                f.write(json.dumps(e, ensure_ascii=False) + "\n")
+        c5, t5 = render_report(p3)
+        ok7 = (c5 == 0 and "3 entries, 1 night-group" in t5
+               and "ENFORCED-KILL=1" in t5 and "NO-KILL=1" in t5
+               and "FAIL-OPEN=1" in t5 and "WARN" not in t5
+               and "coder-exempt: events=2 spared=3" in t5)
+        run("S7 coder面细化+FAIL-OPEN分类", ok7,
+            t5.splitlines()[1] if len(t5.splitlines()) > 1 else t5)
+        # S8 旧格式行回归（10-14 前实测形态：无 coder-exempt 字段零计不炸）
+        p4 = os.path.join(td, "legacy.jsonl")
+        with io.open(p4, "w", encoding="utf-8", newline="") as f:
+            f.write(json.dumps({"ts": "2026-10-14T23:03:38", "line":
+                                "borrow-window runner enforce: ENFORCED-KILL llama-server.exe (night-stop O-20261012-1115 + lane law O-20261012-2215; pin-evicted=2; kill=yes; serve parent kept for tags liveness; re-probe at next tick)"},
+                               ensure_ascii=False) + "\n")
+        c6, t6 = render_report(p4)
+        ok8 = (c6 == 0 and "1 entries, 1 night-group" in t6
+               and "ENFORCED-KILL=1" in t6 and "coder-exempt" not in t6)
+        run("S8 旧格式行回归零计", ok8, "")
 
     n_pass = sum(1 for _, ok, _ in checks if ok)
     for name, ok, detail in checks:
