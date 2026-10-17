@@ -92,3 +92,9 @@
 **观察位（预注册·N1 口径冻结零触碰）**：新栈净窗基线的判据重校候选（mem>7500 单维对新栈失准=共租 VRAM 恒态下净窗 n=0 或为常态·compute 维判据候选）——**N1 10-31 前零口径变更**（BC-P-15 月末口径冻结律维持）·重校窗预注册=N1 后首窗呈批（BC-P-15 同通道）。
 
 **消费面**：10-31 N1 一命令 S5（月窗+分栈代际闸在位）·BC-P-12 双态承诺结构（新栈基线待净窗事件/重校后呈）·E49 滚动律维持。证据=state/sla-newstack-anchor-20261015plus-20261017.json+state/e73-sla-stackgen-20261017.txt+state/serve-sla-baseline-20261017-0905.json（全史分栈）。
+
+
+**§九 增量二（判据重校观察面·2026-10-17 10:0x·E74 承接·observe-only）**：
+- `Tools/serve_sla_baseline.py` v1.3 `--criteria-observe`：候选 C1 判据（计算型压制双证单列=hot AND tok<50·mem 单维降 informational——机器面 mem 含共租户占用=serve 足迹 << 机器面新栈失准根因）与 C0 生产判据 per-model 对照节；selftest 12→16/16（mem 误判翻回 net/真降级 C1 不豁免/默认路径零变更/确定性四新断言）·N1 前零口径变更（classify() 不动·重校呈批窗=N1 后 BC-P-15 同通道）。
+- **实弹（迁移后 n=16·2026-10-15 23:27..10-17 09:07）**：qwen3:4b 新栈 flips->net=14/14（C0 net=0 → C1 net=14）·C1 net mean=127.76 tok/s CV=21.8% P10=81.78·真降级点 0（hot AND tok<50 零命中）=上文「新栈净窗 n=0 观察位」的复原路径数据面成立。
+- 诚实注记：①C1 net CV 21.8% 高于旧栈净窗带（5-14%）=轻度共租残留候选观察；②bge-m3 首 Forever 行误归因 2 点（ollama ps 排序面·归因瑕疵随呈批窗排除复算）；③重校落值判据预注册=BC-P-83（C1 net n>=10 且 CV<=15% 才可作 SLA 承诺基线·真降级不豁免维持·旧栈历史基线不回改）。证据=state/serve-sla-baseline-20261017-1007.json。

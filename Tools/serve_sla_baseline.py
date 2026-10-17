@@ -14,6 +14,11 @@ R-20260929-resident-serving-throughput-stability（R-39）手工双态分析的�
              的 tok/s 不可比——跨 2026-10-15 15:00 边界的全史聚合=口径混串·N1 S5 消费须月窗+分栈呈现）
            - 逐日志提取常驻探针模型名（ollama ps Forever 行首 token·fail-open=unknown）→
              models 计数 + stacks 分栈 net/contended 统计（混串可见化·零启发式）
+           v1.3 判据重校观察位（E73 新栈观察位承接·observe-only）：--criteria-observe →
+             逐点候选 C1 判据（计算型压制双证单列=hot AND tok<50·mem 单维降 informational——
+             机器面 mem 含共租户占用·serve 足迹 << 机器面的新栈 mem 判据结构性失准）与
+             C0 生产判据对照 per-model 分组输出·N1 前零口径变更（classify() 不动·
+             重校呈批窗=N1 后 BC-P-15 同通道·候选数据面=本节 JSON）
 - selftest: 合成夹具断言（分类/双证翻类/伪阳性保护/数学/无样本窗豁免/确定性/模型提取/时窗过滤/分栈）·temp 夹具零真实状态污染
 
 零 GPU 占用（纯日志面）·数据源=qa_smoke 每轮自产+GPU-IdleWatch 既有样本零新采集
@@ -123,6 +128,45 @@ def classify(points, samples, join_window_min=JOIN_WINDOW_MIN, threshold=NET_MEM
     return out
 
 
+def criteria_observe_rows(rows):
+    """候选 C1 判据逐点重分类（observe-only·E73 观察位承接）：
+    contended = hot AND tok<50（计算型压制双证）·mem 单维降 informational。
+    N1 前零口径变更律：本函数只读对照不改 classify() 生产判据·零写零副作用。
+    根因注记：机器面 mem_used 含共租户占用（ComfyUI/MV/编辑器）→serve 自身足迹 << 机器面的
+    新栈（flash slot 3.9G 档）在共租常态机上 mem>7500 恒真=净窗结构性归零（E73 n=14 全落 contended 实锚）。"""
+    per_model = {}
+    for r in rows:
+        if r["state"] == "no_sample":
+            continue
+        m = r["model"] or "unknown"
+        hot = (r["util"] is not None and r["util"] >= HOT_UTIL_PCT) or \
+              (r["power"] is not None and r["power"] >= HOT_POWER_W)
+        c1 = "contended" if (hot and r["tok_s"] < DEGRADED_TOK_S) else "net"
+        d = per_model.setdefault(m, {"n": 0, "c0_net": 0, "c0_cont": 0, "c1_net": 0, "c1_cont": 0,
+                                     "flips_to_net": 0, "flips_to_cont": 0,
+                                     "c0_net_toks": [], "c1_net_toks": []})
+        d["n"] += 1
+        d["c0_net" if r["state"] == "net" else "c0_cont"] += 1
+        d["c1_net" if c1 == "net" else "c1_cont"] += 1
+        if r["state"] == "contended" and c1 == "net":
+            d["flips_to_net"] += 1
+        elif r["state"] == "net" and c1 == "contended":
+            d["flips_to_cont"] += 1
+        if r["state"] == "net":
+            d["c0_net_toks"].append(r["tok_s"])
+        if c1 == "net":
+            d["c1_net_toks"].append(r["tok_s"])
+    out = {}
+    for m, d in per_model.items():
+        out[m] = {"n": d["n"],
+                  "c0": {"net": d["c0_net"], "contended": d["c0_cont"],
+                         "net_stats": stats(d["c0_net_toks"])},
+                  "c1": {"net": d["c1_net"], "contended": d["c1_cont"],
+                         "net_stats": stats(d["c1_net_toks"])},
+                  "flips_to_net": d["flips_to_net"], "flips_to_contended": d["flips_to_cont"]}
+    return out
+
+
 def stats(vals):
     if not vals:
         return {"n": 0, "mean": None, "cv_pct": None, "p10": None, "min": None, "max": None}
@@ -145,7 +189,7 @@ def _parse_cut(s):
     raise SystemExit(f"invalid --since/--until: {s} (expect YYYYMMDD or YYYYMMDD-HHMM)")
 
 
-def build(qa_dir, samples_path, since=None, until=None):
+def build(qa_dir, samples_path, since=None, until=None, criteria_observe=False):
     points, n_logs = parse_smoke_points(qa_dir)
     samples = load_gpu_samples(samples_path)
     rows = classify(points, samples)
@@ -163,7 +207,7 @@ def build(qa_dir, samples_path, since=None, until=None):
             "net": stats([r["tok_s"] for r in rows if r["state"] == "net" and (r["model"] or "unknown") == m]),
             "contended": stats([r["tok_s"] for r in rows if r["state"] == "contended" and (r["model"] or "unknown") == m]),
         }
-    return {
+    rep = {
         "generated": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "n_logs": n_logs, "n_points": len(rows),
         "n_no_sample": sum(1 for r in rows if r["state"] == "no_sample"),
@@ -181,11 +225,21 @@ def build(qa_dir, samples_path, since=None, until=None):
                     "state": r["state"], "mem_mib": r["mem_mib"], "model": r["model"],
                     "log": r["log"]} for r in rows],
     }
+    if criteria_observe:
+        rep["criteria_observe"] = {
+            "mode": "observe-only (E73 承接·N1 前零口径变更·重校呈批窗=N1 后 BC-P-15 同通道)",
+            "c0_rule": "mem>7500 OR (hot AND tok<50) — 现役生产判据（classify 不动）",
+            "c1_rule": "hot AND tok<50 — 候选：计算型压制双证单列·mem 单维降 informational"
+                       "（机器面 mem 含共租户占用→serve 足迹 << 机器面新栈失准根因）",
+            "per_model": criteria_observe_rows(rows),
+        }
+    return rep
 
 
 def cmd_series(args):
     since, until = _parse_cut(args.since), _parse_cut(args.until)
-    rep = build(QA_DIR, GPU_SAMPLES, since=since, until=until)
+    rep = build(QA_DIR, GPU_SAMPLES, since=since, until=until,
+                criteria_observe=bool(getattr(args, "criteria_observe", False)))
     out = OUT_DIR / ("serve-sla-baseline-" + datetime.now().strftime("%Y%m%d-%H%M") + ".json")
     out.write_text(json.dumps(rep, ensure_ascii=False, indent=1), encoding="utf-8")
     n, c = rep["net"], rep["contended"]
@@ -203,6 +257,14 @@ def cmd_series(args):
         f"净窗基线 {n['mean']} tok/s · CV {n['cv_pct']}%（BC-P-12 双态承诺结构数据前置·"
         f"月末归集 S5 产能窗基线）· 竞争窗 {rep['contended_to_net_ratio']}x=降级免责条款实证"
         if n["n"] and rep["contended_to_net_ratio"] else "样本不足·如实"))
+    if "criteria_observe" in rep:
+        obs = rep["criteria_observe"]
+        print(f"criteria-observe (C0 vs C1·observe-only·N1 前零口径变更)")
+        for m, v in obs["per_model"].items():
+            c0s, c1s = v["c0"]["net_stats"], v["c1"]["net_stats"]
+            print(f"  {m}: n={v['n']} C0 net={v['c0']['net']} mean={c0s['mean']} | "
+                  f"C1 net={v['c1']['net']} mean={c1s['mean']} CV={c1s['cv_pct']}% P10={c1s['p10']} | "
+                  f"flips->net={v['flips_to_net']} ->contended={v['flips_to_contended']}")
     print("json       : " + str(out))
     return 0
 
@@ -302,6 +364,45 @@ def cmd_selftest(_args):
                    and r1["degraded_tok_s"] == 50.0 and "dual-criterion" in r1["rule"]))
         ok.append(("ratio: contended mean 38.61 = 0.4x net",
                    r1["contended_to_net_ratio"] == 0.4))
+    # v1.3 判据重校观察面（独立夹具·三态：mem 误判翻回 / 真降级不豁免 / 默认路径零变更）
+    with tempfile.TemporaryDirectory() as td2:
+        d2 = Path(td2)
+        qa2 = d2 / "qa"
+        qa2.mkdir()
+        forever = ("qwen3:4b-instruct    0edcdef34593    3.9 GB    100% GPU     4096       "
+                   "llamacpp    Forever\n")
+        logs2 = {
+            "smoke-20261016-1000.log": ("BigCompute QA smoke test 20261016-1000 (orders L254 / charter v1)\n"
+                                        "answer='ok' eval_count=8 120.0 tok/s\n" + forever),
+            "smoke-20261016-1400.log": ("BigCompute QA smoke test 20261016-1400 (orders L254 / charter v1)\n"
+                                        "answer='ok' eval_count=8 25.16 tok/s\n" + forever),
+            "smoke-20261016-1600.log": ("BigCompute QA smoke test 20261016-1600 (orders L254 / charter v1)\n"
+                                        "answer='ok' eval_count=8 100.0 tok/s\n"),
+        }
+        for name, body in logs2.items():
+            (qa2 / name).write_text(body, encoding="utf-8")
+        gpu2 = d2 / "state" / "gpu-util"
+        gpu2.mkdir(parents=True)
+        rows2 = [
+            {"ts": "2026-10-16T10:02:00", "util_pct": 8.0, "mem_used_mib": 11800.0, "power_w": 45.0},
+            {"ts": "2026-10-16T14:02:00", "util_pct": 60.0, "mem_used_mib": 5200.0, "power_w": 164.55},
+            {"ts": "2026-10-16T16:02:00", "util_pct": 5.0, "mem_used_mib": 6600.0, "power_w": 35.0},
+        ]
+        smp2 = gpu2 / "samples.jsonl"
+        smp2.write_text("\n".join(json.dumps(r) for r in rows2) + "\n", encoding="utf-8")
+        r2 = build(qa2, smp2, criteria_observe=True)
+        obs = r2["criteria_observe"]["per_model"]["qwen3:4b-instruct"]
+        ok.append(("criteria-observe: mem 误判点翻回 net（C0 contended→C1 net·新栈净窗复原路径）",
+                   obs["flips_to_net"] == 1 and obs["c1"]["net"] == 1
+                   and obs["c1"]["net_stats"]["mean"] == 120.0))
+        ok.append(("criteria-observe guard: 真降级点 C1 维持 contended（hot AND tok<50 双证不豁免）",
+                   obs["c1"]["contended"] == 1 and obs["c0"]["contended"] == 2))
+        r2_plain = build(qa2, smp2)
+        ok.append(("criteria-observe off: 默认路径零变更（无 flag=节缺位·生产口径不动）",
+                   "criteria_observe" not in r2_plain))
+        ok.append(("criteria-observe determinism: double build identical",
+                   json.dumps(r2, sort_keys=True) == json.dumps(build(qa2, smp2, criteria_observe=True),
+                                                                 sort_keys=True)))
     for name, passed in ok:
         print(("[PASS] " if passed else "[FAIL] ") + name)
     return 0 if all(p for _, p in ok) else 1
@@ -318,6 +419,9 @@ def main():
     sp.add_argument("--since", default=None,
                     help="时窗起 YYYYMMDD[-HHMM]（栈代际闸：跨 2026-10-15 迁移边界的聚合=口径混串）")
     sp.add_argument("--until", default=None, help="时窗止 YYYYMMDD[-HHMM]")
+    sp.add_argument("--criteria-observe", action="store_true", dest="criteria_observe",
+                    help="候选 C1 判据对照观察节（observe-only·E73 新栈观察位承接·"
+                         "N1 前零口径变更·重校呈批窗=N1 后 BC-P-15 同通道）")
     sub.add_parser("selftest", help="合成夹具断言（分类/数学/豁免/确定性/模型提取/时窗/分栈）")
     args = ap.parse_args()
     return cmd_selftest(args) if args.cmd == "selftest" else cmd_series(args)
