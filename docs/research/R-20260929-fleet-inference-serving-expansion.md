@@ -14,7 +14,7 @@
 |---|---|---|---|
 | bm-a（本机） | 32 核·RAM 空闲 54GB·4070S 12GB | 现役（10-14 车道变更 orders 7ba65da）=**35B coder 常驻 :8090**（Qwen3.6-35B-A3B UD-IQ4_XS 17.7G·llama.cpp b11429 --n-cpu-moe·~2.9G VRAM 档·36.7 tok/s 10-14 live 实测〔state/t92-coder-probe-20261014.txt〕·看门狗 bm-a-CoderServe）+7b 工作马 qwen2.5:7b-instruct 共租回拉在役（12:30·U240 标准样机沿革）；实测带沿革=7b GPU 档 89.3 tok/s/Bonsai CPU 档 3.20/ngl32 档 4.89-5.47 | 本司自测（首轮 R-+T-31 锚引用+10-14 live 复测） |
 | bm-b | 16 核·RAM 23.9GB·3070 8GB | b serve 在跑（他司产线活载）·常驻 7b Q4_K_M 权重 5.1GB<8GB 理论可载=**建议级 ⬜**（KV+ctx 预算后判·headroom ≥1.5GB 判据适用） | 台账转述·非自测 |
-| bm-c | 32 核·RAM 23.9GB·3070 魔改 16GB（唯一 16GB 档） | 27B 级实验位候选（E15 呈报包 v1 在册·ngl99 全档重验=E17 承接）+7b 常驻并行可能（16−5.1−5.95=4.95GB 余量·KV 预算后判 ⬜） | 台账转述·非自测 |
+| bm-c | 32 核·RAM 23.9GB·3070 魔改 16GB（唯一 16GB 档） | **LLM 面退役（2026-10-17 09:5x CEO 令·orders a80c687 前置行实读）**=bm-c GPU=生成视觉-only·LLM 调用出列（重/代码/深知识→bm-a:8090·轻件→bm-b 4b·1434 端点退役）→**27B 级实验位候选就此废止·27B 深判承接移交 bm-d 大脑 lane（V100×3·§一 bm-d 行）**——沿革保留：原「27B 级实验位候选（E15 呈报包 v1 在册·ngl99 全档重验=E17 承接）+7b 常驻并行可能（16−5.1−5.95=4.95GB 余量·KV 预算后判 ⬜）」 | 台账转述·非自测 |
 | bm-d（预备·候上电入队） | 24C48T·RAM 256G DDR3·**V100 16G×3+P104 8G×3**（六卡机·Volta/Pascal 老代档·512G SSD） | **预备行 ⬜**（集团正典=C-20261016-01 分层定谳+O-20261016-2148 上机准备令·2026-10-16 台账实读）=**大脑机 lane**（V100×3：35B Q8 三卡量产+27B 深判+Gemma 快档+LiteLLM 网关调度席·**领取制调度禁遥控制·替补序承正典**）+**草稿厂**（P104×3 正档=SD1.5 占位夜批/4B-8B GGUF 常驻/whisper·草稿档=SDXL 试构图/ESRGAN·硬判负 0 条）+回测厂 CPU 面（BigMoney 主承接·W 波轮换）——软件基线=CUDA12.x+torch cu126≤2.14+llama.cpp 自编（-arch=61/70·Pascal FA-off）；本司消费面三注=①RAM>8G 分片归口 bm-d 首选（resource-chain §9.1·本机 bm-a 降 fallback）②应用表「机队大脑 lane」候选=阶段 2 借算工单轨 V100 档借出计价候选③落地前零网络动作（E26 §四红线同律） | 集团台账转述·非自测·⬜ 随 JOIN-REPORT 落地验值 |
 
 ## 二 常驻标准五项·机队扩面版（U240 各机自领回填面）
@@ -37,7 +37,7 @@
 |---|---|---|---|
 | 1 | 集团批量摘要/审查/报告件（BC-P-01 池） | bm-a GPU 档 89.3 tok/s 常驻位 | 观察位（DRY-RUN 至 10-05） |
 | 2 | 质量不敏感初筛/清洗（BC-P-08 CPU 档线） | bm-a CPU 32 核（Bonsai 3.20 tok/s 已证） | 观察位（提案在册） |
-| 3 | 27B 级深度实验位 | bm-c 16GB 档 | 呈报包 v1 在册（改行权 CPH4·E17 数据面 ⬜） |
+| 3 | 27B 级深度实验位 | bm-c 16GB 档 | **closed（2026-10-17 CEO 令 bm-c LLM 面退役·bm-c 承接档废止·27B 深判承接移交 bm-d 大脑 lane V100×3）**——沿革：呈报包 v1 在册（改行权 CPH4·E17 数据面 ⬜·E17 本体=bm-a 承接档不受本令影响维持） |
 | 4 | TTS/音频产线服务并存 | bm-b（他司域） | 只读引用零动作 |
 | 5 | 跨机远程推理消费（MaaS 扩面） | 阶段 1 | ⬜ 随 Tailscale 落地窗 |
 | 6 | 借算工单轨记账接线 | 阶段 2 | ⬜ 随首笔跨机消费 |
@@ -62,3 +62,4 @@
 - 2026-10-11 13:0x 窗（哨兵触发轮·族 A 轮转归位）：**U240 常驻契约活体审计件落地**（Tools/serve_contract_audit.py·explore E65 新增即耗）——实弹四发现：①residency=PASS〔常驻 qwen2.5:7b-instruct·expires_at=0001-01-01T00:00:00Z 零时哨兵=keep_alive:-1 实锚〕②**num_ctx 静默缩窗首例双侧面活体复核**〔native=32768（api/show POST 面 model_info qwen2.context_length）vs effective=4096（ollama ps CONTEXT 列）→face=shrunk ratio=0.125——§二五项之 3「num_ctx 跨机契约行」执法证据件：R-20260928 首发现「4096≠32768」由单侧注册值升双侧面机测〕③在册清单自滚动基线首档 10 模型〔含 bge-m3/qwen3.5:9b-16k/qwen3.8:27b-8k 等共驻模型在册·非本司自测归属如实注记·后续漂移 face 可测〕④headroom vram_free 4584MiB（J2 ≥1.5GB 借算门 informational）。工具面发现=本机 Ollama 版 /api/show 为 POST 面（GET=405→首跑半档 native=None 静默吞 405·改 POST 双侧面全通——版本 API 面注记）。selftest 14/14 PASS·证据 state/serve-contract-audit-20261011-130416.json（半档 130350=GET 面保留审计链）·零 GPU 生成·纯只读。消费面=§二 num_ctx 契约行执法回填+E28/R-50 借窗归因旁证（serve 活体四点一次采齐）。
 - 2026-10-14 13:3x 窗（午班轮·tech T92 承接）：**bm-a 推理车道变更正典刷新（orders 7ba65da）**——35B coder 常驻上岗（Qwen3.6-35B-A3B UD-IQ4_XS 17.7G·llama.cpp b11429 --n-cpu-moe·:8090 双槽 8k·看门狗 bm-a-CoderServe PT10M）+9 老模型族 CEO 令清库 38.6G（bge-m3 嵌入件留任·多司共用清单事故 M71 勘正归因）+7b 工作马 12:30 共租回拉在役；live 复测=**36.7 tok/s**（55tok/1.5s·thinking off·与部署回执 36-38 字/s 档一致）〔state/t92-coder-probe-20261014.txt〕；§一 bm-a 行已同步改写（实测带沿革保留 89.3/3.20/4.89-5.47 旧锚不删）。消费面=集团 L1 路由（中档/代码→:8090）+resource-chain §9.1 bm-a 行同源（他司正典·只读注记）。
 - 2026-10-16 22:3x 窗（夜班哨兵段轮·explore E71 新增即耗）：**bm-d 六卡机预备行入矩阵**（O-20261016-2148 上机准备令+C-20261016-01 分层正典·orders 台账实读转述〔state/bmd-2148-row-raw-20261016.txt〕）——§一 增 bm-d 预备行（大脑机 V100×3[35B Q8 量产+LiteLLM 调度席·领取制]+草稿厂 P104×3+回测厂 24C48T 三段位）+本司消费面三注（RAM>8G 归口让渡本机降 fallback/大脑 lane 借算计价候选/落地前零网络动作）——查重=矩阵原三机行零 bm-d·本行首次入册；落地验值 ⬜ 随 JOIN-REPORT 窗（信号源=fleet-nodes enabled=true+poke :8790 /health·落地窗 live 探测补数据面属性）。
+- 2026-10-17 10:2x 窗（哨兵触发轮·explore E75 新增即耗）：**bm-c LLM 面退役时效勘注（CEO 令 2026-10-17 09:5x「本机给我专门跑MV 视频切片等出图和图生视频等业务，大模型的调用去A机，马上整」·orders a80c687 前置行实读）**——§一 bm-c 行+§四应用表行 3 双面勘注：bm-c GPU=生成视觉-only·LLM 调用出列（重/代码/深知识→bm-a:8090〔=§一 bm-a 行 35B coder 常驻位·集团重档路由终点升格〕/轻件→bm-b 4b·1434 端点退役）→27B 级实验位候选废止·27B 深判承接移交 bm-d 大脑 lane（V100×3）；受影响正典勘注同步=docs/ops/empowerment-catalog-v1.md 分工口径注记行；**不受影响面如实注记**=bonsai 呈报包 v1 §三 建议行（bm-a 承接档·宿主面零涉 bm-c）+E17 本体（bm-a 7b 维护窗/独立 VRAM 真窗）维持 open；阶段 1「三机服务发现」服务面收敛注记=LLM 服务面现役收敛至 bm-a（现役）+bm-d（预备）双位·bm-c 出列。
