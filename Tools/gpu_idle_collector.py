@@ -239,6 +239,47 @@ def _tasklist_llama():
         return ""
 
 
+def is_coder_path(exe_path):
+    """T114 pure helper: True iff the exe path is the :8090 coder
+    deployment face (case-insensitive dir mark; None/empty -> False)."""
+    return CODER_EXE_MARK in (exe_path or "").lower()
+
+
+def _llama_targets_split(procs):
+    """T114 pure split of CIM (pid, exe_path) rows into
+    (kill-target rows, coder-exempt count)."""
+    targets = [p for p in procs if not is_coder_path(p[1])]
+    return targets, len(procs) - len(targets)
+
+
+def _llama_procs_cim():
+    """T114 read-only CIM probe: (pid, exe_path) rows for
+    llama-server.exe; None on probe failure (fail-open = NO kill,
+    a blind name-kill could cross-fire the :8090 coder resident)."""
+    try:
+        out = subprocess.run(
+            ["powershell", "-NoProfile", "-Command",
+             "Get-CimInstance Win32_Process -Filter "
+             "\"Name='llama-server.exe'\" | ForEach-Object "
+             "{ '{0}|{1}' -f $_.ProcessId, $_.ExecutablePath }"],
+            capture_output=True, timeout=20)
+        if out.returncode != 0:
+            return None
+        rows = []
+        for ln in out.stdout.decode("gb18030", "replace").splitlines():
+            ln = ln.strip()
+            if not ln or "|" not in ln:
+                continue
+            pid_s, _, path = ln.partition("|")
+            try:
+                rows.append((int(pid_s), path.strip()))
+            except ValueError:
+                continue
+        return rows
+    except Exception:  # noqa: BLE001 - probe must never kill report
+        return None
+
+
 # BC-P-68 T82: night-window AUTO re-enforcement of the CEO night-stop
 # law. Live-fire precedent 10-12: the SELF-lane runner (llama-server)
 # was respawned 4x inside the BW-005 borrow window via third-party
@@ -255,6 +296,15 @@ NIGHT_END_H = 8
 OLLAMA_TASKS = ("MiniGameOllamaServe", "MiniGameOllamaKeepWarm")
 ENFORCE_LOG = os.path.join(HERE, "..", "state",
                            "borrow-runner-enforce-log.jsonl")
+# T114 10-17: the :8090 35B coder resident (CEO order 7ba65da, exe
+# under models\llamacpp-b11429) is EXEMPT from the borrow-window
+# runner kill. Live-fire 10-14 BW-007 night: the old name-kill
+# cross-fired the coder 8x (enforce log 22:03..23:48 interlocks the
+# coder-serve-launch.log relaunches 22:11..23:51 one-for-one) while
+# the CoderServe watchdog revived it every 10min = two CEO-ordered
+# systems fighting all night. Path-filtered pid-kills only from
+# now on; a name-kill is never issued blind.
+CODER_EXE_MARK = "llamacpp-b11429"
 
 
 def _schtasks_state_text(task_name):
@@ -281,16 +331,23 @@ def _ollama_tasks_disabled():
     return True
 
 
-def _taskkill_llama():
-    """Enforcement leg: kill llama-server.exe by image name only
-    (serve parent kept for tags liveness). True on reported success."""
-    try:
-        out = subprocess.run(
-            ["taskkill", "/im", "llama-server.exe", "/f"],
-            capture_output=True, timeout=15)
-        return out.returncode == 0
-    except Exception:  # noqa: BLE001
-        return False
+def _taskkill_llama_targets(procs):
+    """T114 enforcement leg: pid-kill only NON-coder llama-server
+    rows (path-filtered; the 10-14 BW-007 night name-kill cross-
+    fired the :8090 coder resident 8x while its own watchdog kept
+    reviving it). Serve parent kept for tags liveness (T82 design).
+    Returns (ok_any, targets_n, coder_n)."""
+    targets, coder_n = _llama_targets_split(procs)
+    ok_any = False
+    for pid in targets:
+        try:
+            out = subprocess.run(
+                ["taskkill", "/pid", str(pid), "/f"],
+                capture_output=True, timeout=15)
+            ok_any = ok_any or (out.returncode == 0)
+        except Exception:  # noqa: BLE001
+            pass
+    return ok_any, len(targets), coder_n
 
 
 OLLAMA_PS_URL = "http://127.0.0.1:11434/api/ps"
@@ -331,7 +388,7 @@ def _ollama_evict_pins():
 
 
 def borrow_runner_enforce(today, cov, tasklist_text, tasks_disabled,
-                          hour, kill_fn, evict_fn=None):
+                          hour, kill_fn, evict_fn=None, procs=None):
     """BC-P-68 T82 pure gate: kill the SELF-lane runner ONLY when
     three conditions all hold (night window 22:00-08:00 + covered
     borrow day + both OLLAMA_TASKS Disabled). Daytime keeps the
@@ -342,6 +399,12 @@ def borrow_runner_enforce(today, cov, tasklist_text, tasks_disabled,
     trigger so the kill actually holds between ticks. Success face
     = evicted OR killed; engine auto-exits after a clean evict, so
     kill_fn reporting False there is not a failure.
+    procs (T114 10-17 cross-fire amendment): CIM (pid, exe_path)
+    rows; the :8090 coder resident (llamacpp-b11429 exe, CEO order
+    7ba65da) is EXEMPT -- the 10-14 BW-007 night name-kill cross-
+    fired it 8x. procs=None (path probe unreadable) -> fail-open
+    NO kill (no blind name-kill); zero non-coder targets ->
+    NO-KILL coder-exempt face.
     Returns the decision line, or None when no face applies."""
     if today not in cov:
         return None
@@ -357,6 +420,17 @@ def borrow_runner_enforce(today, cov, tasklist_text, tasks_disabled,
         return ("borrow-window runner enforce: NO-KILL "
                 "(night + runner present but serve tasks not "
                 "Disabled; sentinel WARN stands)")
+    if procs is None:
+        return ("borrow-window runner enforce: FAIL-OPEN no kill "
+                "(night + tasks disabled but exe-path probe "
+                "unreadable; a name-kill would cross-fire the :8090 "
+                "coder resident CEO order 7ba65da -- no blind kill)")
+    targets, coder_n = _llama_targets_split(procs)
+    if not targets:
+        return ("borrow-window runner enforce: NO-KILL coder-exempt "
+                "(only coder-face llama-server present, coder-exempt=%d; "
+                ":8090 resident exempt per CEO order 7ba65da; ollama-face "
+                "sentinel WARN stands)" % coder_n)
     evicted = 0
     if evict_fn is not None:
         try:
@@ -368,9 +442,11 @@ def borrow_runner_enforce(today, cov, tasklist_text, tasks_disabled,
         return ("borrow-window runner enforce: ENFORCED-KILL "
                 "llama-server.exe (night-stop O-20261012-1115 + "
                 "lane law O-20261012-2215; pin-evicted=%d; kill=%s; "
+                "targets=%d coder-exempt=%d; "
                 "serve parent kept for tags liveness; re-probe at "
                 "next tick)" % (evicted, "yes" if killed else
-                                "auto-exit-after-evict"))
+                                "auto-exit-after-evict", len(targets),
+                                coder_n))
     return ("borrow-window runner enforce: KILL-FAILED (evict=0, "
             "taskkill error; next 15-min tick retries)")
 
@@ -389,7 +465,10 @@ def _append_enforce_log(line):
 
 def borrow_runner_enforce_tick(emit, tl=None):
     """Shared three-condition enforcement entry for the 15-min
-    sample tick and report; emits/logs only when a face applies."""
+    sample tick and report; emits/logs only when a face applies.
+    T114: kill is pid-based + path-filtered (coder exempt); the
+    exe-path CIM probe gates the kill -- unreadable paths mean NO
+    kill (no blind name-kill cross-fire)."""
     bw = load_borrow_windows()
     if not bw:
         return
@@ -398,10 +477,14 @@ def borrow_runner_enforce_tick(emit, tl=None):
     if "llama-server.exe" not in tl:
         return
     cov = borrow_covered_dates(bw)
+    procs = _llama_procs_cim()
+    kill_fn = None
+    if procs is not None:
+        kill_fn = lambda: _taskkill_llama_targets(procs)[0]
     line = borrow_runner_enforce(
         now().date().isoformat(), cov, tl,
-        _ollama_tasks_disabled(), now().hour, _taskkill_llama,
-        _ollama_evict_pins)
+        _ollama_tasks_disabled(), now().hour, kill_fn,
+        _ollama_evict_pins, procs=procs)
     if line:
         _append_enforce_log(line)
         emit(line)
@@ -952,13 +1035,14 @@ def cmd_selftest():
     en_line = borrow_runner_enforce(
         "2026-10-12", cov_fix2,
         "llama-server.exe  14352 Console  1  4300 K", True, 23,
-        _kill_yes)
+        _kill_yes, procs=[(14352, "C:\\o\\llama-server.exe")])
     assert en_line and "ENFORCED-KILL" in en_line and \
         len(en_calls) == 1, \
         "night(23h) + covered + disabled + present -> auto-kill fires"
     assert borrow_runner_enforce(
         "2026-10-12", cov_fix2,
-        "llama-server.exe  1  Console", True, 22, _kill_yes) and \
+        "llama-server.exe  1  Console", True, 22, _kill_yes,
+        procs=[(1, "C:\\o\\llama-server.exe")]) and \
         len(en_calls) == 2, \
         "night boundary 22:00 fires too"
     assert borrow_runner_enforce(
@@ -981,12 +1065,49 @@ def cmd_selftest():
         "serve tasks not disabled -> NO-KILL (service lane active)"
     assert "KILL-FAILED" in borrow_runner_enforce(
         "2026-10-12", cov_fix2,
-        "llama-server.exe  1  Console", True, 23, lambda: False), \
+        "llama-server.exe  1  Console", True, 23, lambda: False,
+        procs=[(1, "C:\\o\\llama-server.exe")]), \
         "taskkill error -> KILL-FAILED line (next tick retries)"
     assert borrow_runner_enforce(
         "2026-10-11", cov_fix2,
         "llama-server.exe  1  Console", True, 23, _kill_yes) is None, \
         "day outside borrow windows -> no enforcement face"
+    # T114 10-17 cross-fire amendment: coder exemption + path guard
+    assert is_coder_path(
+        r"C:\Users\sjs20\models\llamacpp-b11429\llama-server.exe") and \
+        is_coder_path("C:\\MODELS\\LLAMACPP-B11429\\llama-server.exe"), \
+        "coder exe dir mark matches case-insensitively"
+    assert not is_coder_path(
+        "C:\\Ollama\\lib\\ollama\\llama-server.exe") and \
+        not is_coder_path("") and not is_coder_path(None), \
+        "non-coder/empty paths are not exempt"
+    tg, cn = _llama_targets_split(
+        [(47944, "C:\\models\\llamacpp-b11429\\llama-server.exe"),
+         (14352, "C:\\Ollama\\lib\\ollama\\llama-server.exe")])
+    assert len(tg) == 1 and tg[0][0] == 14352 and cn == 1, \
+        "split keeps the ollama runner row, exempts the coder pid"
+    cx_line = borrow_runner_enforce(
+        "2026-10-14", borrow_covered_dates(
+            [{"date_from": "2026-10-14", "date_to": "2026-10-14"}]),
+        "llama-server.exe  1  Console", True, 23, _kill_yes,
+        procs=[(47944, "C:\\models\\llamacpp-b11429\\llama-server.exe")])
+    assert "NO-KILL coder-exempt" in cx_line and len(en_calls) == 2, \
+        "coder-only presence at night -> NO-KILL exempt, kill NOT fired"
+    mx_line = borrow_runner_enforce(
+        "2026-10-14", borrow_covered_dates(
+            [{"date_from": "2026-10-14", "date_to": "2026-10-14"}]),
+        "llama-server.exe  1  Console", True, 23, _kill_yes,
+        procs=[(47944, "C:\\models\\llamacpp-b11429\\llama-server.exe"),
+               (14352, "C:\\Ollama\\lib\\ollama\\llama-server.exe")])
+    assert "ENFORCED-KILL" in mx_line and "targets=1" in mx_line and \
+        "coder-exempt=1" in mx_line and len(en_calls) == 3, \
+        "mixed presence -> kill fires with target/coder counts in line"
+    assert "FAIL-OPEN" in borrow_runner_enforce(
+        "2026-10-14", borrow_covered_dates(
+            [{"date_from": "2026-10-14", "date_to": "2026-10-14"}]),
+        "llama-server.exe  1  Console", True, 23, _kill_yes,
+        procs=None) and len(en_calls) == 3, \
+        "exe-path probe unreadable -> fail-open NO blind name-kill"
     # BW-006 10-13 amendment: evict-first path (pin eviction removes
     # the serve-parent reload trigger; engine auto-exits -> kill=NO)
     order = []
@@ -1003,7 +1124,8 @@ def cmd_selftest():
         "2026-10-13", borrow_covered_dates(
             [{"date_from": "2026-10-13", "date_to": "2026-10-13"}]),
         "llama-server.exe  28404 Console", True, 3,
-        _kill_after_evict, _evict_two)
+        _kill_after_evict, _evict_two,
+        procs=[(28404, "C:\\o\\llama-server.exe")])
     assert ev_line and "ENFORCED-KILL" in ev_line and \
         "pin-evicted=2" in ev_line and \
         "auto-exit-after-evict" in ev_line, \
@@ -1014,7 +1136,8 @@ def cmd_selftest():
         "2026-10-13", borrow_covered_dates(
             [{"date_from": "2026-10-13", "date_to": "2026-10-13"}]),
         "llama-server.exe  1  Console", True, 3,
-        lambda: False, lambda: 0), \
+        lambda: False, lambda: 0,
+        procs=[(1, "C:\\o\\llama-server.exe")]), \
         "evict=0 + kill fail -> KILL-FAILED line (next tick retries)"
     def _evict_raises():
         raise RuntimeError("ps unreadable")
@@ -1022,7 +1145,8 @@ def cmd_selftest():
         "2026-10-13", borrow_covered_dates(
             [{"date_from": "2026-10-13", "date_to": "2026-10-13"}]),
         "llama-server.exe  1  Console", True, 3,
-        _kill_yes, _evict_raises), \
+        _kill_yes, _evict_raises,
+        procs=[(1, "C:\\o\\llama-server.exe")]), \
         "evict_fn exception -> fail-open to kill-only path (0 evicted)"
     # BC-P-62 step 2: compute-apps process-face classification
     apps = apps_classify("1234, C:\\x\\ollama app.exe, [N/A]\n"
