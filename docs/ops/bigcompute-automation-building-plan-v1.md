@@ -1,4 +1,4 @@
-# BigCompute 九部门自动化建设案 v0.1（九司方案呈报令 @BigCompute 承接·M73 步①）
+# BigCompute 九部门自动化建设案 v0.2（九司方案呈报令 @BigCompute 承接·M73 步①+步②）
 
 > 令源=orders 2026-10-18 20:48/20:54/21:11 三行（九司自动化扩面→全量梳理→方案呈报令）·正身=cph4/fleet/GROUP-AUTOMATION-PLAN-v1.md ⑤·统一骨架=现状五要素对照→缺口→建设内容→验收判据→排期。**呈报窗=建设案细化 ≤10-25（随委员会三合一·P1 交面即可）·首线实装验收 ≤10-31**。红线=商业物理件未通前禁一切真实交易动作（对外成交环=计划态簿记）；发布决定权=CEO 保留面。
 
@@ -49,12 +49,21 @@
    ↓ [私域承接] 评论区/私信（客服自动化=P2）
    ↓ [归因记账] 流水轨（UTM·attribution 必填）→ [反哺] 询价入口 → 环 1
 ```
-自动化载体=OSLoop 轮内「成交环巡检步」（P1 实装期入轮·步② 细化）·断链哨=QA 探针族扩环内面（簿记零断账探针·72h 自续验收机械面）。
+### 环内巡检步（步② 细化·P1 实装期入轮·每轮机械面·断言档位律=全命令可机械核验）
+| 检 | 命令 | 过线判据 |
+|---|---|---|
+| C1 簿记零断账 | python Tools/ledger_continuity_probe.py check | LEDGER-CONTINUITY-GREEN 或 PLANNED-STATE（J4 演练态）；RED=断链当轮 P1 修 |
+| C2 交付链 | python Tools/fulfillment/test_pipeline.py | 44/44 PASS |
+| C3 合规闸 | python Tools/compliance_gate_check.py（机检门） | GATE_GREEN 全锚（A 档上线前过表=硬门） |
+| C4 账本底座 | python Tools/cost_ledger.py selftest | PASS |
+
+- 巡检步入位=P1 实装窗（10-26..10-31）起 OSLoop 收尾步 QA 面并跑 C1-C4，verdict 入轮账本 queue 行；断链（任一 RED/FAIL）=当轮修复第一优先级。
+- **C1 探针正身=Tools/ledger_continuity_probe.py**（10-18 落地）：五轨对账=行可解析/键唯一〔order_id+tx_id 幂等执法完整性·绕路 append 即 RED〕/date-month 一致/金额非负/quota 消费按时间重放无负余额/口径 B 唯一/pending-bill 一致性〔pending 态不得带 cost_b_cny〕/cloud-l1 attribution 结构必填——import cost_ledger 零 schema 重复（单一正身）；selftest 9 夹具全绿；**真实五轨首跑=LEDGER-CONTINUITY-GREEN violations=0**（rail_rows cost0/quota0/cloud0/borrow0/l1=1·J4 计划态如实）·证据=state/ledger-continuity-20261018-234732.json。
 
 ## 四、缺口清单
 1. 物理件（CEO 面·零催办）：商户号/小店类目/账号 → 成交环真接线 GATE（未通=J4 演练态）
 2. 定价确认批（CEO 面）：两档数值落值 → 报价单数值槽+映射表 ⬜ 槽清零
-3. 环内闸形式化：成交环巡检步+簿记零断账探针（步② ≤10-21）
+3. 环内闸形式化：成交环巡检步+簿记零断账探针——✅ 10-18 提前毕（§三巡检步表 C1-C4+探针 selftest 9/9+真实五轨首跑 GREEN violations=0·缺口 3 探针面收口·巡检步入轮随 P1 实装窗）
 4. 私域归因字段：UTM/流水轨 schema 加性扩展预设计（步③ ≤10-24）
 5. 客服自动化+渠道管理环+九部门全环联通=P2（≤11-15·另窗）
 6. 企微物理件=T-18 blocked 维持如实
@@ -69,7 +78,7 @@
 | 窗 | 交付 | 判 |
 |---|---|---|
 | 步① 10-18（本窗） | 现状盘点+两环环图骨架（本件 v0.1） | ✓ 本轮落盘 |
-| 步② ≤10-21 | 环内巡检步+簿记零断账探针细化（缺口 3） | 排程 |
+| 步② 10-18（提前） | 环内巡检步+簿记零断账探针落地（§三表 C1-C4+探针 9/9+真实首跑 GREEN） | ✓ 本轮落盘 |
 | 步③ ≤10-24 | 私域归因字段+簿记轨加性预设计（缺口 4）→v0.9 呈报稿 | 排程 |
 | ≤10-25 | v1.0 呈报（随委员会三合一） | 呈报窗 |
 | 10-26..10-31 | P1 实装（物理件到件即接线·未到=J4 演练态）→10-31 验收读数 | 实装窗 |
@@ -77,3 +86,4 @@
 
 ## 验证声明
 既有资产=本仓在役件与 state/ 证据件直引（判据行内注）；五要素判定=10-18 轮账本/心跳/QA 实录；⬜ 项如实不造（数值/物理件/账号类随 CEO 窗）。
+步② 机械面=Tools/ledger_continuity_probe.py（selftest 9/9+真实五轨首跑 LEDGER-CONTINUITY-GREEN violations=0·l1=1 行余四轨计划态零行=J4 如实·证据 state/ledger-continuity-20261018-234732.json）。
