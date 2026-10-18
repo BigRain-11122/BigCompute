@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-10-18 15:4x",
- "current_activity": "15:4x 哨兵触发轮：L1 :8090 P1 处置闭环=死因定谳（10-17 22:5x 手动 machine-state 全停级联=CEO 让路面·四证链）+复活合法阻断（keepwarm.pause 阀在役·恢复=CEO「全面开工」resume 一命令）+R-56/BC-P-89 夜腿 pause 豁免提案呈报（今晚夜轮扩腿部署窗前）；队列=tasks/TASKS.md",
- "latest_artifact": "state/l1-8090-pause-attribution-20261018.txt（2026-10-18 15:4x·四证链归因件：阀 mtime 22:51:01+flag「paused」+AutoYield 末跑周五+sidecar 缺席→D-20261018-01 ② 归因材料闭环）+qa/smoke-20261018-1540.log+png（7/8·L1 FAIL=pause 态合法下线留痕）",
- "next_milestone": ":8090 四文本车道恢复=随 CEO「全面开工」machine-state resume 一命令（v6.1 反向复活自动含 CoderServe+清阀+pin 4b）·BC-P-89 夜腿豁免接线窗=今晚夜轮（部署前收益最大）·N1 月末归集=10-31 22:43 一命令（S1-S7 七源就绪）·D-20261018-01 回访=10-20 夜班复犯计数 0"
+ "updated_at": "2026-10-18 19:2x",
+ "current_activity": "19:2x 哨兵轮：C-20261018-05 结果监督令承接（结果账本首节对账+日清三行数字接线：已上线 0/已交付候 CEO 0/在制 0=计划态建设期如实·卡点=开店物理件 CEO 面）+E78 bm-d 原值凭证级成本基础行（已购 ¥3,303 折旧实算·全盘带 ¥6,700-7,900·Q2 公式首次代真值）；队列=tasks/TASKS.md",
+ "latest_artifact": "state/bmd-cost-basis-20261018.txt（2026-10-18 19:2x·bm-d 成本基础证据件=orders CEO 实报三行指针+Q2 折旧公式实算表）+docs/research/R-20260928-compute-cost-economics.md 增量窗行 E78（族 B）",
+ "next_milestone": "N1 月末归集=10-31 22:43 一命令（S1-S7 七源就绪）·bm-d JOIN-REPORT 落地验值随装机窗（E71 信号=fleet-nodes+poke :8790/health·落地后 BC-P-90 V100 借出计价承接）·M66 批池月窗回访 ~11-0x·:8090 四文本车道恢复随 CEO machine-state resume 一命令"
 }

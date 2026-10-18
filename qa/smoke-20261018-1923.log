@@ -1,0 +1,51 @@
+BigCompute QA smoke test 20261018-1923 (orders L254 / charter v1)
+
+[gpu collector] PASS -> gpu collector
+machine_borrowable=NOT-BORROWABLE[VRAM|COTENANT] vram_free=3577MiB(line>=6144MiB) cotenant_editors=4(line 0) (D-20261004-04 dual probe; decoupled from GREEN-IDLE loop state; R-41 fleet-row field)
+gpu report 2026-10-18 machine=bm-a: n=17 avg=4.2% max=27% kpi=FLAG(<30% call-out threshold on 3-day rolling baseline, C-20260929-02)
+3-day rolling baseline (pre-registered, C-20260929-02): 2026-10-16..2026-10-18 n=165 avg=26.1% (call-out 30%; 70% target = directional ref)
+borrow-window declared: 2026-10-08..2026-10-08 consumer=MV ���� H3 ���� i2v ���Դ���mv-carve �����桤480P/768P �������� (source=rounds.log E63 �С��������� +1.9608������+�����������ų��գ�--baseline-range 10-01,10-07 �ų� 10-08 ���Դ��գ�)
+borrow-window declared: 2026-10-09..2026-10-10 consumer=MV ���� KF �ؼ�֡����bm-a ���ؽӹ� 44 ����Krea2 turbo��44/44 ���� 10-10 23:35:08�� (source=orders 2026-10-10 23:0x @bm-c �����У�bm-a ���ؽӹܣ�+rounds.log E62 ���ô����߻ؼƼ۵�������10-09 +0.795/10-10 +0.5016 kWh��LoRA 0.7948 ���� E59��)
+borrow-window declared: 2026-10-11..2026-10-11 consumer=BigStream ����Ƶ��/MV ���߱��� GPU ���ⴰ��meme KF-P/KF-N �ؼ�֡+i2v �ڲ��� (source=rounds.log 12:0x �� gpu �ֻ��С�MV/KF ���ô�̧����ʵ����+heartbeat idle_selfcheck 12:14 busy��vram_free 329MiB��cotenant ���أ�ʵê)
+borrow-window declared: 2026-10-12..2026-10-12 consumer=������ء������� 2026-10-12 09:5x��ʵ��=LLM ��פ�����أ�ollama qwen2.5:14b-8k��10.5GB VRAM pin���������� util 97%������ԭ������BigStream ר�� KN i2v ���ش���δ��VRAM �� LLM ռ����H3 int8 19.5GB �����ء�ComfyUI 8188 ���������+������ KN ��Ƭʵ֤�����ռ���������ά�֣��� SELF ������ʵ��E57 ������������ 14:53�� (source=orders O-20261011-21xx ר�����У�������ڲᣩ+E57 �������ݹ�����ʵê��state/h3-window-energy-llmserve-interim-20261012-0958.json+ollama /api/ps ʵ����)
+borrow-window declared: 2026-10-12..2026-10-13 consumer=BigStream mv0001 KF demo ѡ����ҹ����bm-a seeds 9012-9014 ѡ����+E01c ��ʽ��ء�O-20261012-2025 CEO �°�ȫ�����ƽ���˫�� KF ���ӷֹ���ҹ����ǰ�� 20:2x��i2v ���� INT8 ˫����ͬ������� (source=orders O-20261012-2025��origin ac305c5��10-12 20:2x �У�+���̬ʵ�� 20:3x��GPU util 1%/used 8770MiB��llama-server PID 74832 ����+ComfyUI PID 10336 ��λ=��δ���ǰ��̬��)
+borrow-window declared: 2026-10-13..2026-10-13 consumer=BigStream mv0001 ����������׼֡������ҹ����O-20261012-2330 �� bm-a ҹ�� GPU��jman LoRA RAW 52 ���������� turbo �ݰ桤��ס/�Ķ�/����/��Ȼ/���� 5-7 �š�����ϯ���� (source=orders O-20261012-2330 �� bm-a ҹ�� GPU=����������׼֡�������У�origin 6a5e0cf��10-12 23:3x��+���̬ʵ�� 10-13 00:14:52��GPU util 1%/used 9323MiB �� llama-server PID 74648 �����7����ִ�� #5 ˫ɱ�� used 4227/free 7771=����ϯ����ǰ�þ�����)
+borrow-window declared: 2026-10-13..2026-10-14 consumer=����ϯ mv0001 V3 ��� bm-a �Σ���� fullres ������ 7/7 locked seeds 1344��768 jman0.6��orders 6851396 19:41 ʵê��+21:0x CEO �°�ȫ�����������Σ�O-20261013-2200 bm-a=�ල+װ��˵��ȡ�CPU �棩 (source=orders 6851396��10-13 19:41 @bm-a V3 fullres 7/7 relay��+O-20261013-2100 CEO �°�ȫ������+O-20261013-2200 ȫ������֤�bm-a=�ල+װ��˵������ۣ�)
+7-day benchmark (D-20260930-36 R-C1, head-firm gap line): 2026-10-12..2026-10-18 n=435 avg=32.7% -> BELOW-BENCH(<50% structural-failure line on 7-day avg, R-C1 D-20260930-36) (gap line only; sole call-out stays 30%; 70% target = directional ref pending R- threshold-calibration receipts)
+rolling 30-min window: n=2 avg=19.0% -> IDLE
+
+[ollama response] PASS -> ollama response
+answer='1 + 1 = 2. 😊\n\nBut if you\'re asking in a playful or philosophical way—like "what does 1+1 mean' eval_count=32 92.09 tok/s
+residency: pre=FOREVER post=FOREVER (maintained)
+NAME                 ID              SIZE      PROCESSOR    CONTEXT    RUNNER      UNTIL   
+qwen3:4b-instruct    0edcdef34593    3.9 GB    100% GPU     4096       llamacpp    Forever
+NAME                 ID              SIZE      PROCESSOR    CONTEXT    RUNNER      UNTIL   
+qwen3:4b-instruct    0edcdef34593    3.9 GB    100% GPU     4096       llamacpp    Forever
+
+[queue rows] PASS -> queue rows
+main.md: 71 rows
+tech.md: 116 rows
+explore.md: 78 rows
+
+[cost ledger] PASS -> cost ledger
+selftest: math=True determinism=True count=ok t94date=True sli8=True (orders+quota-gate+count+cloud+borrow+l1+t94date+sli8) -> PASS
+
+[rounds.log strict-decode] PASS -> rounds.log strict-decode
+strict utf-8 decode ok: 338919 bytes / 279 lines
+
+[resident QA serve 8792] PASS -> resident QA serve 8792
+health 200 status=ok anchors=20 server=resident-qa v1.0 (BigCompute MaaS consumer face) model=qwen3.6-35b
+
+[L1 coder serve 8090] FAIL -> L1 coder serve 8090
+L1 coder serve 8090 LOST: URLError(ConnectionRefusedError(10061, '由于目标计算机积极拒绝，无法连接。', None, 10061, None)) (four consumer lanes degraded - fix next round top priority)
+
+[ledger tail integrity (BC-P-45)] PASS -> ledger tail integrity (BC-P-45)
+state/rounds.log: tail_nl=ok tail_empty=0 last_markers=1 last_len=631
+state/heartbeat.txt: tail_nl=ok tail_empty=0 last_markers=0 last_len=240
+HQ-FEEDBACK.md: tail_nl=ok tail_empty=0 last_markers=0 last_len=515
+state/proposals.md: tail_nl=ok tail_empty=0 last_markers=1 last_len=566
+state/queue/main.md: tail_nl=ok tail_empty=0 last_markers=1 last_len=535
+state/queue/tech.md: tail_nl=ok tail_empty=0 last_markers=1 last_len=752
+state/queue/explore.md: tail_nl=ok tail_empty=0 last_markers=1 last_len=503
+
+smoke verdict: 7/8 PASS (charter 4 + T25 + E41 + BC-P-45 no.8 probes)
