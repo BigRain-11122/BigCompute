@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-10-18 15:5x",
- "current_activity": "15:2x 周日补位轮（10-17 夜班败轮后首个正轮）：D-20261018-01 复役看护定谳收讫（执行司=夜轮 idle-watch v3 扩腿·本司零新派单）+周日数据面五件出数+P1 新发现=L1 :8090 coder 车道死亡（bm-a-CoderServe 看门狗 Disabled 同签名·日清承载零直碰）；队列=tasks/TASKS.md",
- "latest_artifact": "周日数据面证据四件（2026-10-18 15:2x-15:5x）：state/sli8-20261018-sunday.json=sliline 首消费 SLI8-GREEN（cloud 0 行严管默认面/l1 1 行 0.000021 Mtok/违例 0）+底座自检双绿（cost_ledger selftest PASS+fulfillment 44/44）+周产出分 PRODUCT-168h n2=31 n1=5 n0=24（≥3 过 C-02 ③ 判据）+GPU 分机行 3 日滚动 28.4% FLAG 如实",
- "next_milestone": "N1 月末归集=10-31 22:43 一命令（S1-S7 七源就绪·BC-P-80 前置预演 10-30）·M66 批池月窗 ~11-0x·D-20261018-01 回访=10-20 夜班复犯计数 0（夜轮承载）·:8090 P1 复活随 owner 窗/复役看护腿"
+ "updated_at": "2026-10-18 15:4x",
+ "current_activity": "15:4x 哨兵触发轮：L1 :8090 P1 处置闭环=死因定谳（10-17 22:5x 手动 machine-state 全停级联=CEO 让路面·四证链）+复活合法阻断（keepwarm.pause 阀在役·恢复=CEO「全面开工」resume 一命令）+R-56/BC-P-89 夜腿 pause 豁免提案呈报（今晚夜轮扩腿部署窗前）；队列=tasks/TASKS.md",
+ "latest_artifact": "state/l1-8090-pause-attribution-20261018.txt（2026-10-18 15:4x·四证链归因件：阀 mtime 22:51:01+flag「paused」+AutoYield 末跑周五+sidecar 缺席→D-20261018-01 ② 归因材料闭环）+qa/smoke-20261018-1540.log+png（7/8·L1 FAIL=pause 态合法下线留痕）",
+ "next_milestone": ":8090 四文本车道恢复=随 CEO「全面开工」machine-state resume 一命令（v6.1 反向复活自动含 CoderServe+清阀+pin 4b）·BC-P-89 夜腿豁免接线窗=今晚夜轮（部署前收益最大）·N1 月末归集=10-31 22:43 一命令（S1-S7 七源就绪）·D-20261018-01 回访=10-20 夜班复犯计数 0"
 }
