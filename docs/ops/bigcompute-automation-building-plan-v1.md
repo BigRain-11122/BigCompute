@@ -52,13 +52,14 @@
 ### 环内巡检步（步② 细化·P1 实装期入轮·每轮机械面·断言档位律=全命令可机械核验）
 | 检 | 命令 | 过线判据 |
 |---|---|---|
-| C1 簿记零断账 | python Tools/ledger_continuity_probe.py check | LEDGER-CONTINUITY-GREEN 或 PLANNED-STATE（J4 演练态）；RED=断链当轮 P1 修 |
+| C1 簿记零断账 | python Tools/rails_schema_check.py c1 | C1-GREEN（结构闸 RAILS-SCHEMA-GREEN + LEDGER-CONTINUITY-GREEN/PLANNED-STATE）；RED=断链当轮 P1 修 |
 | C2 交付链 | python Tools/fulfillment/test_pipeline.py | 44/44 PASS |
 | C3 合规闸 | python Tools/compliance_gate_check.py（机检门） | GATE_GREEN 全锚（A 档上线前过表=硬门） |
 | C4 账本底座 | python Tools/cost_ledger.py selftest | PASS |
 
 - 巡检步入位=P1 实装窗（10-26..10-31）起 OSLoop 收尾步 QA 面并跑 C1-C4，verdict 入轮账本 queue 行；断链（任一 RED/FAIL）=当轮修复第一优先级。
 - **C1 探针正身=Tools/ledger_continuity_probe.py**（10-18 落地）：五轨对账=行可解析/键唯一〔order_id+tx_id 幂等执法完整性·绕路 append 即 RED〕/date-month 一致/金额非负/quota 消费按时间重放无负余额/口径 B 唯一/pending-bill 一致性〔pending 态不得带 cost_b_cny〕/cloud-l1 attribution 结构必填——import cost_ledger 零 schema 重复（单一正身）；selftest 9 夹具全绿；**真实五轨首跑=LEDGER-CONTINUITY-GREEN violations=0**（rail_rows cost0/quota0/cloud0/borrow0/l1=1·J4 计划态如实）·证据=state/ledger-continuity-20261018-234732.json。
+- **C1 结构面=Tools/rails_schema_check.py**（10-20 接线）：三轨声明式 JSON Schema 校验（mock_order/batch_card/distr）+ 三轨幂等键唯一断言；`c1` 命令=结构闸 + 连续性探针一次跑完（单一入口，evidence JSON 落 state/）。distr 轨文件缺席=计划态合法（optional rail 不判负）；selftest 13/13 PASS；实跑 VERDICT=C1-GREEN（RAILS-SCHEMA-GREEN rows=9 skipped=1 + LEDGER-CONTINUITY-GREEN violations=0）。
 
 ## 四、缺口清单
 1. 物理件（CEO 面·零催办）：商户号/小店类目/账号 → 成交环真接线 GATE（未通=J4 演练态）

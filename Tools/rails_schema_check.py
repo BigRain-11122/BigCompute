@@ -10,13 +10,17 @@ silent downstream misread.
 Rails covered:
   mock_order  state/mock-order-ledger.jsonl   (M73 MOCK ring rails)
   batch_card  docs/ops/batch-pool-stock-v1.jsonl (T-20260929-32 batch pool)
+  distr       state/distr-ledger.jsonl        (private-domain attribution,
+              building-plan §七 15-field pre-design; file absent = PLANNED)
 
 Commands:
   check     validate live rail files (read-only)
+  c1        C1 inspection aggregate: this gate + ledger_continuity_probe
+            (single invocation for the P1 loop inspection step)
   selftest  schema self-checks + fixture pass/fail assertions
   dump      print the schemas as JSON
 
-Usage: python Tools/rails_schema_check.py check|selftest|dump
+Usage: python Tools/rails_schema_check.py check|c1|selftest|dump
 """
 
 from __future__ import annotations
@@ -33,7 +37,14 @@ ROOT = Path(__file__).resolve().parents[1]
 RAIL_PATHS = {
     "mock_order": ROOT / "state" / "mock-order-ledger.jsonl",
     "batch_card": ROOT / "docs" / "ops" / "batch-pool-stock-v1.jsonl",
+    "distr": ROOT / "state" / "distr-ledger.jsonl",
 }
+
+# Idempotency keys: repeats bypass dedup and corrupt reconciliation.
+UNIQUE_KEYS = {"mock_order": "order_id", "batch_card": "batch_id", "distr": "tx_id"}
+
+# Absent-by-design rails (J4 planned state) are not violations.
+OPTIONAL_RAILS = {"distr"}
 
 SCHEMAS = {
     # MOCK rail: every row must be visibly mock (mock=true, MOCK- order id) and
@@ -56,7 +67,8 @@ SCHEMAS = {
             "date": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},
             "cost_item": {"type": "string", "minLength": 2},
             "mock": {"const": True},
-            "fund_3090": {"type": "number", "minimum": 0},
+            # MOCK drill rail never touches the real 3090 purchase fund.
+            "fund_3090": {"const": 0},
             "refund_rate": {"type": "number", "minimum": 0, "maximum": 1},
             "fee_rate": {"type": "number", "minimum": 0, "maximum": 1},
             "tokens_local": {"type": "integer", "minimum": 0},
@@ -89,6 +101,35 @@ SCHEMAS = {
         },
         "additionalProperties": True,
     },
+    # Private-domain attribution rail (building-plan §七, 15 fields). G1 gate:
+    # the six attribution keys are structurally required, no partial rows.
+    "distr": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "required": [
+            "tx_id", "ts", "consumer", "lane", "content_ref", "publish_state",
+            "utm_source", "utm_medium", "utm_campaign", "attribution_status",
+            "receipt_basis", "caliber_note",
+        ],
+        "properties": {
+            "tx_id": {"type": "string", "pattern": "^D-[0-9]{8}-[0-9]+$"},
+            "ts": {"type": "string", "minLength": 10},
+            "consumer": {"type": "string", "minLength": 2},
+            "lane": {"type": "string", "minLength": 2},
+            "content_ref": {"type": "string", "minLength": 3},
+            "publish_state": {"enum": ["queued", "published"]},
+            "utm_source": {"type": "string", "minLength": 1},
+            "utm_medium": {"type": "string", "minLength": 1},
+            "utm_campaign": {"type": "string", "minLength": 1},
+            "audience_seg": {"type": "string"},
+            "conv_tx_ref": {"type": "string"},
+            "attribution_status": {"enum": ["pending", "attributed"]},
+            "reach_count": {"type": "integer", "minimum": 0},
+            "receipt_basis": {"type": "string", "minLength": 2},
+            "caliber_note": {"type": "string", "minLength": 2},
+        },
+        "additionalProperties": True,
+    },
 }
 
 
@@ -116,17 +157,36 @@ def validate_rows(kind: str, rows: list[dict]) -> list[str]:
     return errors
 
 
+def find_duplicate_keys(kind: str, rows: list[dict]) -> list[str]:
+    key = UNIQUE_KEYS[kind]
+    seen: dict[str, int] = {}
+    dups = []
+    for idx, row in enumerate(rows, 1):
+        rid = str(row.get(key, ""))
+        if rid in seen:
+            dups.append(f"{kind}[{idx}] duplicate {key}={rid} (first at row {seen[rid]})")
+        else:
+            seen[rid] = idx
+    return dups
+
+
 def cmd_check() -> int:
     total_rows = 0
     all_errors: list[str] = []
     missing = []
+    skipped = []
     for kind, path in RAIL_PATHS.items():
         if not path.exists():
+            if kind in OPTIONAL_RAILS:
+                skipped.append(kind)
+                print(f"{kind}: absent (planned state, optional rail)")
+                continue
             missing.append(f"{kind}: file missing ({path.name})")
             continue
         rows = load_rows(path)
         total_rows += len(rows)
         errs = validate_rows(kind, rows)
+        errs.extend(find_duplicate_keys(kind, rows))
         all_errors.extend(errs)
         print(f"{kind}: {len(rows)} rows, {len(errs)} violations ({path.name})")
     for line in missing:
@@ -137,8 +197,28 @@ def cmd_check() -> int:
             print(f"VIOLATION {line}")
         print(f"VERDICT=RAILS-SCHEMA-RED violations={len(all_errors)} missing={len(missing)} rows={total_rows}")
         return 1
-    print(f"VERDICT=RAILS-SCHEMA-GREEN violations=0 rows={total_rows}")
+    print(f"VERDICT=RAILS-SCHEMA-GREEN violations=0 rows={total_rows} skipped={len(skipped)}")
     return 0
+
+
+def cmd_c1() -> int:
+    """C1 inspection aggregate: structure gate + ledger continuity in one call."""
+    schema_rc = cmd_check()
+    print("-" * 20)
+    try:
+        import ledger_continuity_probe as lcp
+    except Exception as exc:  # pragma: no cover - import failure is a hard fail
+        print(f"C1: ledger_continuity_probe import failed: {exc}")
+        print("VERDICT=C1-RED")
+        return 1
+    result, evidence = lcp.run_check()
+    print("%s violations=%d rail_rows=%s" % (
+        result["verdict"], result["violation_count"], result["rail_rows"]))
+    print("evidence=%s" % Path(evidence).name)
+    continuity_ok = result["verdict"] != "LEDGER-CONTINUITY-RED"
+    ok = schema_rc == 0 and continuity_ok
+    print(f"VERDICT={'C1-GREEN' if ok else 'C1-RED'}")
+    return 0 if ok else 1
 
 
 def cmd_selftest() -> int:
@@ -164,6 +244,36 @@ def cmd_selftest() -> int:
     checks.append(("deterministic rerun", validate_rows("batch_card", [bad_batch]) == bad_errors))
     checks.append(("schemas are draft 2020-12", all(s["$schema"].endswith("2020-12/schema") for s in SCHEMAS.values())))
     checks.append(("schemas compile", all(Draft202012Validator.check_schema(s) or True for s in SCHEMAS.values())))
+    good_mock = {
+        "order_id": "MOCK-20261020-S1", "sku": "MOCK:sku", "price": 1.0,
+        "net_price": 0.9, "gross": 1.0, "lane": "subscription",
+        "date": "2026-10-20", "cost_item": "MOCK-DRILL", "mock": True,
+        "fund_3090": 0, "refund_rate": 0.0, "fee_rate": 0.01,
+        "tokens_local": 0, "tokens_api": 0,
+    }
+    checks.append(("good mock row accepted", validate_rows("mock_order", [good_mock]) == []))
+    checks.append(("mock fund_3090 non-zero rejected",
+                   any("fund_3090" in str(e) for e in
+                       validate_rows("mock_order", [dict(good_mock, fund_3090=0.1)]))))
+    checks.append(("dup order_id caught",
+                   len(find_duplicate_keys("mock_order", [good_mock, good_mock])) == 1))
+    good_distr = {
+        "tx_id": "D-20261020-1", "ts": "2026-10-20T06:10:00+08:00",
+        "consumer": "bigstream", "lane": "bilibili",
+        "content_ref": "media/clip-01.mp4", "publish_state": "queued",
+        "utm_source": "bili", "utm_medium": "video", "utm_campaign": "c1",
+        "audience_seg": "fans", "conv_tx_ref": "Q-1", "attribution_status": "pending",
+        "reach_count": 0, "receipt_basis": "synthetic-drill",
+        "caliber_note": "behavior-attribution rail, not cost rail (caliber B separate)",
+    }
+    checks.append(("good distr row accepted", validate_rows("distr", [good_distr]) == []))
+    bad_distr = {k: v for k, v in good_distr.items() if k != "utm_campaign"}
+    checks.append(("distr missing G1 key rejected",
+                   any("utm_campaign" in str(e) for e in validate_rows("distr", [bad_distr]))))
+    checks.append(("distr bad tx_id rejected",
+                   validate_rows("distr", [dict(good_distr, tx_id="X-1")]) != []))
+    checks.append(("dup distr tx_id caught",
+                   len(find_duplicate_keys("distr", [good_distr, good_distr])) == 1))
     for name, ok in checks:
         print(f"{'PASS' if ok else 'FAIL'} {name}")
     failed = sum(1 for _, ok in checks if not ok)
@@ -175,6 +285,8 @@ def main(argv: list[str]) -> int:
     cmd = argv[1] if len(argv) > 1 else "help"
     if cmd == "check":
         return cmd_check()
+    if cmd == "c1":
+        return cmd_c1()
     if cmd == "selftest":
         return cmd_selftest()
     if cmd == "dump":
