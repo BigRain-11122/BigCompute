@@ -281,6 +281,71 @@ def probe_resident_qa():
                        "priority)" % e)
 
 
+CODER_EXPECTED_IMAGE = "llama-server.exe"
+CODER_PORT = 8090
+
+
+def coder_port_owner(port=CODER_PORT):
+    """T122 read-only port-owner lookup: (pid, image) on the LISTENING
+    socket of `port`, else (None, None).
+
+    A foreign image holding :8090 is a different failure class from a
+    dead lane: the resident cannot bind at all, so the verdict must name
+    the owner instead of reporting a bare timeout (10-24 case - the
+    eCloud.exe autostart client took 127.0.0.1:8090 on 10-22 and the
+    four consumer lanes stayed silently degraded for two days).
+    """
+    try:
+        r = subprocess.run(["netstat", "-ano", "-p", "TCP"],
+                           capture_output=True, timeout=15)
+        text = (r.stdout or b"").decode("utf-8", errors="replace")
+    except Exception:  # noqa: BLE001 - diagnosis is best effort
+        return None, None
+    pat = re.compile(r":%d\s+\S+\s+LISTENING\s+(\d+)" % port)
+    pid = None
+    for line in text.splitlines():
+        m = pat.search(line)
+        if m:
+            pid = m.group(1)
+            break
+    if not pid:
+        return None, None
+    image = None
+    try:
+        t = subprocess.run(
+            ["tasklist", "/FI", "PID eq %s" % pid, "/FO", "CSV", "/NH"],
+            capture_output=True, timeout=15)
+        rows = (t.stdout or b"").decode("utf-8", errors="replace").splitlines()
+        if rows and rows[0].startswith('"'):
+            image = rows[0].split('","')[0].strip('"')
+    except Exception:  # noqa: BLE001 - image name is bonus context
+        pass
+    return pid, image
+
+
+def classify_coder_failure(pid, image, err):
+    """T122 pure verdict text for a failed :8090 probe.
+
+    Three mutually exclusive classes, all FAIL (never softened):
+      FOREIGN-PORT - a non-lane image owns the socket (lane cannot bind)
+      LANE-DOWN    - the lane image owns it but does not answer
+      LANE-DOWN    - nothing listening at all
+    """
+    if pid and image and image.lower() != CODER_EXPECTED_IMAGE:
+        return ("L1 coder serve 8090 FOREIGN-PORT: %s pid=%s owns "
+                "127.0.0.1:%d (expected %s) - the lane cannot bind; four "
+                "consumer lanes degraded (fix = free the port for the lane "
+                "or relocate the lane, CEO decision, not a watchdog retry)"
+                % (image, pid, CODER_PORT, CODER_EXPECTED_IMAGE))
+    if pid:
+        return ("L1 coder serve 8090 LANE-DOWN: %s pid=%s owns the port but "
+                "/v1/models is unresponsive (four consumer lanes degraded; "
+                "probe error %r)" % (image or "unknown", pid, err))
+    return ("L1 coder serve 8090 LANE-DOWN: no listener on :%d (%r); four "
+            "consumer lanes degraded - fix next round top priority"
+            % (CODER_PORT, err))
+
+
 def probe_l1_coder_serve():
     """Probe no.9 (T106): L1 coder lane :8090 liveness, read-only.
 
@@ -307,9 +372,8 @@ def probe_l1_coder_serve():
                     "/ MV storyboard / resident-QA-8792 backend / "
                     "BigMoney advisor)" % (r.status, len(models)))
     except Exception as e:  # noqa: BLE001 - probe must not crash pipeline
-        return False, ("L1 coder serve 8090 LOST: %r "
-                       "(four consumer lanes degraded - fix next "
-                       "round top priority)" % e)
+        pid, image = coder_port_owner()
+        return False, classify_coder_failure(pid, image, e)
 
 
 TAIL_PROBE_FILES = (
@@ -463,9 +527,44 @@ def selftest_tails():
     return 0 if all(results) else 1
 
 
+def selftest_coder_class():
+    """T122 symmetric fixtures for classify_coder_failure().
+
+    The live probe can only exercise one class at a time (whatever the
+    box happens to be doing), so each verdict branch is pinned here:
+      A foreign image on the port -> FOREIGN-PORT + owner name/pid
+      B lane image, no answer     -> LANE-DOWN (owner named)
+      C nobody listening          -> LANE-DOWN (no listener)
+    All three must stay FAIL - a softened verdict would hide a dead lane.
+    """
+    cases = [
+        ("A foreign owner -> FOREIGN-PORT",
+         ("28008", "eCloud.exe", "timed out"),
+         "FOREIGN-PORT: eCloud.exe pid=28008"),
+        ("B lane owner unresponsive -> LANE-DOWN",
+         ("4242", "llama-server.exe", "timed out"),
+         "LANE-DOWN: llama-server.exe pid=4242"),
+        ("C no listener -> LANE-DOWN",
+         (None, None, "connection refused"),
+         "no listener on :8090"),
+    ]
+    results = []
+    print("qa_smoke probe no.9 selftest (T122 port-owner classification)")
+    for label, args, needle in cases:
+        text = classify_coder_failure(*args)
+        good = needle in text
+        results.append(good)
+        print("  [%s] %s" % ("PASS" if good else "FAIL", label))
+        if not good:
+            print("    detail: %s" % text)
+    print("selftest verdict: %d/%d PASS"
+          % (len([r for r in results if r]), len(results)))
+    return 0 if all(results) else 1
+
+
 def main():
     if len(sys.argv) > 1 and sys.argv[1] == "--selftest":
-        return selftest_tails()
+        return selftest_tails() | selftest_coder_class()
     os.makedirs(QA_DIR, exist_ok=True)
     ts = datetime.datetime.now().strftime("%Y%m%d-%H%M")
     log_path = os.path.join(QA_DIR, "smoke-%s.log" % ts)

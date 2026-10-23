@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-10-24 00:1x",
- "current_activity": "00:1x 夜班排程轮：T121 C1-C4 工程件落盘（Tools/c1c4_patrol.py 一命令串跑四巡检）＋轮内实测两处 P1（本机 Ollama 模型库空 models=[]；L1 :8090 被 eCloud.exe 占位无 llama-server）",
- "latest_artifact": "Tools/c1c4_patrol.py（四巡检串跑器·selftest 10/10 PASS·实跑 C1C4-GREEN 4/4 共 1.01s〔C1-GREEN / C2 PASS 44/44 / C3 GATE_GREEN_WITH_SLOTS 59/59 / C4 PASS〕·2026-10-24 00:02）＋state/c1c4-20261024-000234.json",
- "next_milestone": "修复窗首件=P1 双修（Ollama 模型库恢复＋:8090 端口让位后重启 L1 coder serve）≤10-25；T121 收尾 QA 接线=10-26 P1 实装首日；九司建设案 v1.0 呈报=10-25；MOCK 环收口=10-26；N1 月末归集=10-31 夜班一命令"
+ "updated_at": "2026-10-24 06:1x",
+ "current_activity": "06:1x 交互轮：QA 烟测 5/8→7/8（Ollama 模型回库转 PASS；L1 :8090 探针升级为端口属主归因·实测 FOREIGN-PORT: eCloud.exe pid=28008 持有端口）＋风险台账 R-58 立行＋修复三案呈批 BC-P-101",
+ "latest_artifact": "qa/smoke-20261024-0610.log ＋ .png（7/8 PASS·含端口属主归因行）＋ Tools/qa_smoke.py 探针 9 归因改造（classify_coder_failure·selftest 4/4＋3/3 PASS）·2026-10-24 06:10",
+ "next_milestone": "九司建设案 v1.0 呈报窗=10-25（M75 数据面当日刷新）；L1 修复执行=BC-P-101 批文后 T123（案C 降档止血可当即可执行）；T121 收尾 QA 接线=10-26 P1 实装首日；MOCK 环收口=10-26；N1 月末归集=10-31 夜班一命令"
 }
