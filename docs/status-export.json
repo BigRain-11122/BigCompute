@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-10-20 06:1x",
- "current_activity": "06:1x 哨兵段轮：T120 C1 巡检接线（结构 schema 闸 + 簿记连续性一次跑）；审核 D-20261020-04/05/06/07 四新行（D-06 涉本司=OSLoop-PM 触发器故障定性·司侧零动作）；任务板=tasks/TASKS.md／队列=state/queue/main.md",
- "latest_artifact": "Tools/rails_schema_check.py（新增 c1 聚合命令+distr 归因轨 15 字段 schema+mock_order fund_3090 const 0+三轨幂等唯一断言·selftest 13/13 PASS·实跑 VERDICT=C1-GREEN rows=9 skipped=1·2026-10-20 06:08）＋state/ledger-continuity-20261020-060844.json",
- "next_milestone": "M73 建设案 v1.0 呈报 ≤10-25 + MOCK 环收口死线 10-26（BC-P-95 夜班滚动）·N1 月末归集=10-31 夜班一命令（S1-S7 七源齐）·T119/BC-P-96 批文随窗·T121 C1-C4 并入收尾 QA 步=10-26 P1 实装首日"
+ "updated_at": "2026-10-24 00:1x",
+ "current_activity": "00:1x 夜班排程轮：T121 C1-C4 工程件落盘（Tools/c1c4_patrol.py 一命令串跑四巡检）＋轮内实测两处 P1（本机 Ollama 模型库空 models=[]；L1 :8090 被 eCloud.exe 占位无 llama-server）",
+ "latest_artifact": "Tools/c1c4_patrol.py（四巡检串跑器·selftest 10/10 PASS·实跑 C1C4-GREEN 4/4 共 1.01s〔C1-GREEN / C2 PASS 44/44 / C3 GATE_GREEN_WITH_SLOTS 59/59 / C4 PASS〕·2026-10-24 00:02）＋state/c1c4-20261024-000234.json",
+ "next_milestone": "修复窗首件=P1 双修（Ollama 模型库恢复＋:8090 端口让位后重启 L1 coder serve）≤10-25；T121 收尾 QA 接线=10-26 P1 实装首日；九司建设案 v1.0 呈报=10-25；MOCK 环收口=10-26；N1 月末归集=10-31 夜班一命令"
 }

@@ -1,0 +1,36 @@
+BigCompute QA smoke test 20261024-0003 (orders L254 / charter v1)
+
+[gpu collector] FAIL -> gpu collector
+machine_borrowable=NOT-BORROWABLE[VRAM|COTENANT] vram_free=2511MiB(line>=6144MiB) cotenant_editors=2(line 0) (D-20261004-04 dual probe; decoupled from GREEN-IDLE loop state; R-41 fleet-row field)
+gpu report 2026-10-24 machine=bm-a: no samples today
+
+[ollama response] FAIL -> ollama response
+ollama probe failed: BORROW-WINDOW (tags=200, generate-timeout): <HTTPError 404: 'Not Found'>
+
+[queue rows] PASS -> queue rows
+main.md: 77 rows
+tech.md: 121 rows
+explore.md: 79 rows
+
+[cost ledger] PASS -> cost ledger
+selftest: math=True determinism=True count=ok t94date=True sli8=True (orders+quota-gate+count+cloud+borrow+l1+t94date+sli8) -> PASS
+
+[rounds.log strict-decode] PASS -> rounds.log strict-decode
+strict utf-8 decode ok: 352268 bytes / 292 lines
+
+[resident QA serve 8792] PASS -> resident QA serve 8792
+health 200 status=ok anchors=20 server=resident-qa v1.0 (BigCompute MaaS consumer face) model=qwen3.6-35b
+
+[L1 coder serve 8090] FAIL -> L1 coder serve 8090
+L1 coder serve 8090 LOST: TimeoutError('timed out') (four consumer lanes degraded - fix next round top priority)
+
+[ledger tail integrity (BC-P-45)] PASS -> ledger tail integrity (BC-P-45)
+state/rounds.log: tail_nl=ok tail_empty=0 last_markers=1 last_len=685
+state/heartbeat.txt: tail_nl=ok tail_empty=0 last_markers=1 last_len=178
+HQ-FEEDBACK.md: tail_nl=ok tail_empty=0 last_markers=0 last_len=383
+state/proposals.md: tail_nl=ok tail_empty=0 last_markers=0 last_len=630
+state/queue/main.md: tail_nl=ok tail_empty=0 last_markers=1 last_len=1014
+state/queue/tech.md: tail_nl=ok tail_empty=0 last_markers=1 last_len=417
+state/queue/explore.md: tail_nl=ok tail_empty=0 last_markers=1 last_len=797
+
+smoke verdict: 5/8 PASS (charter 4 + T25 + E41 + BC-P-45 no.8 probes)
