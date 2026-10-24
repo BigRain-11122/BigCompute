@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-10-24 12:1x",
- "current_activity": "12:1x 排程轮：M79/BC-P-102 收口——model_ref_drift_check 新增 baseline-diff 子命令（selftest 13/13 PASS），实跑首告警 DRIFT missing=2（bge-m3:latest/qwen3.8:27b，live 仅 qwen3:4b-instruct）",
- "latest_artifact": "state/model-ref-baseline-diff-20261024-120802.json（首份基线漂移报告）+ Tools/model_ref_drift_check.py（baseline-diff 子命令）·2026-10-24 12:08",
- "next_milestone": "10-26 P1 实装窗口=C1-C4 收尾 QA+首次 KPI 记账+cost_ledger 真轨；同步=L1 :8090 FOREIGN-PORT（T123）裁决与 R-59 模型集恢复判定；10-31 夜班 N1 期末归集一命令"
+ "updated_at": "2026-10-24 12:28",
+ "current_activity": "12:2x 排程轮：M80/BC-P-103 收口——baseline-diff 增 --rounds-line 单行摘要（selftest 15/15 PASS）、模型基线刷新政策 v1 落盘、idle_selfcheck 加 J12 漂移 informational 读数（心跳实证 model_drift=DRIFT(m=2,a=0)）；本轮 QA 7/8，唯一 FAIL=L1 :8090 FOREIGN-PORT（eCloud.exe 占端口·T123/BC-P-101 待批）",
+ "latest_artifact": "docs/ops/model-baseline-refresh-policy-v1.md + Tools/model_ref_drift_check.py（--rounds-line）+ state/model-ref-baseline-diff-20261024-122422.json · 2026-10-24 12:24",
+ "next_milestone": "10-26 P1 实装窗口=C1-C4 收尾 QA 接线+KPI 记账；M81 模型缺失影响面排查（bge-m3 消费面三态结论）；L1 :8090 裁决（T123）与 10-31 N1 期末归集一命令"
 }

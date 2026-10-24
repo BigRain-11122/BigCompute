@@ -157,6 +157,29 @@ def probe_serve_liveness(url=OLLAMA_TAGS_URL, timeout=2):
         return False, type(e).__name__
 
 
+def probe_model_drift(baseline_path=None, _diff=None):
+    """J12（BC-P-103 ③）：模型集基线漂移 informational 读数。
+
+    复用 Tools/model_ref_drift_check（baseline-diff 同源·禁漂移）：读基线
+    live_tags vs 现役 /api/tags → "DRIFT(m=2,a=0)" / "GREEN(m=0,a=0)" /
+    "UNVERIFIED(m=0,a=0)"。纯观测零断链：任何异常 → "UNVERIFIED(err)"
+    （fail-open·不阻断自检·不触发告警——告警面归 baseline-diff 显式命令）。
+    """
+    path = baseline_path or os.path.join(
+        PROJECT, "state", "model-ref-drift-20261016-191916.json")
+    try:
+        sys.path.insert(0, os.path.join(PROJECT, "Tools"))
+        import model_ref_drift_check as mrd
+        diff_fn = _diff or (lambda b, l: mrd.diff_baseline(b, l))
+        caps = mrd.load_baseline(path)
+        live = None if _diff else mrd.fetch_live_tags()  # 注入面=离线自测
+        res = diff_fn(caps, live)
+        return "%s(m=%d,a=%d)" % (res["status"], len(res["missing"]),
+                                  len(res["added"]))
+    except Exception:
+        return "UNVERIFIED(err)"
+
+
 def probe_task_states(names, _run=None, attempts=2, retry_wait=3.0):
     """J6（T61/BC-P-57）：schtasks 态只读探——Get-ScheduledTask State 枚举
     （locale 无关）。返回 {name: state}；缺失任务/查询失败 → Absent/ProbeError。
@@ -424,6 +447,7 @@ def check():
     pool = count_pool_claimable()
     q_open = count_queue_open()
     serve_alive, serve_detail = probe_serve_liveness()
+    model_drift = probe_model_drift()
     tstates = probe_task_states(MACHINE_PAUSE_SET)
     probe_error = all(v == "ProbeError" for v in tstates.values())
     if probe_error:
@@ -455,6 +479,7 @@ def check():
                        "py_cpu": py_cpu, "cpu_lane_idle": cpu_idle,
                        "pool_claimable": pool, "queue_open": q_open,
                        "serve_alive": serve_alive, "serve_detail": serve_detail,
+                       "model_drift": model_drift,
                        "task_face": task_face,
                        "task_states": {n: tstates.get(n) for n in
                                        TASK_LIVENESS_PROBE}}
@@ -464,11 +489,12 @@ def check():
             "py_cpu=%s cpu_lane_idle=%s "
             "pool_claimable=%d queue_open=%d consecutive_idle=%d "
             "idle_rounds=%d agenda_starved=%s serve_alive=%s serve_detail=%s"
-            " task_face=%s"
+            " task_face=%s model_drift=%s"
             % (time.strftime("%Y-%m-%d %H:%M:%S"), verdict, ram_pct,
                vram_mb, py_cpu, str(cpu_idle).lower(), pool, q_open,
                st["consecutive_idle"], st["idle_rounds"], str(starved).lower(),
-               str(serve_alive).lower(), serve_detail, task_face))
+               str(serve_alive).lower(), serve_detail, task_face,
+               model_drift))
     code, msg = append_heartbeat(line)
     print(line)
     print("append: code=%d %s" % (code, msg))
@@ -670,6 +696,19 @@ def selftest():
         print("J11 stale-m: stale=%d dedup=%d fresh-recover=%d failopen=%d "
               "alerts=%d latch-cleared=%s"
               % (a1, a2, a3, a4, len(rec2), not os.path.exists(lat2)))
+    # J12 模型基线漂移 informational（BC-P-103 ③·离线夹具零网络）
+    with tempfile.TemporaryDirectory() as td:
+        bp = os.path.join(td, "baseline.json")
+        with open(bp, "w", encoding="utf-8") as f:
+            json.dump({"live_tags": ["a:latest", "b:latest"]}, f)
+        drift = {"status": "DRIFT", "missing": ["b:latest"], "added": []}
+        got_drift = probe_model_drift(bp, _diff=lambda caps, live: drift)
+        got_fail = probe_model_drift(bp, _diff=lambda caps, live: 1 / 0)
+        got_missing = probe_model_drift(os.path.join(td, "nope.json"))
+        ok &= got_drift == "DRIFT(m=1,a=0)"
+        ok &= got_fail == "UNVERIFIED(err)" and got_missing == "UNVERIFIED(err)"
+        print("J12 model-drift: drift=%s failopen=%s missing=%s"
+              % (got_drift, got_fail, got_missing))
     print("SELFTEST %s" % ("PASS" if ok else "FAIL"))
     return 0 if ok else 1
 

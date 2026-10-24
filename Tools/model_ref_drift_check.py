@@ -179,6 +179,15 @@ def diff_baseline(baseline_tags, live_tags):
     return result
 
 
+def rounds_line(result):
+    """轮账本单行摘要（BC-P-103 ①·advisory·零云·确定性键序）。"""
+    return ("modeldrift:status=%s baseline=%d live=%s missing=%d added=%d"
+            % (result.get("status", "?"), len(result.get("baseline") or []),
+               ("unavailable" if result.get("live_tags") is None
+                else len(result.get("live_tags") or [])),
+               len(result.get("missing") or []), len(result.get("added") or [])))
+
+
 def cmd_baseline_diff(args):
     try:
         baseline = load_baseline(args.baseline)
@@ -205,6 +214,8 @@ def cmd_baseline_diff(args):
         print("INFO MODEL-DRIFT-ADDED added=%d %s" % (
             len(result["added"]), ",".join(result["added"])))
     print("REPORT %s" % out_path)
+    if args.rounds_line:
+        print("ROUNDS-LINE %s" % rounds_line(result))
     if args.strict and result["status"] == "DRIFT":
         return 1
     return 0
@@ -335,6 +346,13 @@ def _selftest():
         d3 = diff_baseline(base, None)
         check(d3["status"] == "UNVERIFIED" and d3["missing"] == []
               and d3["api_available"] is False, "baseline fail-open unverified")
+        # S14 轮账本单行摘要（BC-P-103 ①）：DRIFT/UNVERIFIED 两态确定性文案
+        check(rounds_line(d1) ==
+              "modeldrift:status=DRIFT baseline=2 live=1 missing=1 added=0",
+              "rounds-line drift shape")
+        check(rounds_line(d3) ==
+              "modeldrift:status=UNVERIFIED baseline=2 live=unavailable"
+              " missing=0 added=0", "rounds-line unverified shape")
         # S13 坏基线件 → ValueError（不静默吞）
         bad_path = os.path.join(td, "bad_baseline.json")
         with io.open(bad_path, "w", encoding="utf-8") as f:
@@ -364,6 +382,8 @@ def main():
         "state", "model-ref-drift-20261016-191916.json"))
     b.add_argument("--out", default=None)
     b.add_argument("--strict", action="store_true", help="exit 1 when drift detected")
+    b.add_argument("--rounds-line", action="store_true",
+                   help="print one ROUNDS-LINE summary for rounds.log (BC-P-103)")
     sub.add_parser("selftest", help="offline synthetic fixtures")
     args = p.parse_args()
     if args.cmd == "check":
