@@ -8,7 +8,7 @@
   C4 cost_ledger.py selftest         （成本账本）
 
 用法:
-  python Tools/c1c4_patrol.py run [--only C1,C3] [--timeout 300]
+  python Tools/c1c4_patrol.py run [--only C1,C3] [--timeout 300] [--rounds-line]
   python Tools/c1c4_patrol.py selftest
 
 退出码: 0=全绿 / 1=任一 FAIL / 2=用法错误
@@ -36,6 +36,7 @@ CHECKS = {
 
 # 各工具的 verdict 形态不一，按优先级取首个命中的末位标记
 VERDICT_PATTERNS = (
+    re.compile(r"(?i)\bverdict=([A-Za-z0-9_\-]+)"),
     re.compile(r"VERDICT=([A-Z0-9_\-]+)"),
     re.compile(r"RESULT:\s*(PASS|FAIL)"),
     re.compile(r"selftest[^\n]*->\s*(True|False|[A-Z0-9_\-]+)"),
@@ -44,14 +45,17 @@ VERDICT_PATTERNS = (
 
 
 def extract_verdict(stdout: str) -> str:
-    """取最后一段非空行里最强的 verdict 标记，取不到则回退末行."""
+    """取最后一段非空行里最强的 verdict 标记，取不到则回退末行（空白归一·去掉分隔符）."""
     lines = [ln.strip() for ln in stdout.splitlines() if ln.strip()]
     for line in reversed(lines):
         for pat in VERDICT_PATTERNS:
             m = pat.search(line)
             if m:
                 return m.group(1)
-    return lines[-1][:120] if lines else "NO-OUTPUT"
+    if not lines:
+        return "NO-OUTPUT"
+    fallback = re.sub(r"\s+", " ", lines[-1]).replace("|", "/")
+    return fallback[:120]
 
 
 def summarize(results: list[dict]) -> dict:
@@ -61,6 +65,17 @@ def summarize(results: list[dict]) -> dict:
         "failed": failed,
         "checked": [r["id"] for r in results],
     }
+
+
+def rounds_line(summary: dict, results: list[dict]) -> str:
+    """确定性单行摘要（rounds.log queue 字段直贴·零解析歧义）."""
+    total = len(results)
+    passed = total - len(summary["failed"])
+    parts = "|".join(f"{r['id']}={r['verdict']}" for r in results)
+    line = f"C1C4:{summary['verdict']} {passed}/{total} {parts}"
+    if summary["failed"]:
+        line += f" failed={','.join(summary['failed'])}"
+    return line
 
 
 def run_one(cid: str, timeout: int) -> dict:
@@ -116,6 +131,8 @@ def cmd_run(args) -> int:
     out_path = STATE / f"c1c4-{stamp}.json"
     out_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
 
+    if args.rounds_line:
+        print(f"ROUNDS-LINE {rounds_line(summary, results)}")
     print(f"VERDICT={summary['verdict']} failed={len(summary['failed'])} "
           f"evidence={out_path.relative_to(ROOT).as_posix()}")
     return 0 if summary["verdict"] == "C1C4-GREEN" else 1
@@ -129,6 +146,10 @@ def cmd_selftest() -> int:
     checks.append(("verdict: selftest arrow", extract_verdict("selftest: math=ok -> True") == "True"))
     checks.append(("verdict: fallback tail", extract_verdict("hello\nweird line") == "weird line"))
     checks.append(("verdict: empty", extract_verdict("   \n\n") == "NO-OUTPUT"))
+    checks.append(("verdict: lowercase token", extract_verdict("ok\nverdict=GATE_GREEN_WITH_SLOTS  pass=59/59")
+                   == "GATE_GREEN_WITH_SLOTS"))
+    checks.append(("verdict: fallback whitespace+pipe normalized",
+                   extract_verdict("a\nweird   |  line") == "weird / line"))
 
     green = [{"id": "C1", "rc": 0, "timed_out": False}, {"id": "C3", "rc": 0, "timed_out": False}]
     s = summarize(green)
@@ -146,6 +167,17 @@ def cmd_selftest() -> int:
                    list(CHECKS) == ["C1", "C2", "C3", "C4"] and all(CHECKS[k][1] for k in CHECKS)))
     checks.append(("every cmd path exists", all((ROOT / CHECKS[k][1][0]).exists() for k in CHECKS)))
 
+    rl_green = rounds_line({"verdict": "C1C4-GREEN", "failed": []},
+                           [{"id": "C1", "verdict": "C1-GREEN"},
+                            {"id": "C3", "verdict": "GATE_GREEN_WITH_SLOTS"}])
+    checks.append(("rounds line: green shape",
+                   rl_green == "C1C4:C1C4-GREEN 2/2 C1=C1-GREEN|C3=GATE_GREEN_WITH_SLOTS"))
+    rl_red = rounds_line({"verdict": "C1C4-RED", "failed": ["C2"]},
+                         [{"id": "C1", "verdict": "C1-GREEN"},
+                          {"id": "C2", "verdict": "FAIL"}])
+    checks.append(("rounds line: red carries failed ids",
+                   rl_red == "C1C4:C1C4-RED 1/2 C1=C1-GREEN|C2=FAIL failed=C2"))
+
     for name, ok in checks:
         print(f"{'PASS' if ok else 'FAIL'} {name}")
     failed = sum(1 for _, ok in checks if not ok)
@@ -158,6 +190,8 @@ def main(argv: list[str]) -> int:
     ap.add_argument("command", nargs="?", default="run", choices=["run", "selftest"])
     ap.add_argument("--only", default="", help="逗号分隔子集，如 C1,C3")
     ap.add_argument("--timeout", type=int, default=300, help="单检超时秒")
+    ap.add_argument("--rounds-line", action="store_true",
+                    help="额外输出 ROUNDS-LINE 单行摘要（rounds.log queue 字段直贴）")
     args = ap.parse_args(argv[1:])
     if args.command == "selftest":
         return cmd_selftest()

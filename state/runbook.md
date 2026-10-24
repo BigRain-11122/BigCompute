@@ -14,7 +14,7 @@
 - 地板律=每晚 ≥5 提交+每 24h ≥1 真进展或如实申报。
 - 批池=validate 唯一验收口（POOL_GREEN·consumer_plan 全指名·让路序=CEO 用机＞机队视频产线＞批池）。
 - 口径 B 结算唯一｜E0 直呈 CEO｜禁跨仓写｜禁 add -A｜云端=严管律 v3.0（O-20261015-1200·默认本地+白名单六类·attribution 必填·音轨禁令）｜计分器与 XL-7 并排禁单点。
-- 每轮=qa_smoke→qa/*.log+png｜三队列常备 ≥10·每窗 ≥1 提案｜轮预算 ≤25min·commit 尾标 [via BigCompute-OSLoop]｜刻痕=审核/队列步毕必刻·单一时标禁引二手 HH:MM。
+- 每轮=qa_smoke→qa/*.log+png→`python Tools/c1c4_patrol.py run --rounds-line`（C1-C4 verdict 入 rounds.log；C2/C4 同时充当周日底座自检）｜三队列常备 ≥10·每窗 ≥1 提案｜轮预算 ≤25min·commit 尾标 [via BigCompute-OSLoop]｜刻痕=审核/队列步毕必刻·单一时标禁引二手 HH:MM。
 
 ## 关键指针
 正典=BLUEPRINT｜任务=TASKS.md｜mandate=iteration_prompt｜风险=risk-register｜回执=HQ-FEEDBACK｜账本=rounds.log｜心跳=heartbeat
