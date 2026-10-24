@@ -9,6 +9,7 @@ v1.2 由单层 Tools/*.py 扩为递归——Tools/fulfillment/*.py L2 轻量契�
 字面量 vs live /api/tags 清单对照 → 悬空引用报告。
 
 用法：python Tools/model_ref_drift_check.py check [--out <json>]
+      python Tools/model_ref_drift_check.py baseline-diff [--baseline <json>] [--strict]
       python Tools/model_ref_drift_check.py selftest
 
 判据（预注册）：
@@ -18,6 +19,9 @@ v1.2 由单层 Tools/*.py 扩为递归——Tools/fulfillment/*.py L2 轻量契�
      清单/历史试验探针）→ EXEMPT-HISTORICAL informational 态不计 dangling（在役面判据
      =dangling 清零·豁免面单列）
   J4 owner-face 只报告不触碰（T98 同仓单执行体退避律）
+  J5 基线漂移（BC-P-102/M79）：baseline-diff 以基线件 live_tags 为参照，live 缺模 →
+     一行 WARN MODEL-DRIFT missing=<n>（fail-open：API 不可达=UNVERIFIED 不告警不退出
+     非零；默认 advisory 退出码 0，--strict 时 DRIFT 退 1）；新增模型仅 informational。
 局限（v1.1 注记）：自件跳过（self fixtures 不自扫）；字符串字面量面（f-string/变量
 拼接/注释外引用不扫）；bare 名按已知家族前缀集匹配+双形态归一（bare 名 ↔ live tag 基名）；
 llama-server :8090 车道模型名非 ollama tags 域 → LANE-8090 informational 态（消费侧注记）。
@@ -150,6 +154,62 @@ def classify(scan, live_tags):
     return report
 
 
+def load_baseline(path):
+    """读基线件 live_tags → set；无 live_tags 或坏件 → ValueError（J5·不静默吞）"""
+    with io.open(path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    tags = data.get("live_tags")
+    if not isinstance(tags, list) or not tags:
+        raise ValueError("baseline missing non-empty live_tags: %s" % path)
+    return set(tags)
+
+
+def diff_baseline(baseline_tags, live_tags):
+    """J5 基线对账 → dict（api 不可达=UNVERIFIED·缺模=DRIFT·否则 GREEN）"""
+    result = {"generated_ts": time.strftime("%Y-%m-%dT%H:%M:%S"),
+              "baseline": sorted(baseline_tags),
+              "live_tags": sorted(live_tags) if live_tags is not None else None,
+              "api_available": live_tags is not None,
+              "missing": [], "added": [], "status": "UNVERIFIED"}
+    if live_tags is None:
+        return result
+    result["missing"] = sorted(baseline_tags - live_tags)
+    result["added"] = sorted(live_tags - baseline_tags)
+    result["status"] = "DRIFT" if result["missing"] else "GREEN"
+    return result
+
+
+def cmd_baseline_diff(args):
+    try:
+        baseline = load_baseline(args.baseline)
+    except (OSError, ValueError) as exc:
+        print("BASELINE-ERROR %s" % exc)
+        return 2
+    live = fetch_live_tags()
+    result = diff_baseline(baseline, live)
+    out_path = args.out or os.path.join(
+        "state", "model-ref-baseline-diff-%s.json" % time.strftime("%Y%m%d-%H%M%S"))
+    os.makedirs(os.path.dirname(out_path) or ".", exist_ok=True)
+    with io.open(out_path, "w", encoding="utf-8", newline="\n") as f:
+        json.dump(result, f, ensure_ascii=False, indent=1, sort_keys=True)
+    print("BASELINE-DIFF status=%s baseline=%d live=%s missing=%d added=%d" % (
+        result["status"], len(result["baseline"]),
+        "unavailable" if result["live_tags"] is None else len(result["live_tags"]),
+        len(result["missing"]), len(result["added"])))
+    if result["status"] == "UNVERIFIED":
+        print("API-UNAVAILABLE: fail-open J5 -> UNVERIFIED (no warning)")
+    if result["missing"]:
+        print("WARN MODEL-DRIFT missing=%d %s" % (
+            len(result["missing"]), ",".join(result["missing"])))
+    if result["added"]:
+        print("INFO MODEL-DRIFT-ADDED added=%d %s" % (
+            len(result["added"]), ",".join(result["added"])))
+    print("REPORT %s" % out_path)
+    if args.strict and result["status"] == "DRIFT":
+        return 1
+    return 0
+
+
 def cmd_check(args):
     scan = scan_tools(args.tools_glob if args.tools_glob else TOOLS_GLOB)
     live = fetch_live_tags()
@@ -254,6 +314,37 @@ def _selftest():
         check(rep5["files"][sub_exempt_key][0]["status"] == "EXEMPT-HISTORICAL"
               and rep5["totals"]["dangling"] == 0,
               "exempt-historical basename normalize in subdir key")
+        # S9 baseline 读取（J5：真结构件 -> set）
+        base_path = os.path.join(td, "baseline.json")
+        with io.open(base_path, "w", encoding="utf-8") as f:
+            json.dump({"live_tags": ["bge-m3:latest", "qwen3:4b-instruct"]}, f)
+        base = load_baseline(base_path)
+        check(base == {"bge-m3:latest", "qwen3:4b-instruct"}, "baseline load live_tags")
+        # S10 缺模漂移 → DRIFT + missing 清单
+        d1 = diff_baseline(base, {"bge-m3:latest"})
+        check(d1["status"] == "DRIFT"
+              and d1["missing"] == ["qwen3:4b-instruct"]
+              and d1["added"] == []
+              and d1["api_available"] is True,
+              "baseline drift missing model")
+        # S11 全在当前 → GREEN（新增仅 informational 不影响 status）
+        d2 = diff_baseline(base, {"bge-m3:latest", "qwen3:4b-instruct", "qwen3:8b"})
+        check(d2["status"] == "GREEN" and d2["missing"] == []
+              and d2["added"] == ["qwen3:8b"], "baseline green with added info")
+        # S12 fail-open（J5）：API 不可达 → UNVERIFIED·无 missing·不告警
+        d3 = diff_baseline(base, None)
+        check(d3["status"] == "UNVERIFIED" and d3["missing"] == []
+              and d3["api_available"] is False, "baseline fail-open unverified")
+        # S13 坏基线件 → ValueError（不静默吞）
+        bad_path = os.path.join(td, "bad_baseline.json")
+        with io.open(bad_path, "w", encoding="utf-8") as f:
+            json.dump({"totals": {}}, f)
+        try:
+            load_baseline(bad_path)
+            raised = False
+        except ValueError:
+            raised = True
+        check(raised, "baseline invalid rejected")
     print("SELFTEST %d/%d PASS" % (ok[0], ok[0]))
     return 0
 
@@ -268,10 +359,17 @@ def main():
     c = sub.add_parser("check", help="scan Tools/**/*.py vs live /api/tags")
     c.add_argument("--out", default=None)
     c.add_argument("--tools-glob", default=None)
+    b = sub.add_parser("baseline-diff", help="compare live /api/tags against baseline live_tags")
+    b.add_argument("--baseline", default=os.path.join(
+        "state", "model-ref-drift-20261016-191916.json"))
+    b.add_argument("--out", default=None)
+    b.add_argument("--strict", action="store_true", help="exit 1 when drift detected")
     sub.add_parser("selftest", help="offline synthetic fixtures")
     args = p.parse_args()
     if args.cmd == "check":
         return cmd_check(args)
+    if args.cmd == "baseline-diff":
+        return cmd_baseline_diff(args)
     return _selftest()
 
 

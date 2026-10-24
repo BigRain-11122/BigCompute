@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-10-24 11:0x",
- "current_activity": "11:0x 交互轮：九司建设案 v0.9→v1.0 呈报定稿（提前于 10-25 窗）＋环内巡检四检实跑 C1C4-GREEN 4/4（C1-GREEN／C2 44/44／C3 GATE_GREEN_WITH_SLOTS 59/59 slots=3／C4 PASS·1.0s）＋提案 BC-P-102（live 模型集基线漂移告警·本轮实测 ollama 仅剩单模型无告警面）",
- "latest_artifact": "docs/ops/bigcompute-automation-building-plan-v1.md（v1.0 定稿·新增 §八 呈报期实况证据）＋ state/c1c4-20261024-110203.json（四检绿·数据龄 0h）·2026-10-24 11:0x",
- "next_milestone": "建设案 v1.0 随委员会三合一呈报（≤10-25）；P1 实装窗 10-26 首日=T121 收尾 QA 接一行 c1c4_patrol＋MOCK 环收口 10-26；阻塞面=L1 :8090 FOREIGN-PORT（eCloud.exe pid=28008·BC-P-101 待批／T123／R-58）；N1 月末归集=10-31 夜班一命令"
+ "updated_at": "2026-10-24 12:1x",
+ "current_activity": "12:1x 排程轮：M79/BC-P-102 收口——model_ref_drift_check 新增 baseline-diff 子命令（selftest 13/13 PASS），实跑首告警 DRIFT missing=2（bge-m3:latest/qwen3.8:27b，live 仅 qwen3:4b-instruct）",
+ "latest_artifact": "state/model-ref-baseline-diff-20261024-120802.json（首份基线漂移报告）+ Tools/model_ref_drift_check.py（baseline-diff 子命令）·2026-10-24 12:08",
+ "next_milestone": "10-26 P1 实装窗口=C1-C4 收尾 QA+首次 KPI 记账+cost_ledger 真轨；同步=L1 :8090 FOREIGN-PORT（T123）裁决与 R-59 模型集恢复判定；10-31 夜班 N1 期末归集一命令"
 }
