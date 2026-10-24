@@ -50,6 +50,7 @@ VRAM≥6GB〕→ 领池检（fleet/backlog 可领行计数）→ 池空拉本司
   python Tools/idle_selfcheck.py selftest
 """
 import ctypes
+import datetime
 import json
 import os
 import re
@@ -68,6 +69,13 @@ ROUND_APPEND = os.path.join(PROJECT, "Tools", "round_append.py")
 BACKLOG = os.path.abspath(os.path.join(
     PROJECT, "..", "..", "quant", "BigMoney", "fleet", "backlog.md"))
 QUEUE_DIR = os.path.join(PROJECT, "state", "queue")
+# J13（D-20261024-14 承接）：供给地板可点火口径——fleet 机器状态源与阈值
+MACHINES_DIR = os.path.abspath(os.path.join(
+    PROJECT, "..", "..", "quant", "BigMoney", "fleet", "machines"))
+SELF_MACHINE = "bm-a"
+IGNITABLE_SILENT_MIN = 120.0   # 与集团口径同源（owner_silent_min 120）
+SUPPLY_FLOOR_IGNITABLE = 3     # 与 bigmoney SUPPLY_FLOOR_READY 同值
+CLAIM_RE = re.compile(r"claimed@([A-Za-z0-9_\-]+)@")
 # J11（T105·BC-P-78）：陈旧 M 态守卫常量——真实 git 路径优先（PATH git=
 # gitsilent 转发器吞 stdout·10-08 判例·探针零输出=假净面）
 STALE_M_LATCH = os.path.join(PROJECT, "state", "stale-m.latch.json")
@@ -251,6 +259,86 @@ def count_pool_claimable(backlog_path=BACKLOG):
             if "可领" in line:
                 n += 1
     return n
+
+
+def machine_silent_minutes(machine, machines_dir=None):
+    """J13：机器心跳静默分钟数（clock_read 时戳龄；缺字段回退文件 mtime）。
+
+    不可读→None：fail-open，不把「探不到」当「已死」（D-20261024-14 ②：
+    接管须独立活性佐证，禁以心跳静默单条判死）。
+    """
+    d = machines_dir or MACHINES_DIR
+    p = os.path.join(d, "%s.json" % machine)
+    try:
+        with open(p, encoding="utf-8", errors="replace") as f:
+            ts = (json.load(f) or {}).get("clock_read") or ""
+        if ts:
+            t = datetime.datetime.strptime(ts[:19], "%Y-%m-%dT%H:%M:%S")
+            return (datetime.datetime.now() - t).total_seconds() / 60.0
+    except Exception:
+        pass
+    try:
+        return (time.time() - os.path.getmtime(p)) / 60.0
+    except Exception:
+        return None
+
+
+def _row_id(line):
+    m = re.match(r"\s*(\d+)\.", line)
+    return "backlog#%s" % m.group(1) if m else "backlog#?"
+
+
+def ignitable_face(backlog_path=BACKLOG, machines_dir=None,
+                   self_machine=SELF_MACHINE,
+                   silent_min=IGNITABLE_SILENT_MIN,
+                   floor=SUPPLY_FLOOR_IGNITABLE):
+    """J13（D-20261024-14 ③）：供给地板按 ready_ignitable 判 breach。
+
+    与集团 compute_audit.ignitable_face 同语义（本司副本对齐面）：
+    - ready_total = 池台账「可领」且未 done@ 的行（诊断列，保留不删）；
+    - 可点火 = 无 claim（owner ANY）或 claim 者为本机；
+    - 他机 claim：活性可读且静默 ≤ silent_min → foreign_alive（有人在干，
+      非本机可领）；静默超阈 → foreign_silent（只列 takeover 候选，且须
+      独立活性佐证才可接管）；活性不可读 → owner_unknown（不判死）。
+    breach = ready_ignitable < floor。结构等待≠可点火活（SLI-RECONCILE 先例）。
+    """
+    face = {"ready_total": 0, "ready_ignitable": 0, "ready_foreign_alive": 0,
+            "ready_foreign_silent": 0, "ready_owner_unknown": 0,
+            "takeover_candidate_ids": [], "silent_owners": {},
+            "unknown_owners": [], "floor": floor, "breach": False,
+            "readable": True, "takeover_needs_corroboration": True,
+            "self": self_machine}
+    if not os.path.exists(backlog_path):
+        face["readable"] = False
+        return face
+    cache = {}
+    with open(backlog_path, encoding="utf-8", errors="replace") as f:
+        for line in f:
+            if "可领" not in line or "done@" in line:
+                continue
+            face["ready_total"] += 1
+            claims = CLAIM_RE.findall(line)
+            if not claims:
+                face["ready_ignitable"] += 1
+                continue
+            owner = claims[-1]
+            if owner == self_machine:
+                face["ready_ignitable"] += 1
+                continue
+            if owner not in cache:
+                cache[owner] = machine_silent_minutes(owner, machines_dir)
+            age = cache[owner]
+            if age is None:
+                face["ready_owner_unknown"] += 1
+                face["unknown_owners"].append(owner)
+            elif age > silent_min:
+                face["ready_foreign_silent"] += 1
+                face["silent_owners"][owner] = round(age, 1)
+                face["takeover_candidate_ids"].append(_row_id(line))
+            else:
+                face["ready_foreign_alive"] += 1
+    face["breach"] = face["ready_ignitable"] < floor
+    return face
 
 
 def count_queue_open(queue_dir=QUEUE_DIR):
@@ -445,6 +533,10 @@ def check():
     green_idle = (ram_pct >= RAM_FREE_PCT_MIN and vram_mb >= VRAM_FREE_MB_MIN)
     cpu_idle = classify_cpu_lane_idle(ram_pct)
     pool = count_pool_claimable()
+    face = ignitable_face()
+    # D-20261024-14 ①：地板/饥饿判定走可点火口径；读数不可得时回退池行数
+    # （fail-open，不因探针坏而误报供给缺口）
+    pool_ign = face["ready_ignitable"] if face["readable"] else pool
     q_open = count_queue_open()
     serve_alive, serve_detail = probe_serve_liveness()
     model_drift = probe_model_drift()
@@ -462,7 +554,7 @@ def check():
     # T85（O-2215 ①）：饥饿面闸=cpu_idle（RAM 单闸·CPU 车道常开）——green_idle
     # ⊂ cpu_idle（GPU 车道闲 ⊆ CPU 车道闲），VRAM 忙而 RAM 闲时纯 CPU 面照算
     # 饥饿计数（10-10 18:26 判例：VRAM 闸误挡纯 CPU 批的触发面修复）。
-    if cpu_idle and pool == 0 and q_open == 0:
+    if cpu_idle and pool_ign == 0 and q_open == 0:
         # 达档且无单可领无议程可拉 → 饥荒面：连击计数与 idle_rounds 递增（§9.6.2）
         st["consecutive_idle"] = st.get("consecutive_idle", 0) + 1
         if st["consecutive_idle"] >= CONSECUTIVE_TRIGGER:
@@ -478,6 +570,8 @@ def check():
     st["last_read"] = {"ram_free_pct": ram_pct, "vram_free_mb": vram_mb,
                        "py_cpu": py_cpu, "cpu_lane_idle": cpu_idle,
                        "pool_claimable": pool, "queue_open": q_open,
+                       "pool_ignitable": pool_ign,
+                       "supply_floor": face,
                        "serve_alive": serve_alive, "serve_detail": serve_detail,
                        "model_drift": model_drift,
                        "task_face": task_face,
@@ -490,11 +584,13 @@ def check():
             "pool_claimable=%d queue_open=%d consecutive_idle=%d "
             "idle_rounds=%d agenda_starved=%s serve_alive=%s serve_detail=%s"
             " task_face=%s model_drift=%s"
+            " pool_ignitable=%d pool_foreign_silent=%d pool_owner_unknown=%d"
             % (time.strftime("%Y-%m-%d %H:%M:%S"), verdict, ram_pct,
                vram_mb, py_cpu, str(cpu_idle).lower(), pool, q_open,
                st["consecutive_idle"], st["idle_rounds"], str(starved).lower(),
                str(serve_alive).lower(), serve_detail, task_face,
-               model_drift))
+               model_drift, pool_ign, face["ready_foreign_silent"],
+               face["ready_owner_unknown"]))
     code, msg = append_heartbeat(line)
     print(line)
     print("append: code=%d %s" % (code, msg))
@@ -558,6 +654,44 @@ def selftest():
     print("J2 backlog parse fixture: claimable=%d (expect 2)" % n)
     ok &= (n == 2)
     os.unlink(fx.name)
+
+    # J13（D-20261024-14）：可点火口径四桶 + breach 数学（合成夹具·零真实池）
+    with tempfile.TemporaryDirectory() as td:
+        md = os.path.join(td, "machines")
+        os.makedirs(md)
+        now = datetime.datetime.now()
+        with open(os.path.join(md, "bm-b.json"), "w", encoding="utf-8") as f:
+            json.dump({"clock_read":
+                       now.strftime("%Y-%m-%dT%H:%M:%S+08:00")}, f)
+        with open(os.path.join(md, "bm-c.json"), "w", encoding="utf-8") as f:
+            json.dump({"clock_read": (now - datetime.timedelta(hours=30))
+                       .strftime("%Y-%m-%dT%H:%M:%S+08:00")}, f)
+        bl = os.path.join(td, "backlog.md")
+        with open(bl, "w", encoding="utf-8") as f:
+            f.write("1. 【A】无主——可领\n"
+                    "2. 【B】本机——可领（claimed@bm-a@10-07 22:33）\n"
+                    "3. 【C】活他机——可领（claimed@bm-b@10-24 17:00）\n"
+                    "4. 【D】死他机——可领（claimed@bm-c@10-21 08:00）\n"
+                    "5. 【E】已完——可领（claimed@bm-b@10-20）done@10-21\n"
+                    "6. 【F】无状态件——可领（claimed@bm-d@10-24）\n")
+        fc = ignitable_face(bl, machines_dir=md, floor=3)
+        fc2 = ignitable_face(bl, machines_dir=md, floor=2)
+        age_c = machine_silent_minutes("bm-c", md)
+        print("J13 ignitable: total=%d ign=%d alive=%d silent=%d unknown=%d "
+              "breach=%s breach@2=%s take=%s silent_owners=%s"
+              % (fc["ready_total"], fc["ready_ignitable"],
+                 fc["ready_foreign_alive"], fc["ready_foreign_silent"],
+                 fc["ready_owner_unknown"], fc["breach"], fc2["breach"],
+                 fc["takeover_candidate_ids"], fc["silent_owners"]))
+        ok &= fc["readable"] and fc["ready_total"] == 5
+        ok &= fc["ready_ignitable"] == 2          # 无主 + 本机
+        ok &= fc["ready_foreign_alive"] == 1
+        ok &= fc["ready_foreign_silent"] == 1 and "bm-c" in fc["silent_owners"]
+        ok &= fc["ready_owner_unknown"] == 1      # bm-d 无状态件=不判死
+        ok &= fc["takeover_candidate_ids"] == ["backlog#4"]
+        ok &= fc["breach"] is True and fc2["breach"] is False  # floor 数学
+        ok &= age_c is not None and age_c > IGNITABLE_SILENT_MIN
+        ok &= ignitable_face(os.path.join(td, "nope.md"))["readable"] is False
 
     with tempfile.TemporaryDirectory() as td:
         p = os.path.join(td, "st.json")
