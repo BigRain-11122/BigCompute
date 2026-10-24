@@ -14,6 +14,7 @@
 import argparse
 import datetime as _dt
 import json
+import os
 import re
 import sys
 import threading
@@ -32,8 +33,8 @@ def _p(msg):
         pass
 DEFAULT_DATA = r"C:\Users\sjs20\Desktop\FluxGroup\gaming\MiniGame\硅基生命元宇宙-data.js"
 HONOR_SEATS = ("C-00001", "C-00002", "C-00003")
-OLLAMA_URL = "http://127.0.0.1:11434/api/chat"
-MODEL = "qwen2.5:7b-instruct"
+LLM_URL = os.environ.get("RESIDENT_QA_LLM_URL", "http://127.0.0.1:8090/v1/chat/completions")  # O-20261015-1335 fleet brain lane（bm-d 切换=改 env 零改码·O-20261015-1505 ⑤）
+MODEL = "qwen3.6-35b"
 SERVER_VER = "resident-qa v1.0 (BigCompute MaaS consumer face)"
 
 
@@ -76,20 +77,21 @@ def persona_prompt(a):
     )
 
 
-def ollama_chat(messages, timeout=60):
-    """真实推理调用（qa 探针同源·keep_alive=-1 U240 常驻标准）。返回 (reply, eval_count)。"""
+def ollama_chat(messages, timeout=150):
+    """真实推理调用（:8090 35B-A3B 舰队脑·服务器常驻免钉·O-20261015-1335）。返回 (reply, eval_count)。"""
     payload = json.dumps({
         "model": MODEL,
         "messages": messages,
-        "stream": False,
-        "keep_alive": -1,
-        "options": {"num_predict": 160, "temperature": 0.8},
+        "max_tokens": 160, "temperature": 0.8,
+        "chat_template_kwargs": {"enable_thinking": False},
     }).encode("utf-8")
     req = urllib.request.Request(
-        OLLAMA_URL, data=payload, headers={"Content-Type": "application/json"})
+        LLM_URL, data=payload, headers={"Content-Type": "application/json"})
     with urllib.request.urlopen(req, timeout=timeout) as r:
         j = json.loads(r.read().decode("utf-8"))
-    return (j.get("message") or {}).get("content", "").strip(), j.get("eval_count", 0)
+    ch = (j.get("choices") or [{}])[0]
+    u = j.get("usage") or {}
+    return (ch.get("message") or {}).get("content", "").strip(), u.get("completion_tokens", 0)
 
 
 class QAServer(ThreadingHTTPServer):
