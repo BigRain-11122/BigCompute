@@ -76,6 +76,11 @@ SELF_MACHINE = "bm-a"
 IGNITABLE_SILENT_MIN = 120.0   # 与集团口径同源（owner_silent_min 120）
 SUPPLY_FLOOR_IGNITABLE = 3     # 与 bigmoney SUPPLY_FLOOR_READY 同值
 CLAIM_RE = re.compile(r"claimed@([A-Za-z0-9_\-]+)@")
+# J13b（M86·10-24 夜轮）：本机自 claim 陈旧诊断——ready_ignitable 把「本机
+# 17 天前 claim 后零交付」也算可点火，breach 面因此虚高。此处只加诊断列，
+# 不改 ready_ignitable/breach 的集团同源语义（对齐律优先），另出 effective 面。
+CLAIM_TS_RE = re.compile(r"claimed@([A-Za-z0-9_\-]+)@([0-9T:+.\- ]{4,32})")
+SELF_STALE_DAYS = 3.0  # 预注册：本机 claim 超 3 日未 done = 陈旧自占用（非新供给）
 # J11（T105·BC-P-78）：陈旧 M 态守卫常量——真实 git 路径优先（PATH git=
 # gitsilent 转发器吞 stdout·10-08 判例·探针零输出=假净面）
 STALE_M_LATCH = os.path.join(PROJECT, "state", "stale-m.latch.json")
@@ -283,6 +288,28 @@ def machine_silent_minutes(machine, machines_dir=None):
         return None
 
 
+def _claim_age_days(ts, now=None):
+    """J13b：claim 时戳龄（天）。支持 ISO `2026-10-07T22:33:00+08:00` 与
+    池台账常见的 `10-07 22:33`（缺年份=按当年补；跨年陈旧行会低估，注明）。"""
+    now = now or datetime.datetime.now()
+    s = (ts or "").strip().rstrip("）)").strip()
+    for fmt, cut in (("%Y-%m-%dT%H:%M:%S", 19), ("%Y-%m-%dT%H:%M", 16),
+                     ("%Y-%m-%d %H:%M:%S", 19), ("%Y-%m-%d %H:%M", 16)):
+        try:
+            t = datetime.datetime.strptime(s[:cut], fmt)
+        except Exception:
+            continue
+        return (now - t).total_seconds() / 86400.0
+    for fmt, cut in (("%m-%d %H:%M:%S", 14), ("%m-%d %H:%M", 11)):
+        try:  # 缺年份：显式补当年（避开 strptime 默认 1900 的闰日告警）
+            t = datetime.datetime.strptime("%d-%s" % (now.year, s[:cut]),
+                                           "%Y-" + fmt)
+        except Exception:
+            continue
+        return (now - t).total_seconds() / 86400.0
+    return None
+
+
 def _row_id(line):
     m = re.match(r"\s*(\d+)\.", line)
     return "backlog#%s" % m.group(1) if m else "backlog#?"
@@ -301,11 +328,19 @@ def ignitable_face(backlog_path=BACKLOG, machines_dir=None,
       非本机可领）；静默超阈 → foreign_silent（只列 takeover 候选，且须
       独立活性佐证才可接管）；活性不可读 → owner_unknown（不判死）。
     breach = ready_ignitable < floor。结构等待≠可点火活（SLI-RECONCILE 先例）。
+
+    J13b（M86）：本机自 claim 再拆 fresh/active/stale 三列（诊断，不改上式语义）——
+    effective_ignitable = ready_fresh + ready_self_active，breach_effective 用
+    该值判。陈旧自占用=账面上「可领」但本机超 SELF_STALE_DAYS 未交付，不是新供给。
     """
     face = {"ready_total": 0, "ready_ignitable": 0, "ready_foreign_alive": 0,
             "ready_foreign_silent": 0, "ready_owner_unknown": 0,
+            "ready_fresh": 0, "ready_self_active": 0, "ready_self_stale": 0,
+            "self_stale_ids": [], "self_age_unknown": 0,
+            "effective_ignitable": 0,
             "takeover_candidate_ids": [], "silent_owners": {},
             "unknown_owners": [], "floor": floor, "breach": False,
+            "breach_effective": False, "self_stale_days": SELF_STALE_DAYS,
             "readable": True, "takeover_needs_corroboration": True,
             "self": self_machine}
     if not os.path.exists(backlog_path):
@@ -320,10 +355,24 @@ def ignitable_face(backlog_path=BACKLOG, machines_dir=None,
             claims = CLAIM_RE.findall(line)
             if not claims:
                 face["ready_ignitable"] += 1
+                face["ready_fresh"] += 1
                 continue
             owner = claims[-1]
             if owner == self_machine:
                 face["ready_ignitable"] += 1
+                ts = ""
+                for m_owner, m_ts in CLAIM_TS_RE.findall(line):
+                    if m_owner == self_machine:
+                        ts = m_ts
+                age_d = _claim_age_days(ts) if ts else None
+                if age_d is None:
+                    face["self_age_unknown"] += 1
+                    face["ready_self_active"] += 1
+                elif age_d > SELF_STALE_DAYS:
+                    face["ready_self_stale"] += 1
+                    face["self_stale_ids"].append(_row_id(line))
+                else:
+                    face["ready_self_active"] += 1
                 continue
             if owner not in cache:
                 cache[owner] = machine_silent_minutes(owner, machines_dir)
@@ -338,6 +387,9 @@ def ignitable_face(backlog_path=BACKLOG, machines_dir=None,
             else:
                 face["ready_foreign_alive"] += 1
     face["breach"] = face["ready_ignitable"] < floor
+    face["effective_ignitable"] = (face["ready_fresh"]
+                                   + face["ready_self_active"])
+    face["breach_effective"] = face["effective_ignitable"] < floor
     return face
 
 
@@ -585,12 +637,14 @@ def check():
             "idle_rounds=%d agenda_starved=%s serve_alive=%s serve_detail=%s"
             " task_face=%s model_drift=%s"
             " pool_ignitable=%d pool_foreign_silent=%d pool_owner_unknown=%d"
+            " pool_fresh=%d pool_self_stale=%d breach_eff=%s"
             % (time.strftime("%Y-%m-%d %H:%M:%S"), verdict, ram_pct,
                vram_mb, py_cpu, str(cpu_idle).lower(), pool, q_open,
                st["consecutive_idle"], st["idle_rounds"], str(starved).lower(),
                str(serve_alive).lower(), serve_detail, task_face,
                model_drift, pool_ign, face["ready_foreign_silent"],
-               face["ready_owner_unknown"]))
+               face["ready_owner_unknown"], face["ready_fresh"],
+               face["ready_self_stale"], str(face["breach_effective"]).lower()))
     code, msg = append_heartbeat(line)
     print(line)
     print("append: code=%d %s" % (code, msg))
@@ -678,11 +732,15 @@ def selftest():
         fc2 = ignitable_face(bl, machines_dir=md, floor=2)
         age_c = machine_silent_minutes("bm-c", md)
         print("J13 ignitable: total=%d ign=%d alive=%d silent=%d unknown=%d "
-              "breach=%s breach@2=%s take=%s silent_owners=%s"
+              "fresh=%d self_active=%d self_stale=%d eff=%d "
+              "breach=%s breach@2=%s breach_eff=%s take=%s silent_owners=%s"
               % (fc["ready_total"], fc["ready_ignitable"],
                  fc["ready_foreign_alive"], fc["ready_foreign_silent"],
-                 fc["ready_owner_unknown"], fc["breach"], fc2["breach"],
-                 fc["takeover_candidate_ids"], fc["silent_owners"]))
+                 fc["ready_owner_unknown"], fc["ready_fresh"],
+                 fc["ready_self_active"], fc["ready_self_stale"],
+                 fc["effective_ignitable"], fc["breach"], fc2["breach"],
+                 fc["breach_effective"], fc["takeover_candidate_ids"],
+                 fc["silent_owners"]))
         ok &= fc["readable"] and fc["ready_total"] == 5
         ok &= fc["ready_ignitable"] == 2          # 无主 + 本机
         ok &= fc["ready_foreign_alive"] == 1
@@ -690,6 +748,14 @@ def selftest():
         ok &= fc["ready_owner_unknown"] == 1      # bm-d 无状态件=不判死
         ok &= fc["takeover_candidate_ids"] == ["backlog#4"]
         ok &= fc["breach"] is True and fc2["breach"] is False  # floor 数学
+        # J13b（M86）：本机陈旧自占用拆列——row#2 的 10-07 claim 已 17 天
+        ok &= fc["ready_fresh"] == 1
+        ok &= fc["ready_self_stale"] == 1 and fc["ready_self_active"] == 0
+        ok &= fc["self_stale_ids"] == ["backlog#2"]
+        ok &= fc["effective_ignitable"] == 1
+        ok &= fc["breach_effective"] is True and fc["self_stale_days"] == 3.0
+        ok &= (_claim_age_days("2026-10-07T22:33:00+08:00") or 0) > 3.0
+        ok &= _claim_age_days("garbage") is None
         ok &= age_c is not None and age_c > IGNITABLE_SILENT_MIN
         ok &= ignitable_face(os.path.join(td, "nope.md"))["readable"] is False
 
