@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-10-25 18:4x",
- "current_activity": "18:2x 哨兵触发轮：供给面口径根治——tech T124「供给地板 lane 归属闸」实装（idle_selfcheck J13c：行首【司标签】vs claim 机归属司，跨司持有行不计入 effective_ignitable，心跳新字段 pool_lane_mm；selftest 4 新断言 PASS，实池 pool_lane_mm=2 与 self_stale=2 同值）。任务板=tasks/TASKS.md｜队列=state/queue/{main,tech,explore}.md",
- "latest_artifact": "Tools/idle_selfcheck.py（J13c lane 归属闸）+ state/lane-gate-20261025.txt（实池取证：lane_mismatch=2 / effective=0）+ state/proposals.md BC-P-108 — 2026-10-25 18:40",
- "next_milestone": "10-26：T128 供给面单一口径切换（饥饿面+心跳双读改 effective·一周回访窗）+ BC-P-107 编号唯一性机检；P1 未闭面=:8090 车道本体仍死（tech T90 三案候 CEO 点批）；10-31 N1 月末归集一命令（含 T127→S8 distr 源）"
+ "updated_at": "2026-10-25 22:4x",
+ "current_activity": "22:4x 夜班排程轮：P1 对外成交环最后一处「只贴标签」环节收口——交付调度建成 append-only 事件链（queued→dispatched→delivered），真实单号结构性拒绝、LIVE=False 零平台调用。任务板=tasks/TASKS.md｜队列=state/queue/{main,tech,explore}.md",
+ "latest_artifact": "Tools/delivery_dispatch_mock.py（intake/dispatch/deliver/status/selftest·selftest 15/15）+ Tools/rails_schema_check.py 新增 delivery 轨（schema selftest 17/17·check VERDICT=RAILS-SCHEMA-GREEN rows=13）+ 实弹证据 state/delivery-ledger.jsonl（DV-20261025-1 三事件）— 2026-10-25 22:47",
+ "next_milestone": "10-26：T125 收尾 C1C4 行机检（防收尾跳步）+ T128 供给面单一口径切换（一周回访窗）；P1 未闭面=:8090 车道本体仍死（tech T90 三案候 CEO 点批，10-26 未裁则走案C 降档止血）；10-31 N1 月末归集一命令（distr→S8、交付轨→S9）"
 }

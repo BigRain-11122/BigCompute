@@ -12,6 +12,8 @@ Rails covered:
   batch_card  docs/ops/batch-pool-stock-v1.jsonl (T-20260929-32 batch pool)
   distr       state/distr-ledger.jsonl        (private-domain attribution,
               building-plan §七 15-field pre-design; file absent = PLANNED)
+  delivery    state/delivery-ledger.jsonl     (ring-1 stage-5 delivery dispatch
+              event chain, building-plan §二/三; file absent = PLANNED)
 
 Commands:
   check     validate live rail files (read-only)
@@ -38,13 +40,17 @@ RAIL_PATHS = {
     "mock_order": ROOT / "state" / "mock-order-ledger.jsonl",
     "batch_card": ROOT / "docs" / "ops" / "batch-pool-stock-v1.jsonl",
     "distr": ROOT / "state" / "distr-ledger.jsonl",
+    "delivery": ROOT / "state" / "delivery-ledger.jsonl",
 }
 
 # Idempotency keys: repeats bypass dedup and corrupt reconciliation.
-UNIQUE_KEYS = {"mock_order": "order_id", "batch_card": "batch_id", "distr": "tx_id"}
+UNIQUE_KEYS = {
+    "mock_order": "order_id", "batch_card": "batch_id", "distr": "tx_id",
+    "delivery": "event_id",
+}
 
 # Absent-by-design rails (J4 planned state) are not violations.
-OPTIONAL_RAILS = {"distr"}
+OPTIONAL_RAILS = {"distr", "delivery"}
 
 SCHEMAS = {
     # MOCK rail: every row must be visibly mock (mock=true, MOCK- order id) and
@@ -126,6 +132,32 @@ SCHEMAS = {
             "attribution_status": {"enum": ["pending", "attributed"]},
             "reach_count": {"type": "integer", "minimum": 0},
             "receipt_basis": {"type": "string", "minLength": 2},
+            "caliber_note": {"type": "string", "minLength": 2},
+        },
+        "additionalProperties": True,
+    },
+    # Delivery dispatch event chain (ring-1 stage-5). Append-only: one row per
+    # transition, deduped by event_id, so the status chain is auditable. Only
+    # MOCK orders may be walked (J4); the mock const makes a real row fail here.
+    "delivery": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "required": [
+            "event_id", "delivery_id", "order_id", "route_group", "status",
+            "ts", "attempts", "receipt_ref", "mock", "caliber_note",
+        ],
+        "properties": {
+            "event_id": {"type": "string", "pattern": "^E-[0-9]{8}-[0-9]+$"},
+            "delivery_id": {"type": "string", "pattern": "^DV-[0-9]{8}-[0-9]+$"},
+            "order_id": {"type": "string", "pattern": "^MOCK-"},
+            "route_group": {
+                "enum": ["resident-qa-8792", "batch-pool", "direct-outbox"],
+            },
+            "status": {"enum": ["queued", "dispatched", "delivered"]},
+            "ts": {"type": "string", "minLength": 10},
+            "attempts": {"type": "integer", "minimum": 0},
+            "receipt_ref": {"type": "string"},
+            "mock": {"const": True},
             "caliber_note": {"type": "string", "minLength": 2},
         },
         "additionalProperties": True,
@@ -274,6 +306,21 @@ def cmd_selftest() -> int:
                    validate_rows("distr", [dict(good_distr, tx_id="X-1")]) != []))
     checks.append(("dup distr tx_id caught",
                    len(find_duplicate_keys("distr", [good_distr, good_distr])) == 1))
+    good_delivery = {
+        "event_id": "E-20261025-1", "delivery_id": "DV-20261025-1",
+        "order_id": "MOCK-20261019-R1", "route_group": "resident-qa-8792",
+        "status": "queued", "ts": "2026-10-25T22:50:00", "attempts": 0,
+        "receipt_ref": "", "mock": True,
+        "caliber_note": "delivery audit rail, not a revenue row (caliber B)",
+    }
+    checks.append(("good delivery row accepted",
+                   validate_rows("delivery", [good_delivery]) == []))
+    checks.append(("delivery real order rejected",
+                   validate_rows("delivery", [dict(good_delivery, order_id="R-1")]) != []))
+    checks.append(("delivery bad status rejected",
+                   validate_rows("delivery", [dict(good_delivery, status="shipped")]) != []))
+    checks.append(("dup delivery event caught",
+                   len(find_duplicate_keys("delivery", [good_delivery, good_delivery])) == 1))
     for name, ok in checks:
         print(f"{'PASS' if ok else 'FAIL'} {name}")
     failed = sum(1 for _, ok in checks if not ok)
