@@ -854,6 +854,11 @@ def stale_m_watch(repo_root=None, age_hours=STALE_M_AGE_HOURS,
     return 1
 
 
+def supply_gate_value(face, pool):
+    """T128：供给读数（饥饿判定/心跳同源）——effective 优先，面不可读回退池行数。"""
+    return face["effective_ignitable"] if face["readable"] else pool
+
+
 def check():
     ram_pct = probe_ram_free_pct()
     vram_mb = probe_vram_free_mb()
@@ -862,9 +867,10 @@ def check():
     cpu_idle = classify_cpu_lane_idle(ram_pct)
     pool = count_pool_claimable()
     face = ignitable_face()
-    # D-20261024-14 ①：地板/饥饿判定走可点火口径；读数不可得时回退池行数
-    # （fail-open，不因探针坏而误报供给缺口）
-    pool_ign = face["ready_ignitable"] if face["readable"] else pool
+    # D-20261024-14 ① + T128：饥饿判定/心跳一律走 effective 口径（本机陈旧自占
+    # 与跨司机错占不算新供给，否则「无单可领」面假绿）；读数不可得时回退池行数
+    # （fail-open，不因探针坏而误报供给缺口）。ready_ignitable 仍作诊断列输出。
+    pool_ign = supply_gate_value(face, pool)
     q_open = count_queue_open()
     serve_alive, serve_detail = probe_serve_liveness()
     lane8090 = probe_lane8090()
@@ -901,7 +907,11 @@ def check():
     st["last_read"] = {"ram_free_pct": ram_pct, "vram_free_mb": vram_mb,
                        "py_cpu": py_cpu, "cpu_lane_idle": cpu_idle,
                        "pool_claimable": pool, "queue_open": q_open,
-                       "pool_ignitable": pool_ign,
+                       # T128 切换期双字段并存：pool_ignitable 保集团同源口径
+                       # （诊断/兼容），pool_effective 为饥饿与心跳的治理口径。
+                       "pool_effective": pool_ign,
+                       "pool_ignitable": (face["ready_ignitable"]
+                                          if face["readable"] else pool),
                        "supply_floor": face,
                        "serve_alive": serve_alive, "serve_detail": serve_detail,
                        "lane8090": lane8090,
@@ -918,14 +928,17 @@ def check():
             "pool_claimable=%d queue_open=%d consecutive_idle=%d "
             "idle_rounds=%d agenda_starved=%s serve_alive=%s serve_detail=%s"
             " task_face=%s model_drift=%s"
-            " pool_ignitable=%d pool_foreign_silent=%d pool_owner_unknown=%d"
+            " pool_effective=%d pool_ignitable=%d"
+            " pool_foreign_silent=%d pool_owner_unknown=%d"
             " pool_fresh=%d pool_self_stale=%d pool_lane_mm=%d"
             " breach_eff=%s lane8090=%s c1c4_line=%s hq_line=%s"
             % (time.strftime("%Y-%m-%d %H:%M:%S"), verdict, ram_pct,
                vram_mb, py_cpu, str(cpu_idle).lower(), pool, q_open,
                st["consecutive_idle"], st["idle_rounds"], str(starved).lower(),
                str(serve_alive).lower(), serve_detail, task_face,
-               model_drift, pool_ign, face["ready_foreign_silent"],
+               model_drift, pool_ign,
+               (face["ready_ignitable"] if face["readable"] else pool),
+               face["ready_foreign_silent"],
                face["ready_owner_unknown"], face["ready_fresh"],
                face["ready_self_stale"], face["lane_mismatch"],
                str(face["breach_effective"]).lower(),
@@ -1068,6 +1081,16 @@ def selftest():
         ok &= _claim_age_days("garbage") is None
         ok &= age_c is not None and age_c > IGNITABLE_SILENT_MIN
         ok &= ignitable_face(os.path.join(td, "nope.md"))["readable"] is False
+        # T128：供给读数口径切 effective——ready=3 而 eff=1，旧口径会假绿；
+        # 面不可读时回退池行数（fail-open）。
+        ok &= supply_gate_value(fc, 99) == 1
+        ok &= supply_gate_value(fc, 99) != fc["ready_ignitable"]
+        ok &= supply_gate_value(ignitable_face(os.path.join(td, "nope.md")),
+                                7) == 7
+        print("J13d supply gate: eff=%d ready_diag=%d fallback=%d"
+              % (supply_gate_value(fc, 99), fc["ready_ignitable"],
+                 supply_gate_value(ignitable_face(os.path.join(td, "nope.md")),
+                                   7)))
 
     with tempfile.TemporaryDirectory() as td:
         p = os.path.join(td, "st.json")
