@@ -281,6 +281,75 @@ def probe_resident_qa():
                        "priority)" % e)
 
 
+SUPPLY_MARK_RE = re.compile(r"idle_selfcheck")
+
+
+def supply_dual_fields(line):
+    """T132 (probe no.10): read-side guard for the two supply counters.
+
+    `pool_effective` is the governance number (stale/own/misowned rows
+    excluded) while `pool_ignitable` stays the fleet-compatible ready
+    count. Since T128 both are written on every heartbeat line, so a
+    reader can no longer pick the wrong one by accident - provided the
+    line actually carries both. Missing field or effective > ready means
+    the pair drifted apart and the reading is untrustworthy.
+    Pure function over one heartbeat line so the selftest can feed
+    synthetic fixtures.
+    """
+    m_eff = re.search(r"pool_effective=(\d+)", line or "")
+    m_ign = re.search(r"pool_ignitable=(\d+)", line or "")
+    if not m_eff and not m_ign:
+        return False, "no pool_effective/pool_ignitable on heartbeat line"
+    if not m_eff:
+        return False, "pool_effective missing (pool_ignitable present)"
+    if not m_ign:
+        return False, "pool_ignitable missing (pool_effective present)"
+    eff, ign = int(m_eff.group(1)), int(m_ign.group(1))
+    if eff > ign:
+        return False, ("inverted counters: pool_effective=%d > "
+                       "pool_ignitable=%d" % (eff, ign))
+    return True, ("pool_effective=%d pool_ignitable=%d (effective <= ready)"
+                  % (eff, ign))
+
+
+def probe_supply_dual_fields(root=None):
+    """T132 probe no.10: last idle_selfcheck line carries both counters."""
+    root = root or ROOT
+    path = os.path.join(root, "state", "heartbeat.txt")
+    if not os.path.exists(path):
+        return False, "state/heartbeat.txt missing"
+    with open(path, "r", encoding="utf-8", errors="replace") as f:
+        lines = [ln.rstrip("\n") for ln in f if ln.strip()]
+    hits = [ln for ln in lines if SUPPLY_MARK_RE.search(ln)]
+    if not hits:
+        return False, "no idle_selfcheck line in heartbeat"
+    return supply_dual_fields(hits[-1])
+
+
+RUNBOOK_MAX_BYTES = 2048
+
+
+def probe_runbook_budget(root=None):
+    """Tech T133: the starter-read file must stay inside its own cap.
+
+    runbook.md declares "<2KB" in its title and T-20260928-29 accepts
+    it on that basis, but nothing measured it: by 10-26 it had quietly
+    grown to 2499B (+22%) and no probe noticed - the same silent-drift
+    shape as the model-set and supply-counter faces. A cap nobody
+    measures is not a cap.
+    """
+    root = root or ROOT
+    path = os.path.join(root, "state", "runbook.md")
+    if not os.path.exists(path):
+        return False, "state/runbook.md missing"
+    n = os.path.getsize(path)
+    if n > RUNBOOK_MAX_BYTES:
+        return False, ("runbook %d bytes > %d cap (compress this round; "
+                       "starter-read budget T-20260928-29)"
+                       % (n, RUNBOOK_MAX_BYTES))
+    return True, "runbook %d bytes <= %d cap" % (n, RUNBOOK_MAX_BYTES)
+
+
 CODER_EXPECTED_IMAGE = "llama-server.exe"
 CODER_PORT = 8090
 
@@ -562,9 +631,46 @@ def selftest_coder_class():
     return 0 if all(results) else 1
 
 
+def selftest_supply_fields():
+    """T132 fixtures for supply_dual_fields().
+
+    Live heartbeat can only show the current pair, so every rejection
+    branch is pinned: a line carrying just one counter is exactly the
+    accidental-read the T128 split created, and effective > ready is
+    arithmetically impossible unless one side went stale.
+    """
+    cases = [
+        ("both fields, effective < ready",
+         "idle_selfcheck: verdict=busy pool_effective=0 pool_ignitable=2",
+         True, "effective <= ready"),
+        ("both fields, equal", "pool_effective=3 pool_ignitable=3", True,
+         "pool_effective=3"),
+        ("effective missing", "pool_ignitable=2", False,
+         "pool_effective missing"),
+        ("ready missing", "pool_effective=0", False,
+         "pool_ignitable missing"),
+        ("inverted", "pool_effective=4 pool_ignitable=2", False, "inverted"),
+        ("no counters at all", "idle_selfcheck: verdict=busy", False,
+         "no pool_effective/pool_ignitable"),
+    ]
+    results = []
+    print("qa_smoke probe no.10 selftest (T132 supply dual-field reading)")
+    for label, line, want_ok, needle in cases:
+        ok, detail = supply_dual_fields(line)
+        good = ok == want_ok and needle in detail
+        results.append(good)
+        print("  [%s] %s" % ("PASS" if good else "FAIL", label))
+        if not good:
+            print("    detail: ok=%s %s" % (ok, detail))
+    print("selftest verdict: %d/%d PASS"
+          % (len([r for r in results if r]), len(results)))
+    return 0 if all(results) else 1
+
+
 def main():
     if len(sys.argv) > 1 and sys.argv[1] == "--selftest":
-        return selftest_tails() | selftest_coder_class()
+        return (selftest_tails() | selftest_coder_class()
+                | selftest_supply_fields())
     os.makedirs(QA_DIR, exist_ok=True)
     ts = datetime.datetime.now().strftime("%Y%m%d-%H%M")
     log_path = os.path.join(QA_DIR, "smoke-%s.log" % ts)
@@ -574,7 +680,10 @@ def main():
               ("rounds.log strict-decode", probe_rounds_log),
               ("resident QA serve 8792", probe_resident_qa),
               ("L1 coder serve 8090", probe_l1_coder_serve),
-              ("ledger tail integrity (BC-P-45)", probe_ledger_tails)]
+              ("ledger tail integrity (BC-P-45)", probe_ledger_tails),
+              ("supply dual-field reading (T132)",
+               probe_supply_dual_fields),
+              ("runbook size budget (T133)", probe_runbook_budget)]
     lines, passed = [], 0
     lines.append("BigCompute QA smoke test %s (orders L254 / charter v1)"
                  % ts)
@@ -587,7 +696,7 @@ def main():
         lines.append(detail)
         print("[%s] %s" % ("PASS" if ok else "FAIL", label))
     lines.append("")
-    verdict = "smoke verdict: %d/%d PASS (charter 4 + T25 + E41 + BC-P-45 no.8 probes)" % (
+    verdict = "smoke verdict: %d/%d PASS (charter 4 + T25 + E41 + BC-P-45 no.8 + T132 no.10 + T133 no.11 probes)" % (
         passed, len(probes))
     lines.append(verdict)
     with open(log_path, "w", encoding="utf-8") as f:
