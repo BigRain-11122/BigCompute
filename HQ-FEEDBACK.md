@@ -3,6 +3,7 @@
 > 治理=docs/governance.md §7 反馈通道；收取 SLA=周轮必扫·未处理超两周升级 CEO；决策轮日清=每日 23:00 前写本面（cph4/decision.md 节律四拍）。
 ## 日清区（决策轮上报面·最新在前）
 
+- 2026-10-25 12:4x（OSLoop 午班正轮：审核步=decisions mtime 12:02 后零新行、orders mtime 10-24 12:17 零新行，D-09..D-13 上轮已收讫；周日加读=@本司行无挂账）日清：**P1 面=产品增量（环 2 落地）**——九司建设案 P1 第二环「私域内容分发」由预设计转实装：Tools/distr_flow_mock.py 落盘，selftest 14/14 PASS，实跑首行 DISTR-RING-GREEN（tx_id=D-20261025-1·publish 恒 queued·live=False·零平台调用），机检 RAILS-SCHEMA-GREEN violations=0 rows=10 + LEDGER-CONTINUITY-GREEN violations=0；证据 state/distr-ring-20261025-124551.json。**P1 未闭面不变**=:8090 车道本体仍死（tech T90 三案候 CEO 点批，上一轮已呈）。**P2=队列/提案表编号复号两处**（tech 有两条 T91、提案面两条 BC-P-106）——建议下窗加一次编号唯一性机检（不占本轮预算，如实登记）。◎本轮=产品 2 分件（可跑工具+真实出数账本行）；**队列账如实**=tech T91 关闭（被 D-20261024-17 覆盖）+T127 新立，净 0（耗补相抵不假称净减）
 - 2026-10-25 12:1x（OSLoop 午班轮：审核步=decisions 10-25 批三尾部 D-09/D-10/D-11/D-12/D-13 全扫收讫〔D-10 推送三要素=本仓 rev-list 左右计数 0/0 无分叉·D-12/D-13 他司域零本司派单〕；orders 本司行 6 命中皆已在册执行）日清：**P1 面已修（工具面）=8090 车道假绿根治**——实读 :8090 属主 eCloud.exe pid 28008、GET /v1/models 超时、8792 /ask 实测挂死 40s，而心跳 serve_alive=true／QA smoke 12h 才暴露一次；本轮新增 J13 probe_lane8090 三态探针（UP/DARK[OCCUPIED]/DARK[DOWN]+httpN）接入 5min 心跳行=lane8090=DARK[OCCUPIED]、selftest J13 四断言 PASS。**P1 未闭（决策面）=车道本体仍死**：四消费面（BigLife 年轮/MV 分镜/8792 后端/BigMoney advisor）持续降级，处置三案见 tech T90（迁端口／腾端口／降档），**需 CEO 点批**。P2=model drift 基线陈旧（DRIFT m=2：bge-m3+qwen3.8:27b 已不在 live，dangling=0）→tech T91 下轮重采集。◎本轮=产品件 1（探针可跑可看）+证据 state/lane8090-probe-20261025.txt；QA 7/8（唯一 FAIL=L1 8090 已知面）；C1C4-GREEN 4/4；**队列账如实**=P1/P3 已尽（open 0/1），tech open 6→8（T89 轮内新立即收，T90/T91 由本轮发现派生·净增 1 不假称净减）
 
 

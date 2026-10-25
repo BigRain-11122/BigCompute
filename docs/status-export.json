@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-10-24 12:28",
- "current_activity": "12:2x 排程轮：M80/BC-P-103 收口——baseline-diff 增 --rounds-line 单行摘要（selftest 15/15 PASS）、模型基线刷新政策 v1 落盘、idle_selfcheck 加 J12 漂移 informational 读数（心跳实证 model_drift=DRIFT(m=2,a=0)）；本轮 QA 7/8，唯一 FAIL=L1 :8090 FOREIGN-PORT（eCloud.exe 占端口·T123/BC-P-101 待批）",
- "latest_artifact": "docs/ops/model-baseline-refresh-policy-v1.md + Tools/model_ref_drift_check.py（--rounds-line）+ state/model-ref-baseline-diff-20261024-122422.json · 2026-10-24 12:24",
- "next_milestone": "10-26 P1 实装窗口=C1-C4 收尾 QA 接线+KPI 记账；M81 模型缺失影响面排查（bge-m3 消费面三态结论）；L1 :8090 裁决（T123）与 10-31 N1 期末归集一命令"
+ "updated_at": "2026-10-25 12:4x",
+ "current_activity": "12:4x 午班正轮：M87 收口——九司建设案 P1 第二环「私域内容分发」由预设计转实装（Tools/distr_flow_mock.py·selftest 14/14 PASS·首行 DISTR-RING-GREEN tx_id=D-20261025-1·live=False 零平台调用）。任务板=tasks/TASKS.md｜队列=state/queue/{main,tech,explore}.md",
+ "latest_artifact": "state/distr-ledger.jsonl（首行 D-20261025-1·publish 恒 queued）+ Tools/distr_flow_mock.py + state/distr-ring-20261025-124551.json — 2026-10-25 12:45",
+ "next_milestone": "10-26 P1 实装窗：环 2 接月末 S1-S7 聚合（T127）+ 环 1/环 2 巡检步 C1-C4 回归；P1 未闭面=:8090 车道本体仍死（tech T90 三案候 CEO 点批）；10-31 N1 月末归集一命令"
 }
