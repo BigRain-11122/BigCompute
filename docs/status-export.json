@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-10-25 22:4x",
- "current_activity": "22:4x 夜班排程轮：P1 对外成交环最后一处「只贴标签」环节收口——交付调度建成 append-only 事件链（queued→dispatched→delivered），真实单号结构性拒绝、LIVE=False 零平台调用。任务板=tasks/TASKS.md｜队列=state/queue/{main,tech,explore}.md",
- "latest_artifact": "Tools/delivery_dispatch_mock.py（intake/dispatch/deliver/status/selftest·selftest 15/15）+ Tools/rails_schema_check.py 新增 delivery 轨（schema selftest 17/17·check VERDICT=RAILS-SCHEMA-GREEN rows=13）+ 实弹证据 state/delivery-ledger.jsonl（DV-20261025-1 三事件）— 2026-10-25 22:47",
- "next_milestone": "10-26：T125 收尾 C1C4 行机检（防收尾跳步）+ T128 供给面单一口径切换（一周回访窗）；P1 未闭面=:8090 车道本体仍死（tech T90 三案候 CEO 点批，10-26 未裁则走案C 降档止血）；10-31 N1 月末归集一命令（distr→S8、交付轨→S9）"
+ "updated_at": "2026-10-26 03:2x",
+ "current_activity": "03:2x 哨兵段轮：D-20261026-03 本司面收口——把「mtime 新鲜 ≠ 内容新鲜」做成机检，日清面续鲜改按内容行日期判定并与轮行日期对表。任务板=tasks/TASKS.md｜队列=state/queue/{main,tech,explore}.md",
+ "latest_artifact": "Tools/idle_selfcheck.py 新读数 J15 hq_line_age（FRESH/STALE/MISSED/MISSING/UNVERIFIED·selftest 五夹具+双解析断言 PASS·live 首跑即命中 MISSED(age_h=4.5)，补写当日日清行后转 FRESH(age_h=0.0)）；HQ-FEEDBACK.md 10-26 日清行；state/proposals.md BC-P-111 ｜ 2026-10-26 03:2x",
+ "next_milestone": "10-26：P1 :8090 车道裁决窗（BC-P-101/T123 待 CEO 点批·本司零自动杀他进程·未批则走案C 降档止血）；T130 台账「触碰未写」闸（needs-based）；10-31 N1 月末归集一命令（distr→S8、交付轨→S9 归集位随 T127/T128 窗）"
 }

@@ -47,6 +47,11 @@ VRAM≥6GB〕→ 领池检（fleet/backlog 可领行计数）→ 池空拉本司
      段且与最新 state/c1c4-*.json 证据票一致——「收尾是否真跑了 C1-C4」从
      自觉改为可查。缺行=MISSING／停滞 >3 轮=STALE／票与证据不一致=MISMATCH／
      证据缺=NOEVID → P2 advisory 心跳行（不阻断轮·读不出=UNVERIFIED fail-open）
+  J15 日清面新鲜度（T129·10-26 承接 D-20261026-03）：HQ-FEEDBACK.md 日清区按
+     **内容日期**判鲜（mtime 会被无 diff 触碰刷新——10-25 22:44 判例：mtime 新
+     而内容停在昨笔/前笔），并与 rounds.log 最新轮行日期对表：轮已更新而日清
+     未更=漏写 MISSED（比单纯 STALE 更确定）。FRESH／STALE(>24h)／MISSED／
+     MISSING(零日清行)／UNVERIFIED → P2 advisory 心跳行·只出读数不改日清文本
 
 用法：
   python Tools/idle_selfcheck.py check       # 每轮自检步（iteration_loop.ps1 内建）
@@ -102,6 +107,15 @@ GIT_REAL = os.environ.get("GIT_REAL", r"C:\Program Files\Git\cmd\git.exe")
 ROUNDS_LOG = os.path.join(PROJECT, "state", "rounds.log")
 C1C4_MAX_AGE_ROUNDS = 3  # T125 预注册：连续 >3 轮无 C1C4 行=停滞告警
 C1C4_RE = re.compile(r"C1C4:([A-Z0-9][A-Z0-9\-]*)")
+# J15（T129·10-26）：日清面新鲜度校验——mtime 会被无 diff 触碰刷新（10-25 22:44
+# 判例：文件 mtime 新而内容停在 10-24 尾笔），故按**内容日期**判鲜；并与 rounds.log
+# 最新轮行日期对表：轮已更新而日清偿未更=漏写（MISSED·比单纯陈旧更确定）。
+HQ_FEEDBACK = os.path.join(PROJECT, "HQ-FEEDBACK.md")
+HQ_MAX_AGE_HOURS = 24.0  # C-20261009-02 派单① 快速件 SLA 12h 之上的宽容告警线
+HQ_LINE_RE = re.compile(
+    r"日清\s+(\d{4}-\d{1,2}-\d{1,2}|\d{1,2}-\d{1,2})"
+    r"(?:\s+(\d{1,2}):([0-9xX]{2}))?")
+ROUND_ROW_RE = re.compile(r"^(\d{4})-(\d{2})-(\d{2}) .* tokens: ")
 
 # §8.2 旗标判据（resource-chain L101·预注册·禁调参不经立法）
 RAM_FREE_PCT_MIN = 40.0
@@ -314,6 +328,118 @@ def c1c4_line_age(rounds_path=None, evidence_dir=None,
         state, "n/a" if ago is None else ago, verdict or "-", ev_verdict or "-")
     return {"state": state, "rounds_ago": ago, "verdict": verdict,
             "evidence": ev_verdict, "token": token}
+
+
+def parse_hq_line(line, today=None):
+    """J15（T129）：日清单行内容时点解析——宽容上界法（宁晚勿早·不虚报陈旧）。
+
+    · 时分在场则用之（'4x' 掩码形按 …49 取上界：22:4x→22:49）；
+    · 时分缺席 → 当日 23:59（该行最晚可能落笔时刻）；
+    · 省略年份的 MM-DD 以当年推，推得日期晚于明日则回退上一年（跨年窗）。
+    返回 datetime 或 None。
+    """
+    m = HQ_LINE_RE.search(line or "")
+    if not m:
+        return None
+    today = today or datetime.date.today()
+    raw = m.group(1)
+    try:
+        if raw.count("-") == 2:
+            y, mo, d = (int(x) for x in raw.split("-"))
+        else:
+            mo, d = (int(x) for x in raw.split("-"))
+            y = today.year
+        dt = datetime.datetime(y, mo, d, 23, 59)
+        if raw.count("-") == 1 and (dt.date() - today).days > 1:
+            dt = dt.replace(year=y - 1)  # 跨年窗（1 月读上年 12 月行）
+    except Exception:
+        return None
+    if m.group(2) is not None:
+        try:
+            dt = dt.replace(hour=int(m.group(2)),
+                            minute=int(str(m.group(3)).replace("x", "9")
+                                       .replace("X", "9")))
+        except Exception:
+            return None
+    return dt
+
+
+def hq_feedback_latest(hq_path=None, today=None, _lines=None):
+    """J15（T129）：取日清区最新一行内容时点 → (datetime|None, 原文行|None)。"""
+    try:
+        if _lines is None:
+            with open(hq_path or HQ_FEEDBACK, encoding="utf-8",
+                      errors="replace") as f:
+                lines = f.read().splitlines()
+        else:
+            lines = list(_lines)
+    except Exception:
+        return None, None
+    for ln in reversed(lines):
+        dt = parse_hq_line(ln, today=today)
+        if dt is not None:
+            return dt, ln
+    return None, None
+
+
+def latest_round_date(rounds_path=None, _lines=None):
+    """J15：rounds.log 最新轮行的日期（轮行锚=「 tokens: 」段）。"""
+    try:
+        if _lines is None:
+            with open(rounds_path or ROUNDS_LOG, encoding="utf-8",
+                      errors="replace") as f:
+                lines = f.read().splitlines()
+        else:
+            lines = list(_lines)
+    except Exception:
+        return None
+    for ln in reversed(lines):
+        m = ROUND_ROW_RE.match(ln)
+        if m:
+            try:
+                return datetime.date(int(m.group(1)), int(m.group(2)),
+                                     int(m.group(3)))
+            except Exception:
+                return None
+    return None
+
+
+def hq_line_age(hq_path=None, rounds_path=None, now=None,
+                max_age_h=HQ_MAX_AGE_HOURS, _lines=None, _rounds=None):
+    """J15（T129）：日清面新鲜度机检（advisory·零阻断·只出读数不改文本）。
+
+    state ∈ FRESH（内容龄 ≤ max_age_h）／STALE（内容龄 > max_age_h）／
+    MISSED（rounds.log 最新轮行日期晚于日清最新行=轮更了日清没写）／
+    MISSING（全文件零「日清 …」行）／UNVERIFIED（文件读不出）。
+    返回 dict：{state, age_h, date, token}。上界法可能略晚于实际写入时刻，
+    故负龄按 0 计（age_h 不为负）。
+    """
+    now = now or datetime.datetime.now()
+    try:
+        if _lines is None:
+            with open(hq_path or HQ_FEEDBACK, encoding="utf-8",
+                      errors="replace") as f:
+                lines = f.read().splitlines()
+        else:
+            lines = list(_lines)
+    except Exception:
+        return {"state": "UNVERIFIED", "age_h": None, "date": None,
+                "token": "UNVERIFIED(hq-read-err)"}
+    dt, _raw = hq_feedback_latest(today=now.date(), _lines=lines)
+    if dt is None:
+        return {"state": "MISSING", "age_h": None, "date": None,
+                "token": "MISSING(no-日清行)"}
+    age_h = round(max(0.0, (now - dt).total_seconds() / 3600.0), 1)
+    rdate = latest_round_date(rounds_path, _rounds)
+    if rdate is not None and rdate > dt.date():
+        state = "MISSED"
+    elif age_h > max_age_h:
+        state = "STALE"
+    else:
+        state = "FRESH"
+    token = "%s(age_h=%s,date=%s)" % (state, age_h, dt.strftime("%Y-%m-%d"))
+    return {"state": state, "age_h": age_h,
+            "date": dt.strftime("%Y-%m-%d"), "token": token}
 
 
 def probe_task_states(names, _run=None, attempts=2, retry_wait=3.0):
@@ -744,6 +870,7 @@ def check():
     lane8090 = probe_lane8090()
     model_drift = probe_model_drift()
     c1c4_line = c1c4_line_age()
+    hq_line = hq_line_age()
     tstates = probe_task_states(MACHINE_PAUSE_SET)
     probe_error = all(v == "ProbeError" for v in tstates.values())
     if probe_error:
@@ -780,6 +907,7 @@ def check():
                        "lane8090": lane8090,
                        "model_drift": model_drift,
                        "c1c4_line": c1c4_line,
+                       "hq_line": hq_line,
                        "task_face": task_face,
                        "task_states": {n: tstates.get(n) for n in
                                        TASK_LIVENESS_PROBE}}
@@ -792,7 +920,7 @@ def check():
             " task_face=%s model_drift=%s"
             " pool_ignitable=%d pool_foreign_silent=%d pool_owner_unknown=%d"
             " pool_fresh=%d pool_self_stale=%d pool_lane_mm=%d"
-            " breach_eff=%s lane8090=%s c1c4_line=%s"
+            " breach_eff=%s lane8090=%s c1c4_line=%s hq_line=%s"
             % (time.strftime("%Y-%m-%d %H:%M:%S"), verdict, ram_pct,
                vram_mb, py_cpu, str(cpu_idle).lower(), pool, q_open,
                st["consecutive_idle"], st["idle_rounds"], str(starved).lower(),
@@ -801,7 +929,7 @@ def check():
                face["ready_owner_unknown"], face["ready_fresh"],
                face["ready_self_stale"], face["lane_mismatch"],
                str(face["breach_effective"]).lower(),
-               lane8090, c1c4_line["token"]))
+               lane8090, c1c4_line["token"], hq_line["token"]))
     code, msg = append_heartbeat(line)
     print(line)
     print("append: code=%d %s" % (code, msg))
@@ -853,6 +981,14 @@ def check():
         code4, msg4 = append_heartbeat(p2c)
         print(p2c)
         print("append-p2c: code=%d %s" % (code4, msg4))
+    # J15（T129）：日清面新鲜度——陈旧/漏写均 advisory P2 行（不改日清文本）。
+    if hq_line["state"] != "FRESH":
+        p2h = ("%s P2 hq_feedback: %s — 日清面按内容日期判鲜"
+               "（T129·mtime 不可信·advisory 不阻断）"
+               % (time.strftime("%Y-%m-%d %H:%M:%S"), hq_line["token"]))
+        code5, msg5 = append_heartbeat(p2h)
+        print(p2h)
+        print("append-p2h: code=%d %s" % (code5, msg5))
     return 0 if code in (0, 2) else 1
 
 
@@ -1121,6 +1257,37 @@ def selftest():
     print("J14 c1c4-line: %s | live=%s"
           % (" ".join("%s=%s" % (k, v["token"]) for k, v in j14.items()),
              c1c4_line_age()["token"]))
+
+    # J15 日清面新鲜度（T129）：五路径夹具——fresh/stale/missed/missing/读不出。
+    # now 固定注入 → 确定性；零真实 HQ-FEEDBACK/rounds.log 副作用。
+    now15 = datetime.datetime(2026, 10, 26, 3, 20)
+    hq_today = "日清 10-26 03:1x（哨兵段轮）：无 P0/P1\n"
+    hq_old = "日清 10-23 12:4x 午班轮：无待报\n"
+    hq_yest = "日清 10-25 22:4x（夜班排程轮）：无待报\n"
+    r_today = "2026-10-26 03:1x tokens: local=0 api=0 api_reason=- | QA 8/8\n"
+    j15 = {
+        "fresh": hq_line_age(now=now15, _lines=[hq_old, hq_today],
+                             _rounds=[r_today]),
+        "stale": hq_line_age(now=now15, _lines=[hq_old], _rounds=[]),
+        "missed": hq_line_age(now=now15, _lines=[hq_yest],
+                              _rounds=[r_today]),
+        "missing": hq_line_age(now=now15, _lines=["# 无关行\n"], _rounds=[]),
+    }
+    with tempfile.TemporaryDirectory() as td4:
+        j15["readerr"] = hq_line_age(hq_path=os.path.join(td4, "nope.md"),
+                                     now=now15, _rounds=[])
+    ok &= j15["fresh"]["state"] == "FRESH" and j15["fresh"]["date"] == "2026-10-26"
+    ok &= j15["stale"]["state"] == "STALE" and j15["stale"]["age_h"] > 24
+    ok &= j15["missed"]["state"] == "MISSED"
+    ok &= j15["missing"]["state"] == "MISSING"
+    ok &= j15["readerr"]["state"] == "UNVERIFIED"
+    ok &= parse_hq_line("日清 2026-10-25（哨兵轮）", today=now15.date()
+                        ).strftime("%Y-%m-%d") == "2026-10-25"
+    ok &= parse_hq_line("日清 12-31 23:2x", today=datetime.date(2027, 1, 1)
+                        ).year == 2026
+    print("J15 hq-line: %s | live=%s"
+          % (" ".join("%s=%s" % (k, v["token"]) for k, v in j15.items()),
+             hq_line_age()["token"]))
     print("SELFTEST %s" % ("PASS" if ok else "FAIL"))
     return 0 if ok else 1
 
