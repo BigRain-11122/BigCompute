@@ -81,6 +81,13 @@ CLAIM_RE = re.compile(r"claimed@([A-Za-z0-9_\-]+)@")
 # 不改 ready_ignitable/breach 的集团同源语义（对齐律优先），另出 effective 面。
 CLAIM_TS_RE = re.compile(r"claimed@([A-Za-z0-9_\-]+)@([0-9T:+.\- ]{4,32})")
 SELF_STALE_DAYS = 3.0  # 预注册：本机 claim 超 3 日未 done = 陈旧自占用（非新供给）
+# J13c（T124·BC-P-105）：供给池 lane 归属闸——池行首【司标签】=交付司；机队机器
+# 皆为集团中枢资产（cph4/resource-chain §9.1 三车道无子公司归属），故 claim 机默认
+# 司=HQ。claim 机司 ≠ 交付司标签 = lane_mismatch：该行账面可领但非本车道新供给，
+# 不计入 effective_ignitable（ready_ignitable 维持集团同源语义，诊断列不删）。
+DEPT_TAG_RE = re.compile(r"【([^】]{1,24})】")
+MACHINE_DEPT = {"bm-a": "HQ", "bm-b": "HQ", "bm-c": "HQ", "bm-d": "HQ"}
+DEPT_ALIAS = {"集团": "HQ", "FluxGroup": "HQ", "fluxgroup": "HQ", "HQ": "HQ"}
 # J11（T105·BC-P-78）：陈旧 M 态守卫常量——真实 git 路径优先（PATH git=
 # gitsilent 转发器吞 stdout·10-08 判例·探针零输出=假净面）
 STALE_M_LATCH = os.path.join(PROJECT, "state", "stale-m.latch.json")
@@ -360,6 +367,17 @@ def _row_id(line):
     return "backlog#%s" % m.group(1) if m else "backlog#?"
 
 
+def _row_dept(line):
+    """池行交付司标签（行首【X】）；无标签返回 None（不判归属）。"""
+    m = DEPT_TAG_RE.search(line)
+    return DEPT_ALIAS.get(m.group(1).strip(), m.group(1).strip()) if m else None
+
+
+def _dept_of(machine):
+    """claim 机归属司；未登记机返回 None（不判归属·保守不误杀）。"""
+    return MACHINE_DEPT.get(machine)
+
+
 def ignitable_face(backlog_path=BACKLOG, machines_dir=None,
                    self_machine=SELF_MACHINE,
                    silent_min=IGNITABLE_SILENT_MIN,
@@ -377,12 +395,17 @@ def ignitable_face(backlog_path=BACKLOG, machines_dir=None,
     J13b（M86）：本机自 claim 再拆 fresh/active/stale 三列（诊断，不改上式语义）——
     effective_ignitable = ready_fresh + ready_self_active，breach_effective 用
     该值判。陈旧自占用=账面上「可领」但本机超 SELF_STALE_DAYS 未交付，不是新供给。
+
+    J13c（T124·BC-P-105）：claim 行再判 lane 归属——行首【司标签】=交付司，
+    claim 机归属司（MACHINE_DEPT）≠ 交付司 → lane_mismatch，同样不计入
+    effective_ignitable（外司池活被跨司机占用=本车道无新供给）。
     """
     face = {"ready_total": 0, "ready_ignitable": 0, "ready_foreign_alive": 0,
             "ready_foreign_silent": 0, "ready_owner_unknown": 0,
             "ready_fresh": 0, "ready_self_active": 0, "ready_self_stale": 0,
             "self_stale_ids": [], "self_age_unknown": 0,
             "effective_ignitable": 0,
+            "lane_mismatch": 0, "lane_mismatch_ids": [],
             "takeover_candidate_ids": [], "silent_owners": {},
             "unknown_owners": [], "floor": floor, "breach": False,
             "breach_effective": False, "self_stale_days": SELF_STALE_DAYS,
@@ -392,6 +415,7 @@ def ignitable_face(backlog_path=BACKLOG, machines_dir=None,
         face["readable"] = False
         return face
     cache = {}
+    eff = 0
     with open(backlog_path, encoding="utf-8", errors="replace") as f:
         for line in f:
             if "可领" not in line or "done@" in line:
@@ -401,23 +425,34 @@ def ignitable_face(backlog_path=BACKLOG, machines_dir=None,
             if not claims:
                 face["ready_ignitable"] += 1
                 face["ready_fresh"] += 1
+                eff += 1
                 continue
             owner = claims[-1]
+            lane_ok = True
             if owner == self_machine:
                 face["ready_ignitable"] += 1
+                row_dept, claimer_dept = _row_dept(line), _dept_of(owner)
+                lane_ok = not (row_dept and claimer_dept
+                               and row_dept != claimer_dept)
+                if not lane_ok:
+                    face["lane_mismatch"] += 1
+                    face["lane_mismatch_ids"].append(_row_id(line))
                 ts = ""
                 for m_owner, m_ts in CLAIM_TS_RE.findall(line):
                     if m_owner == self_machine:
                         ts = m_ts
                 age_d = _claim_age_days(ts) if ts else None
+                stale = age_d is not None and age_d > SELF_STALE_DAYS
                 if age_d is None:
                     face["self_age_unknown"] += 1
                     face["ready_self_active"] += 1
-                elif age_d > SELF_STALE_DAYS:
+                elif stale:
                     face["ready_self_stale"] += 1
                     face["self_stale_ids"].append(_row_id(line))
                 else:
                     face["ready_self_active"] += 1
+                if lane_ok and not stale:
+                    eff += 1
                 continue
             if owner not in cache:
                 cache[owner] = machine_silent_minutes(owner, machines_dir)
@@ -432,8 +467,7 @@ def ignitable_face(backlog_path=BACKLOG, machines_dir=None,
             else:
                 face["ready_foreign_alive"] += 1
     face["breach"] = face["ready_ignitable"] < floor
-    face["effective_ignitable"] = (face["ready_fresh"]
-                                   + face["ready_self_active"])
+    face["effective_ignitable"] = eff
     face["breach_effective"] = face["effective_ignitable"] < floor
     return face
 
@@ -684,14 +718,16 @@ def check():
             "idle_rounds=%d agenda_starved=%s serve_alive=%s serve_detail=%s"
             " task_face=%s model_drift=%s"
             " pool_ignitable=%d pool_foreign_silent=%d pool_owner_unknown=%d"
-            " pool_fresh=%d pool_self_stale=%d breach_eff=%s lane8090=%s"
+            " pool_fresh=%d pool_self_stale=%d pool_lane_mm=%d"
+            " breach_eff=%s lane8090=%s"
             % (time.strftime("%Y-%m-%d %H:%M:%S"), verdict, ram_pct,
                vram_mb, py_cpu, str(cpu_idle).lower(), pool, q_open,
                st["consecutive_idle"], st["idle_rounds"], str(starved).lower(),
                str(serve_alive).lower(), serve_detail, task_face,
                model_drift, pool_ign, face["ready_foreign_silent"],
                face["ready_owner_unknown"], face["ready_fresh"],
-               face["ready_self_stale"], str(face["breach_effective"]).lower(),
+               face["ready_self_stale"], face["lane_mismatch"],
+               str(face["breach_effective"]).lower(),
                lane8090))
     code, msg = append_heartbeat(line)
     print(line)
@@ -770,27 +806,29 @@ def selftest():
                        .strftime("%Y-%m-%dT%H:%M:%S+08:00")}, f)
         bl = os.path.join(td, "backlog.md")
         with open(bl, "w", encoding="utf-8") as f:
-            f.write("1. 【A】无主——可领\n"
-                    "2. 【B】本机——可领（claimed@bm-a@10-07 22:33）\n"
-                    "3. 【C】活他机——可领（claimed@bm-b@10-24 17:00）\n"
-                    "4. 【D】死他机——可领（claimed@bm-c@10-21 08:00）\n"
-                    "5. 【E】已完——可领（claimed@bm-b@10-20）done@10-21\n"
-                    "6. 【F】无状态件——可领（claimed@bm-d@10-24）\n")
-        fc = ignitable_face(bl, machines_dir=md, floor=3)
-        fc2 = ignitable_face(bl, machines_dir=md, floor=2)
+            f.write("1. 【HQ】无主——可领\n"
+                    "2. 【HQ】本机——可领（claimed@bm-a@10-07 22:33）\n"
+                    "3. 【BigMoney】活他机——可领（claimed@bm-b@10-24 17:00）\n"
+                    "4. 【BigMoney】死他机——可领（claimed@bm-c@10-21 08:00）\n"
+                    "5. 【BigMoney】已完——可领（claimed@bm-b@10-20）done@10-21\n"
+                    "6. 【BigMoney】无状态件——可领（claimed@bm-d@10-24）\n"
+                    "7. 【FluxVerse】跨司机占——可领（claimed@bm-a@10-24 12:00）\n")
+        fc = ignitable_face(bl, machines_dir=md, floor=4)
+        fc2 = ignitable_face(bl, machines_dir=md, floor=3)
         age_c = machine_silent_minutes("bm-c", md)
         print("J13 ignitable: total=%d ign=%d alive=%d silent=%d unknown=%d "
-              "fresh=%d self_active=%d self_stale=%d eff=%d "
-              "breach=%s breach@2=%s breach_eff=%s take=%s silent_owners=%s"
+              "fresh=%d self_active=%d self_stale=%d eff=%d lane_mm=%d "
+              "breach=%s breach@3=%s breach_eff=%s take=%s silent_owners=%s"
               % (fc["ready_total"], fc["ready_ignitable"],
                  fc["ready_foreign_alive"], fc["ready_foreign_silent"],
                  fc["ready_owner_unknown"], fc["ready_fresh"],
                  fc["ready_self_active"], fc["ready_self_stale"],
-                 fc["effective_ignitable"], fc["breach"], fc2["breach"],
+                 fc["effective_ignitable"], fc["lane_mismatch"],
+                 fc["breach"], fc2["breach"],
                  fc["breach_effective"], fc["takeover_candidate_ids"],
                  fc["silent_owners"]))
-        ok &= fc["readable"] and fc["ready_total"] == 5
-        ok &= fc["ready_ignitable"] == 2          # 无主 + 本机
+        ok &= fc["readable"] and fc["ready_total"] == 6
+        ok &= fc["ready_ignitable"] == 3          # 无主 + 本机 ×2
         ok &= fc["ready_foreign_alive"] == 1
         ok &= fc["ready_foreign_silent"] == 1 and "bm-c" in fc["silent_owners"]
         ok &= fc["ready_owner_unknown"] == 1      # bm-d 无状态件=不判死
@@ -798,10 +836,16 @@ def selftest():
         ok &= fc["breach"] is True and fc2["breach"] is False  # floor 数学
         # J13b（M86）：本机陈旧自占用拆列——row#2 的 10-07 claim 已 17 天
         ok &= fc["ready_fresh"] == 1
-        ok &= fc["ready_self_stale"] == 1 and fc["ready_self_active"] == 0
+        ok &= fc["ready_self_stale"] == 1 and fc["ready_self_active"] == 1
         ok &= fc["self_stale_ids"] == ["backlog#2"]
-        ok &= fc["effective_ignitable"] == 1
+        # J13c（T124）：交付司标签≠claim 机司 → lane_mismatch，不计入 effective
+        # （只计本机持有行：他机持有行本就不入 effective，另在其桶内诊断）
+        ok &= fc["lane_mismatch"] == 1
+        ok &= fc["lane_mismatch_ids"] == ["backlog#7"]
+        ok &= fc["effective_ignitable"] == 1      # fresh 1 + active(row7 跨司机占剔除)
         ok &= fc["breach_effective"] is True and fc["self_stale_days"] == 3.0
+        ok &= _row_dept("8. 【集团】x") == "HQ" and _row_dept("9. 无标签") is None
+        ok &= _dept_of("bm-zzz") is None
         ok &= (_claim_age_days("2026-10-07T22:33:00+08:00") or 0) > 3.0
         ok &= _claim_age_days("garbage") is None
         ok &= age_c is not None and age_c > IGNITABLE_SILENT_MIN

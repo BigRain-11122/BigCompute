@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-10-25 12:4x",
- "current_activity": "12:4x 午班正轮：M87 收口——九司建设案 P1 第二环「私域内容分发」由预设计转实装（Tools/distr_flow_mock.py·selftest 14/14 PASS·首行 DISTR-RING-GREEN tx_id=D-20261025-1·live=False 零平台调用）。任务板=tasks/TASKS.md｜队列=state/queue/{main,tech,explore}.md",
- "latest_artifact": "state/distr-ledger.jsonl（首行 D-20261025-1·publish 恒 queued）+ Tools/distr_flow_mock.py + state/distr-ring-20261025-124551.json — 2026-10-25 12:45",
- "next_milestone": "10-26 P1 实装窗：环 2 接月末 S1-S7 聚合（T127）+ 环 1/环 2 巡检步 C1-C4 回归；P1 未闭面=:8090 车道本体仍死（tech T90 三案候 CEO 点批）；10-31 N1 月末归集一命令"
+ "updated_at": "2026-10-25 18:4x",
+ "current_activity": "18:2x 哨兵触发轮：供给面口径根治——tech T124「供给地板 lane 归属闸」实装（idle_selfcheck J13c：行首【司标签】vs claim 机归属司，跨司持有行不计入 effective_ignitable，心跳新字段 pool_lane_mm；selftest 4 新断言 PASS，实池 pool_lane_mm=2 与 self_stale=2 同值）。任务板=tasks/TASKS.md｜队列=state/queue/{main,tech,explore}.md",
+ "latest_artifact": "Tools/idle_selfcheck.py（J13c lane 归属闸）+ state/lane-gate-20261025.txt（实池取证：lane_mismatch=2 / effective=0）+ state/proposals.md BC-P-108 — 2026-10-25 18:40",
+ "next_milestone": "10-26：T128 供给面单一口径切换（饥饿面+心跳双读改 effective·一周回访窗）+ BC-P-107 编号唯一性机检；P1 未闭面=:8090 车道本体仍死（tech T90 三案候 CEO 点批）；10-31 N1 月末归集一命令（含 T127→S8 distr 源）"
 }
