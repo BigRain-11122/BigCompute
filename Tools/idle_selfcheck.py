@@ -170,6 +170,51 @@ def probe_serve_liveness(url=OLLAMA_TAGS_URL, timeout=2):
         return False, type(e).__name__
 
 
+LANE8090_URL = "http://127.0.0.1:8090/v1/models"  # 35B 车道（resident_qa_server 默认 LLM_URL）
+
+
+def probe_lane8090(url=LANE8090_URL, timeout=2, _get=None, _port_open=None):
+    """J13（T89）：:8090 车道实况——只看不说谎，三态 token。
+
+    该端口=coder serve 车道（resident_qa_server 默认 LLM_URL 亦指此端口）。
+    背景（2026-10-25 12:1x 实读）：:8090 被外部进程 eCloud.exe 占住（pid 28008 实读），
+    车道无法 bind → /ask 实测挂死 40s，而 J5 只探 11434，实况面照样报
+    serve_alive=true=假绿、QA smoke 只按 12h 一次才暴露。本探针把它显式化：
+
+      UP               = HTTP 200（车道在服）且非本司进程占位时仍如实报 UP
+      DARK[OCCUPIED]   = 端口可连但 HTTP 失败（他人占位/无 HTTP 服务）
+      DARK[DOWN]       = 端口不可连（无监听）
+
+    informational·fail-open（探针自身异常不改变 verdict，只落 token）。
+    注：若 RESIDENT_QA_LLM_URL 已切到 bm-d（O-20261015-1335 env 覆盖），本地 8090
+    无服属预期——消费方须同时看该 env，勿单凭本 token 判故障。
+    """
+    def _default_get():
+        import urllib.request
+        with urllib.request.urlopen(url, timeout=timeout) as r:
+            return r.status
+
+    def _default_port_open():
+        import socket
+        s = socket.socket()
+        s.settimeout(timeout)
+        try:
+            s.connect(("127.0.0.1", 8090))
+            return True
+        except Exception:
+            return False
+        finally:
+            s.close()
+
+    get = _get or _default_get
+    port_open = _port_open or _default_port_open
+    try:
+        status = get()
+        return "UP" if status == 200 else "DARK[http%s]" % status
+    except Exception:
+        return "DARK[OCCUPIED]" if port_open() else "DARK[DOWN]"
+
+
 def probe_model_drift(baseline_path=None, _diff=None):
     """J12（BC-P-103 ③）：模型集基线漂移 informational 读数。
 
@@ -591,6 +636,7 @@ def check():
     pool_ign = face["ready_ignitable"] if face["readable"] else pool
     q_open = count_queue_open()
     serve_alive, serve_detail = probe_serve_liveness()
+    lane8090 = probe_lane8090()
     model_drift = probe_model_drift()
     tstates = probe_task_states(MACHINE_PAUSE_SET)
     probe_error = all(v == "ProbeError" for v in tstates.values())
@@ -625,6 +671,7 @@ def check():
                        "pool_ignitable": pool_ign,
                        "supply_floor": face,
                        "serve_alive": serve_alive, "serve_detail": serve_detail,
+                       "lane8090": lane8090,
                        "model_drift": model_drift,
                        "task_face": task_face,
                        "task_states": {n: tstates.get(n) for n in
@@ -637,14 +684,15 @@ def check():
             "idle_rounds=%d agenda_starved=%s serve_alive=%s serve_detail=%s"
             " task_face=%s model_drift=%s"
             " pool_ignitable=%d pool_foreign_silent=%d pool_owner_unknown=%d"
-            " pool_fresh=%d pool_self_stale=%d breach_eff=%s"
+            " pool_fresh=%d pool_self_stale=%d breach_eff=%s lane8090=%s"
             % (time.strftime("%Y-%m-%d %H:%M:%S"), verdict, ram_pct,
                vram_mb, py_cpu, str(cpu_idle).lower(), pool, q_open,
                st["consecutive_idle"], st["idle_rounds"], str(starved).lower(),
                str(serve_alive).lower(), serve_detail, task_face,
                model_drift, pool_ign, face["ready_foreign_silent"],
                face["ready_owner_unknown"], face["ready_fresh"],
-               face["ready_self_stale"], str(face["breach_effective"]).lower()))
+               face["ready_self_stale"], str(face["breach_effective"]).lower(),
+               lane8090))
     code, msg = append_heartbeat(line)
     print(line)
     print("append: code=%d %s" % (code, msg))
@@ -909,6 +957,16 @@ def selftest():
         ok &= got_fail == "UNVERIFIED(err)" and got_missing == "UNVERIFIED(err)"
         print("J12 model-drift: drift=%s failopen=%s missing=%s"
               % (got_drift, got_fail, got_missing))
+
+    # J13 35B 车道实况（T89·三态判定·注入式确定性测）
+    lane_up = probe_lane8090(_get=lambda: 200, _port_open=lambda: False)
+    lane_occ = probe_lane8090(_get=lambda: 1 / 0, _port_open=lambda: True)
+    lane_dn = probe_lane8090(_get=lambda: 1 / 0, _port_open=lambda: False)
+    lane_500 = probe_lane8090(_get=lambda: 500, _port_open=lambda: True)
+    print("J13 lane8090: up=%s occupied=%s down=%s http500=%s"
+          % (lane_up, lane_occ, lane_dn, lane_500))
+    ok &= (lane_up == "UP" and lane_occ == "DARK[OCCUPIED]"
+           and lane_dn == "DARK[DOWN]" and lane_500 == "DARK[http500]")
     print("SELFTEST %s" % ("PASS" if ok else "FAIL"))
     return 0 if ok else 1
 
