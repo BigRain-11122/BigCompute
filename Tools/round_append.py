@@ -21,6 +21,11 @@ utf-8 显式编码唯一写入路径——轮账本/心跳 append 一律走本�
      事故类=自身时标+二手 HH:MM 引用并线（22:5x 刻痕引 20:49:44 类）；
      改写法=二手时刻一律 x 形（20:49x / 23:2x）或去冒号。lint 自身异常
      =fail-closed 拒写。检查单→lint→脚本断言链闭环（10-13 CEO 令）。
+  J6 空追加闸（T130·10-26 立）：--line 纯空白/零长或含换行 → 拒写 exit 5。
+     事故类=台账 mtime 被刷新而内容零增（读者按 mtime 判续鲜会误读为已续鲜·
+     D-20261026-03 实锚），本条把该路径在工具面关死。
+  J7 回读断言（T130）：写入后回读末非空行，与入参不一致 → 结果带
+     ALERT-READBACK-MISMATCH 告警（防编码/截断吞写；非拦截，exit 仍 0）。
 """
 import argparse
 import io
@@ -48,17 +53,42 @@ def _read_strict(path):
         return raw, None
 
 
+def _last_nonempty(text):
+    for l in reversed(text.splitlines()):
+        if l.strip():
+            return l
+    return None
+
+
+def _verify_readback(path, line):
+    """J7：回读末非空行与入参比对。返回 (ok, message)。"""
+    _, text = _read_strict(path)
+    if text is None:
+        return False, "ALERT-READBACK-MISMATCH: 写入后 strict decode 失败"
+    got = _last_nonempty(text)
+    if got != line:
+        return False, "ALERT-READBACK-MISMATCH: 期望末行=%r 实读=%r（疑似编码/截断吞写）" % (line, got)
+    return True, "readback=ok"
+
+
 def append_line(path, line):
-    """返回 (exit_code, message)。exit 0=APPENDED / 2=DUPLICATE / 3=CORRUPT / 4=DUAL-TS。"""
+    """返回 (exit_code, message)。
+
+    exit 0=APPENDED / 2=DUPLICATE / 3=CORRUPT / 4=DUAL-TS / 5=EMPTY-LINE
+    """
     raw, text = _read_strict(path)
     if text is None:
         try:
             raw.decode("utf-8")
         except UnicodeDecodeError as e:
             return 3, "CORRUPT-PREFLIGHT: 既有文件非 strict UTF-8（首坏字节位 %d）——拒追加，先按 T24 流程修复" % e.start
+    # J6 空追加闸（T130）：纯空白/零长或含换行 → 拒写（触碰未写唯一合法面关死）
+    if not line or not line.strip():
+        return 5, "EMPTY-LINE-REJECT: --line 为空白/零长——空追加会刷新 mtime 而不增内容（J6·T130）"
+    if "\n" in line or "\r" in line:
+        return 5, "EMPTY-LINE-REJECT: --line 含换行符——一次只追加一行（J6·T130）"
     if text:
-        last = [l for l in text.splitlines() if l.strip()]
-        if last and last[-1] == line:
+        if _last_nonempty(text) == line:
             return 2, "DUPLICATE-SKIP: --line 与末非空行一致（幂等护栏，零追加）"
     # J5 双时标 lint（T81·BC-P-45 写入侧升格）：HH:MM 计数 ≥2 → 拒写 fail-closed
     try:
@@ -81,6 +111,9 @@ def append_line(path, line):
     msg = "APPENDED ok bytes_total=%d lines_total=%d" % (len(after.encode("utf-8")), len(after.splitlines()))
     if tail_nl_fix:
         msg += " tail_nl_fix=1（既有尾行缺换行已补——J4 守卫）"
+    rb_ok, rb_msg = _verify_readback(path, line)  # J7 回读断言（非拦截·防吞写）
+    if not rb_ok:
+        msg = rb_msg + " | " + msg
     return 0, msg
 
 # T95 note (2026-10-14): the J4/J5 write-side guards here cover python
@@ -137,6 +170,20 @@ def _selftest():
         # S10 x 形引用过（二手时刻 x 形=纪律正写法·J5 放行面）
         c, m = append_line(p3, "23:0x 刻痕：复活实锚（20:49x 击发·22:3x 再执法）")
         run("S10 x形引用过", c == 0 and "23:0x" in open(p3, "rb").read().decode("utf-8"), m)
+        # S11 空追加拒写（J6·T130）：零长不给写，文件字节零变化
+        before = open(p3, "rb").read()
+        c, m = append_line(p3, "")
+        run("S11 空行拒写 exit5", c == 5 and "EMPTY-LINE-REJECT" in m and open(p3, "rb").read() == before, m)
+        # S12 纯空白拒写（J6）：空格/制表符同样不得刷新 mtime
+        c, m = append_line(p3, "   \t  ")
+        run("S12 纯空白拒写 exit5", c == 5 and open(p3, "rb").read() == before, m)
+        # S13 含换行拒写（J6）：一次一行不破
+        c, m = append_line(p3, "行D\n行E")
+        run("S13 换行拒写 exit5", c == 5 and open(p3, "rb").read() == before, m)
+        # S14 回读断言正例/失配告警（J7）：断言函数对正误两态判对
+        ok1, m1 = _verify_readback(p3, "23:0x 刻痕：复活实锚（20:49x 击发·22:3x 再执法）")
+        ok2, m2 = _verify_readback(p3, "这行不在文件里")
+        run("S14 回读断言双态", ok1 and not ok2 and "ALERT-READBACK-MISMATCH" in m2, (m1 + " / " + m2)[:120])
 
     n_pass = sum(1 for _, ok, _ in checks if ok)
     for name, ok, detail in checks:
