@@ -43,6 +43,10 @@ VRAM≥6GB〕→ 领池检（fleet/backlog 可领行计数）→ 池空拉本司
      >24h → P2 心跳行（日清承载）；自产 M 件按轮收尾定向 commit 纪律必为新鲜
      态=年龄闸即「非本轮产出」判别器；日粒度锁存去重（同文件同日一警防 tick
      风暴）·恢复清锁存静默·正常零追加·探针坏=缺省行零阻塞（fail-open）
+  J14 收尾 C1C4 行机械校验（T125·10-26 承接）：rounds.log 轮行须含 `C1C4:`
+     段且与最新 state/c1c4-*.json 证据票一致——「收尾是否真跑了 C1-C4」从
+     自觉改为可查。缺行=MISSING／停滞 >3 轮=STALE／票与证据不一致=MISMATCH／
+     证据缺=NOEVID → P2 advisory 心跳行（不阻断轮·读不出=UNVERIFIED fail-open）
 
 用法：
   python Tools/idle_selfcheck.py check       # 每轮自检步（iteration_loop.ps1 内建）
@@ -93,6 +97,11 @@ DEPT_ALIAS = {"集团": "HQ", "FluxGroup": "HQ", "fluxgroup": "HQ", "HQ": "HQ"}
 STALE_M_LATCH = os.path.join(PROJECT, "state", "stale-m.latch.json")
 STALE_M_AGE_HOURS = 24.0  # BC-P-78 预注册阈值（自产 M 必新鲜=判别器）
 GIT_REAL = os.environ.get("GIT_REAL", r"C:\Program Files\Git\cmd\git.exe")
+# J14（T125·10-26）：收尾 C1C4 行机械校验——rounds.log 轮行锚=「 tokens: 」段；
+# 停滞口径按轮行数（非墙钟）计：暂停窗/让路窗不产轮行，按墙钟会虚报停滞。
+ROUNDS_LOG = os.path.join(PROJECT, "state", "rounds.log")
+C1C4_MAX_AGE_ROUNDS = 3  # T125 预注册：连续 >3 轮无 C1C4 行=停滞告警
+C1C4_RE = re.compile(r"C1C4:([A-Z0-9][A-Z0-9\-]*)")
 
 # §8.2 旗标判据（resource-chain L101·预注册·禁调参不经立法）
 RAM_FREE_PCT_MIN = 40.0
@@ -243,6 +252,68 @@ def probe_model_drift(baseline_path=None, _diff=None):
                                   len(res["added"]))
     except Exception:
         return "UNVERIFIED(err)"
+
+
+def latest_c1c4_evidence(evidence_dir=None):
+    """J14（T125）：最新 C1C4 证据票——state/c1c4-<yyyymmdd>-<hhmmss>.json
+    文件名时间可排序故取末件；零件/读坏 → None（fail-open·不阻断自检）。"""
+    d = evidence_dir or os.path.join(PROJECT, "state")
+    try:
+        names = sorted(n for n in os.listdir(d)
+                       if n.startswith("c1c4-") and n.endswith(".json"))
+        if not names:
+            return None
+        with open(os.path.join(d, names[-1]), encoding="utf-8") as f:
+            ev = json.load(f)
+        return {"file": names[-1], "verdict": str(ev.get("verdict", "")),
+                "generated_at": str(ev.get("generated_at", ""))}
+    except Exception:
+        return None
+
+
+def c1c4_line_age(rounds_path=None, evidence_dir=None,
+                  max_age=C1C4_MAX_AGE_ROUNDS, _lines=None, _evidence=None):
+    """J14（T125）：收尾 C1C4 行机械校验（advisory·零阻断）。
+
+    判据：自尾向前在轮行里找首条 `C1C4:` 段 → rounds_ago=其后轮行数。
+    state ∈ FRESH（≤max_age 且票与证据一致）／STALE（停滞 >max_age）／
+    MISMATCH（行内票 ≠ 最新证据票=收尾演出与证据脱钩）／NOEVID（证据缺或坏）／
+    MISSING（全史零 C1C4 段）／UNVERIFIED（rounds.log 读不出）。
+    返回 dict：{state, rounds_ago, verdict, evidence, token}。
+    """
+    try:
+        if _lines is None:
+            with open(rounds_path or ROUNDS_LOG, encoding="utf-8",
+                      errors="replace") as f:
+                lines = f.read().splitlines()
+        else:
+            lines = list(_lines)
+    except Exception:
+        return {"state": "UNVERIFIED", "rounds_ago": None, "verdict": None,
+                "evidence": None, "token": "UNVERIFIED(rounds-read-err)"}
+    rows = [ln for ln in lines if " tokens: " in ln]
+    ago, verdict = None, None
+    for i in range(len(rows) - 1, -1, -1):
+        m = C1C4_RE.search(rows[i])
+        if m:
+            ago, verdict = len(rows) - 1 - i, m.group(1)
+            break
+    ev = _evidence if _evidence is not None else latest_c1c4_evidence(evidence_dir)
+    ev_verdict = (ev or {}).get("verdict") or None
+    if ago is None:
+        state = "MISSING" if rows else "UNVERIFIED"
+    elif ago > max_age:
+        state = "STALE"
+    elif not ev_verdict:
+        state = "NOEVID"
+    elif ev_verdict != verdict:
+        state = "MISMATCH"
+    else:
+        state = "FRESH"
+    token = "%s(rounds_ago=%s,verdict=%s,ev=%s)" % (
+        state, "n/a" if ago is None else ago, verdict or "-", ev_verdict or "-")
+    return {"state": state, "rounds_ago": ago, "verdict": verdict,
+            "evidence": ev_verdict, "token": token}
 
 
 def probe_task_states(names, _run=None, attempts=2, retry_wait=3.0):
@@ -672,6 +743,7 @@ def check():
     serve_alive, serve_detail = probe_serve_liveness()
     lane8090 = probe_lane8090()
     model_drift = probe_model_drift()
+    c1c4_line = c1c4_line_age()
     tstates = probe_task_states(MACHINE_PAUSE_SET)
     probe_error = all(v == "ProbeError" for v in tstates.values())
     if probe_error:
@@ -707,6 +779,7 @@ def check():
                        "serve_alive": serve_alive, "serve_detail": serve_detail,
                        "lane8090": lane8090,
                        "model_drift": model_drift,
+                       "c1c4_line": c1c4_line,
                        "task_face": task_face,
                        "task_states": {n: tstates.get(n) for n in
                                        TASK_LIVENESS_PROBE}}
@@ -719,7 +792,7 @@ def check():
             " task_face=%s model_drift=%s"
             " pool_ignitable=%d pool_foreign_silent=%d pool_owner_unknown=%d"
             " pool_fresh=%d pool_self_stale=%d pool_lane_mm=%d"
-            " breach_eff=%s lane8090=%s"
+            " breach_eff=%s lane8090=%s c1c4_line=%s"
             % (time.strftime("%Y-%m-%d %H:%M:%S"), verdict, ram_pct,
                vram_mb, py_cpu, str(cpu_idle).lower(), pool, q_open,
                st["consecutive_idle"], st["idle_rounds"], str(starved).lower(),
@@ -728,7 +801,7 @@ def check():
                face["ready_owner_unknown"], face["ready_fresh"],
                face["ready_self_stale"], face["lane_mismatch"],
                str(face["breach_effective"]).lower(),
-               lane8090))
+               lane8090, c1c4_line["token"]))
     code, msg = append_heartbeat(line)
     print(line)
     print("append: code=%d %s" % (code, msg))
@@ -771,6 +844,15 @@ def check():
             print("J11 stale-m: P2 alert appended (see heartbeat)")
     except Exception:
         pass
+    # J14（T125）：收尾 C1C4 行机械校验——缺行/停滞/票脱钩均 advisory P2 行
+    #（不阻断轮；FRESH 常态零追加·证据缺=NOEVID 同报警不当合格）。
+    if c1c4_line["state"] != "FRESH":
+        p2c = ("%s P2 c1c4_line: %s — 收尾 C1-C4 未可证"
+               "（T125 机械校验·advisory 不阻断）"
+               % (time.strftime("%Y-%m-%d %H:%M:%S"), c1c4_line["token"]))
+        code4, msg4 = append_heartbeat(p2c)
+        print(p2c)
+        print("append-p2c: code=%d %s" % (code4, msg4))
     return 0 if code in (0, 2) else 1
 
 
@@ -1011,6 +1093,34 @@ def selftest():
           % (lane_up, lane_occ, lane_dn, lane_500))
     ok &= (lane_up == "UP" and lane_occ == "DARK[OCCUPIED]"
            and lane_dn == "DARK[DOWN]" and lane_500 == "DARK[http500]")
+
+    # J14 收尾 C1C4 行校验（T125）：六路径夹具——fresh/stale/mismatch/missing/
+    # noevid/读不出·注入行与证据，零真实 rounds.log/state 副作用。
+    r_ok = ("2026-10-25 22:4x tokens: local=0 api=0 api_reason=- | "
+            "C1C4:C1C4-GREEN 4/4 C1=C1-GREEN|C2=PASS\n")
+    r_plain = "2026-10-25 12:4x tokens: local=0 api=0 api_reason=- | QA 7/8\n"
+    j14 = {
+        "fresh": c1c4_line_age(_lines=[r_plain, r_ok],
+                               _evidence={"verdict": "C1C4-GREEN"}),
+        "stale": c1c4_line_age(_lines=[r_ok] + [r_plain] * 4,
+                               _evidence={"verdict": "C1C4-GREEN"}),
+        "mismatch": c1c4_line_age(_lines=[r_ok],
+                                  _evidence={"verdict": "C1C4-RED"}),
+        "missing": c1c4_line_age(_lines=[r_plain, r_plain], _evidence={}),
+        "noevid": c1c4_line_age(_lines=[r_ok], _evidence={}),
+    }
+    with tempfile.TemporaryDirectory() as td3:
+        j14["readerr"] = c1c4_line_age(
+            rounds_path=os.path.join(td3, "nope.log"), _evidence={})
+    ok &= j14["fresh"]["state"] == "FRESH" and j14["fresh"]["rounds_ago"] == 0
+    ok &= j14["stale"]["state"] == "STALE" and j14["stale"]["rounds_ago"] == 4
+    ok &= j14["mismatch"]["state"] == "MISMATCH"
+    ok &= j14["missing"]["state"] == "MISSING"
+    ok &= j14["noevid"]["state"] == "NOEVID"
+    ok &= j14["readerr"]["state"] == "UNVERIFIED"
+    print("J14 c1c4-line: %s | live=%s"
+          % (" ".join("%s=%s" % (k, v["token"]) for k, v in j14.items()),
+             c1c4_line_age()["token"]))
     print("SELFTEST %s" % ("PASS" if ok else "FAIL"))
     return 0 if ok else 1
 
