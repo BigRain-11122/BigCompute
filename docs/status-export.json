@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-10-26 06:1x",
- "current_activity": "06:1x 哨兵段轮：把「台账被触碰却没写内容」这条路径在工具面关死——round_append 新增空追加闸与写入回读断言。任务板=tasks/TASKS.md｜队列=state/queue/{main,tech,explore}.md",
- "latest_artifact": "Tools/round_append.py J6 空追加闸（零长/纯空白/含换行拒写 exit 5，退出前零字节变更）+ J7 回读断言（末非空行比对，失配告警防吞写）·selftest 14/14 PASS·实弹 rounds.log 追纯空白 rc=5 且 367529→367529 字节零污染；证据 qa/smoke-20261026-0613.log；BC-P-112 台账写入面枚举提案 ｜ 2026-10-26 06:1x",
- "next_milestone": "10-26 12:00 决策轮抽检窗（P1 :8090 车道裁决 BC-P-101/T123 待 CEO 点批·未批则走案 C 降档止血）；10-31 N1 月末归集一命令（distr→S8、交付轨→S9 归集位随 T127/T128 窗）"
+ "updated_at": "2026-10-26 22:4x",
+ "current_activity": "22:4x 夜班正轮：把 P1 两环落成后的月末可审计面接进归集链——私域分发轨与交付调度轨成为 S8/S9 归集源（不再只有标签没有出数）。任务板=tasks/TASKS.md｜队列=state/queue/{main,tech,explore}.md",
+ "latest_artifact": "Tools/month_end_collect.py v1.4：S8 distr 轨（rows/attribution 分布/conv 关联命中/lane/live/publish queued/reach）+ S9 交付轨（append-only 末行状态即单终态·events/交付单/末态分布/route/max attempts/live）+ 机械链分母动态扩展 7→9；selftest 33/33 PASS；live 2026-10 实跑 S8 rows=1·S9 events=3/交付单 1/终态 delivered=1 → 机械链 9/9 就绪；执行单 v1.3→v1.4 九源清单。证据 state/t127-monthend-s8s9-20261026.txt + state/month-end-202610.json + qa/smoke-20261026-2238.log ｜ 2026-10-26 22:4x",
+ "next_milestone": "10-29 前 BC-P-115 三件（月报件完整性检查 / sources --list 消除手抄漂移 / qa 月末链探针）；10-31 22:43 N1 月末归集一命令（九源·机械链 9/9 已就绪）；L1 :8090 车道裁决仍待 CEO 点批（BC-P-101/T123）"
 }

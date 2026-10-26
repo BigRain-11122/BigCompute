@@ -1,4 +1,6 @@
-# 月末归集执行单（month-end cost collection sheet）v1.3
+# 月末归集执行单（month-end cost collection sheet）v1.4
+
+> v1.4（2026-10-26 22:4x·tech T127 双轨并入轮）：§二 增 **S8 私域分发/归因轨**（state/distr-ledger.jsonl·M87）与 **S9 交付调度轨**（state/delivery-ledger.jsonl·M88 append-only 事件链）——P1 两环落成后的月末可审计面补口，机械链分母随采源集动态扩展（基准 7+S8/S9 各 1）；10-26 22:4x 实跑值=S8 rows 1·attribution pending=1·conv 命中 0·lane bilibili·live 0；S9 events 3·交付单 1·终态 delivered=1·route resident-qa-8792·live 0·**机械链 9/9 就绪**·selftest 33/33·证据 state/month-end-202610.json+state/t127-monthend-s8s9-20261026.txt。
 
 > v1.3（2026-10-17 13:0x·tech T113 L1 轨并入轮）：§二 增 **S7 L1 本地推理轨源**（month_end_collect.py s7_l1·`:8090` usage 回执=唯一 token 源·J2 同律·T93）——2026-10-15 v3 final 迁移后自用消费面由 Ollama 轨转 L1 轨计量·N1 10-31 月末一命令面必含此源（T75 S6 同模式先例）；10-17 13:0x 实跑值=rows 1·amount 0.000021 Mtok（pending 1/converted 0）·月闸 cap=200.0 used=0.000021·单位价恒空=口径 B（l1-settle=N1 唯一回填通道）·selftest 27/27·机械链 7/7·证据 state/month-end-202610.json。
 > v1.2（2026-10-11 12:0x·E63 安静带精化轮）：§三 电费要素分解行增**安静带校准候选基线**（10-01..07 排除 10-08 测试窗日=0.8063→借用日 delta 10-08 +0.5314/10-09 +0.8614/10-10 +0.568·三日 +1.9608）=月末人工归因第二候选——S6 工具默认「月首 8 日」约定值维持·证据 state/e63-quietband-recalc-20261011.txt。
@@ -12,7 +14,7 @@
 - 触发=每月末日末轮执行（首窗 2026-09-30 22:43）；月=自然月；归集粒度=司×轨×月（O-1820 ④ 同律）。
 - 执行者=OSLoop 队列步（25min 预算内机械跑·命令全只读零新台账）。
 
-## 二、归集源清单（七源·全只读·S6=v1.1 增·S7=v1.3 增）
+## 二、归集源清单（九源·全只读·S6=v1.1 增·S7=v1.3 增·S8/S9=v1.4 增）
 
 | # | 源 | 命令/指针 | 首窗预演值（2026-09-29 12:2x 实跑·真实只读） |
 |---|---|---|---|
@@ -23,6 +25,8 @@
 | S5 | serve 自用面 | qa/smoke-*.log eval_count 序列+E12 锚（state/e12-anchor） | 自用面=**非商业面**注记常驻（计量真值=Ollama eval_count L0·tiktoken=估算口径注记） |
 | S6 | GPU 能耗剖面（v1.1 增） | `python Tools/gpu_energy_profile.py report --days 31 --baseline-range 2026-10-01,2026-10-08` | 10 月窗实测（10-11 00:33 实跑）：14 日 12.9621 kWh·日均 0.9259·安静带基线〔10-01..08〕0.8727→借用日 delta 10-09 +0.795/10-10 +0.5016（板卡面·**口径 A 对照面非结算**）·证据 state/gpu-energy-profile-20261011-003321.json |
 | S7 | L1 本地推理轨（v1.3 增·T93） | `python Tools/cost_ledger.py l1-summary --month <月>`（工具面=month_end_collect.py s7_l1 并入·tech T113） | 10 月窗实测（10-17 13:0x 实跑）：rows=1·amount 0.000021 Mtok（pending 1/converted 0）·月闸 cap=200.0 used=0.000021（**口径 B·usage 回执=唯一 token 源 J2 同律**·单位价恒空=l1-settle=N1 唯一回填通道）·源不可用=降级行如实 N2·证据 state/month-end-202610.json |
+| S8 | 私域分发/归因轨（v1.4 增·M87 distr） | `state/distr-ledger.jsonl`（工具面=month_end_collect.py s8_distr 只读·tech T127） | 10 月窗实测（10-26 22:4x 实跑）：rows=1·attribution pending=1·conv 关联命中 0·lane bilibili·live 行 0（publish queued 1·reach 0）·**非收入行=结算归口径 B**·live 0 且 publish 恒 queued=计划态如实面 |
+| S9 | 交付调度轨（v1.4 增·M88 stage-5） | `state/delivery-ledger.jsonl`（工具面=month_end_collect.py s9_delivery 只读·append-only 末行状态即单终态） | 10 月窗实测（10-26 22:4x 实跑）：events=3·交付单 1·终态 delivered=1·route resident-qa-8792·max attempts 1·live 行 0·**非收入行=结算归口径 B** |
 
 ## 三、月末行格式（轮账本月末附加行）
 

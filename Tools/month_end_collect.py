@@ -14,6 +14,11 @@ S4b=GPU 样本×声明借用窗月窗 self/borrowed 分列（v1.2 增·T77 步�
 load_samples/load_borrow_windows/borrow_covered_dates 零重建零跨件改本体·M66 月度对账供数·self=30% 执行线读数面）。
 S7=L1 本地推理计量轨（v1.3 增·tech T113）：cost_ledger l1-summary 只读（:8090 四文本车道 usage 回执=唯一 token 源·
 T93/J2 同律）——2026-10-15 v3 final 迁移后自用消费面的月末归集补口·单位价恒空=口径 B（l1-settle=N1 唯一回填通道）。
+S8=私域分发/归因轨（v1.4 增·tech T127）：state/distr-ledger.jsonl 只读（M87 distr 轨·非收入行·结算归口径 B）
+——rows/attribution 分布/conv 关联命中/lane/live 行/publish queued 面，10-31 N1 前置补口。
+S9=交付调度轨（v1.4 增·tech T127）：state/delivery-ledger.jsonl 只读（M88 append-only 事件链）——events/
+交付单数/末态分布/route/max attempts/live 行，交付面可审计量进月末归集。
+机械链分母随采源集动态扩展（基准 7 + S8/S9 各 1）=S8/S9 未采不虚降基准分母（旧断言 6/7·7/7 零漂移）。
 N2 零编造律结构性落地：成本三要素（原值/电价/利用率）恒 ⬜（物理凭证前任何估算/外部锚/OSS 数据禁入）；
 单位成本 v1 恒 ⬜（N3 双门=凭证齐+真实商业 tokens 归集·定价确认权=CEO·本件零计算零落值零定价动作）。
 命令全只读零新台账：产出=state/month-end-<YYYYMM>.json 报告件（月末行快照·非台账·不入任何结算式）。
@@ -340,9 +345,98 @@ def s7_l1(month, summary_text=None):
     return parsed
 
 
+# ---------- S8 私域分发轨 / S9 交付调度轨（v1.4 增·tech T127·10-31 N1 前置） ----------
+
+def load_jsonl(path):
+    """JSONL 只读装载（rows 注入位=selftest 离线夹具·坏行跳过并计数·缺件返回 None）。"""
+    p = Path(path)
+    if not p.exists():
+        return None, 0
+    rows, bad = [], 0
+    for line in p.read_text(encoding="utf-8", errors="replace").splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            rows.append(json.loads(line))
+        except Exception:
+            bad += 1
+    return rows, bad
+
+
+def parse_distr_rows(rows, month):
+    """distr 轨月窗聚合（纯函数）：行数/attribution 分布/conv 关联命中/lane/live 面。"""
+    rows_m = [r for r in rows if str(r.get("ts", "")).startswith(month)]
+    att = {}
+    for r in rows_m:
+        k = str(r.get("attribution_status") or "unknown")
+        att[k] = att.get(k, 0) + 1
+    return {"rows": len(rows_m),
+            "tx_ids": [r.get("tx_id") for r in rows_m],
+            "attribution": att,
+            "conv_ref_hits": sum(1 for r in rows_m if r.get("conv_tx_ref")),
+            "live_rows": sum(1 for r in rows_m if r.get("live") is True),
+            "publish_queued": sum(1 for r in rows_m if r.get("publish_state") == "queued"),
+            "lanes": sorted({str(r.get("lane")) for r in rows_m if r.get("lane")}),
+            "reach_total": sum(int(r.get("reach_count") or 0) for r in rows_m)}
+
+
+def s8_distr(month, rows=None, path=None):
+    """S8 源（只读）：state/distr-ledger.jsonl（M87 私域归因轨·G2 tx_id 幂等由写入侧保证）。"""
+    bad = 0
+    if rows is None:
+        p = Path(path) if path else (ROOT / "state" / "distr-ledger.jsonl")
+        rows, bad = load_jsonl(p)
+        if rows is None:
+            return {"available": False, "note": "S8 distr 轨源不可用（台账件不存在·N2 零编造）"}
+    parsed = parse_distr_rows(rows, month)
+    parsed["available"] = True
+    parsed["bad_lines"] = bad
+    parsed["note"] = ("私域分发/归因轨（M87）·非收入行=结算归口径 B·金额归成交轨"
+                      "·live 行=0 且 publish 恒 queued=计划态如实面（零真实发布）")
+    return parsed
+
+
+def parse_delivery_rows(rows, month):
+    """交付事件链月窗聚合（纯函数）：append-only 末行状态即单终态。"""
+    rows_m = [r for r in rows if str(r.get("ts", "")).startswith(month)]
+    event_status, last = {}, {}
+    for r in rows_m:
+        st = str(r.get("status") or "")
+        event_status[st] = event_status.get(st, 0) + 1
+        last[r.get("delivery_id")] = st  # 台账 append-only·后行覆盖前行
+    final = {}
+    for st in last.values():
+        final[st] = final.get(st, 0) + 1
+    return {"events": len(rows_m),
+            "deliveries": len(last),
+            "final_status": final,
+            "event_status": event_status,
+            "routes": sorted({str(r.get("route_group")) for r in rows_m if r.get("route_group")}),
+            "order_ids": sorted({str(r.get("order_id")) for r in rows_m if r.get("order_id")}),
+            "live_rows": sum(1 for r in rows_m if r.get("live") is True),
+            "max_attempts": max([int(r.get("attempts") or 0) for r in rows_m], default=0)}
+
+
+def s9_delivery(month, rows=None, path=None):
+    """S9 源（只读）：state/delivery-ledger.jsonl（M88 P1 成交环 stage-5 交付轨）。"""
+    bad = 0
+    if rows is None:
+        p = Path(path) if path else (ROOT / "state" / "delivery-ledger.jsonl")
+        rows, bad = load_jsonl(p)
+        if rows is None:
+            return {"available": False, "note": "S9 交付轨源不可用（台账件不存在·N2 零编造）"}
+    parsed = parse_delivery_rows(rows, month)
+    parsed["available"] = True
+    parsed["bad_lines"] = bad
+    parsed["note"] = ("交付调度事件链（M88）·非收入行=结算归口径 B"
+                      "·只走 MOCK- 计划态单·live 行=0 如实")
+    return parsed
+
+
 # ---------- 月末行组装（§三 预注册格式·N2/N3 门内建） ----------
 
-def assemble(month, s1, s2, s3, s4, s5, now_iso, s6=None, s4b=None, s7=None):
+def assemble(month, s1, s2, s3, s4, s5, now_iso, s6=None, s4b=None, s7=None, s8=None, s9=None):
     commercial_mtok = s1["consumed_mtok"]  # 商业面=S1 配额轨 consumed（计划态=0·如实禁估充）
     three_elements = {k: None for k in COST_ELEMENTS}  # 恒 ⬜·Q3 铁律
     n3_credential = all(v is not None for v in three_elements.values())
@@ -407,12 +501,44 @@ def assemble(month, s1, s2, s3, s4, s5, now_iso, s6=None, s4b=None, s7=None):
             s7_seg = "｜S7 L1 本地推理轨=源不可用降级如实（N2 零编造）"
     if s7 is not None and s7.get("available"):
         chain_n += 1
+    s8_seg = ""
+    if s8 is not None:
+        if s8.get("available"):
+            att = s8.get("attribution") or {}
+            att_txt = "/".join(f"{k}={v}" for k, v in sorted(att.items())) or "-"
+            lanes_txt = "/".join(s8.get("lanes") or []) or "-"
+            s8_seg = (f"｜S8 私域分发轨（M87·非收入行·结算归口径 B）=rows {s8.get('rows', 0)}"
+                      f"·attribution {att_txt}·conv 关联命中 {s8.get('conv_ref_hits', 0)}"
+                      f"·lane {lanes_txt}·live 行 {s8.get('live_rows', 0)}"
+                      f"（publish queued {s8.get('publish_queued', 0)}·reach {s8.get('reach_total', 0)}）")
+        else:
+            s8_seg = "｜S8 私域分发轨=源不可用降级如实（N2 零编造）"
+    s9_seg = ""
+    if s9 is not None:
+        if s9.get("available"):
+            fs = s9.get("final_status") or {}
+            fs_txt = "/".join(f"{k}={v}" for k, v in sorted(fs.items())) or "-"
+            routes_txt = "/".join(s9.get("routes") or []) or "-"
+            s9_seg = (f"｜S9 交付调度轨（M88 事件链·非收入行·结算归口径 B）=events {s9.get('events', 0)}"
+                      f"·交付单 {s9.get('deliveries', 0)}·终态 {fs_txt}·route {routes_txt}"
+                      f"·max attempts {s9.get('max_attempts', 0)}·live 行 {s9.get('live_rows', 0)}")
+        else:
+            s9_seg = "｜S9 交付调度轨=源不可用降级如实（N2 零编造）"
+    if s8 is not None and s8.get("available"):
+        chain_n += 1
+    if s9 is not None and s9.get("available"):
+        chain_n += 1
+    chain_den = 7 + (1 if s8 is not None else 0) + (1 if s9 is not None else 0)
     missing = []
     if s6 is None:
         missing.append("S6 未采")
     if s7 is None:
         missing.append("S7 未采")
-    chain_tail = f"机械链 {chain_n}/7 就绪" + (f"（{'·'.join(missing)}）" if missing else "")
+    if s8 is None:
+        missing.append("S8 未采")
+    if s9 is None:
+        missing.append("S9 未采")
+    chain_tail = f"机械链 {chain_n}/{chain_den} 就绪" + (f"（{'·'.join(missing)}）" if missing else "")
     line = (
         f"[month-end {month} planning-state light line · E25] "
         f"商业面 tokens_mtok={commercial_mtok}（S1 配额轨·计划态如实·禁估充 N2）｜"
@@ -422,7 +548,7 @@ def assemble(month, s1, s2, s3, s4, s5, now_iso, s6=None, s4b=None, s7=None):
         f"S2 云端 rows={s2['rows']}·J4 零接线维持｜S3 借算 generated={s3['generated']}（E23 预注册门不跳）｜"
         f"S4 GPU {gpu.get('machine','-')} n={gpu.get('n','-')} avg={gpu.get('avg_pct','-')}% kpi={gpu.get('kpi','-')}"
         f"（30% 唯一点名阈值·3 日滚动基线 n={g.get('n','-')} avg={g.get('avg_pct','-')}%·C-20260929-02）"
-        f"{s4b_seg}{s6_seg}{s7_seg}｜"
+        f"{s4b_seg}{s6_seg}{s7_seg}{s8_seg}{s9_seg}｜"
         f"成本三要素 原值/电价/利用率=⬜⬜⬜（Q3 铁律·电价唯一合法源=实缴账单）｜"
         f"单位成本 v1=⬜（N3 双门 {n3_gate}）｜{chain_tail}"
     )
@@ -431,7 +557,8 @@ def assemble(month, s1, s2, s3, s4, s5, now_iso, s6=None, s4b=None, s7=None):
         "sheet": "docs/ops/month-end-cost-collection-sheet-v1.md",
         "sources": {"s1_quota": s1, "s2_cloud": s2, "s3_borrow": s3, "s4_gpu": gpu,
                     "s5_selfuse": s5, "s6_energy": s6, "s4b_borrow_split": s4b,
-                    "s7_l1_local_inference": s7},
+                    "s7_l1_local_inference": s7, "s8_distr": s8,
+                    "s9_delivery": s9},
         "n2_zero_fabrication": {"cost_three_elements": three_elements,
                                 "unit_cost_v1": None, "n3_gate": n3_gate,
                                 "note": "N2：任何 ⬜ 不以估算/外部锚/OSS 数据回填（口径 A=呈现面专用）"},
@@ -450,11 +577,13 @@ def cmd_run(month):
     s6 = s6_energy(month)
     s4b = s4b_borrow_split(month)
     s7 = s7_l1(month)
-    payload = assemble(month, s1, s2, s3, s4, s5, now_iso, s6=s6, s4b=s4b, s7=s7)
+    s8 = s8_distr(month)
+    s9 = s9_delivery(month)
+    payload = assemble(month, s1, s2, s3, s4, s5, now_iso, s6=s6, s4b=s4b, s7=s7, s8=s8, s9=s9)
     out = ROOT / "state" / f"month-end-{month.replace('-', '')}.json"
     out.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(json.dumps({"month": month, "report": str(out.relative_to(ROOT)),
-                      "sources_ok": 8}, ensure_ascii=False))
+                      "sources_ok": 10}, ensure_ascii=False))
     print("MONTH-END LINE:")
     print(payload["month_end_line"])
     return 0
@@ -630,7 +759,65 @@ def cmd_selftest():
     check("确定性=S7 段双跑一致", p10["month_end_line"] == p12["month_end_line"])
     check("S7 垃圾文本=解析失败降级 available False",
           s7_l1("2026-10", summary_text="not json")["available"] is False)
-    total = 27
+    s8_rows_fix = [
+        {"tx_id": "D-20261025-1", "ts": "2026-10-25T12:45:51", "lane": "bilibili",
+         "attribution_status": "pending", "conv_tx_ref": "", "live": False,
+         "publish_state": "queued", "reach_count": 0},
+        {"tx_id": "D-20261025-2", "ts": "2026-10-26T09:00:00", "lane": "wechat",
+         "attribution_status": "confirmed", "conv_tx_ref": "MOCK-20261019-R1", "live": False,
+         "publish_state": "queued", "reach_count": 120},
+        {"tx_id": "D-20261101-1", "ts": "2026-11-01T09:00:00", "lane": "douyin",
+         "attribution_status": "pending", "conv_tx_ref": "", "live": False,
+         "publish_state": "queued", "reach_count": 999},
+    ]
+    s8 = s8_distr("2026-10", rows=s8_rows_fix)
+    check("S8 月窗聚合=rows 2·attribution pending/confirmed 各 1·conv 命中 1·他月排除",
+          s8["available"] and s8["rows"] == 2 and s8["attribution"] == {"pending": 1, "confirmed": 1}
+          and s8["conv_ref_hits"] == 1 and s8["lanes"] == ["bilibili", "wechat"]
+          and s8["reach_total"] == 120 and s8["live_rows"] == 0)
+    s9_rows_fix = [
+        {"event_id": "E-1", "delivery_id": "DV-20261025-1", "order_id": "MOCK-20261019-R1",
+         "route_group": "resident-qa-8792", "status": "queued", "ts": "2026-10-25T22:39:36",
+         "attempts": 0, "live": False},
+        {"event_id": "E-2", "delivery_id": "DV-20261025-1", "order_id": "MOCK-20261019-R1",
+         "route_group": "resident-qa-8792", "status": "dispatched", "ts": "2026-10-25T22:39:36",
+         "attempts": 1, "live": False},
+        {"event_id": "E-3", "delivery_id": "DV-20261025-1", "order_id": "MOCK-20261019-R1",
+         "route_group": "resident-qa-8792", "status": "delivered", "ts": "2026-10-25T22:39:37",
+         "attempts": 1, "live": False},
+        {"event_id": "E-4", "delivery_id": "DV-20261101-1", "order_id": "MOCK-20261019-R2",
+         "route_group": "batch-pool", "status": "queued", "ts": "2026-11-01T09:00:00",
+         "attempts": 0, "live": False},
+    ]
+    s9 = s9_delivery("2026-10", rows=s9_rows_fix)
+    check("S9 事件链聚合=events 3·交付单 1·末态 delivered=1·max attempts 1·他月排除",
+          s9["available"] and s9["events"] == 3 and s9["deliveries"] == 1
+          and s9["final_status"] == {"delivered": 1} and s9["event_status"]["queued"] == 1
+          and s9["max_attempts"] == 1 and s9["routes"] == ["resident-qa-8792"]
+          and s9["live_rows"] == 0)
+    p13 = assemble("2026-10", s1, s2, {"files": [], "generated": 0}, s4, s5, "T5",
+                   s6=s6_fix, s4b=s4b_fix, s7=s7_fix, s8=s8, s9=s9)
+    check("S8/S9 并入月末行=两段在文+机械链 9/9 就绪+payload 源携带",
+          "S8 私域分发轨" in p13["month_end_line"]
+          and "S9 交付调度轨" in p13["month_end_line"]
+          and "conv 关联命中 1" in p13["month_end_line"]
+          and "终态 delivered=1" in p13["month_end_line"]
+          and "机械链 9/9 就绪" in p13["month_end_line"]
+          and p13["sources"]["s8_distr"]["rows"] == 2
+          and p13["sources"]["s9_delivery"]["deliveries"] == 1)
+    p14 = assemble("2026-10", s1, s2, {"files": [], "generated": 0}, s4, s5, "T5",
+                   s6=s6_fix, s4b=s4b_fix, s7=s7_fix,
+                   s8={"available": False, "note": "S8 台账件不存在·N2 零编造"}, s9=s9)
+    check("S8 源不可用=降级行如实+机械链 8/9（S9 照常计入）",
+          "S8 私域分发轨=源不可用降级如实" in p14["month_end_line"]
+          and "机械链 8/9 就绪" in p14["month_end_line"]
+          and "S9 交付调度轨" in p14["month_end_line"])
+    p15 = assemble("2026-10", s1, s2, {"files": [], "generated": 0}, s4, s5, "T5",
+                   s6=s6_fix, s4b=s4b_fix, s7=s7_fix, s8=s8, s9=s9)
+    check("确定性=S8/S9 段双跑一致", p13["month_end_line"] == p15["month_end_line"])
+    check("JSONL 装载缺件=None+坏行计数",
+          load_jsonl(ROOT / "state" / "__no_such_ledger__.jsonl") == (None, 0))
+    total = 33
     print(f"selftest: {ok[0]}/{total} PASS" if ok[0] == total else f"selftest: FAIL ({ok[0]}/{total})")
     return 0 if ok[0] == total else 1
 
