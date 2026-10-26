@@ -47,6 +47,24 @@ LIVE = False  # J4: planned-state drill. Real wiring = CEO physical gate.
 DESIGN_BANNER = "MOCK/DESIGN-VALUE-NOT-APPROVED (pricing slot pending CEO batch)"
 ROUTE_GROUPS = ("resident-qa-8792", "batch-pool", "direct-outbox")
 
+# T136: the exact keys ledger_write emits. Mirrors rails_schema_check.PRODUCERS
+# ["mock_order"]; drift is caught at write time (not swallowed by
+# additionalProperties) and asserted again in selftest.
+WRITER_KEYS = (
+    "order_id", "date", "sku", "tier", "cost_item", "price", "fee_rate",
+    "refund_rate", "net_price", "amount", "gross", "tokens_local", "tokens_api",
+    "api_reason", "fund_3090", "mock", "lane", "route_group",
+)
+
+
+def _check_writer_keys(row):
+    """Fail fast when the emitted row drifts from WRITER_KEYS."""
+    extra = sorted(set(row) - set(WRITER_KEYS))
+    missing = sorted(set(WRITER_KEYS) - set(row))
+    if extra or missing:
+        raise RuntimeError(
+            "WRITER_KEYS drift: extra=%s missing=%s" % (extra, missing))
+
 # SKU registry: paypoint-alignment-matrix v1 classes, design values with
 # source-doc pointers. All lanes stay planned-state (physical prerequisites).
 SKUS = {
@@ -129,6 +147,7 @@ def ledger_write(order_id, date, sku_id, spec, qty):
         "fund_3090": 0.0,  # drill never accrues fund
         "mock": True, "lane": spec["lane"], "route_group": spec["route_group"],
     }
+    _check_writer_keys(row)
     _append_row(MOCK_RAIL, row)
     return "ok", row
 
@@ -258,6 +277,22 @@ def _selftest():
                           gate_fn=lambda: gate_green, fulfillment_fn=lambda: ff_ok,
                           evidence=False)
         run("F8 unknown-sku reject", rc == 2 and v8["verdict"] == "MOCK-RING-RED", v8.get("reason"))
+
+        # F9/F10 (T136): this writer proves its own key set instead of relying
+        # on rails_schema_check's census being run by someone else.
+        emitted = sorted({k for r in _load_rows(rail) for k in r})
+        run("F9 emitted keys == WRITER_KEYS", emitted == sorted(WRITER_KEYS)
+            and len(WRITER_KEYS) == 18, "%d keys" % len(emitted))
+        try:
+            import rails_schema_check as rsc
+            census_problems = rsc.census("mock_order", _load_rows(rail))
+            producer_drift = sorted(set(rsc.PRODUCERS["mock_order"]) ^ set(WRITER_KEYS))
+        except Exception as exc:  # pragma: no cover - import failure is a real fail
+            census_problems = ["census import failed: %s" % exc]
+            producer_drift = ["producer unavailable"]
+        run("F10 census clean + WRITER_KEYS == PRODUCERS.mock_order",
+            census_problems == [] and producer_drift == [],
+            str(census_problems + producer_drift)[:90])
 
     n_pass = sum(1 for _, ok, _ in checks if ok)
     for name, ok, detail in checks:

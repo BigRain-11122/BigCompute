@@ -254,6 +254,52 @@ PRODUCERS = {
 }
 
 
+# Rails that exist on disk with real writers but whose field contract is not
+# expressed in SCHEMAS yet. Listed explicitly so a GREEN census cannot be read
+# as "every rail is gated" (T136 step 2).
+OUT_OF_CENSUS = {
+    "cost": {
+        "path": "state/cost-ledger.jsonl",
+        "writer": "cost_ledger.py add / quota-* commands",
+        "reason": "real cost rail (caliber B settlement), 30+ field contract; schema migration deferred to the T-23 window",
+    },
+    "cost_l1": {
+        "path": "state/cost-l1-ledger.jsonl",
+        "writer": "cost_ledger.py L1 lane commands",
+        "reason": "co-tenant L1 consumption mirror; field contract owned by the L1 lane producer",
+    },
+    "borrow_windows": {
+        "path": "state/borrow-windows.jsonl",
+        "writer": "manual BC-P-62 ledger (gpu_idle_collector reads it)",
+        "reason": "hand-maintained borrow window ledger, E23 predesign (J4 planned state)",
+    },
+    "clean_window_log": {
+        "path": "state/clean-window-log.jsonl",
+        "writer": "clean_window_probe.py",
+        "reason": "probe sample log, not business rows",
+    },
+    "vram_window_log": {
+        "path": "state/vram-window-log.jsonl",
+        "writer": "vram_window_probe.py",
+        "reason": "probe sample log (E17 window history), not business rows",
+    },
+}
+
+
+def census_coverage(schemas=None, out_of_census=None) -> list[str]:
+    """Bookkeeping for the coverage claim: gated rails and out-of-census rails
+    must be disjoint and every exclusion must carry a reason."""
+    schemas = SCHEMAS if schemas is None else schemas
+    out_of_census = OUT_OF_CENSUS if out_of_census is None else out_of_census
+    problems: list[str] = []
+    for kind in sorted(set(schemas) & set(out_of_census)):
+        problems.append(f"rail '{kind}' is both gated and listed out-of-census")
+    for kind, entry in sorted(out_of_census.items()):
+        if not entry.get("reason"):
+            problems.append(f"out-of-census rail '{kind}' has no reason")
+    return problems
+
+
 def census(kind: str, rows: list[dict]) -> list[str]:
     """Two-way write-side census for one rail.
 
@@ -358,6 +404,9 @@ def cmd_census() -> int:
         problems.extend(errs)
         covered.append(kind)
         print(f"{kind}: {len(rows)} rows, {len(errs)} census problems ({path.name})")
+    for kind, entry in sorted(OUT_OF_CENSUS.items()):
+        print(f"out-of-census {kind}: {entry['path']} ({entry['writer']}) - {entry['reason']}")
+    problems.extend(census_coverage())
     for line in problems:
         print(f"CENSUS {line}")
     verdict = "RAILS-CENSUS-GREEN" if not problems else "RAILS-CENSUS-RED"
@@ -472,6 +521,15 @@ def cmd_selftest() -> int:
         PRODUCERS["distr"]["utm_campaign"] = saved_producer
     checks.append(("census catches declared field without producer",
                    any("utm_campaign" in p and "no producer" in p for p in orphan)))
+    # T136 coverage bookkeeping: gated vs explicitly excluded, never both.
+    checks.append(("coverage: gated and out-of-census disjoint",
+                   census_coverage() == []))
+    checks.append(("coverage catches double-listed rail",
+                   any("both gated" in p for p in census_coverage(
+                       schemas={"dup": {}}, out_of_census={"dup": {"reason": "x"}}))))
+    checks.append(("coverage catches exclusion without reason",
+                   any("no reason" in p for p in census_coverage(
+                       schemas={}, out_of_census={"x": {}}))))
     for name, ok in checks:
         print(f"{'PASS' if ok else 'FAIL'} {name}")
     failed = sum(1 for _, ok in checks if not ok)
