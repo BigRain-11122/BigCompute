@@ -31,6 +31,9 @@ Runs the four BigCompute charter checks (docs/qa-smoke-test-charter.md):
     model), so a dead :8090 would surface only as consumer failures.
     Read-only GET /v1/models, no generation, zero GPU load.
     PASS = HTTP 200 + at least one model id listed.
+12. cost contract census (T138): runs cost_contract_census.census()
+    so the cost/quota/cloud/borrow/l1 writer->reader->month-end
+    contract face is judged every round instead of by memory.
 
 Writes qa/smoke-<ts>.log with raw outputs + a self-judge verdict, then
 renders that exact log content to qa/smoke-<ts>.png via .NET
@@ -324,6 +327,48 @@ def probe_supply_dual_fields(root=None):
     if not hits:
         return False, "no idle_selfcheck line in heartbeat"
     return supply_dual_fields(hits[-1])
+
+
+CONTRACT_VERDICT_OK = "COST-CONTRACT-GREEN"
+
+
+def cost_contract_judge(result):
+    """T138 pure judge over a census() result dict.
+
+    Split out from the probe so the rejection branches are testable:
+    census() only ever returns the live answer, so a green-but-gapped
+    or non-green verdict would otherwise be unprovable in fixtures.
+    """
+    verdict = result.get("verdict")
+    gaps = result.get("gaps") or []
+    if verdict != CONTRACT_VERDICT_OK:
+        return False, "verdict=%s gaps=%d" % (verdict, len(gaps))
+    if gaps:
+        return False, ("verdict=%s but %d gap(s) reported"
+                       % (verdict, len(gaps)))
+    rails = result.get("rails") or []
+    if not rails:
+        return False, "no rails probed"
+    return True, "verdict=%s rails=%d gaps=0" % (verdict, len(rails))
+
+
+def probe_cost_contract(root=None):
+    """Tech T138: cost-rail field contract census, judged every round.
+
+    cost_contract_census.py shipped in T137 as a manual command. A
+    drift in which a summary face stops emitting a key month_end_collect
+    reads would only surface when someone remembered to run it - the
+    same "a cap nobody measures" shape as T133. Running it here makes
+    the contract face mechanically checked each round (runtime <1s).
+    """
+    if HERE not in sys.path:
+        sys.path.insert(0, HERE)
+    try:
+        import cost_contract_census as ccc
+        result = ccc.census()
+    except Exception as e:  # noqa: BLE001 - probe must report, not crash
+        return False, "census raised: %r" % e
+    return cost_contract_judge(result)
 
 
 RUNBOOK_MAX_BYTES = 2048
@@ -667,10 +712,43 @@ def selftest_supply_fields():
     return 0 if all(results) else 1
 
 
+def selftest_cost_contract():
+    """T138 fixtures for cost_contract_judge().
+
+    Live census can only show today's answer, so all three rejection
+    shapes are pinned synthetically: a non-green verdict, the
+    contradictory "green but gaps" state, and an empty rail set.
+    """
+    cases = [
+        ("clean green", {"verdict": "COST-CONTRACT-GREEN", "gaps": [],
+                         "rails": ["cost", "quota"]}, True, "gaps=0"),
+        ("gap verdict", {"verdict": "COST-CONTRACT-GAP",
+                         "gaps": [{"rail": "cost"}], "rails": ["cost"]},
+         False, "verdict=COST-CONTRACT-GAP"),
+        ("green but gapped", {"verdict": "COST-CONTRACT-GREEN",
+                              "gaps": [{"rail": "quota"}],
+                              "rails": ["quota"]}, False, "but 1 gap"),
+        ("no rails probed", {"verdict": "COST-CONTRACT-GREEN", "gaps": [],
+                             "rails": []}, False, "no rails probed"),
+    ]
+    results = []
+    print("qa_smoke probe no.12 selftest (T138 cost contract judgement)")
+    for label, result, want_ok, needle in cases:
+        ok, detail = cost_contract_judge(result)
+        good = ok == want_ok and needle in detail
+        results.append(good)
+        print("  [%s] %s" % ("PASS" if good else "FAIL", label))
+        if not good:
+            print("    detail: ok=%s %s" % (ok, detail))
+    print("selftest verdict: %d/%d PASS"
+          % (len([r for r in results if r]), len(results)))
+    return 0 if all(results) else 1
+
+
 def main():
     if len(sys.argv) > 1 and sys.argv[1] == "--selftest":
         return (selftest_tails() | selftest_coder_class()
-                | selftest_supply_fields())
+                | selftest_supply_fields() | selftest_cost_contract())
     os.makedirs(QA_DIR, exist_ok=True)
     ts = datetime.datetime.now().strftime("%Y%m%d-%H%M")
     log_path = os.path.join(QA_DIR, "smoke-%s.log" % ts)
@@ -683,7 +761,8 @@ def main():
               ("ledger tail integrity (BC-P-45)", probe_ledger_tails),
               ("supply dual-field reading (T132)",
                probe_supply_dual_fields),
-              ("runbook size budget (T133)", probe_runbook_budget)]
+              ("runbook size budget (T133)", probe_runbook_budget),
+              ("cost contract census (T138)", probe_cost_contract)]
     lines, passed = [], 0
     lines.append("BigCompute QA smoke test %s (orders L254 / charter v1)"
                  % ts)
@@ -696,7 +775,7 @@ def main():
         lines.append(detail)
         print("[%s] %s" % ("PASS" if ok else "FAIL", label))
     lines.append("")
-    verdict = "smoke verdict: %d/%d PASS (charter 4 + T25 + E41 + BC-P-45 no.8 + T132 no.10 + T133 no.11 probes)" % (
+    verdict = "smoke verdict: %d/%d PASS (charter 4 + T25 + E41 + BC-P-45 no.8 + T132 no.10 + T133 no.11 + T138 no.12 probes)" % (
         passed, len(probes))
     lines.append(verdict)
     with open(log_path, "w", encoding="utf-8") as f:

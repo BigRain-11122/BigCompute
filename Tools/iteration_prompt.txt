@@ -34,4 +34,4 @@
 7. **自审步（诚实律防线一）**：本轮全部宣称逐条过证据对——文件真在？命令真跑过？commit 真落？证据不足=宣称降级如实写（✓→🟡→⬜）。
 8. 收尾步：**QA 自验步先行（orders 2026-09-28 L254·docs/qa-smoke-test-charter.md 本司清单四条=GPU 采集器跑通出数/Ollama 真响应/三队列 ≥3 条/成本账本在维护——证据=qa/smoke-<轮时标>.log+png〔真实命令输出·CLI 司无 GUI 截图窗=渲染法·BC-F-20260928-03 已声明呈 patrol 定谳〕·缺项=下轮第一优先级修+日清记·造假=诚实律红线 P1）**；state/rounds.log 追加一行轮账本：<日期> tokens: local=<次数> api=<次数> api_reason=<一句话|-> queue:<本轮推进的任务号+一句话> gpu:<Tools/gpu_idle_collector.py report 日均对账行·T-20260928-28 判据=30% 唯一点名阈值〔C-20260929-02 收口·70%=方向性参考〕如实接·周轮=分机行格式〔bm-a 实测+他机转述标注〕>；state/heartbeat.txt 写轮尾时间戳（Self-Drive v2.0 §4 心跳律）；git 定向 add 本轮产出+commit+push（远程已通时）。
 
-【底座自检（每周日轮附加）】收尾前：python Tools/cost_ledger.py selftest 与 python Tools/fulfillment/test_pipeline.py 各跑一遍——非零退出=按 errors.md E2 立修复单入任务板；结果记入轮账本行。
+【底座自检（每周日轮附加）】收尾前：python Tools/cost_ledger.py selftest 与 python Tools/fulfillment/test_pipeline.py 各跑一遍（T138 增第三条：python Tools/cost_contract_census.py selftest，且 census 判 verdict=COST-CONTRACT-GREEN）——非零退出=按 errors.md E2 立修复单入任务板；结果记入轮账本行。

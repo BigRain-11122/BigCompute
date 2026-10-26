@@ -14,7 +14,7 @@
 - 地板律=每晚 ≥5 提交+24h ≥1 真进展或如实申报。
 - 批池=validate 唯一验收口（POOL_GREEN·consumer_plan 指名·让路序=CEO 用机＞机队视频＞批池）。
 - 口径 B 结算唯一｜E0 直呈 CEO｜禁跨仓写｜禁 add -A｜云端=严管律 v3.0（默认本地+白名单六类·attribution 必填·音轨禁令）｜计分器与 XL-7 并排禁单点。
-- 供给读数=治理口径 `pool_effective`（饥饿/心跳基准）·`pool_ignitable`=ready 仅诊断（T132 探针 no.10·缺字段/倒挂=FAIL）。
+- 供给读数=治理 `pool_effective`·`pool_ignitable`=ready 仅诊断（T132 no.10·缺/倒挂=FAIL）；契约普查 verdict 必 GREEN（T138 no.12）。
 - 每轮=qa_smoke→qa/*.log+png→`python Tools/c1c4_patrol.py run --rounds-line`（verdict 入 rounds.log；C2/C4 兼周日底座自检）｜三队列 ≥10·每窗 ≥1 提案｜轮预算 ≤25min·commit 尾标 [via BigCompute-OSLoop]｜刻痕=审核/队列步毕必刻·单一时标禁引二手 HH:MM。
 
 ## 关键指针
