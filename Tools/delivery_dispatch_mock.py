@@ -58,6 +58,11 @@ TRANSITIONS = {
     "delivered": (),
 }
 RECEIPT_PREFIX = "SYN-"  # synthetic receipt, never a platform-issued票号
+# T135 write-side census: keys `_event()` actually emits (see S14/S15).
+WRITER_KEYS = (
+    "event_id", "delivery_id", "order_id", "route_group", "status", "ts",
+    "attempts", "receipt_ref", "mock", "live", "caliber_note",
+)
 CALIBER_NOTE = ("delivery event chain = fulfillment audit rail, not a revenue "
                 "row; amounts settle on the deal rail (caliber B)")
 
@@ -379,6 +384,16 @@ def _selftest():
         run("S12 schema keys subset of emitted",
             req.issubset(set(_load_rows(rail)[0].keys())),
             "required=%d" % len(req))
+
+        # S14/S15 write-side census (T135): emitted keys == WRITER_KEYS, no
+        # undeclared field, no declared field without a producer.
+        written = set(_load_rows(rail)[0].keys())
+        run("S14 emitted keys == WRITER_KEYS",
+            written == set(WRITER_KEYS),
+            "diff=%s" % sorted(written.symmetric_difference(set(WRITER_KEYS))))
+        problems = rsc.census("delivery", _load_rows(rail))
+        run("S15 census clean on live-shaped rows", problems == [],
+            "problems=%d" % len(problems))
 
     sig2 = (hashlib.sha256(open(cl.LEDGER, "rb").read()).hexdigest()
             if os.path.isfile(cl.LEDGER) else "absent")

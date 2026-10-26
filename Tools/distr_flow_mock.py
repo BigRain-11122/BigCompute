@@ -52,6 +52,15 @@ EVIDENCE_DIR = os.path.join(HERE, "..", "state")
 LIVE = False  # J4: planned-state drill. Real publishing = CEO gate.
 LANES = ("douyin", "bilibili", "wechat", "qq_group", "xiaohongshu", "kuaishou")
 G1_KEYS = ("consumer", "lane", "tx_id", "utm_source", "utm_medium", "utm_campaign")
+# T135 write-side census: the exact keys this writer emits. Kept next to the
+# row builder so a field added below without a matching entry here fails
+# selftest (S12/S13) instead of slipping through `additionalProperties`.
+WRITER_KEYS = (
+    "tx_id", "ts", "consumer", "lane", "content_ref", "publish_state",
+    "utm_source", "utm_medium", "utm_campaign", "audience_seg", "conv_tx_ref",
+    "attribution_status", "reach_count", "receipt_basis", "caliber_note",
+    "live",
+)
 RECEIPT_SYNTHETIC = "synthetic-estimate"
 CALIBER_NOTE = ("private-domain distribution row = attribution ledger, not a "
                 "revenue row; amounts settle on the deal rail (caliber B); "
@@ -294,6 +303,16 @@ def _selftest():
         run("S10 G1 subset of imported schema",
             set(G1_KEYS).issubset(set(rsc.SCHEMAS["distr"]["required"])),
             "schema=%d required" % len(rsc.SCHEMAS["distr"]["required"]))
+
+        # S12/S13 write-side census (T135): emitted keys == WRITER_KEYS, all
+        # declared, and every declared field names a producer.
+        written = set(_load_rows(rail)[0].keys())
+        run("S12 emitted keys == WRITER_KEYS",
+            written == set(WRITER_KEYS),
+            "diff=%s" % sorted(written.symmetric_difference(set(WRITER_KEYS))))
+        run("S13 census clean on live-shaped rows",
+            rsc.census("distr", _load_rows(rail)) == [],
+            "problems=%d" % len(rsc.census("distr", _load_rows(rail))))
 
     # S11 real cost rail untouched
     sig2 = (hashlib.sha256(open(cl.LEDGER, "rb").read()).hexdigest()

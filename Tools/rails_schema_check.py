@@ -17,12 +17,14 @@ Rails covered:
 
 Commands:
   check     validate live rail files (read-only)
+  census    write-side field census on live rails: written keys must be
+            declared, declared keys must name a producer (BC-P-116 / T135)
   c1        C1 inspection aggregate: this gate + ledger_continuity_probe
             (single invocation for the P1 loop inspection step)
   selftest  schema self-checks + fixture pass/fail assertions
   dump      print the schemas as JSON
 
-Usage: python Tools/rails_schema_check.py check|c1|selftest|dump
+Usage: python Tools/rails_schema_check.py check|census|c1|selftest|dump
 """
 
 from __future__ import annotations
@@ -79,6 +81,15 @@ SCHEMAS = {
             "fee_rate": {"type": "number", "minimum": 0, "maximum": 1},
             "tokens_local": {"type": "integer", "minimum": 0},
             "tokens_api": {"type": "integer", "minimum": 0},
+            # T135 写入侧普查：deal_flow_mock 一直在写这四键而 schema 从未声明，
+            # additionalProperties 静默放行。补声明=把契约补给写入侧（不是放宽闸）。
+            "tier": {"type": "string", "minLength": 1},
+            # 演练单恒 0（与 fund_3090 同律：MOCK 轨不累计金额）
+            "amount": {"type": "number", "minimum": 0},
+            "api_reason": {"type": "string", "minLength": 2},
+            "route_group": {
+                "enum": ["resident-qa-8792", "batch-pool", "direct-outbox"],
+            },
         },
         "additionalProperties": True,
     },
@@ -170,6 +181,100 @@ SCHEMAS = {
 }
 
 
+# Write-side census (BC-P-116 / T135): every declared field must name the tool
+# that actually writes it. A declared key with no producer is a dead contract; a
+# written key with no declaration is a silent bypass of `additionalProperties`.
+# Readers (month_end_collect) are tracked separately by PARSER_KEYS, so the two
+# faces — "who writes it" and "who reads it" — stay independently auditable.
+PRODUCERS = {
+    "mock_order": {
+        "order_id": "deal_flow_mock.ledger_write",
+        "sku": "deal_flow_mock.ledger_write",
+        "tier": "deal_flow_mock.ledger_write",
+        "price": "deal_flow_mock.ledger_write",
+        "net_price": "deal_flow_mock.ledger_write",
+        "gross": "deal_flow_mock.ledger_write",
+        "amount": "deal_flow_mock.ledger_write",
+        "lane": "deal_flow_mock.ledger_write",
+        "date": "deal_flow_mock.ledger_write",
+        "cost_item": "deal_flow_mock.ledger_write",
+        "mock": "deal_flow_mock.ledger_write",
+        "fund_3090": "deal_flow_mock.ledger_write",
+        "refund_rate": "deal_flow_mock.ledger_write",
+        "fee_rate": "deal_flow_mock.ledger_write",
+        "tokens_local": "deal_flow_mock.ledger_write",
+        "tokens_api": "deal_flow_mock.ledger_write",
+        "api_reason": "deal_flow_mock.ledger_write",
+        "route_group": "deal_flow_mock.ledger_write",
+    },
+    "batch_card": {
+        "batch_id": "manual:docs/ops/batch-pool-stock-v1.jsonl",
+        "lane": "manual:docs/ops/batch-pool-stock-v1.jsonl",
+        "category": "manual:docs/ops/batch-pool-stock-v1.jsonl",
+        "consumer_plan": "manual:docs/ops/batch-pool-stock-v1.jsonl",
+        "order_ref": "manual:docs/ops/batch-pool-stock-v1.jsonl",
+        "workload": "manual:docs/ops/batch-pool-stock-v1.jsonl",
+        "resource_profile": "manual:docs/ops/batch-pool-stock-v1.jsonl",
+        "dispatch_mode": "manual:docs/ops/batch-pool-stock-v1.jsonl",
+        "status": "manual:docs/ops/batch-pool-stock-v1.jsonl",
+        "acceptance": "manual:docs/ops/batch-pool-stock-v1.jsonl",
+        "stocked_at": "manual:docs/ops/batch-pool-stock-v1.jsonl",
+    },
+    "distr": {
+        "tx_id": "distr_flow_mock.run_row",
+        "ts": "distr_flow_mock.run_row",
+        "consumer": "distr_flow_mock.run_row",
+        "lane": "distr_flow_mock.run_row",
+        "content_ref": "distr_flow_mock.run_row",
+        "publish_state": "distr_flow_mock.run_row",
+        "utm_source": "distr_flow_mock.run_row",
+        "utm_medium": "distr_flow_mock.run_row",
+        "utm_campaign": "distr_flow_mock.run_row",
+        "audience_seg": "distr_flow_mock.run_row",
+        "conv_tx_ref": "distr_flow_mock.run_row",
+        "attribution_status": "distr_flow_mock.run_row",
+        "reach_count": "distr_flow_mock.run_row",
+        "live": "distr_flow_mock.run_row",
+        "receipt_basis": "distr_flow_mock.run_row",
+        "caliber_note": "distr_flow_mock.run_row",
+    },
+    "delivery": {
+        "event_id": "delivery_dispatch_mock._event",
+        "delivery_id": "delivery_dispatch_mock._event",
+        "order_id": "delivery_dispatch_mock._event",
+        "route_group": "delivery_dispatch_mock._event",
+        "status": "delivery_dispatch_mock._event",
+        "ts": "delivery_dispatch_mock._event",
+        "attempts": "delivery_dispatch_mock._event",
+        "receipt_ref": "delivery_dispatch_mock._event",
+        "mock": "delivery_dispatch_mock._event",
+        "live": "delivery_dispatch_mock._event",
+        "caliber_note": "delivery_dispatch_mock._event",
+    },
+}
+
+
+def census(kind: str, rows: list[dict]) -> list[str]:
+    """Two-way write-side census for one rail.
+
+    - forward: every key actually written must be declared in the schema
+      (`additionalProperties: true` would otherwise let a rename slip through)
+    - backward: every declared key must name a producer in PRODUCERS
+    """
+    declared = set(SCHEMAS[kind]["properties"])
+    problems: list[str] = []
+    for idx, row in enumerate(rows, 1):
+        undeclared = sorted(set(row) - declared)
+        if undeclared:
+            problems.append(f"{kind}[{idx}] undeclared write keys: {undeclared}")
+    producers = PRODUCERS.get(kind, {})
+    for field in sorted(declared - set(producers)):
+        problems.append(f"{kind} declared field '{field}' has no producer")
+    for field in sorted(set(producers) - declared):
+        problems.append(f"{kind} producer '{field}' is not a declared field")
+    return problems
+
+
 def load_rows(path: Path) -> list[dict]:
     rows = []
     with path.open(encoding="utf-8") as fh:
@@ -238,6 +343,28 @@ def cmd_check() -> int:
     return 0
 
 
+def cmd_census() -> int:
+    """Live write-side census across rail files present on disk (read-only)."""
+    problems: list[str] = []
+    covered = []
+    total_rows = 0
+    for kind, path in RAIL_PATHS.items():
+        if not path.exists():
+            print(f"{kind}: absent (planned state, skipped)")
+            continue
+        rows = load_rows(path)
+        total_rows += len(rows)
+        errs = census(kind, rows)
+        problems.extend(errs)
+        covered.append(kind)
+        print(f"{kind}: {len(rows)} rows, {len(errs)} census problems ({path.name})")
+    for line in problems:
+        print(f"CENSUS {line}")
+    verdict = "RAILS-CENSUS-GREEN" if not problems else "RAILS-CENSUS-RED"
+    print(f"VERDICT={verdict} problems={len(problems)} rows={total_rows} rails={','.join(covered)}")
+    return 0 if not problems else 1
+
+
 def cmd_c1() -> int:
     """C1 inspection aggregate: structure gate + ledger continuity in one call."""
     schema_rc = cmd_check()
@@ -287,6 +414,9 @@ def cmd_selftest() -> int:
         "date": "2026-10-20", "cost_item": "MOCK-DRILL", "mock": True,
         "fund_3090": 0, "refund_rate": 0.0, "fee_rate": 0.01,
         "tokens_local": 0, "tokens_api": 0,
+        # T135: the four keys deal_flow_mock has always written
+        "tier": "T1", "amount": 0.0, "api_reason": "mock-drill",
+        "route_group": "direct-outbox",
     }
     checks.append(("good mock row accepted", validate_rows("mock_order", [good_mock]) == []))
     checks.append(("mock fund_3090 non-zero rejected",
@@ -326,6 +456,22 @@ def cmd_selftest() -> int:
                    validate_rows("delivery", [dict(good_delivery, status="shipped")]) != []))
     checks.append(("dup delivery event caught",
                    len(find_duplicate_keys("delivery", [good_delivery, good_delivery])) == 1))
+    # T135 write-side census: declared <-> produced must line up both ways.
+    checks.append(("census green on fixture rows",
+                   census("mock_order", [good_mock]) == []
+                   and census("distr", [good_distr]) == []
+                   and census("delivery", [good_delivery]) == []
+                   and census("batch_card", [good_batch]) == []))
+    checks.append(("census catches undeclared write key",
+                   any("undeclared write keys" in p and "mystery" in p
+                       for p in census("distr", [dict(good_distr, mystery=1)]))))
+    saved_producer = PRODUCERS["distr"].pop("utm_campaign")
+    try:
+        orphan = census("distr", [good_distr])
+    finally:
+        PRODUCERS["distr"]["utm_campaign"] = saved_producer
+    checks.append(("census catches declared field without producer",
+                   any("utm_campaign" in p and "no producer" in p for p in orphan)))
     for name, ok in checks:
         print(f"{'PASS' if ok else 'FAIL'} {name}")
     failed = sum(1 for _, ok in checks if not ok)
@@ -337,6 +483,8 @@ def main(argv: list[str]) -> int:
     cmd = argv[1] if len(argv) > 1 else "help"
     if cmd == "check":
         return cmd_check()
+    if cmd == "census":
+        return cmd_census()
     if cmd == "c1":
         return cmd_c1()
     if cmd == "selftest":
