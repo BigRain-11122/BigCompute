@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-10-27 00:1x",
- "current_activity": "00:1x 夜班轮：T138 契约普查入每轮闸（qa_smoke 探针 no.12 每轮实跑 cost_contract_census 判 GREEN，纯函数四夹具 4/4；mandate 底座自检增第三条命令；runbook 压回 2038B）；审核 decisions 00:00 批 D-20261027-01~05 零本司派单；台账=tasks/TASKS.md，队列=state/queue/{main,tech,explore}.md",
- "latest_artifact": "Tools/qa_smoke.py（no.12 probe_cost_contract + cost_contract_judge + selftest_cost_contract）+ Tools/iteration_prompt.txt（底座自检三命令）+ state/runbook.md（no.12 判据行）+ qa/smoke-20261027-0009.log+png（QA 10/11·C1C4-GREEN·唯一 FAIL=L1 :8090 LANE-DOWN 已记 P1）— 2026-10-27 00:1x",
- "next_milestone": "T139 :8090 停摆根因确认件（只读：exit 2 语义+三面前置实测，下一有界窗）；10-31 22:43 N1 月末归集一命令（机械链 9/9 已就绪）；P1 待外部=L1 :8090 车道修复（归模型供应窗 M82 / HQ 工具域，禁本司自决重拉）"
+ "updated_at": "2026-10-27 03:20",
+ "current_activity": "03:20 哨兵段轮：T139 收口——L1 :8090 停摆根因已实证=前置件缺位（exit 2 源码唯二分支 L15→L19 MISSING_MODEL / L21→L25 MISSING_EXE；gguf 与 llama-server.exe 双 ABSENT、models 整目录不存在、8090 零监听、MISSING.log 341 行首行 10-25 09:26:52）；证据件呈模型供应窗，本司零重启零重拉（M71）；审核=decisions 03:15 批 D-20261027-06/07 零本司派单。台账=tasks/TASKS.md，队列=state/queue/{main,tech,explore}.md",
+ "latest_artifact": "docs/ops/l1-lane-down-evidence-20261027.md（一页根因证据：exit 2 语义+源码行号 / 三面实测出数 / 时间线重建〔起点 10-25 09:26:52 比观测早 37.6h〕/ 恢复清单与验收三判据）+ state/queue/tech.md（T139 done、T140 新立）+ qa/smoke-20261027-0319.log（QA 10/11·C1C4-GREEN·唯一 FAIL=L1 :8090 已定因）— 2026-10-27 03:20",
+ "next_milestone": "T140 前置件在位性探针（双 Test-Path 接既有只读探针位·治 41.8h 缺位盲区，下一有界窗）；10-31 22:43 N1 月末归集一命令（机械链 9/9 就绪）；P1 待外部=L1 :8090 恢复（夜间窗 19:00-09:00 重取两件，归模型供应窗/HQ 工具域，禁本司自决重拉）"
 }
