@@ -33,6 +33,13 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+HERE = Path(__file__).resolve().parent
+if str(HERE) not in sys.path:
+    sys.path.insert(0, str(HERE))
+try:  # 单源 schema（T134）：缺件不阻断采源，只让对读闸降级为 UNVERIFIED
+    import rails_schema_check as rsc  # noqa: E402
+except Exception:  # pragma: no cover - import 失败面
+    rsc = None
 
 if hasattr(sys.stdout, "reconfigure"):
     try:
@@ -434,6 +441,28 @@ def s9_delivery(month, rows=None, path=None):
     return parsed
 
 
+# ---------- 解析字段 ↔ rails schema 单源对读（T134） ----------
+# 解析侧读到的每个键都必须能在 Tools/rails_schema_check.py 的 SCHEMAS[rail] 里找到
+# 声明（required 或 properties）。否则 schema 改键/改枚举时本侧会静默降级成
+# available=False 而不报错——「无人对读的契约不是契约」。
+PARSER_KEYS = {
+    "distr": ("ts", "tx_id", "attribution_status", "conv_tx_ref", "live",
+              "publish_state", "lane", "reach_count"),
+    "delivery": ("ts", "status", "delivery_id", "route_group", "order_id",
+                 "live", "attempts"),
+}
+
+
+def schema_key_gap(rail, schema=None):
+    """返回解析侧读取但 schema 未声明的键（升序）。schema 缺失→None=UNVERIFIED。"""
+    schemas = schema if schema is not None else (getattr(rsc, "SCHEMAS", None) if rsc else None)
+    if not schemas or rail not in schemas:
+        return None
+    spec = schemas[rail]
+    declared = set(spec.get("required") or []) | set((spec.get("properties") or {}).keys())
+    return sorted(set(PARSER_KEYS.get(rail, ())) - declared)
+
+
 # ---------- 月末行组装（§三 预注册格式·N2/N3 门内建） ----------
 
 def assemble(month, s1, s2, s3, s4, s5, now_iso, s6=None, s4b=None, s7=None, s8=None, s9=None):
@@ -817,7 +846,21 @@ def cmd_selftest():
     check("确定性=S8/S9 段双跑一致", p13["month_end_line"] == p15["month_end_line"])
     check("JSONL 装载缺件=None+坏行计数",
           load_jsonl(ROOT / "state" / "__no_such_ledger__.jsonl") == (None, 0))
-    total = 33
+    # ---- T134：解析字段 ↔ schema 单源对读（契约漂移会被机械逮到，不静默降级）----
+    check("T134 解析键 ⊆ schema 声明（distr/delivery 双轨 gap 空）",
+          schema_key_gap("distr") == [] and schema_key_gap("delivery") == [])
+    _shrunk = {"distr": {"required": [k for k in rsc.SCHEMAS["distr"]["required"]],
+                         "properties": {k: v for k, v in rsc.SCHEMAS["distr"]["properties"].items()
+                                        if k != "reach_count"}}}
+    check("T134 负例=schema 删 reach_count 即报缺口（检出能力自证）",
+          schema_key_gap("distr", _shrunk) == ["reach_count"])
+    _req_only = {"delivery": {"required": ["ts", "status", "delivery_id", "route_group",
+                                           "order_id", "live", "attempts"],
+                              "properties": {}}}
+    check("T134 required-only 键也算已声明（required∪properties 双源合并）",
+          schema_key_gap("delivery", _req_only) == [])
+    check("T134 schema 不可用=None 降级（不假绿）", schema_key_gap("distr", {}) is None)
+    total = 37
     print(f"selftest: {ok[0]}/{total} PASS" if ok[0] == total else f"selftest: FAIL ({ok[0]}/{total})")
     return 0 if ok[0] == total else 1
 

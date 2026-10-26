@@ -131,6 +131,9 @@ SCHEMAS = {
             "conv_tx_ref": {"type": "string"},
             "attribution_status": {"enum": ["pending", "attributed"]},
             "reach_count": {"type": "integer", "minimum": 0},
+            # 真实发布面标记=计划态恒 False（month_end_collect S8 读它做 live 行计数；
+            # 必须在此声明，否则解析侧字段成手抄关系·T134 单源对读闸）
+            "live": {"type": "boolean"},
             "receipt_basis": {"type": "string", "minLength": 2},
             "caliber_note": {"type": "string", "minLength": 2},
         },
@@ -156,6 +159,8 @@ SCHEMAS = {
             "status": {"enum": ["queued", "dispatched", "delivered"]},
             "ts": {"type": "string", "minLength": 10},
             "attempts": {"type": "integer", "minimum": 0},
+            # 同 distr：month_end_collect S9 读 live 做计划态行计数（T134 单源对读闸）
+            "live": {"type": "boolean"},
             "receipt_ref": {"type": "string"},
             "mock": {"const": True},
             "caliber_note": {"type": "string", "minLength": 2},
