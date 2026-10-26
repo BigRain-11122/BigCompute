@@ -40,6 +40,12 @@ function Log([string]$m) {
     Add-Content -Path $runLog -Value $line -Encoding UTF8
 }
 function Beat([string]$m) {
+    # T131 sanctioned direct write (exemption, enumerated 2026-10-27): the
+    # engine's own os-loop line is written here because it must survive even
+    # when python/round_append is unavailable (round timeout, kill path).
+    # PS Add-Content always terminates the value with a newline and appends
+    # UTF-8 bytes, so tail integrity (BC-P-45) holds. Everything else --
+    # round ledger, 日清, 刻痕 -- goes through Tools/round_append.py.
     New-Item -ItemType Directory -Force (Split-Path -Parent $heart) | Out-Null
     Add-Content -Path $heart -Value "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') os-loop: $m" -Encoding UTF8
 }

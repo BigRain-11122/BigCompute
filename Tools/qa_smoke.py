@@ -395,6 +395,78 @@ def probe_runbook_budget(root=None):
     return True, "runbook %d bytes <= %d cap" % (n, RUNBOOK_MAX_BYTES)
 
 
+SERVE_SCRIPT = os.path.join(
+    os.environ.get("BIGCOMPUTE_GROUP_ROOT",
+                   os.path.abspath(os.path.join(ROOT, "..", ".."))),
+    "Tools", "coder-serve.ps1")
+
+SERVE_PATH_RE = {
+    "model": re.compile(r"^\$model\s*=\s*'([^']+)'", re.M),
+    "exe": re.compile(r"^\$exe\s*=\s*'([^']+)'", re.M),
+}
+
+
+def parse_serve_paths(text):
+    """T140 pure: pull the two artifact constants out of coder-serve.ps1.
+
+    Both are single-quoted absolute paths on their own lines. Returns None
+    when either is not found, so a renamed script surfaces as UNVERIFIED
+    rather than as a fake "artifact missing" P1.
+    """
+    out = {}
+    for key, pat in SERVE_PATH_RE.items():
+        m = pat.search(text or "")
+        if not m:
+            return None
+        out[key] = m.group(1)
+    return out
+
+
+def serve_artifact_verdict(paths, exists=None):
+    """T140 pure: PASS iff both prerequisites are on disk.
+
+    Read-only by design. Restoring artifacts belongs to the model-supply
+    window (M82 / D-20261024-17) and the group launcher; this suite only
+    makes absence visible. UNVERIFIED when the constants could not be
+    parsed.
+    """
+    if not paths:
+        return True, ("UNVERIFIED: coder-serve.ps1 model/exe constants not "
+                      "parsed (script moved or renamed) - no verdict, no "
+                      "false alarm")
+    exists = exists or os.path.exists
+    missing = [k for k in ("model", "exe") if not exists(paths[k])]
+    if missing:
+        return False, ("LANE-ARTIFACT-MISSING %s - the :8090 lane cannot "
+                       "start while a prerequisite is gone; a port probe "
+                       "only sees this after the old listener dies "
+                       "(10-25 09:26 first MISSING -> 10-27 03:16 first "
+                       "notice = 41.8h blind window; restore = model-supply "
+                       "window / group launcher, this suite only makes it "
+                       "visible)"
+                       % ", ".join("%s=%s" % (k, paths[k]) for k in missing))
+    return True, ("artifacts in place: model=%s exe=%s"
+                  % (os.path.basename(paths["model"]),
+                     os.path.basename(paths["exe"])))
+
+
+def probe_serve_artifacts(script=None, exists=None):
+    """Probe no.13 (T140): lane prerequisite artifacts on disk.
+
+    Blind spot: every live probe in this suite watches a socket, so a
+    missing model/exe stays invisible until something dies. Two Test-Path
+    checks against the launcher's own constants close that gap.
+    """
+    script = script or SERVE_SCRIPT
+    try:
+        with open(script, "r", encoding="utf-8-sig", errors="replace") as f:
+            text = f.read()
+    except Exception:  # noqa: BLE001 - unreadable script = no verdict
+        return True, ("UNVERIFIED: cannot read %s - no verdict, no false "
+                      "alarm" % script)
+    return serve_artifact_verdict(parse_serve_paths(text), exists)
+
+
 CODER_EXPECTED_IMAGE = "llama-server.exe"
 CODER_PORT = 8090
 
@@ -745,10 +817,49 @@ def selftest_cost_contract():
     return 0 if all(results) else 1
 
 
+def selftest_serve_artifacts():
+    """T140 fixtures for serve_artifact_verdict().
+
+    Live can only show today's state (both artifacts absent), so the PASS
+    branch and the drift branch are pinned synthetically:
+      A both on disk        -> PASS
+      B model absent        -> FAIL naming the missing key
+      C exe absent          -> FAIL naming the missing key
+      D constants unparsed  -> UNVERIFIED, ok=True (never a false P1)
+    """
+    text = ("$model = 'C:\\m\\q.gguf'\n"
+            "$exe   = 'C:\\m\\llama-server.exe'\n")
+    paths = parse_serve_paths(text)
+    have = set(paths.values())
+    cases = [
+        ("both artifacts on disk", paths, lambda p: p in have,
+         True, "artifacts in place"),
+        ("model absent", paths, lambda p: p != paths["model"],
+         False, "LANE-ARTIFACT-MISSING model="),
+        ("exe absent", paths, lambda p: p != paths["exe"],
+         False, "LANE-ARTIFACT-MISSING exe="),
+        ("constants unparsed", parse_serve_paths("$model = nothing"),
+         lambda p: True, True, "UNVERIFIED"),
+    ]
+    results = []
+    print("qa_smoke probe no.13 selftest (T140 lane artifact presence)")
+    for label, p, exists, want_ok, needle in cases:
+        ok, detail = serve_artifact_verdict(p, exists)
+        good = ok == want_ok and needle in detail
+        results.append(good)
+        print("  [%s] %s" % ("PASS" if good else "FAIL", label))
+        if not good:
+            print("    detail: ok=%s %s" % (ok, detail))
+    print("selftest verdict: %d/%d PASS"
+          % (len([r for r in results if r]), len(results)))
+    return 0 if all(results) else 1
+
+
 def main():
     if len(sys.argv) > 1 and sys.argv[1] == "--selftest":
         return (selftest_tails() | selftest_coder_class()
-                | selftest_supply_fields() | selftest_cost_contract())
+                | selftest_supply_fields() | selftest_cost_contract()
+                | selftest_serve_artifacts())
     os.makedirs(QA_DIR, exist_ok=True)
     ts = datetime.datetime.now().strftime("%Y%m%d-%H%M")
     log_path = os.path.join(QA_DIR, "smoke-%s.log" % ts)
@@ -762,7 +873,8 @@ def main():
               ("supply dual-field reading (T132)",
                probe_supply_dual_fields),
               ("runbook size budget (T133)", probe_runbook_budget),
-              ("cost contract census (T138)", probe_cost_contract)]
+              ("cost contract census (T138)", probe_cost_contract),
+              ("lane artifacts on disk (T140)", probe_serve_artifacts)]
     lines, passed = [], 0
     lines.append("BigCompute QA smoke test %s (orders L254 / charter v1)"
                  % ts)
@@ -775,7 +887,7 @@ def main():
         lines.append(detail)
         print("[%s] %s" % ("PASS" if ok else "FAIL", label))
     lines.append("")
-    verdict = "smoke verdict: %d/%d PASS (charter 4 + T25 + E41 + BC-P-45 no.8 + T132 no.10 + T133 no.11 + T138 no.12 probes)" % (
+    verdict = "smoke verdict: %d/%d PASS (charter 4 + T25 + E41 + BC-P-45 no.8 + T122 no.9 + T132 no.10 + T133 no.11 + T138 no.12 + T140 no.13 probes)" % (
         passed, len(probes))
     lines.append(verdict)
     with open(log_path, "w", encoding="utf-8") as f:
