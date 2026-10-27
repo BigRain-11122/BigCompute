@@ -322,6 +322,38 @@ def qa_backend_port():
     return QA_BACKEND_PORT
 
 
+def qa_lane_ports(health=None, default_port=None):
+    """All LLM lane ports the 8792 server can reach, primary first.
+
+    resident_qa_server v1.1 declares a fallback lane (L1 :8090 -> local
+    Ollama). A probe that only looks at the primary port reports
+    HEALTH-OK-BACKEND-DOWN while /ask is actually answering through the
+    fallback - the same false-green class this probe exists to kill,
+    only inverted. Ports are read from the server's own /health `llm`
+    block so the probe follows the live configuration; env/defaults are
+    the fallback when the block is absent (older server build).
+    """
+    ports = []
+
+    def _add(url):
+        m = re.search(r":(\d+)", str(url or ""))
+        if m:
+            p = int(m.group(1))
+            if p not in ports:
+                ports.append(p)
+
+    llm = (health or {}).get("llm") if isinstance(health, dict) else None
+    if isinstance(llm, dict):
+        _add(llm.get("primary_url"))
+        _add(llm.get("fallback_url"))
+    if not ports:
+        _add(os.environ.get("RESIDENT_QA_LLM_URL"))
+        _add(os.environ.get("RESIDENT_QA_LLM_FALLBACK_URL"))
+    if not ports:
+        ports.append(default_port or QA_BACKEND_PORT)
+    return ports
+
+
 def classify_qa_functional(health_ok, backend_listening, status=None,
                            payload=None, err=None, port=None):
     """T153 (probe no.16): pure verdict for the 8792 /ask end-to-end face.
@@ -381,17 +413,21 @@ def probe_resident_qa_functional(port_owner=None):
     generation) and the verdict names the exact false-green class.
     """
     port = qa_backend_port()
+    health = {}
     try:
         with urllib.request.urlopen(RESIDENT_QA_URL, timeout=10) as r:
-            h = json.loads(r.read().decode("utf-8", errors="replace"))
-        health_ok = r.status == 200 and h.get("status") == "ok"
+            health = json.loads(r.read().decode("utf-8", errors="replace"))
+        health_ok = r.status == 200 and health.get("status") == "ok"
     except Exception as e:  # noqa: BLE001 - probe must not crash pipeline
         ok, tok, det = classify_qa_functional(False, False, port=port)
         return ok, "%s: %s [%s]" % (tok, det, _ascii_safe(e, 80))
-    owner = (port_owner or coder_port_owner)(port)
-    if not owner[0]:
-        ok, tok, det = classify_qa_functional(health_ok, False, port=port)
-        return ok, "%s: %s" % (tok, det)
+    lanes = qa_lane_ports(health, port)
+    live = [p for p in lanes if (port_owner or coder_port_owner)(p)[0]]
+    if not live:
+        ok, tok, det = classify_qa_functional(health_ok, False,
+                                              port=lanes[0])
+        return ok, "%s: %s (lanes=%s)" % (
+            tok, det, ",".join(str(p) for p in lanes))
     body = json.dumps({"id": QA_ASK_ANCHOR, "q": QA_ASK_QUESTION}).encode("utf-8")
     status, payload, err = None, None, None
     try:
@@ -410,7 +446,10 @@ def probe_resident_qa_functional(port_owner=None):
     except Exception as e:  # noqa: BLE001 - timeout/socket errors alike
         err = e
     ok, tok, det = classify_qa_functional(health_ok, True, status, payload,
-                                          err, port)
+                                          err, live[0])
+    if ok and len(lanes) > 1:
+        det = "%s L1-DOWN(fallback lane :%d serving)" % (det, live[0]) \
+            if live[0] != lanes[0] else det
     return ok, "%s: %s" % (tok, det)
 
 
@@ -1239,6 +1278,21 @@ def selftest_qa_functional():
     check("Q11 ascii_safe strips non-printables (log stays printable)",
           _ascii_safe("a\x81b") == "a.b"
           and _ascii_safe("x" * 400, 10) == "x" * 10)
+
+    # Q12-Q14 lane awareness: primary-only reading must not mask a live
+    # fallback, and a dead-primary+dead-fallback pair must still read as
+    # no-backend (no softening of the 10-28 false-green class).
+    lp_old = qa_lane_ports({}, 8090)
+    check("Q12 health without llm block -> default primary only",
+          lp_old == [8090])
+    lp_new = qa_lane_ports({"llm": {"primary_url": "http://127.0.0.1:8090/v1/chat/completions",
+                                    "fallback_url": "http://127.0.0.1:11434/v1/chat/completions"}}, 8090)
+    check("Q13 health llm block -> primary then fallback",
+          lp_new == [8090, 11434])
+    lp_dup = qa_lane_ports({"llm": {"primary_url": "http://h:11434/v1/chat/completions",
+                                    "fallback_url": "http://h:11434/v1/chat/completions"}}, 8090)
+    check("Q14 identical lanes deduped (one probe, not two)",
+          lp_dup == [11434])
 
     print("selftest qa-functional verdict: %d/%d PASS"
           % (len([r for r in results if r]), len(results)))

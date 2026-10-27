@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-10-28 03:20",
- "current_activity": "2026-10-28 03:00 轮：T150 done（产品增量 2 分件：普查口径收紧到调用点作用域）——实跑 refs 85→71、FALLBACK-OK 25→7、MESSAGE-REF 14、UNKNOWN 0、NO-FALLBACK 1=..\\..\\Tools\\bench_coder.py:7（EXTERNAL·转 owner 派单=T152）；selftest 26/26 PASS；证据=state/l1-ref-census-20261028.json+do",
- "latest_artifact": "state/c1c4-20261028-032057.json（mtime 2026-10-28 03:20）",
+ "updated_at": "2026-10-28 06:10",
+ "current_activity": "2026-10-28 03:00 轮：T153 done（产品增量 2 分件：8792 /ask 功能面探针）+T152 dispatched（派单落日清行）+队列卫生四行并 T155 | QUEUE premise_unverified=0 open=9（轮首 12·净减 3） | 审核:orders/decisions 自上一轮收讫后零新行（mtime 快检 过） | 提案:BC-P-131（存活探针 vs 功能探针分离律·三问过闸） | C1C4:C1C4-GREEN",
+ "latest_artifact": "state/clean-window-log.jsonl（mtime 2026-10-28 06:09）",
  "next_milestone": "M4 接产对齐矩阵 blocked 项随开店/平台后台逐项销 ⬜（T-27 余项）（队列状态=open）"
 }

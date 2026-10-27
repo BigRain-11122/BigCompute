@@ -35,7 +35,12 @@ DEFAULT_DATA = r"C:\Users\sjs20\Desktop\FluxGroup\gaming\MiniGame\硅基生命�
 HONOR_SEATS = ("C-00001", "C-00002", "C-00003")
 LLM_URL = os.environ.get("RESIDENT_QA_LLM_URL", "http://127.0.0.1:8090/v1/chat/completions")  # O-20261015-1335 fleet brain lane（bm-d 切换=改 env 零改码·O-20261015-1505 ⑤）
 MODEL = "qwen3.6-35b"
-SERVER_VER = "resident-qa v1.0 (BigCompute MaaS consumer face)"
+# 降级链（T148 R3/T149 普查正法）：L1 8090 不可达→本机 Ollama 常驻面，声明链与代码同源
+FALLBACK_URL = os.environ.get("RESIDENT_QA_LLM_FALLBACK_URL", "http://127.0.0.1:11434/v1/chat/completions")
+FALLBACK_MODEL = os.environ.get("RESIDENT_QA_FALLBACK_MODEL", "")  # 空=按 /v1/models 实读
+SERVER_VER = "resident-qa v1.1 (BigCompute MaaS consumer face)"
+_MODEL_CACHE = {}  # chat_url -> (model_id, ts)
+_LAST_LANE = {"lane": None, "model": None, "primary_down": False}
 
 
 def load_anchors(data_path):
@@ -77,21 +82,73 @@ def persona_prompt(a):
     )
 
 
-def ollama_chat(messages, timeout=150):
-    """真实推理调用（:8090 35B-A3B 舰队脑·服务器常驻免钉·O-20261015-1335）。返回 (reply, eval_count)。"""
+def _models_url(chat_url):
+    """chat completions URL → 同源 /v1/models URL（非该形态返回空串=不探测）。"""
+    u = (chat_url or "").rstrip("/")
+    marker = "/chat/completions"
+    return u[: -len(marker)] + "/models" if u.endswith(marker) else ""
+
+
+def _http_json(url, payload=None, timeout=30):
+    data = json.dumps(payload).encode("utf-8") if payload is not None else None
+    req = urllib.request.Request(
+        url, data=data, headers={"Content-Type": "application/json"})
+    with urllib.request.urlopen(req, timeout=timeout) as r:
+        return json.loads(r.read().decode("utf-8"))
+
+
+def resolve_model(chat_url, hint="", ttl=300):
+    """实际服务名以 /v1/models 为准（T154 诚实律：披露行禁写部署侧简写）。不可得则退回 hint。"""
+    now = time.time()
+    hit = _MODEL_CACHE.get(chat_url)
+    if hit and now - hit[1] < ttl:
+        return hit[0]
+    name = hint or ""
+    mu = _models_url(chat_url)
+    if mu:
+        try:
+            ids = [d.get("id") for d in (_http_json(mu, timeout=5).get("data") or []) if d.get("id")]
+            if ids:
+                name = ids[0]
+        except Exception:
+            pass
+    _MODEL_CACHE[chat_url] = (name, now)
+    return name
+
+
+def _chat_one(url, model, messages, timeout):
     payload = json.dumps({
-        "model": MODEL,
+        "model": model or MODEL,
         "messages": messages,
         "max_tokens": 160, "temperature": 0.8,
         "chat_template_kwargs": {"enable_thinking": False},
     }).encode("utf-8")
     req = urllib.request.Request(
-        LLM_URL, data=payload, headers={"Content-Type": "application/json"})
+        url, data=payload, headers={"Content-Type": "application/json"})
     with urllib.request.urlopen(req, timeout=timeout) as r:
         j = json.loads(r.read().decode("utf-8"))
     ch = (j.get("choices") or [{}])[0]
     u = j.get("usage") or {}
     return (ch.get("message") or {}).get("content", "").strip(), u.get("completion_tokens", 0)
+
+
+def ollama_chat(messages, timeout=150):
+    """真实推理调用：L1 舰队脑（:8090）→ 不可达降级本机 Ollama。返回 (reply, eval_count, meta)。"""
+    lanes = [("L1", LLM_URL, MODEL)]
+    if FALLBACK_URL and FALLBACK_URL != LLM_URL:
+        lanes.append(("FALLBACK", FALLBACK_URL, FALLBACK_MODEL))
+    errors = []
+    for lane, url, hint in lanes:
+        try:
+            model = resolve_model(url, hint)
+            reply, ev = _chat_one(url, model, messages, timeout)
+            _LAST_LANE.update({"lane": lane, "model": model, "primary_down": lane != "L1"})
+            return reply, ev, {"lane": lane, "model": model}
+        except Exception as e:
+            errors.append(f"{lane}={type(e).__name__}")
+            if lane == "L1":
+                _LAST_LANE["primary_down"] = True
+    raise RuntimeError("all lanes down: " + " ".join(errors))
 
 
 class QAServer(ThreadingHTTPServer):
@@ -131,6 +188,7 @@ class _Handler(BaseHTTPRequestHandler):
                 "status": "ok", "server": SERVER_VER, "model": MODEL,
                 "anchors": len(srv.anchors), "whitelist": "anchors20_v1",
                 "uptime_s": int(time.time() - srv.started),
+                "llm": dict(_LAST_LANE, primary_url=LLM_URL, fallback_url=FALLBACK_URL),
             })
         else:
             self._json(404, {"err": "not found"})
@@ -163,15 +221,19 @@ class _Handler(BaseHTTPRequestHandler):
             return
         t0 = time.time()
         try:
-            reply, ev = srv.chat_fn([
+            res = srv.chat_fn([
                 {"role": "system", "content": persona_prompt(a)},
                 {"role": "user", "content": q},
             ])
         except Exception as e:
             self._json(503, {"err": "本地大脑未响应", "detail": str(e)[:80]})
             return
+        reply, ev = res[0], res[1]
+        meta = res[2] if len(res) > 2 and isinstance(res[2], dict) else None
         dur = round(time.time() - t0, 2)
-        gate = f"本地AI生成·{MODEL}·白名单锚民·{ev}tok/{dur}s"
+        model_used = (meta or {}).get("model") or MODEL
+        lane = (meta or {}).get("lane") or "L1"
+        gate = f"本地AI生成·{model_used}·{lane}·白名单锚民·{ev}tok/{dur}s"
         self._json(200, {"reply": reply or "（沉吟片刻）", "gate": gate, "id": rid})
 
 
@@ -184,7 +246,7 @@ def serve(args):
             _p(f"PORT-IN-USE {args.port} single-instance exit")
             return 0
         raise
-    _p(f"LISTEN {args.host}:{args.port} anchors={len(anchors)} model={MODEL} ({SERVER_VER})")
+    _p(f"LISTEN {args.host}:{args.port} anchors={len(anchors)} model={MODEL} l1={LLM_URL} fallback={FALLBACK_URL or '-'} ({SERVER_VER})")
     srv.serve_forever()
 
 
@@ -195,12 +257,12 @@ def probe(args):
     print(f"ANCHORS n={len(anchors)} first={a['id']}·{a['name']} ({a.get('pro')})")
     q = "城主召见：今天铺子里生意怎么样？"
     t0 = time.time()
-    reply, ev = ollama_chat([
+    reply, ev, meta = ollama_chat([
         {"role": "system", "content": persona_prompt(a)},
         {"role": "user", "content": q},
     ])
     dur = round(time.time() - t0, 2)
-    gate = f"本地AI生成·{MODEL}·白名单锚民·{ev}tok/{dur}s"
+    gate = f"本地AI生成·{meta['model']}·{meta['lane']}·白名单锚民·{ev}tok/{dur}s"
     print(f"ASK {a['id']} q={q}")
     print(f"REPLY {reply}")
     print(f"GATE {gate}")
@@ -208,7 +270,7 @@ def probe(args):
         "ts": _dt.datetime.now().isoformat(timespec="seconds"),
         "id": a["id"], "name": a["name"], "q": q, "reply": reply,
         "gate": gate, "eval_count": ev, "dur_s": dur, "anchors_n": len(anchors),
-        "model": MODEL, "server_ver": SERVER_VER,
+        "model": meta["model"], "lane": meta["lane"], "server_ver": SERVER_VER,
     }
     stamp = _dt.datetime.now().strftime("%Y%m%d-%H%M%S")
     path = f"state/resident-qa-probe-{stamp}.json"
@@ -279,9 +341,27 @@ def selftest(_args):
               r.headers.get("Access-Control-Allow-Origin") == "*")
     code, _ = post("/nope", {})
     check("S10 未知路径 404", code == 404)
+
+    # 降级链面（T148 R3）：URL 派生 / 模型名实读失败退化 / 全道不可达显式抛错
+    check("S11 _models_url 派生", _models_url("http://h:1/v1/chat/completions") == "http://h:1/v1/models"
+          and _models_url("http://h:1/x") == "")
+    check("S12 resolve_model 不可达退回 hint", resolve_model("http://127.0.0.1:9/v1/chat/completions", "hint-m") == "hint-m")
+    g_llm, g_fb = LLM_URL, FALLBACK_URL
+    try:
+        globals()["LLM_URL"] = "http://127.0.0.1:9/v1/chat/completions"
+        globals()["FALLBACK_URL"] = "http://127.0.0.1:9/v1/chat/completions"
+        raised = False
+        try:
+            ollama_chat([{"role": "user", "content": "x"}], timeout=2)
+        except RuntimeError as e:
+            raised = "all lanes down" in str(e) and "L1=" in str(e)
+        check("S13 两道不可达显式抛错(不假绿)", raised)
+    finally:
+        globals()["LLM_URL"], globals()["FALLBACK_URL"] = g_llm, g_fb
+
     srv.shutdown()
-    print(f"SELFTEST {'PASS' if ok[0] == 10 else 'FAIL'} {ok[0]}/10")
-    return 0 if ok[0] == 10 else 1
+    print(f"SELFTEST {'PASS' if ok[0] == 13 else 'FAIL'} {ok[0]}/13")
+    return 0 if ok[0] == 13 else 1
 
 
 def main():
