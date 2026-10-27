@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-10-28 01:59",
- "current_activity": "2026-10-28 02:00 轮：T151 done（round_append J9 CJK→问号闸 exit7+逃生门·selftest 21/21·读侧 ledger_encoding_guard qmark_runs 10/10+qa_smoke no.15 LEDGER-QMARK 支路·全库复扫仅 T150/T151 两队列行受损已复原·实弹拒写 exit7 零字节） gpu:7d avg=16.0% n=1231 BELOW-BENCH（门控型待机豁免·30",
- "latest_artifact": "qa/smoke-20261028-0158.png（mtime 2026-10-28 01:58）",
+ "updated_at": "2026-10-28 03:11",
+ "current_activity": "2026-10-28 03:00 轮：T150 done（产品增量 2 分件：普查口径收紧到调用点作用域）——实跑 refs 85→71、FALLBACK-OK 25→7、MESSAGE-REF 14、UNKNOWN 0、NO-FALLBACK 1=..\\..\\Tools\\bench_coder.py:7（EXTERNAL·转 owner 派单=T152）；selftest 26/26 PASS；证据=state/l1-ref-census-20261028.json+do",
+ "latest_artifact": "state/c1c4-20261028-031045.json（mtime 2026-10-28 03:10）",
  "next_milestone": "M4 接产对齐矩阵 blocked 项随开店/平台后台逐项销 ⬜（T-27 余项）（队列状态=open）"
 }

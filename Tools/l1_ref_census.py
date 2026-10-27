@@ -8,13 +8,23 @@ changing anything we need the full picture: every place that names the port, and
 for each one whether it can be steered elsewhere (env override / multi-endpoint)
 or would just break. Read-only: this tool never touches a service.
 
-Classification per reference line:
+Classification per reference line (T150 tightening: steering is judged in the
+*scope of the call site*, not across the whole file):
   DOC-REF        comment line, or inside a module/class/function docstring
+  MESSAGE-REF    the port only appears in a log line / dict key / error text -
+                 it names the lane, it never calls it (no failover meaning)
   DIAGNOSTIC     read-only probe / health line (a dead lane is the *expected*
                  finding here; no failover required)
-  FALLBACK-OK    client line whose file can be re-pointed (env override on the
-                 endpoint line, or a second endpoint literal in code)
-  NO-FALLBACK    client line with a bare literal and no way to steer it
+  FALLBACK-OK    client line whose enclosing scope can re-point it (inline env
+                 read, env read in the same function/module block, a second
+                 endpoint literal in that scope, or an explicit failover keyword)
+  UNKNOWN        steering exists in the file but NOT in this reference's scope -
+                 the env var may never reach this call. Needs a human read, and
+                 is deliberately not counted as green.
+  NO-FALLBACK    client line with a bare literal and nothing to steer it
+                 (rows carry domain=EXTERNAL when the file lives outside this
+                 repo, i.e. the fix belongs to another owner - we file it, we
+                 do not edit their code)
 
 Usage:
   python Tools/l1_ref_census.py selftest
@@ -44,6 +54,8 @@ ENV_RE = re.compile(
     r"environ\.get\(\s*['\"]([A-Z0-9_]+)['\"]|getenv\(\s*['\"]([A-Z0-9_]+)['\"]")
 PS_ENV_RE = re.compile(r"\$env:([A-Za-z0-9_]+)")
 FAILOVER_RE = re.compile(r"fallback|回退|先试|备用|next_endpoint|endpoints\s*=\s*\[", re.I)
+ENDPOINT_NAME_RE = re.compile(r"(url|endpoint|base|host|addr|uri|\bep\b)", re.I)
+STRING_LIT_RE = re.compile(r"'[^']*'|\"[^\"]*\"")
 
 
 def _docstring_lines(src):
@@ -94,14 +106,95 @@ def _strip_trailing_comment(line):
     return line[:idx] if idx >= 0 else line
 
 
-def classify_file(path, port):
+def _scope_lines(funcs, lineno, exec_lines):
+    """Executable lines of the reference's scope: enclosing def, else module block.
+
+    T150: an env read three functions away is not a steering mechanism for this
+    call site, so the scope is deliberately narrow.
+    """
+    encl = sorted((hi - lo, lo, hi) for _name, lo, hi in funcs if lo <= lineno <= hi)
+    if encl:
+        _span, lo, hi = encl[0]
+        return [(n, t) for n, t in exec_lines if lo <= n <= hi]
+    return [(n, t) for n, t in exec_lines
+            if not any(lo <= n <= hi for _name, lo, hi in funcs)]
+
+
+def _env_hits(lines):
+    """[(line, VAR)] env reads inside the given scope."""
+    out = []
+    for n, text in lines:
+        m = ENV_RE.search(text) or PS_ENV_RE.search(text)
+        if m:
+            out.append((n, m.group(1) or m.group(2)))
+    return out
+
+
+def _multi_hits(lines, port):
+    """[(line, port)] other known endpoint literals inside the given scope."""
+    out = []
+    for n, text in lines:
+        for p in KNOWN_PORTS:
+            if p == str(port):
+                continue
+            if re.search(r"(?<![\d])%s(?![\d])" % p, text):
+                out.append((n, p))
+    return out
+
+
+PORT_BOUND_L = r"(?<![A-Za-z0-9_])"
+PORT_BOUND_R = r"(?![A-Za-z0-9_])"
+
+
+def _port_pattern(port):
+    """Port token not glued into a longer identifier (lane8090 is a name, not a port)."""
+    return re.compile(PORT_BOUND_L + re.escape(str(port)) + PORT_BOUND_R)
+
+
+def _label_only(code, port):
+    """True when the port occurs only inside plain label/log strings, not a URL.
+
+    T150: message text such as 'LANE-DOWN: ... owns the port' names the lane and
+    never calls it, so it must not be scored as a client reference. An
+    endpoint-shaped assignee (url/endpoint/base/host/ep/addr/uri) keeps the line
+    in the client family.
+    """
+    pat = _port_pattern(port)
+    hits = [m.start() for m in pat.finditer(code)]
+    if not hits:
+        return False
+    spans = [(m.start(), m.end()) for m in STRING_LIT_RE.finditer(code)]
+    for pos in hits:
+        literal = None
+        for lo, hi in spans:
+            if lo <= pos < hi:
+                literal = code[lo:hi]
+                break
+        if literal is None or "://" in literal:
+            return False           # bare token or URL literal -> real endpoint ref
+    lhs = code.split("=", 1)[0] if "=" in code else ""
+    return not ENDPOINT_NAME_RE.search(lhs)
+
+
+def _is_external(path, ours):
+    """True when the file lives outside this repo (fix belongs to another owner)."""
+    if not ours:
+        return False
+    try:
+        return os.path.commonpath([os.path.abspath(path), os.path.abspath(ours)]) \
+            != os.path.abspath(ours)
+    except ValueError:                       # different drives on Windows
+        return True
+
+
+def classify_file(path, port, ours=None):
     """Return list of reference rows for one file. Pure/read-only."""
     with io.open(path, "r", encoding="utf-8", errors="replace") as f:
         src = f.read()
     lines = src.splitlines()
     docs = _docstring_lines(src) if path.lower().endswith(".py") else set()
     funcs = _function_ranges(src) if path.lower().endswith(".py") else []
-    pat = re.compile(r"(?<![\d])%s(?![\d])" % re.escape(str(port)))
+    pat = _port_pattern(port)
 
     code_lines = []
     exec_lines = []
@@ -121,23 +214,22 @@ def classify_file(path, port):
             "code": code_part,
         })
 
-    # file-level steering capability, counted over all executable text of the file
-    exec_code = "\n".join(text for _n, text in exec_lines)
-    env_hit = None
-    for _n, text in exec_lines:
-        m = ENV_RE.search(text) or PS_ENV_RE.search(text)
-        if m:
-            env_hit = m.group(1) or m.group(2)
-            break
-    multi = [p for p in KNOWN_PORTS if p != str(port)
-             and re.search(r"(?<![\d])%s(?![\d])" % p, exec_code)]
-    failover_kw = FAILOVER_RE.search(exec_code) is not None
+    # file-level steering capability, kept only to explain an UNKNOWN verdict
+    file_env = _env_hits(exec_lines)
+    file_multi = _multi_hits(exec_lines, port)
+    file_fail = [n for n, text in exec_lines if FAILOVER_RE.search(text)]
+    domain = "EXTERNAL" if _is_external(path, ours) else "OWN"
 
     rows = []
     for row in code_lines:
         code = row["code"]
         fn = _enclosing_func(funcs, row["line"])
         in_fixture = any(FIXTURE_RE.search(name) for name in fn)
+        scope = _scope_lines(funcs, row["line"], exec_lines)
+        scope_env = _env_hits(scope)
+        scope_multi = _multi_hits(scope, port)
+        scope_fail = [n for n, text in scope if FAILOVER_RE.search(text)]
+        inline_env = ENV_RE.search(code) or PS_ENV_RE.search(code)
         steering = ""
         if row["kind"] == "DOC":
             status = "DOC-REF"
@@ -149,9 +241,21 @@ def classify_file(path, port):
             status = "FIXTURE"
         elif PROBE_RE.search(code):
             status = "DIAGNOSTIC"
-        elif env_hit or multi or failover_kw:
+        elif _label_only(code, port):
+            status = "MESSAGE-REF"       # label/log/dict-key mention, not a call site
+        elif inline_env:
             status = "FALLBACK-OK"
-            steering = ("ENV:%s" % env_hit) if env_hit else "MULTI-ENDPOINT"
+            steering = "ENV:%s(INLINE)" % (inline_env.group(1) or inline_env.group(2))
+        elif scope_env:
+            status, steering = "FALLBACK-OK", "ENV:%s(SCOPE)" % scope_env[0][1]
+        elif scope_multi:
+            status, steering = "FALLBACK-OK", "MULTI-ENDPOINT(SCOPE)"
+        elif scope_fail:
+            status, steering = "FALLBACK-OK", "FAILOVER-KW(SCOPE)"
+        elif file_env:
+            status, steering = "UNKNOWN", "ENV-FILE-ONLY:%s" % file_env[0][1]
+        elif file_multi or file_fail:
+            status, steering = "UNKNOWN", "ENDPOINT-ELSEWHERE-IN-FILE"
         else:
             status = "NO-FALLBACK"
         rows.append({
@@ -159,18 +263,19 @@ def classify_file(path, port):
             "line": row["line"],
             "status": status,
             "steering": steering,
+            "domain": domain,
             "text": row["text"],
         })
     return rows
 
 
-def scan(roots, port):
+def scan(roots, port, ours=None):
     out = []
     files_scanned = 0
     for root in roots:
         if not os.path.isdir(root):
             out.append({"file": root, "line": 0, "status": "ROOT-MISSING",
-                        "steering": "", "text": "root not found (skipped)"})
+                        "steering": "", "domain": "OWN", "text": "root not found (skipped)"})
             continue
         for dirpath, dirnames, filenames in os.walk(root):
             dirnames[:] = sorted(d for d in dirnames if d not in
@@ -182,10 +287,10 @@ def scan(roots, port):
                     continue                       # 自查工具本身不计入普查面
                 path = os.path.join(dirpath, name)
                 try:
-                    rows = classify_file(path, port)
+                    rows = classify_file(path, port, ours)
                 except OSError as exc:                     # unreadable: report, don't crash
                     out.append({"file": path, "line": 0, "status": "UNREADABLE",
-                                "steering": "", "text": str(exc)[:120]})
+                                "steering": "", "domain": "OWN", "text": str(exc)[:120]})
                     continue
                 files_scanned += 1
                 out.extend(rows)
@@ -193,7 +298,12 @@ def scan(roots, port):
     counts = {}
     for r in out:
         counts[r["status"]] = counts.get(r["status"], 0) + 1
-    verdict = "ATTENTION" if counts.get("NO-FALLBACK") else "CENSUS-GREEN"
+    if counts.get("NO-FALLBACK"):
+        verdict = "ATTENTION"
+    elif counts.get("UNKNOWN"):
+        verdict = "CENSUS-GREEN-WITH-UNKNOWN"
+    else:
+        verdict = "CENSUS-GREEN"
     return {"port": str(port), "roots": roots, "files_scanned": files_scanned,
             "refs": out, "counts": counts, "verdict": verdict}
 
@@ -203,16 +313,19 @@ def render_md(rep):
     L = ["# L1 车道引用点回退面普查（port %s）" % rep["port"], "",
          "> 产出=Tools/l1_ref_census.py 静态普查（只读·零服务调用）·数据源=roots %s"
          % ", ".join(rep["roots"]),
-         "> 判据：DOC-REF=注释/文档串；DIAGNOSTIC=只读探针（车道死=预期发现，无需回退）；"
-         "FALLBACK-OK=客户端引用且可改指（env 覆盖或多端点）；NO-FALLBACK=客户端裸写且不可改指。", "",
+         "> 判据：DOC-REF=注释/文档串；MESSAGE-REF=端口只出现在日志/字典键/错误文案（点名而非调用）；"
+         "DIAGNOSTIC=只读探针（车道死=预期发现，无需回退）；"
+         "FALLBACK-OK=**该引用所在作用域**可改指（行内 env／同函数或模块块 env／同域多端点／"
+         "显式回退关键字）；UNKNOWN=文件内虽有 env 或多端点但不在本调用点作用域（可能永远到不了这个调用）；"
+         "NO-FALLBACK=客户端裸写且作用域内无任何改指手段。", "",
          "verdict: **%s** · files_scanned=%d · refs=%d · %s" % (
              rep["verdict"], rep["files_scanned"], len(rep["refs"]),
              " ".join("%s=%d" % (k, v) for k, v in sorted(c.items()))), "",
-         "| 文件 | 行 | 判定 | 可改指 | 片段 |", "|---|---|---|---|---|"]
+         "| 文件 | 行 | 判定 | 可改指 | 域 | 片段 |", "|---|---|---|---|---|---|"]
     for r in rep["refs"]:
-        L.append("| %s | %s | %s | %s | %s |" % (
+        L.append("| %s | %s | %s | %s | %s | %s |" % (
             r["file"].replace("|", "\\|"), r["line"], r["status"], r["steering"] or "-",
-            r["text"].replace("|", "\\|")))
+            r.get("domain", "OWN"), r["text"].replace("|", "\\|")))
     L += ["", "## 声明出处（人工复核·2026-10-28）", "",
           "- 本仓 BLUEPRINT.md 对 `8090` 零命中——降级链声明不在本司仓，出处="
           "`cph4/fleet/dispatcher/MASTER-AGENT/BLUEPRINT.md:24`："
@@ -224,24 +337,42 @@ def render_md(rep):
           "无回退件按 owner 一行改处理，不下「声明造假」结论。", "",
           "## 可下派的题清单（NO-FALLBACK → owner 一行改）", ""]
     bare = [r for r in rep["refs"] if r["status"] == "NO-FALLBACK"]
-    if bare:
-        for r in bare:
-            L.append("- `%s:%d` — 裸写端口、无 env/argv 可改指；建议 owner 加一处读取"
-                     "（环境变量或 CLI 参数），本件不动其代码。片段：`%s`"
+    own = [r for r in bare if r.get("domain", "OWN") == "OWN"]
+    ext = [r for r in bare if r.get("domain") == "EXTERNAL"]
+    if own:
+        for r in own:
+            L.append("- 【本司】`%s:%d` — 裸写端口、作用域内无 env/argv 可改指；建议加一处读取"
+                     "（环境变量或 CLI 参数）。片段：`%s`"
                      % (r["file"], r["line"], r["text"][:120]))
+    if ext:
+        for r in ext:
+            L.append("- 【外部域·登记转 owner，本司不改写】`%s:%d` — 同上。片段：`%s`"
+                     % (r["file"], r["line"], r["text"][:120]))
+    if not bare:
+        L.append("- 无（全部客户端引用均可在作用域内改指）")
+
+    unknown = [r for r in rep["refs"] if r["status"] == "UNKNOWN"]
+    L += ["", "## UNKNOWN 待人工读清单（env/端点在本文件但不在本调用点作用域）", ""]
+    if unknown:
+        for r in unknown:
+            L.append("- `%s:%d` — %s；片段：`%s`"
+                     % (r["file"], r["line"], r["steering"] or "-", r["text"][:120]))
     else:
-        L.append("- 无（全部客户端引用均可改指）")
+        L.append("- 无")
+
     L += ["", "## 诚实注记", "",
           "- 静态启发式分类：探针判定按关键词（probe/alive/health/socket/connect/v1/models）——"
           "措辞变化的探针行可能被计入客户端面，反之亦然；NO-FALLBACK 行须人眼复核后再动 owner 代码。",
-          "- env 覆盖与多端点按文件级取证：同文件内任一行具备 env 覆盖即判该文件全部客户端行 FALLBACK-OK，"
-          "不保证该变量真的被这个调用点消费（逐点消费链复核属改动前一步）。",
-          "- 本件不改任何 L1 面声明、不改 owner 代码；修复动作按行归各 owner 一行改。"]
+          "- 作用域判定按 AST 的 def 范围：同一函数（或模块顶层块）内的 env 读才算可改指；"
+          "文件其他地方有 env 一律降 UNKNOWN，不冒充绿灯（T150 收紧）。",
+          "- 作用域内可改指仍属静态证据：env 是否真的被该调用点消费需逐点读码确认，属改动前一步。",
+          "- 本件不改任何 L1 面声明、不改 owner 代码；修复动作按行归各 owner 一行改；"
+          "外部域行只登记派单（禁跨仓写）。"]
     return "\n".join(L) + "\n"
 
 
 def cmd_scan(a):
-    rep = scan(a.roots, a.port)
+    rep = scan(a.roots, a.port, a.ours)
     if a.json_out:
         d = os.path.dirname(a.json_out)
         if d:
@@ -260,8 +391,9 @@ def cmd_scan(a):
         rep["verdict"]))
     for r in rep["refs"]:
         if r["status"] in ("NO-FALLBACK", "ROOT-MISSING", "UNREADABLE"):
-            print("  %-13s %s:%s %s" % (r["status"], r["file"], r["line"], r["text"][:90]))
-    return 0 if rep["verdict"] == "CENSUS-GREEN" else 3
+            print("  %-13s %s:%s [%s] %s" % (r["status"], r["file"], r["line"],
+                                             r.get("domain", "OWN"), r["text"][:90]))
+    return 0 if rep["verdict"] != "ATTENTION" else 3
 
 
 def cmd_selftest(_a):
@@ -313,7 +445,7 @@ def cmd_selftest(_a):
     S.append(("S4 docstring+comment -> DOC-REF only", by.get("doc_mention.py") == {"DOC-REF"}))
     S.append(("S5 second endpoint -> FALLBACK-OK(MULTI)",
               by.get("multi.py") == {"FALLBACK-OK"}
-              and all(r["steering"] == "MULTI-ENDPOINT"
+              and all(r["steering"] == "MULTI-ENDPOINT(SCOPE)"
                       for r in rep["refs"] if os.path.basename(r["file"]) == "multi.py")))
     S.append(("S6 ps1 $env: -> FALLBACK-OK(ENV)",
               by.get("lane.ps1") == {"FALLBACK-OK"}
@@ -360,6 +492,68 @@ def cmd_selftest(_a):
               [r["status"] for r in by3.get("fixture.py", [])] == ["FIXTURE"]))
     S.append(("S16 refinements leave no NO-FALLBACK here", rep3["verdict"] == "CENSUS-GREEN"))
 
+    # S17-S22: T150 scope tightening + domain attribution
+    tmp3 = tempfile.mkdtemp(prefix="l1census3-")
+    scoped = {
+        "env_other_func.py": (
+            'import os\n'
+            'def other():\n'
+            '    return os.environ.get("L1_ENDPOINT")\n'
+            'def go():\n'
+            '    return "http://127.0.0.1:8090/api/chat"\n'),
+        "env_in_scope.py": (
+            'import os\n'
+            'def go():\n'
+            '    ep = os.environ.get("L1_ENDPOINT", "http://127.0.0.1:8090")\n'
+            '    return ep\n'),
+        "multi_in_scope.py": (
+            'def go():\n'
+            '    primary = "http://127.0.0.1:8090/api"\n'
+            '    alt = "http://127.0.0.1:11434/v1"\n'
+            '    return primary\n'),
+        "multi_other_func.py": (
+            'ALT = "http://127.0.0.1:11434/v1"\n'
+            'def go():\n'
+            '    return "http://127.0.0.1:8090/api"\n'),
+        "msg_only.py": (
+            'def report(lane):\n'
+            '    print("lane %s down on :8090 (label only)" % lane)\n'
+            '    return {"lane-8090": 0}\n'),
+    }
+    for name, body in scoped.items():
+        with io.open(os.path.join(tmp3, name), "w", encoding="utf-8", newline="\n") as f:
+            f.write(body)
+    rep4 = scan([tmp3], 8090, ours=tmp)      # tmp3 is outside "ours" -> EXTERNAL
+    by4 = {}
+    for r in rep4["refs"]:
+        by4.setdefault(os.path.basename(r["file"]), []).append(r)
+    S.append(("S17 env only in another function -> UNKNOWN",
+              [r["status"] for r in by4.get("env_other_func.py", [])] == ["UNKNOWN"]
+              and by4["env_other_func.py"][0]["steering"] == "ENV-FILE-ONLY:L1_ENDPOINT"))
+    S.append(("S18 env consumed in own scope -> FALLBACK-OK(ENV)",
+              [r["status"] for r in by4.get("env_in_scope.py", [])] == ["FALLBACK-OK"]
+              and by4["env_in_scope.py"][0]["steering"].startswith("ENV:L1_ENDPOINT")))
+    S.append(("S19 second endpoint in own scope -> FALLBACK-OK(MULTI)",
+              [r["steering"] for r in by4.get("multi_in_scope.py", [])] == ["MULTI-ENDPOINT(SCOPE)"]))
+    S.append(("S20 second endpoint elsewhere -> UNKNOWN",
+              [r["status"] for r in by4.get("multi_other_func.py", [])] == ["UNKNOWN"]
+              and by4["multi_other_func.py"][0]["steering"] == "ENDPOINT-ELSEWHERE-IN-FILE"))
+    S.append(("S21 outside-repo rows carry domain=EXTERNAL",
+              all(r.get("domain") == "EXTERNAL" for r in rep4["refs"] if r["line"])))
+    S.append(("S22 UNKNOWN alone -> CENSUS-GREEN-WITH-UNKNOWN",
+              rep4["verdict"] == "CENSUS-GREEN-WITH-UNKNOWN"))
+    md4 = render_md(rep4)
+    S.append(("S23 md renders UNKNOWN section", "## UNKNOWN 待人工读清单" in md4))
+    rep5 = scan([tmp3], 8090, ours=tmp3)     # now inside "ours"
+    S.append(("S24 ours=root marks rows OWN",
+              all(r.get("domain") == "OWN" for r in rep5["refs"] if r["line"])))
+    S.append(("S25 label/log mention -> MESSAGE-REF",
+              [r["status"] for r in by4.get("msg_only.py", [])] == ["MESSAGE-REF", "MESSAGE-REF"]))
+    with io.open(os.path.join(tmp3, "msg_key.py"), "w", encoding="utf-8", newline="\n") as f:
+        f.write('lane8090 = 1\nreport = {"lane8090": lane8090}\n')
+    S.append(("S26 port glued in an identifier is not a reference",
+              classify_file(os.path.join(tmp3, "msg_key.py"), 8090) == []))
+
     fails = [n for n, ok in S if not ok]
     for n, ok in S:
         print(("PASS " if ok else "FAIL ") + n)
@@ -372,8 +566,12 @@ def main(argv=None):
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest="cmd", required=True)
     s = sub.add_parser("scan")
-    s.add_argument("--roots", nargs="+", default=["Tools"])
+    s.add_argument("--roots", nargs="+",
+                   default=["Tools", os.path.join("..", "..", "Tools")],
+                   help="scan roots; default = this repo Tools + group Tools")
     s.add_argument("--port", type=int, default=8090)
+    s.add_argument("--ours", default=os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                   help="this repo root; files outside it are reported as EXTERNAL")
     s.add_argument("--json-out")
     s.add_argument("--md-out")
     sub.add_parser("selftest")
