@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-10-27 20:30",
- "current_activity": "20:26-20:30 令牌轮：CEO 三机自检令 OB-20261027-202256-910 的 bm-a 面回执（分发侧 20:23:54 记 ERR timed out，本件 20:27:29 落盘=令后约 5 分钟补发）——只读采集 CPU/内存/显存/磁盘/服务/任务态，禁加载模型、禁 ComfyUI 全遵；判读=CPU-LIGHT-ONLY / GPU-BLOCKED（显存 free 384MiB·13 个 Tuanjie Editor 持 GPU 上下文）。",
- "latest_artifact": "cph4/fleet/order-bus/receipts/OB-20261027-202256-910-bm-a.json（机队回执·机器可解析）+ compute/BigCompute/state/bm-a-capacity-20261027-2029.txt（采集证据件·资源/占位主体/服务面/接活判定/释放路径/GPU 日均对账七段）—— 2026-10-27 20:27/20:29",
- "next_milestone": "① 机队调度面按本回执评估把 bm-a 从 GPU 车道摘出（cotenant_editors=13 结构性不满足借出判据）——建议 48h 内决策，owner=调度面；② 本司 10-31 22:43 N1 月末归集一命令（机械链 9/9 就绪）；③ L1 :8090 恢复候模型供应窗/HQ 授权域，本司零自决重启。"
+ "updated_at": "2026-10-27 20:42",
+ "current_activity": "20:3x-20:4x 令牌轮：CEO 实况面机械闸（T143）——mandate 第 5 条三行 export 首次受机械门，四问=strict UTF-8/JSON、三键非空无 U+FFFD、≤48h、不落后轮账（>2h=STALE）；已入 qa_smoke 探针 no.14 每轮跑，live EXPORT-GREEN",
+ "latest_artifact": "compute/BigCompute/Tools/status_export_check.py（新件·selftest 8/8 七拒绝分支）+ qa/smoke-20261027-2040.log（smoke 11/13·两 FAIL=L1 前置件缺位已知面）— 2026-10-27 20:42",
+ "next_milestone": "①T144 实况面 compose 自动生成（下一轮收尾窗首跑，owner=本司夜班）；②本司 10-31 22:43 N1 月末归集一命令（机械链 9/9 就绪）；③L1 :8090 恢复候模型供应窗/HQ 授权域，本司零自决重启"
 }

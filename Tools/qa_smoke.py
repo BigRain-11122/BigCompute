@@ -371,6 +371,26 @@ def probe_cost_contract(root=None):
     return cost_contract_judge(result)
 
 
+def probe_status_export(root=None):
+    """T143: the CEO-facing export face, judged every round.
+
+    Mandate 产品优先律 clause 5 fixes three lines in docs/status-export.json
+    and requires refresh when reality moves, but nothing measured it - a
+    stale face (or a GBK-mangled one that still parses as JSON) would read
+    as live activity to the CEO. The gate lives in
+    Tools/status_export_check.py; here it just runs the same code path each
+    round.
+    """
+    if HERE not in sys.path:
+        sys.path.insert(0, HERE)
+    try:
+        import status_export_check as sec
+        verdict, detail = sec.check(root=root or ROOT)
+    except Exception as e:  # noqa: BLE001 - probe must report, not crash
+        return False, "status export check raised: %r" % e
+    return verdict == "EXPORT-GREEN", "verdict=%s %s" % (verdict, detail)
+
+
 RUNBOOK_MAX_BYTES = 2048
 
 
@@ -1017,7 +1037,8 @@ def main():
               ("runbook size budget (T133)", probe_runbook_budget),
               ("cost contract census (T138)", probe_cost_contract),
               ("lane artifacts presence+integrity (T140/T141)",
-               probe_serve_artifacts)]
+               probe_serve_artifacts),
+              ("CEO status export (T143)", probe_status_export)]
     lines, passed = [], 0
     lines.append("BigCompute QA smoke test %s (orders L254 / charter v1)"
                  % ts)
@@ -1030,7 +1051,7 @@ def main():
         lines.append(detail)
         print("[%s] %s" % ("PASS" if ok else "FAIL", label))
     lines.append("")
-    verdict = "smoke verdict: %d/%d PASS (charter 4 + T25 + E41 + BC-P-45 no.8 + T122 no.9 + T132 no.10 + T133 no.11 + T138 no.12 + T140 no.13 probes)" % (
+    verdict = "smoke verdict: %d/%d PASS (charter 4 + T25 + E41 + BC-P-45 no.8 + T122 no.9 + T132 no.10 + T133 no.11 + T138 no.12 + T140 no.13 + T143 no.14 probes)" % (
         passed, len(probes))
     lines.append(verdict)
     with open(log_path, "w", encoding="utf-8") as f:
