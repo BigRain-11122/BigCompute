@@ -427,9 +427,8 @@
 日清 10-27 20h3x（令牌轮·OB-910 bm-a 自检回执）：无 P0/P1。P2-1=L1 coder 车道 8090 前置件缺位维持（model+exe 双缺·模型供应窗 M82/D-20261024-17 域·本司零自决重拉）；P2-2 新面=bm-a GPU 结构性不可借出（cotenant 编辑器 13 个·vram_free 384MiB·采集器判 NOT-BORROWABLE[VRAM|COTENANT]）已随机队回执呈调度面，建议把 bm-a 从 GPU 车道摘出至编辑器窗口清理。产品增量=bm-a 状态回执 JSON+capacity 证据件+status-export 三行刷新（03h2x 陈旧面勘正）。
 - 日清 10-27 20h4x（令牌轮·T143 实况面机械闸）：无 P0/P1（L1 :8090 前置件缺位 P1 维持归模型供应窗 M82/D-20261024-17；bm-a GPU 结构性不可借出〔cotenant 13 编辑���·vram_free 384MiB〕P2 维持已呈调度面）。产品增量=**Tools/status_export_check.py + qa_smoke 探针 no.14**：mandate 第 5 条三行实况面首次受机械门——strict UTF-8/JSON、三键非空无 U+FFFD、≤48h、不落后轮账（轮比导出新 >2h=STALE）四问；selftest 8/8（七拒绝分支）、live EXPORT-GREEN、smoke 11/13（两 FAIL=已知缺件面）。轮内自捉缺陷=分钟位正则曾丢分钟，已修+夹具钉死。
 - 日清 10-27 21h1x（令牌轮·T144 实况面 compose）：零 P0/P1（P1 维持=L1 :8090 前置件缺位〔model+exe 双缺·起点 10-25 09:26〕归模型供应窗 M82/D-20261024-17；P2 维持=bm-a GPU 结构性不可借出〔cotenant 编辑器+vram_free 384MiB〕）。产品增量=**Tools/status_export_check.py `compose` 自动生成器**（三行由账本机械拼装：末轮 queue 段／最新实物 mtime〔排除 __pycache__·.pyc·簿记件〕／首个未闭合队列行；overrides 只追加不替换；selftest 8→14/14，轮内自捉三缺陷并修）。审核=orders 21:12 全面开工令（本司在名单·自领面）收讫。P2 新增=rounds.log 历史行 mojibake 固化→T145 新立（BC-P-124 提案）。QA 11/13=smoke-20261027-2118（两 FAIL=L1 前置件缺位同源已知面）·C1C4-GREEN 4/4
-
 ## 日清 2026-10-27
-
 - P2｜T145 立行前提被证据推翻（原判「rounds.log 历史中文已被 GBK 固化破坏·compose 只能取 ASCII」；字节普查=strict-UTF8 OK·U+FFFD=0·324/324 行含中文·拉丁区字符全为合法 §·×¥）→ 产出改向「防写侧回归」，三层收口（guard 8/8·J8 闸 selftest 17/17·qa 探针 no.15 PASS），历史行零改写。
 - P2｜L1 :8090 仍 DOWN（前置件缺位·T139 已定因），qa 12/14 两 FAIL 同源非新回归；模型回位由模型供应窗动作。
 - P3｜队列卫生：8090 车道四条重复跟踪（T90/T111/T119/T123）合并入 T139，三队列 open 19→16。
+日清 10-27 22:4x（夜班排程轮·T146）：零 P0/P1（P1 维持=L1 8090 车道前置件缺位归模型供应窗 M82/D-20261024-17；P2 维持=bm-a GPU 结构性不可借出·cotenant 编辑器占用 vram_free 低）。产品增量=队列「立行前提须证据化」机制化：state/queue/PREMISE-LAW.md 判据件落盘 + queue_check.py 增 premise 闸（断言损害须带可复跑命令或文件级证据指针，否则只列名记 UNVERIFIED 不阻断；源码维持纯 ASCII；selftest 8/8 PASS；live open=15 premise=UNVERIFIED 0）+两案回填（T145 字节普查推翻「历史已损」／T139 实测推翻「eCloud 占端口」）。队列卫生=tech T26 合并入 main M25（同净窗卡点同判据）、新立 T147（premise 闸入收尾轮账本），三队列 open 16→15 净减 1。QA 11/14=smoke-20261027-2245（FAIL 三项=L1 前置件缺位同源 2 项+HQ 尾区空行已修）；C1C4-GREEN
