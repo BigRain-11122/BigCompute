@@ -394,6 +394,36 @@ def probe_status_export(root=None):
 RUNBOOK_MAX_BYTES = 2048
 
 
+def probe_ledger_encoding(root=None):
+    """Tech T145: ledger encoding health, judged every round.
+
+    Rounds log / heartbeat are UTF-8 single-line ledgers whose only write
+    path is round_append.py. PowerShell Add-Content defaults to ANSI(GBK)
+    on zh-CN hosts, so a single hand-written shell append can inject真
+    mojibake that still parses as text and reads as live content. The
+    census lives in Tools/ledger_encoding_guard.py (same classify() the
+    write-side J8 gate uses) - this probe just runs it read-only.
+    """
+    if HERE not in sys.path:
+        sys.path.insert(0, HERE)
+    root = root or ROOT
+    try:
+        import ledger_encoding_guard as leg
+    except Exception as e:  # noqa: BLE001 - probe must report, not crash
+        return False, "ledger_encoding_guard import raised: %r" % e
+    rows = leg.census([os.path.join(root, "state", "rounds.log"),
+                       os.path.join(root, "state", "heartbeat.txt")])
+    bad = [r for r in rows if r.get("status") != "ENCODING-OK"]
+    if bad:
+        return False, "LEDGER-ENCODING-BAD " + "; ".join(
+            "%s=%s(dbl=%s,fffd=%s)" % (os.path.basename(r["path"]), r["status"],
+                                       r.get("utf8_double_runs", "-"), r.get("fffd", "-"))
+            for r in bad)
+    tot = sum(r.get("cjk_chars", 0) for r in rows)
+    return True, "ENCODING-OK files=%d cjk_chars=%d latin_runs=%d" % (
+        len(rows), tot, sum(r.get("latin_runs", 0) for r in rows))
+
+
 def probe_runbook_budget(root=None):
     """Tech T133: the starter-read file must stay inside its own cap.
 
@@ -1038,7 +1068,8 @@ def main():
               ("cost contract census (T138)", probe_cost_contract),
               ("lane artifacts presence+integrity (T140/T141)",
                probe_serve_artifacts),
-              ("CEO status export (T143)", probe_status_export)]
+              ("CEO status export (T143)", probe_status_export),
+              ("ledger encoding health (T145)", probe_ledger_encoding)]
     lines, passed = [], 0
     lines.append("BigCompute QA smoke test %s (orders L254 / charter v1)"
                  % ts)
@@ -1051,7 +1082,7 @@ def main():
         lines.append(detail)
         print("[%s] %s" % ("PASS" if ok else "FAIL", label))
     lines.append("")
-    verdict = "smoke verdict: %d/%d PASS (charter 4 + T25 + E41 + BC-P-45 no.8 + T122 no.9 + T132 no.10 + T133 no.11 + T138 no.12 + T140 no.13 + T143 no.14 probes)" % (
+    verdict = "smoke verdict: %d/%d PASS (charter 4 + T25 + E41 + BC-P-45 no.8 + T122 no.9 + T132 no.10 + T133 no.11 + T138 no.12 + T140 no.13 + T143 no.14 + T145 no.15 probes)" % (
         passed, len(probes))
     lines.append(verdict)
     with open(log_path, "w", encoding="utf-8") as f:

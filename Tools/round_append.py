@@ -26,6 +26,10 @@ utf-8 显式编码唯一写入路径——轮账本/心跳 append 一律走本�
      D-20261026-03 实锚），本条把该路径在工具面关死。
   J7 回读断言（T130）：写入后回读末非空行，与入参不一致 → 结果带
      ALERT-READBACK-MISMATCH 告警（防编码/截断吞写；非拦截，exit 仍 0）。
+  J8 mojibake 闸（T145·10-27 立）：目标行含真双子转义（UTF-8 字节被 Latin-1
+     误读后再存为 UTF-8，如「ä¸­æ–‡」）或 U+FFFD → 拒写 exit 6。
+     判据单源=Tools/ledger_encoding_guard.py（与 qa_smoke no.15 读侧同函数）。
+     边界如实=合法排版符 §·×¥ 与西文人名重音符不触发（8 夹具钉死）。
 """
 import argparse
 import io
@@ -35,6 +39,12 @@ import sys
 import tempfile
 
 BUDGET_NOTE = "append 唯一路径：本工具（python utf-8）——shell Add-Content 禁用"
+
+try:
+    from ledger_encoding_guard import classify as _enc_classify
+except Exception:  # 同目录导入（被当脚本直跑时 sys.path[0] 已是 Tools/）
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from ledger_encoding_guard import classify as _enc_classify
 
 # 读侧 qa_smoke no.8（BC-P-45）heartbeat marker 同判据——写侧镜像（闸一致）
 HHMM_RE = re.compile(r"\d{2}:\d{2}")
@@ -99,6 +109,19 @@ def append_line(path, line):
         return 4, ("DUAL-TIMESTAMP-REJECT: 目标行含 %d 处 HH:MM（≥%d）——二手时标引用面"
                    "（BC-P-45 升格·与 qa_smoke no.8 读侧同判据）·改写：二手时刻一律 x 形"
                    "（如 20:49x / 23:2x / 15:1x-22:3x）或去冒号后重试") % (n_ts, DUAL_TS_LIMIT)
+    # J8 mojibake 闸（T145·判据单源=ledger_encoding_guard.classify）
+    try:
+        enc = _enc_classify(line)
+        n_dbl, n_fffd = len(enc["utf8_double"]), enc["fffd"]
+        recovered = enc["utf8_double"][0]["recovered"] if enc["utf8_double"] else ""
+    except Exception as e:  # 闸自身异常 = fail-closed 拒写（宁拒不写）
+        return 4, "LINT-ERROR: J8 mojibake 闸自身异常——fail-closed 拒写（%s）" % e
+    if enc["status"] != "ENCODING-OK":
+        hint = ("（该段应读作「%s」）" % recovered) if recovered else ""
+        return 6, ("MOJIBAKE-REJECT: 目标行含编码损伤 utf8_double=%d fffd=%d——"
+                   "疑似 UTF-8 被当 ANSI/Latin-1 往返（T145·BC-P-16 同族）。"
+                   "正解=重打该段中文%s，或写入前先 strict UTF-8 校验"
+                   % (n_dbl, n_fffd, hint))
     # J4 尾行守卫：既有尾字节非 \n 时先补换行，防新行并入既有尾行（T50 判例）
     tail_nl_fix = bool(text) and not raw.endswith(b"\n")
     with io.open(path, "a", encoding="utf-8", newline="") as f:
@@ -184,6 +207,17 @@ def _selftest():
         ok1, m1 = _verify_readback(p3, "23:0x 刻痕：复活实锚（20:49x 击发·22:3x 再执法）")
         ok2, m2 = _verify_readback(p3, "这行不在文件里")
         run("S14 回读断言双态", ok1 and not ok2 and "ALERT-READBACK-MISMATCH" in m2, (m1 + " / " + m2)[:120])
+        # S15 真双子转义拒写（J8·T145）：UTF-8 字节被 Latin-1 误读再存 → exit 6 零污
+        before = open(p3, "rb").read()
+        c, m = append_line(p3, "损坏 " + "中文".encode("utf-8").decode("latin-1"))
+        run("S15 双子转义拒写 exit6",
+            c == 6 and "MOJIBAKE-REJECT" in m and open(p3, "rb").read() == before, m[:100])
+        # S16 U+FFFD 拒写（J8）：替换符即损伤，不必等双子转义成形
+        c, m = append_line(p3, "含替换符 中文\ufffd\ufffd正文")
+        run("S16 替换符拒写 exit6", c == 6 and open(p3, "rb").read() == before, m[:100])
+        # S17 合法排版符/西文重音不误拒（J8 边界）：§·×¥ 与 é ü 必过
+        c, m = append_line(p3, "Ren\u00e9e M\u00fcller §二 · 门控 × 上限 ¥29.9")
+        run("S17 合法拉丁符放行", c == 0 and "§二" in open(p3, "rb").read().decode("utf-8"), m[:100])
 
     n_pass = sum(1 for _, ok, _ in checks if ok)
     for name, ok, detail in checks:

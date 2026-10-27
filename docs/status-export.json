@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-10-27 21:22",
- "current_activity": "2026-10-27 21:00 轮：T144 done（CEO 实况面 compose 自动生成·产品优先律 2 分件）：status_export_check.py 新增 compose/compose_lines 三源机械拼装（末轮 queue 段·最新实物 mtime·首个未闭合队列行）+overrides 只追加不替换；selftest 8→14/14（I 三源漂移注入/J 账本 mojibake 不出面/K 追加语义/L 空树非空/M pycache 不计实物/",
- "latest_artifact": "qa/smoke-20261027-2122.png（mtime 2026-10-27 21:22）",
+ "updated_at": "2026-10-27 21:35",
+ "current_activity": "2026-10-27 21:00 轮：T145 done（产品优先律 2 分件·主结论=立行前提被字节证据推翻）：rounds.log 普查 strict-UTF8 OK·U+FFFD=0·324/324 行含中文·真双子转义 0 处·4,255 个拉丁区字符全为合法 §·×¥ → T145 三条前提不成立（T144 所见「只能取 ASCII」=GBK 控制台渲染+Out-File 转码假象），历史行零改写；真残留风险=写侧回归，收口三层=①Tools/ledger_enc",
+ "latest_artifact": "state/clean-window-log.jsonl（mtime 2026-10-27 21:35）",
  "next_milestone": "M4 接产对齐矩阵 blocked 项随开店/平台后台逐项销 ⬜（T-27 余项）（队列状态=open）"
 }
