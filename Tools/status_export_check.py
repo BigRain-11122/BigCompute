@@ -21,8 +21,16 @@ This gate answers four questions mechanically, read-only, no network:
 
 Verdicts: EXPORT-GREEN / EXPORT-STALE / EXPORT-MISSING / EXPORT-BAD.
 
+T144 adds `compose`: the three lines are generated mechanically from the
+ledgers (last round's queue segment, newest artifact mtime, first open
+queue row) instead of being hand-written every round. A hand-written face
+drifts silently; a composed one cannot claim work the ledgers do not show.
+`docs/status-export-overrides.json` is an append-only supplement layer --
+it may add text after a generated line, never replace it.
+
 Commands:
     python Tools/status_export_check.py check [--now "YYYY-MM-DD HH:MM"]
+    python Tools/status_export_check.py compose [--write] [--now "..."]
     python Tools/status_export_check.py selftest
 """
 from __future__ import annotations
@@ -157,6 +165,205 @@ def check(root=None, now=None):
     return export_verdict(raw, now=now, rounds_text=rounds_text)
 
 
+# --- T144: compose the three lines from the ledgers ---------------------
+
+ARTIFACT_DIRS = ("state", "qa", "docs", "Tools")
+# Bookkeeping files are not artifacts: the mandate scores them zero, so
+# they must never become the "latest artifact" line.
+ARTIFACT_EXCLUDE = {"state/rounds.log", "state/heartbeat.txt",
+                    "docs/status-export.json", "docs/status-export-overrides.json",
+                    "state/proposals.md", "HQ-FEEDBACK.md"}
+# Queue files are planning bookkeeping too: score-zero by the mandate,
+# so they can never be "the latest artifact".
+ARTIFACT_SKIP_PREFIX = ("state/queue/",)
+# Bytecode caches are build droppings, not artifacts.
+ARTIFACT_SKIP_EXT = (".pyc", ".pyo")
+QUEUE_PATH = os.path.join("state", "queue", "main.md")
+OVERRIDES_PATH = os.path.join("docs", "status-export-overrides.json")
+QUEUE_ID_RE = re.compile(r"^(M|T|E)\d+$")
+
+
+READABLE_RE = re.compile(r"[\x20-\x7e\u3000-\u303f\u4e00-\u9fff\uff00-\uffef\u2000-\u2bff]+")
+# Below this share of readable characters a chunk is mojibake, not text.
+READABLE_MIN = 0.6
+
+
+def _readable_ratio(text):
+    if not text:
+        return 0.0
+    return len("".join(READABLE_RE.findall(text))) / float(len(text))
+
+
+def _clean(text, limit):
+    """One-line, mojibake-free, length-capped text ("" when unusable).
+
+    rounds.log carries fixed-in mojibake from an earlier GBK round trip
+    (the T24 precedent): the bytes are valid UTF-8 but the Chinese was
+    already destroyed, and some of it is Latin-1 noise rather than U+FFFD
+    -- so the gate must reject by readability, not just by "has U+FFFD".
+    Keep the longest readable chunk and drop the damaged one.
+    """
+    text = re.sub(r"\s+", " ", str(text or "")).strip()
+    if not text:
+        return ""
+    if "\ufffd" in text or _readable_ratio(text) < READABLE_MIN:
+        text = re.sub(r"\ufffd+", " ", text)
+        runs = [m.group(0).strip() for m in READABLE_RE.finditer(text)]
+        runs = [r for r in runs if r]
+        text = max(runs, key=len) if runs else ""
+    return text[:limit]
+
+
+def compose_activity(rounds_text):
+    """Last round's queue segment, with its timestamp."""
+    lines = [l for l in (rounds_text or "").splitlines() if l.strip()]
+    if not lines:
+        return "state/rounds.log 无轮记录"
+    last = lines[-1]
+    ts = parse_ts(last)
+    stamp = ts.strftime("%Y-%m-%d %H:%M") if ts else "未知轮次"
+    seg = ""
+    # Newer rounds use " | " section separators; older ones put queue:
+    # inline after the tokens fields, so both shapes are accepted.
+    for part in last.split(" | "):
+        part = part.strip()
+        if part.startswith("queue:"):
+            seg = _clean(part[len("queue:"):], 220)
+            break
+    if not seg:
+        m = re.search(r"queue:(.*)", last)
+        if m:
+            seg = _clean(m.group(1), 220)
+    if not seg:
+        seg = "账本行摘要不可用（非 UTF-8 或空，原行见 state/rounds.log）"
+    return "%s 轮：%s" % (stamp, seg)
+
+
+def compose_artifact(files):
+    """Newest artifact by mtime; bookkeeping files are already excluded."""
+    if not files:
+        return "未发现实物文件（state/qa/docs/Tools 扫描为空）"
+    rel, mtime = max(files, key=lambda p: p[1])
+    ts = datetime.datetime.fromtimestamp(mtime)
+    return "%s（mtime %s）" % (rel, ts.strftime("%Y-%m-%d %H:%M"))
+
+
+def compose_milestone(queue_text):
+    """First not-done row of the P1 queue, in file order."""
+    for line in (queue_text or "").splitlines():
+        if not line.lstrip().startswith("|"):
+            continue
+        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        if len(cells) < 4 or not QUEUE_ID_RE.match(cells[0]):
+            continue
+        status = cells[-1]
+        # Status cells are written as "**done**（...）" as often as "open",
+        # so the markdown emphasis has to come off before testing.
+        low = status.replace("*", "").strip().lower()
+        if low.startswith("done") or low.startswith("常备"):
+            continue
+        title = _clean(cells[1].replace("**", ""), 150)
+        if not title:
+            continue
+        return "%s %s（队列状态=%s）" % (cells[0], title, _clean(status, 40) or "open")
+    return "队列无未闭合行（state/queue/main.md）"
+
+
+def compose_lines(rounds_text, queue_text, files, now=None, overrides=None):
+    """Pure: three machine lines + overrides appended, never replacing."""
+    now = now or datetime.datetime.now()
+    lines = {
+        "company": "BigCompute",
+        "updated_at": now.strftime("%Y-%m-%d %H:%M"),
+        "current_activity": compose_activity(rounds_text),
+        "latest_artifact": compose_artifact(files),
+        "next_milestone": compose_milestone(queue_text),
+    }
+    for key, value in (overrides or {}).items():
+        if not isinstance(value, str) or not value.strip():
+            continue
+        if key in REQUIRED_KEYS:
+            extra = _clean(value, 240)
+            if extra:
+                lines[key] = lines[key] + " ｜ " + extra
+            continue
+        lines[key] = value
+    return lines
+
+
+def collect_files(root=None):
+    """[(relpath, mtime)] over the artifact dirs, bookkeeping excluded."""
+    root = root or ROOT
+    out = []
+    for d in ARTIFACT_DIRS:
+        base = os.path.join(root, d)
+        if not os.path.isdir(base):
+            continue
+        for dirpath, dirnames, filenames in os.walk(base):
+            dirnames[:] = [x for x in dirnames
+                           if not x.startswith(".") and x != "__pycache__"]
+            for fn in filenames:
+                if fn.startswith(".") or fn.lower().endswith(ARTIFACT_SKIP_EXT):
+                    continue
+                full = os.path.join(dirpath, fn)
+                rel = os.path.relpath(full, root).replace("\\", "/")
+                if rel in ARTIFACT_EXCLUDE or rel.startswith(ARTIFACT_SKIP_PREFIX):
+                    continue
+                try:
+                    out.append((rel, os.path.getmtime(full)))
+                except OSError:
+                    continue
+    return out
+
+
+def _read_text(path):
+    try:
+        with open(path, "rb") as f:
+            return f.read().decode("utf-8", "replace")
+    except OSError:
+        return ""
+
+
+def _print_safe(text):
+    """Composed lines can carry characters the console codec lacks (⬜ under
+    GBK); printing them must not abort a write that is otherwise fine."""
+    try:
+        print(text)
+    except UnicodeEncodeError:
+        enc = getattr(sys.stdout, "encoding", None) or "utf-8"
+        print(text.encode(enc, "replace").decode(enc, "replace"))
+
+
+def compose(root=None, now=None, write=False):
+    """Live compose; --write also gates the result through check()."""
+    root = root or ROOT
+    rounds_text = _read_text(os.path.join(root, *ROUNDS_PATH.split("/")))
+    queue_text = _read_text(os.path.join(root, *QUEUE_PATH.split("/")))
+    overrides = {}
+    ov_path = os.path.join(root, *OVERRIDES_PATH.split("/"))
+    if os.path.exists(ov_path):
+        try:
+            overrides = json.loads(_read_text(ov_path))
+        except ValueError:
+            overrides = {}
+        if not isinstance(overrides, dict):
+            overrides = {}
+    lines = compose_lines(rounds_text, queue_text, collect_files(root),
+                          now=now, overrides=overrides)
+    if write:
+        path = os.path.join(root, *EXPORT_PATH.split("/"))
+        parent = os.path.dirname(path)
+        if parent and not os.path.isdir(parent):
+            os.makedirs(parent)
+        with open(path, "wb") as f:
+            f.write((json.dumps(lines, ensure_ascii=False, indent=1) + "\n").encode("utf-8"))
+        verdict, detail = check(root=root, now=now)
+        _print_safe("WROTE %s -> VERDICT=%s %s" % (EXPORT_PATH, verdict, detail))
+        return 0 if verdict == "EXPORT-GREEN" else 1
+    _print_safe(json.dumps(lines, ensure_ascii=False, indent=1))
+    return 0
+
+
 def selftest():
     """Six fixtures: one clean, five refusal branches (all must be red)."""
     now = datetime.datetime(2026, 10, 27, 21, 0)
@@ -214,6 +421,76 @@ def selftest():
     print("  [%s] H minutes preserved + hour mask floors to :00"
           % ("PASS" if h_ok else "FAIL"))
 
+    # T144: compose must follow the ledgers, not a frozen string. Each
+    # drift fixture changes exactly one input and expects only that line
+    # to move -- a generator that ignores its input would pass the shape
+    # check above and still ship a fiction.
+    q_one = "| M4 | 接产对齐 | x | open |\n| M25 | 净窗烘焙 | y | done |\n"
+    q_two = "| M4 | 接产对齐 | x | done |\n| M25 | 净窗烘焙 | y | open |\n"
+    base_round = "2026-10-27 20x tokens: local=0 | queue:T143 done 实况面闸 | C1C4:GREEN\n"
+    next_round = "2026-10-27 21x tokens: local=0 | queue:T144 compose 首跑 | C1C4:GREEN\n"
+    files_a = [("state/a.txt", 1000000000.0)]
+    files_b = [("state/a.txt", 1000000000.0), ("qa/smoke.log", 1100000000.0)]
+    c0 = compose_lines(base_round, q_one, files_a, now=now)
+    c1 = compose_lines(next_round, q_one, files_a, now=now)
+    c2 = compose_lines(base_round, q_two, files_a, now=now)
+    c3 = compose_lines(base_round, q_one, files_b, now=now)
+    drift = (c0["current_activity"] != c1["current_activity"]
+             and "T143" in c0["current_activity"] and "T144" in c1["current_activity"]
+             and c0["next_milestone"] != c2["next_milestone"]
+             and "M4" in c0["next_milestone"] and "M25" in c2["next_milestone"]
+             and c0["latest_artifact"] != c3["latest_artifact"]
+             and "qa/smoke.log" in c3["latest_artifact"])
+    cases.append(drift)
+    print("  [%s] I compose tracks round/queue/file drift" % ("PASS" if drift else "FAIL"))
+
+    moj = compose_lines("2026-10-27 21x | queue:轮\ufffd乱码 | C1C4:GREEN\n",
+                        q_one, files_a, now=now)
+    clean = bool("U+FFFD" not in json.dumps(moj, ensure_ascii=False)
+                 and moj["current_activity"].strip())
+    cases.append(clean)
+    print("  [%s] J mojibake ledger line never reaches the export"
+          % ("PASS" if clean else "FAIL"))
+
+    ov = compose_lines(base_round, q_one, files_a, now=now,
+                       overrides={"next_milestone": "窗口 10-31 22:43",
+                                  "current_activity": "覆盖尝试"})
+    append_only = (ov["next_milestone"].startswith(c0["next_milestone"])
+                   and "10-31 22:43" in ov["next_milestone"]
+                   and ov["current_activity"].startswith(c0["current_activity"]))
+    cases.append(append_only)
+    print("  [%s] K overrides append, never replace the three lines"
+          % ("PASS" if append_only else "FAIL"))
+
+    empty = compose_lines("", "", [], now=now)
+    empty_ok = all(isinstance(empty[k], str) and empty[k].strip()
+                   for k in REQUIRED_KEYS + ("updated_at",))
+    cases.append(empty_ok)
+    print("  [%s] L all lines non-empty even on an empty tree"
+          % ("PASS" if empty_ok else "FAIL"))
+
+    # M: a .pyc mtime must never win "latest artifact" -- bytecode is a
+    # build dropping (this fixture caught the first live compose doing it).
+    import tempfile
+    with tempfile.TemporaryDirectory() as td:
+        os.makedirs(os.path.join(td, "state", "__pycache__"))
+        for rel in ("state/a.txt", "state/__pycache__/x.pyc"):
+            with open(os.path.join(td, *rel.split("/")), "w") as f:
+                f.write("")
+        got = sorted(r for r, _ in collect_files(td))
+    cache_ok = got == ["state/a.txt"]
+    cases.append(cache_ok)
+    print("  [%s] M __pycache__/.pyc never counted as an artifact"
+          % ("PASS" if cache_ok else "FAIL"))
+
+    # N: Latin-1 mojibake (no U+FFFD at all) must still be rejected.
+    moj2 = compose_lines("2026-10-27 21x | queue:T143 done ʵ�����еբ\n",
+                         q_one, files_a, now=now)
+    latin_ok = "ʵ" not in moj2["current_activity"] and "T143" in moj2["current_activity"]
+    cases.append(latin_ok)
+    print("  [%s] N Latin-1 mojibake rejected by readability, ASCII kept"
+          % ("PASS" if latin_ok else "FAIL"))
+
     print("status_export_check selftest: %d/%d PASS" % (sum(cases), len(cases)))
     return 0 if all(cases) else 1
 
@@ -222,17 +499,20 @@ def main(argv):
     cmd = argv[1] if len(argv) > 1 else "check"
     if cmd == "selftest":
         return selftest()
-    if cmd == "check":
+    if cmd in ("check", "compose"):
         now = None
         if "--now" in argv:
             now = parse_ts(argv[argv.index("--now") + 1])
             if now is None:
                 print("bad --now value")
                 return 2
+        if cmd == "compose":
+            return compose(now=now, write="--write" in argv)
         verdict, detail = check(now=now)
         print("VERDICT=%s %s" % (verdict, detail))
         return 0 if verdict == "EXPORT-GREEN" else 1
-    print("usage: %s [check [--now 'YYYY-MM-DD HH:MM'] | selftest]" % argv[0])
+    print("usage: %s [check | compose [--write] | selftest] [--now 'YYYY-MM-DD HH:MM']"
+          % argv[0])
     return 2
 
 

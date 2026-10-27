@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-10-27 20:42",
- "current_activity": "20:3x-20:4x 令牌轮：CEO 实况面机械闸（T143）——mandate 第 5 条三行 export 首次受机械门，四问=strict UTF-8/JSON、三键非空无 U+FFFD、≤48h、不落后轮账（>2h=STALE）；已入 qa_smoke 探针 no.14 每轮跑，live EXPORT-GREEN",
- "latest_artifact": "compute/BigCompute/Tools/status_export_check.py（新件·selftest 8/8 七拒绝分支）+ qa/smoke-20261027-2040.log（smoke 11/13·两 FAIL=L1 前置件缺位已知面）— 2026-10-27 20:42",
- "next_milestone": "①T144 实况面 compose 自动生成（下一轮收尾窗首跑，owner=本司夜班）；②本司 10-31 22:43 N1 月末归集一命令（机械链 9/9 就绪）；③L1 :8090 恢复候模型供应窗/HQ 授权域，本司零自决重启"
+ "updated_at": "2026-10-27 21:22",
+ "current_activity": "2026-10-27 21:00 轮：T144 done（CEO 实况面 compose 自动生成·产品优先律 2 分件）：status_export_check.py 新增 compose/compose_lines 三源机械拼装（末轮 queue 段·最新实物 mtime·首个未闭合队列行）+overrides 只追加不替换；selftest 8→14/14（I 三源漂移注入/J 账本 mojibake 不出面/K 追加语义/L 空树非空/M pycache 不计实物/",
+ "latest_artifact": "qa/smoke-20261027-2122.png（mtime 2026-10-27 21:22）",
+ "next_milestone": "M4 接产对齐矩阵 blocked 项随开店/平台后台逐项销 ⬜（T-27 余项）（队列状态=open）"
 }
