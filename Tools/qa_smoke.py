@@ -422,13 +422,76 @@ def parse_serve_paths(text):
     return out
 
 
-def serve_artifact_verdict(paths, exists=None):
-    """T140 pure: PASS iff both prerequisites are on disk.
+ARTIFACT_MIN_BYTES = {"gguf": 1 << 20, "pe": 64 << 10}
+
+
+def artifact_kind(path):
+    """T141: format class from the file extension ('' when unknown)."""
+    ext = os.path.splitext(path or "")[1].lower()
+    if ext == ".gguf":
+        return "gguf"
+    if ext in (".exe", ".dll"):
+        return "pe"
+    return "unknown"
+
+
+def inspect_artifact(path, kind=None, min_bytes=None, read_head=None,
+                     size_of=None):
+    """T141 pure: format-level integrity, NOT a load test.
+
+    T140 answers "is it on disk"; that is not the same question as "can
+    anything open it" - R-53 shipped a 17.01GB INT8 DiT that was truncated
+    and still returned Test-Path=True, then burned a whole batch. Here we
+    check only what is cheap and non-destructive:
+      gguf - magic 'GGUF' + size floor (a truncation below the floor is
+             PRESENT-SUSPECT, not a silent pass)
+      pe   - 'MZ' + e_lfanew -> 'PE\\0\\0' + size floor
+    A file can pass this and still fail to load; the probe says so in its
+    verdict text rather than implying a guarantee.
+    """
+    kind = kind or artifact_kind(path)
+    if kind == "unknown":
+        return "UNCHECKED", ("no integrity rule for extension %r"
+                             % (os.path.splitext(path or "")[1] or "none"))
+    read_head = read_head or (lambda p, n: open(p, "rb").read(n))
+    size_of = size_of or os.path.getsize
+    try:
+        head = read_head(path, 0x1000)
+        size = size_of(path)
+    except Exception as e:  # noqa: BLE001 - unreadable file is a verdict
+        return "UNREADABLE", "%s: %r" % (os.path.basename(path), e)
+    if kind == "gguf":
+        if head[:4] != b"GGUF":
+            return "PRESENT-CORRUPT", ("magic=%r (expected b'GGUF')"
+                                       % head[:4])
+        floor = ARTIFACT_MIN_BYTES["gguf"] if min_bytes is None else min_bytes
+        if size < floor:
+            return "PRESENT-SUSPECT", ("size=%d < floor=%d (truncated?)"
+                                       % (size, floor))
+        return "PRESENT-OK", "GGUF size=%d" % size
+    if head[:2] != b"MZ":
+        return "PRESENT-CORRUPT", "magic=%r (expected b'MZ')" % head[:2]
+    if len(head) < 0x40:
+        return "PRESENT-CORRUPT", "header too short (%d bytes)" % len(head)
+    e_lfanew = int.from_bytes(head[0x3C:0x40], "little")
+    if (e_lfanew <= 0 or len(head) < e_lfanew + 4
+            or head[e_lfanew:e_lfanew + 4] != b"PE\x00\x00"):
+        return "PRESENT-CORRUPT", ("PE signature missing at e_lfanew=%d"
+                                   % e_lfanew)
+    floor = ARTIFACT_MIN_BYTES["pe"] if min_bytes is None else min_bytes
+    if size < floor:
+        return "PRESENT-SUSPECT", ("size=%d < floor=%d"
+                                   % (size, floor))
+    return "PRESENT-OK", "PE size=%d" % size
+
+
+def serve_artifact_verdict(paths, exists=None, inspect=None):
+    """T140/T141 pure: PASS iff both prerequisites are present AND sane.
 
     Read-only by design. Restoring artifacts belongs to the model-supply
     window (M82 / D-20261024-17) and the group launcher; this suite only
-    makes absence visible. UNVERIFIED when the constants could not be
-    parsed.
+    makes absence and obvious corruption visible. UNVERIFIED when the
+    constants could not be parsed.
     """
     if not paths:
         return True, ("UNVERIFIED: coder-serve.ps1 model/exe constants not "
@@ -445,17 +508,29 @@ def serve_artifact_verdict(paths, exists=None):
                        "window / group launcher, this suite only makes it "
                        "visible)"
                        % ", ".join("%s=%s" % (k, paths[k]) for k in missing))
-    return True, ("artifacts in place: model=%s exe=%s"
+    if inspect:
+        bad = []
+        for k in ("model", "exe"):
+            state, detail = inspect(paths[k])
+            if state != "PRESENT-OK":
+                bad.append("%s=%s(%s)" % (k, state, detail))
+        if bad:
+            return False, ("LANE-ARTIFACT-BAD %s - present but not a sane "
+                           "artifact (format-level check only: magic + size "
+                           "floor, not a load test); a truncated file would "
+                           "otherwise burn a batch (R-53 17.01GB case)"
+                           % "; ".join(bad))
+    return True, ("artifacts in place and sane: model=%s exe=%s"
                   % (os.path.basename(paths["model"]),
                      os.path.basename(paths["exe"])))
 
 
-def probe_serve_artifacts(script=None, exists=None):
-    """Probe no.13 (T140): lane prerequisite artifacts on disk.
+def probe_serve_artifacts(script=None, exists=None, inspect=None):
+    """Probe no.13 (T140 presence + T141 integrity): lane prerequisites.
 
     Blind spot: every live probe in this suite watches a socket, so a
-    missing model/exe stays invisible until something dies. Two Test-Path
-    checks against the launcher's own constants close that gap.
+    missing or truncated model/exe stays invisible until something dies.
+    Two checks against the launcher's own constants close that gap.
     """
     script = script or SERVE_SCRIPT
     try:
@@ -464,7 +539,8 @@ def probe_serve_artifacts(script=None, exists=None):
     except Exception:  # noqa: BLE001 - unreadable script = no verdict
         return True, ("UNVERIFIED: cannot read %s - no verdict, no false "
                       "alarm" % script)
-    return serve_artifact_verdict(parse_serve_paths(text), exists)
+    return serve_artifact_verdict(parse_serve_paths(text), exists,
+                                  inspect or inspect_artifact)
 
 
 CODER_EXPECTED_IMAGE = "llama-server.exe"
@@ -817,15 +893,31 @@ def selftest_cost_contract():
     return 0 if all(results) else 1
 
 
-def selftest_serve_artifacts():
-    """T140 fixtures for serve_artifact_verdict().
+def _pe_fixture(header_ok=True, size=0x200):
+    """T141 fixture builder: minimal byte image with/without a PE header."""
+    buf = bytearray(b"\x00" * size)
+    buf[0:2] = b"MZ"
+    buf[0x3C:0x40] = (0x80).to_bytes(4, "little")
+    buf[0x80:0x84] = b"PE\x00\x00" if header_ok else b"PX\x00\x00"
+    return bytes(buf)
 
-    Live can only show today's state (both artifacts absent), so the PASS
-    branch and the drift branch are pinned synthetically:
+
+def selftest_serve_artifacts():
+    """T140/T141 fixtures for presence, integrity and the combined verdict.
+
+    Live can only show today's state (both artifacts absent), so PASS and
+    the drift branches are pinned synthetically:
       A both on disk        -> PASS
       B model absent        -> FAIL naming the missing key
       C exe absent          -> FAIL naming the missing key
       D constants unparsed  -> UNVERIFIED, ok=True (never a false P1)
+      E gguf magic + floor  -> PRESENT-OK
+      F gguf below floor    -> PRESENT-SUSPECT (truncation is not a pass)
+      G gguf bad magic      -> PRESENT-CORRUPT
+      H pe MZ + PE + floor  -> PRESENT-OK
+      I pe bad PE sig       -> PRESENT-CORRUPT
+      J missing file        -> UNREADABLE
+      K verdict + corrupt   -> FAIL LANE-ARTIFACT-BAD
     """
     text = ("$model = 'C:\\m\\q.gguf'\n"
             "$exe   = 'C:\\m\\llama-server.exe'\n")
@@ -842,7 +934,7 @@ def selftest_serve_artifacts():
          lambda p: True, True, "UNVERIFIED"),
     ]
     results = []
-    print("qa_smoke probe no.13 selftest (T140 lane artifact presence)")
+    print("qa_smoke probe no.13 selftest (T140 presence + T141 integrity)")
     for label, p, exists, want_ok, needle in cases:
         ok, detail = serve_artifact_verdict(p, exists)
         good = ok == want_ok and needle in detail
@@ -850,6 +942,56 @@ def selftest_serve_artifacts():
         print("  [%s] %s" % ("PASS" if good else "FAIL", label))
         if not good:
             print("    detail: ok=%s %s" % (ok, detail))
+
+    # Integrity fixtures read real temp bytes, so the reader is exercised
+    # exactly as on disk (no monkey-patched magic strings).
+    import shutil
+    import tempfile
+    tmp = tempfile.mkdtemp(prefix="qa-integrity-selftest-")
+    gguf_ok = os.path.join(tmp, "ok.gguf")
+    with open(gguf_ok, "wb") as f:
+        f.write(b"GGUF" + b"\x00" * 64)
+    gguf_bad = os.path.join(tmp, "bad.gguf")
+    with open(gguf_bad, "wb") as f:
+        f.write(b"GGUX" + b"\x00" * 64)
+    pe_ok = os.path.join(tmp, "ok.exe")
+    with open(pe_ok, "wb") as f:
+        f.write(_pe_fixture(True))
+    pe_bad = os.path.join(tmp, "bad.exe")
+    with open(pe_bad, "wb") as f:
+        f.write(_pe_fixture(False))
+    integ = [
+        ("gguf magic + floor", gguf_ok, 4, "PRESENT-OK"),
+        ("gguf below floor", gguf_ok, 1 << 20, "PRESENT-SUSPECT"),
+        ("gguf bad magic", gguf_bad, 4, "PRESENT-CORRUPT"),
+        ("pe header valid", pe_ok, 0x100, "PRESENT-OK"),
+        ("pe bad signature", pe_bad, 0x100, "PRESENT-CORRUPT"),
+        ("missing file", os.path.join(tmp, "nope.gguf"), 4, "UNREADABLE"),
+    ]
+    for label, path, floor, want in integ:
+        state, detail = inspect_artifact(path, min_bytes=floor)
+        good = state == want
+        results.append(good)
+        print("  [%s] %s -> %s" % ("PASS" if good else "FAIL", label, state))
+        if not good:
+            print("    want=%s got=%s (%s)" % (want, state, detail))
+
+    # Combined verdict: present but corrupt must FAIL, not "in place".
+    ok, detail = serve_artifact_verdict(
+        paths, lambda p: True,
+        lambda p: inspect_artifact(
+            p, kind=artifact_kind(p),
+            read_head=lambda _p, _n: b"GGUX" if p.endswith(".gguf")
+            else _pe_fixture(True)[:0x1000],
+            size_of=lambda _p: 1 << 21))
+    good = (ok is False and "LANE-ARTIFACT-BAD" in detail)
+    results.append(good)
+    print("  [%s] verdict rejects corrupt artifact" % ("PASS" if good
+                                                       else "FAIL"))
+    if not good:
+        print("    detail: ok=%s %s" % (ok, detail))
+
+    shutil.rmtree(tmp, ignore_errors=True)
     print("selftest verdict: %d/%d PASS"
           % (len([r for r in results if r]), len(results)))
     return 0 if all(results) else 1
@@ -874,7 +1016,8 @@ def main():
                probe_supply_dual_fields),
               ("runbook size budget (T133)", probe_runbook_budget),
               ("cost contract census (T138)", probe_cost_contract),
-              ("lane artifacts on disk (T140)", probe_serve_artifacts)]
+              ("lane artifacts presence+integrity (T140/T141)",
+               probe_serve_artifacts)]
     lines, passed = [], 0
     lines.append("BigCompute QA smoke test %s (orders L254 / charter v1)"
                  % ts)
