@@ -34,6 +34,14 @@ Runs the four BigCompute charter checks (docs/qa-smoke-test-charter.md):
 12. cost contract census (T138): runs cost_contract_census.census()
     so the cost/quota/cloud/borrow/l1 writer->reader->month-end
     contract face is judged every round instead of by memory.
+16. resident QA 8792 /ask function (T153): probe no.6 reads /health,
+    which only says the HTTP layer is up. Live 2026-10-28 case: health
+    200 status=ok while /ask returned 503 because the :8090 backend was
+    dead -> the CEO observation window was functionally dead and this
+    suite still showed 8792 PASS. This probe walks the real click path
+    (whitelist anchor -> persona prompt -> LLM backend -> AIGC gate)
+    and names the exact false-green class; when the backend port has no
+    listener the POST is skipped (no wasted generation).
 
 Writes qa/smoke-<ts>.log with raw outputs + a self-judge verdict, then
 renders that exact log content to qa/smoke-<ts>.png via .NET
@@ -53,6 +61,7 @@ import os
 import re
 import subprocess
 import sys
+import urllib.error
 import urllib.request
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -64,6 +73,10 @@ OLLAMA_URL = "http://localhost:11434/api/generate"
 OLLAMA_TAGS_URL = "http://localhost:11434/api/tags"
 OLLAMA_MODEL = "qwen3:4b-instruct"  # flash-slot resident per Qwen v3 final switchover (O-20261015-1335/1500; old qwen2.5 family deleted by CEO order -- stale ref would auto-repull a deleted model)
 RESIDENT_QA_URL = "http://127.0.0.1:8792/health"
+RESIDENT_QA_ASK_URL = "http://127.0.0.1:8792/ask"
+QA_ASK_ANCHOR = "C-00010"  # 20-anchor whitelist member since 09-30 delivery
+QA_ASK_QUESTION = "\u4eca\u5929\u751f\u610f\u600e\u4e48\u6837\uff1f"  # zh: how is business today?
+QA_BACKEND_PORT = 8090  # resident_qa_server.LLM_URL default (env override read below)
 CODER_SERVE_URL = "http://127.0.0.1:8090/v1/models"
 
 PNG_PS_TEMPLATE = r"""
@@ -282,6 +295,123 @@ def probe_resident_qa():
         return False, ("resident QA serve 8792 LOST: %r "
                        "(CEO observation window - fix next round top "
                        "priority)" % e)
+
+
+def _ascii_safe(s, limit=160):
+    """Keep probe output printable on any console code page.
+
+    Payload strings come from a local service whose error bodies are
+    encoded in the host locale; a stray byte must never crash the round
+    log (and this file stays pure ASCII).
+    """
+    return re.sub(r"[^\x20-\x7e]", ".", str(s))[:limit]
+
+
+def qa_backend_port():
+    """Port the 8792 server calls for its LLM backend.
+
+    resident_qa_server reads RESIDENT_QA_LLM_URL; default is :8090. Env
+    override is honoured here so the probe follows a lane relocation
+    without code change (same contract as the server itself).
+    """
+    url = os.environ.get("RESIDENT_QA_LLM_URL")
+    if url:
+        m = re.search(r":(\d+)", url)
+        if m:
+            return int(m.group(1))
+    return QA_BACKEND_PORT
+
+
+def classify_qa_functional(health_ok, backend_listening, status=None,
+                           payload=None, err=None, port=None):
+    """T153 (probe no.16): pure verdict for the 8792 /ask end-to-end face.
+
+    Probe no.6 reads /health only, which reports that the HTTP server is
+    up and says nothing about the LLM backend /ask depends on. Live case
+    2026-10-28 03:2x: health 200 status=ok, /ask 503 "\u672c\u5730\u5927\u8111\u672a\u54cd\u5e94"
+    (<urlopen error [WinError 10061]>) - the CEO observation window was
+    functionally dead for days while this suite showed 8792 PASS.
+    Every branch below is FAIL except a real answer; nothing softened.
+    """
+    port = port or QA_BACKEND_PORT
+    if not health_ok:
+        return (False, "SERVER-DOWN",
+                "8792 /health unreachable (server dead, not a backend issue)")
+    if not backend_listening:
+        return (False, "HEALTH-OK-BACKEND-DOWN",
+                "8792 /health ok but LLM backend :%d has no listener -> "
+                "/ask cannot answer (health-only green = false green)"
+                % port)
+    if err is not None:
+        return (False, "ASK-ERROR",
+                "8792 /ask failed against a listening backend: %s"
+                % _ascii_safe(err))
+    if status == 200 and isinstance(payload, dict):
+        reply = str(payload.get("reply") or "")
+        gate = str(payload.get("gate") or "")
+        if reply and "\u672c\u5730AI\u751f\u6210" in gate:
+            return (True, "ASK-OK",
+                    "ask 200 reply_len=%d gate=%s"
+                    % (len(reply), _ascii_safe(gate, 60)))
+        return (False, "ASK-BAD-BODY",
+                "ask 200 but reply/gate contract broken: %s"
+                % _ascii_safe(payload))
+    if status == 503:
+        return (False, "BACKEND-ERROR",
+                "ask 503 backend did not answer: %s"
+                % _ascii_safe((payload or {}).get("detail")
+                              or (payload or {}).get("err")))
+    if status == 403:
+        return (False, "WHITELIST-CONFIG",
+                "ask 403 for anchor %s: %s -> probe anchor drifted out of "
+                "the whitelist (probe config, not a service fault)"
+                % (QA_ASK_ANCHOR, _ascii_safe((payload or {}).get("reason"))))
+    return (False, "ASK-HTTP-%s" % status,
+            "ask unexpected status %s body=%s"
+            % (status, _ascii_safe(payload)))
+
+
+def probe_resident_qa_functional(port_owner=None):
+    """Probe no.16 (T153): 8792 /ask end-to-end, the CEO-facing function.
+
+    /health is a liveness signal for the HTTP layer only. This probe
+    exercises the path a CEO click actually takes: whitelist anchor ->
+    persona prompt -> LLM backend -> gate disclosure. When the backend
+    port has no listener the POST is skipped (deterministic, no wasted
+    generation) and the verdict names the exact false-green class.
+    """
+    port = qa_backend_port()
+    try:
+        with urllib.request.urlopen(RESIDENT_QA_URL, timeout=10) as r:
+            h = json.loads(r.read().decode("utf-8", errors="replace"))
+        health_ok = r.status == 200 and h.get("status") == "ok"
+    except Exception as e:  # noqa: BLE001 - probe must not crash pipeline
+        ok, tok, det = classify_qa_functional(False, False, port=port)
+        return ok, "%s: %s [%s]" % (tok, det, _ascii_safe(e, 80))
+    owner = (port_owner or coder_port_owner)(port)
+    if not owner[0]:
+        ok, tok, det = classify_qa_functional(health_ok, False, port=port)
+        return ok, "%s: %s" % (tok, det)
+    body = json.dumps({"id": QA_ASK_ANCHOR, "q": QA_ASK_QUESTION}).encode("utf-8")
+    status, payload, err = None, None, None
+    try:
+        req = urllib.request.Request(
+            RESIDENT_QA_ASK_URL, data=body,
+            headers={"Content-Type": "application/json"})
+        with urllib.request.urlopen(req, timeout=40) as r:
+            status = r.status
+            payload = json.loads(r.read().decode("utf-8", errors="replace"))
+    except urllib.error.HTTPError as e:
+        status = e.code
+        try:
+            payload = json.loads(e.read().decode("utf-8", errors="replace"))
+        except Exception:  # noqa: BLE001 - body shape is bonus context
+            payload = {"raw": str(e)}
+    except Exception as e:  # noqa: BLE001 - timeout/socket errors alike
+        err = e
+    ok, tok, det = classify_qa_functional(health_ok, True, status, payload,
+                                          err, port)
+    return ok, "%s: %s" % (tok, det)
 
 
 SUPPLY_MARK_RE = re.compile(r"idle_selfcheck")
@@ -1053,11 +1183,73 @@ def selftest_serve_artifacts():
     return 0 if all(results) else 1
 
 
+def selftest_qa_functional():
+    """T153 fixtures: every classifier branch, with the live 10-28 class
+    first - the point of the probe is that 'health ok + no backend' must
+    never read as PASS again."""
+    results = []
+
+    def check(name, cond):
+        results.append(bool(cond))
+        print(("PASS " if cond else "FAIL ") + name)
+
+    r1 = classify_qa_functional(False, False)
+    check("Q1 server down -> SERVER-DOWN, not ok",
+          (not r1[0]) and r1[1] == "SERVER-DOWN")
+
+    r2 = classify_qa_functional(True, False)  # 2026-10-28 live class
+    check("Q2 health ok + backend down -> HEALTH-OK-BACKEND-DOWN, not ok",
+          (not r2[0]) and r2[1] == "HEALTH-OK-BACKEND-DOWN")
+
+    gate = "\u672c\u5730AI\u751f\u6210" + " qwen3.6-35b 42tok/2.1s"
+    r3 = classify_qa_functional(True, True, 200,
+                                {"reply": "ok answer", "gate": gate})
+    check("Q3 real answer + gate -> ASK-OK", r3[0] and r3[1] == "ASK-OK")
+
+    r4 = classify_qa_functional(True, True, 200,
+                                {"reply": "ok answer", "gate": "no marker"})
+    check("Q4 200 without AIGC gate marker -> ASK-BAD-BODY, not ok",
+          (not r4[0]) and r4[1] == "ASK-BAD-BODY")
+
+    r5 = classify_qa_functional(True, True, 503,
+                                {"err": "backend down", "detail": "refused"})
+    check("Q5 503 -> BACKEND-ERROR, not ok",
+          (not r5[0]) and r5[1] == "BACKEND-ERROR")
+
+    r6 = classify_qa_functional(True, True, 403, {"reason": "outside list"})
+    check("Q6 403 -> WHITELIST-CONFIG, not ok",
+          (not r6[0]) and r6[1] == "WHITELIST-CONFIG")
+
+    r7 = classify_qa_functional(True, True, None, None, "timed out")
+    check("Q7 timeout -> ASK-ERROR, not ok",
+          (not r7[0]) and r7[1] == "ASK-ERROR")
+
+    r8 = classify_qa_functional(True, True, 500, {"err": "boom"})
+    check("Q8 unexpected status -> ASK-HTTP-500, not ok",
+          (not r8[0]) and r8[1] == "ASK-HTTP-500")
+
+    check("Q9 probe anchor matches C-xxxxx and question fits 2..200",
+          bool(re.fullmatch(r"C-\d{5}", QA_ASK_ANCHOR))
+          and 2 <= len(QA_ASK_QUESTION) <= 200)
+
+    check("Q10 probe honours RESIDENT_QA_LLM_URL port override",
+          qa_backend_port() == QA_BACKEND_PORT
+          or os.environ.get("RESIDENT_QA_LLM_URL"))
+
+    check("Q11 ascii_safe strips non-printables (log stays printable)",
+          _ascii_safe("a\x81b") == "a.b"
+          and _ascii_safe("x" * 400, 10) == "x" * 10)
+
+    print("selftest qa-functional verdict: %d/%d PASS"
+          % (len([r for r in results if r]), len(results)))
+    return 0 if all(results) else 1
+
+
 def main():
     if len(sys.argv) > 1 and sys.argv[1] == "--selftest":
         return (selftest_tails() | selftest_coder_class()
                 | selftest_supply_fields() | selftest_cost_contract()
-                | selftest_serve_artifacts())
+                | selftest_serve_artifacts() | selftest_qa_functional())
     os.makedirs(QA_DIR, exist_ok=True)
     ts = datetime.datetime.now().strftime("%Y%m%d-%H%M")
     log_path = os.path.join(QA_DIR, "smoke-%s.log" % ts)
@@ -1075,7 +1267,9 @@ def main():
               ("lane artifacts presence+integrity (T140/T141)",
                probe_serve_artifacts),
               ("CEO status export (T143)", probe_status_export),
-              ("ledger encoding health (T145)", probe_ledger_encoding)]
+              ("ledger encoding health (T145)", probe_ledger_encoding),
+              ("resident QA 8792 /ask function (T153)",
+               probe_resident_qa_functional)]
     lines, passed = [], 0
     lines.append("BigCompute QA smoke test %s (orders L254 / charter v1)"
                  % ts)
@@ -1088,7 +1282,7 @@ def main():
         lines.append(detail)
         print("[%s] %s" % ("PASS" if ok else "FAIL", label))
     lines.append("")
-    verdict = "smoke verdict: %d/%d PASS (charter 4 + T25 + E41 + BC-P-45 no.8 + T122 no.9 + T132 no.10 + T133 no.11 + T138 no.12 + T140 no.13 + T143 no.14 + T145 no.15 probes)" % (
+    verdict = "smoke verdict: %d/%d PASS (charter 4 + T25 + E41 + BC-P-45 no.8 + T122 no.9 + T132 no.10 + T133 no.11 + T138 no.12 + T140 no.13 + T143 no.14 + T145 no.15 + T153 no.16 probes)" % (
         passed, len(probes))
     lines.append(verdict)
     with open(log_path, "w", encoding="utf-8") as f:
