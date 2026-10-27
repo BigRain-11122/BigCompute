@@ -18,7 +18,13 @@ next reader does not inherit an unproven premise as truth. Two backfilled
 cases: tech T145 (premise later disproved by byte census) and tech T139
 ("eCloud owns the port" later measured as zero listeners).
 
-Usage: python Tools/queue_check.py [--selftest]
+T147 closing step: --premise-line prints one deterministic segment
+("QUEUE premise_unverified=<n> open=<m>") that can be pasted straight into
+the rounds.log queue field next to the C1C4: segment. Deterministic means no
+timestamps and no ordering jitter, so two consecutive runs are byte-identical
+and the ledger segment stays diffable.
+
+Usage: python Tools/queue_check.py [--premise-line] [--selftest]
 Exit 0 always (informational probe; anomalies reported in text).
 Encoding rule: this file stays PURE ASCII (Chinese markers are \\u escapes).
 """
@@ -113,6 +119,24 @@ def count_file(path):
     return counts, rows
 
 
+def totals(queue_dir=None):
+    """Return (total_open, total_flagged) across the three queue files."""
+    base = queue_dir or QUEUE_DIR
+    total_open = 0
+    total_flagged = 0
+    for name in FILES:
+        counts, _rows, flagged = scan_file(os.path.join(base, name))
+        total_open += counts["open"]
+        total_flagged += len(flagged)
+    return total_open, total_flagged
+
+
+def premise_line(queue_dir=None):
+    """Deterministic ledger segment (no timestamp, stable order)."""
+    total_open, total_flagged = totals(queue_dir)
+    return "QUEUE premise_unverified=%d open=%d" % (total_flagged, total_open)
+
+
 def main():
     total_open = 0
     total_flagged = 0
@@ -191,6 +215,29 @@ def selftest():
     c, r, fl = scan_file(p7)
     check("S7 qa/ path clears", len(fl) == 0)
 
+    # S8: premise-line shape from a synthetic queue dir (one flagged row)
+    d8 = tempfile.mkdtemp(prefix="qc147_")
+    with open(os.path.join(d8, "main.md"), "w", encoding="utf-8") as f:
+        f.write(hdr
+                + "| A1 | row \u5df2\u635f\u574f | x | open |\n"
+                + "| A2 | plain | x | open |\n")
+    with open(os.path.join(d8, "tech.md"), "w", encoding="utf-8") as f:
+        f.write(hdr + "| B1 | plain | x | open |\n")
+    line = premise_line(d8)
+    check("S8 premise-line exact",
+          line == "QUEUE premise_unverified=1 open=3")
+
+    # S9: deterministic + timestamp-free (two runs byte-identical)
+    line2 = premise_line(d8)
+    check("S9 premise-line deterministic", line2 == line and ":" not in line)
+
+    # S10: real queue dir line is parseable and self-consistent
+    real = premise_line()
+    total_open, total_flagged = totals()
+    check("S10 real premise-line consistent",
+          real == "QUEUE premise_unverified=%d open=%d"
+                  % (total_flagged, total_open))
+
     ok = all(v for _n, v in checks)
     for name, v in checks:
         print("%s %s" % ("PASS" if v else "FAIL", name))
@@ -203,4 +250,7 @@ def selftest():
 if __name__ == "__main__":
     if "--selftest" in sys.argv:
         sys.exit(selftest())
+    if "--premise-line" in sys.argv:
+        print(premise_line())
+        sys.exit(0)
     sys.exit(main())

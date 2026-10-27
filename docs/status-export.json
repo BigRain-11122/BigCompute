@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-10-27 22:48",
- "current_activity": "2026-10-27 22:00 轮：T146 done（产品优先律 2 分件·队列立行前提律机制化）：state/queue/PREMISE-LAW.md 判据件落盘（律面+两案回填：T145 字节普查推翻「历史已损」／T139 实测推翻「eCloud 占端口」）+queue_check.py 增 premise 闸（七断言词×十七证据提示·只判 open 行·只列名不阻断·源码维持纯 ASCII 走 \\\\u 转义）selftest 8/8 PASS〔首跑 4/8 因夹具",
- "latest_artifact": "state/c1c4-20261027-224709.json（mtime 2026-10-27 22:47）",
+ "updated_at": "2026-10-28 00:20",
+ "current_activity": "2026-10-28 00:20 轮：T147 done(--premise-line 确定性段 selftest 11/11) T142 open->blocked 如实(models 根不在盘) T148 新立 | QUEUE premise_unverified=0 open=14 gpu:7d avg=16.2% n=1210 BELOW-BENCH/rolling30m 16.7% IDLE c1c4:C1C4-GREEN 4/4",
+ "latest_artifact": "state/clean-window-log.jsonl（mtime 2026-10-28 00:19）",
  "next_milestone": "M4 接产对齐矩阵 blocked 项随开店/平台后台逐项销 ⬜（T-27 余项）（队列状态=open）"
 }
