@@ -30,6 +30,12 @@ utf-8 显式编码唯一写入路径——轮账本/心跳 append 一律走本�
      误读后再存为 UTF-8，如「ä¸­æ–‡」）或 U+FFFD → 拒写 exit 6。
      判据单源=Tools/ledger_encoding_guard.py（与 qa_smoke no.15 读侧同函数）。
      边界如实=合法排版符 §·×¥ 与西文人名重音符不触发（8 夹具钉死）。
+  J9 CJK→? 闸（T151·10-28 立·J8 盲区补口）：shell stdin / --line 经 GBK 控制台
+     往返时中文逐字变 ASCII 「?」，结果整行是合法 UTF-8 纯 ASCII——J8（查双子
+     转义/U+FFFD）对此全盲，三次实锚（T24/T145 族·第三例=T150/T151 队列行）。
+     判据两条：①整行 non-ASCII=0 且含「?」→ 疑似整行 CJK 破坏（正身形态）；
+     ②任意处「??」连续 ≥2 → 破坏残留（混排行面）。命中 → 拒写 exit 7。
+     逃生门=--allow-ascii-qmark（真英文问句等合法 ASCII 行，显式声明放行）。
 """
 import argparse
 import io
@@ -49,6 +55,8 @@ except Exception:  # 同目录导入（被当脚本直跑时 sys.path[0] 已是 
 # 读侧 qa_smoke no.8（BC-P-45）heartbeat marker 同判据——写侧镜像（闸一致）
 HHMM_RE = re.compile(r"\d{2}:\d{2}")
 DUAL_TS_LIMIT = 2
+# J9（T151）：CJK 被 GBK 控制台吞成 ASCII 问号的破坏形态
+QMARK_RUN_RE = re.compile(r"\?{2,}")
 
 
 def _read_strict(path):
@@ -81,10 +89,11 @@ def _verify_readback(path, line):
     return True, "readback=ok"
 
 
-def append_line(path, line):
+def append_line(path, line, allow_ascii_qmark=False):
     """返回 (exit_code, message)。
 
     exit 0=APPENDED / 2=DUPLICATE / 3=CORRUPT / 4=DUAL-TS / 5=EMPTY-LINE
+    / 6=MOJIBAKE / 7=QMARK-CORRUPT
     """
     raw, text = _read_strict(path)
     if text is None:
@@ -122,6 +131,22 @@ def append_line(path, line):
                    "疑似 UTF-8 被当 ANSI/Latin-1 往返（T145·BC-P-16 同族）。"
                    "正解=重打该段中文%s，或写入前先 strict UTF-8 校验"
                    % (n_dbl, n_fffd, hint))
+    # J9 CJK→? 闸（T151）：纯 ASCII 却带问号 / 连续问号残留 = 疑似中文被 GBK 控制台吞掉
+    if not allow_ascii_qmark:
+        try:
+            n_nonascii = sum(1 for ch in line if ord(ch) > 0x7F)
+            n_run = len(QMARK_RUN_RE.findall(line))
+        except Exception as e:  # 闸自身异常 = fail-closed 拒写
+            return 4, "LINT-ERROR: J9 CJK→? 闸自身异常——fail-closed 拒写（%s）" % e
+        if n_nonascii == 0 and "?" in line:
+            return 7, ("QMARK-CORRUPT-REJECT: 整行 non-ASCII=0 却含「?」——中文疑被 GBK "
+                       "控制台逐字吞成问号（T151·J8 盲区正身）。正解=重打该行中文"
+                       "（写入走 python utf-8，勿经 shell stdin 传中文），或真为英文问句时"
+                       "显式加 --allow-ascii-qmark")
+        if n_run:
+            return 7, ("QMARK-CORRUPT-REJECT: 行内「??」连续问号 %d 处——破坏残留形态"
+                       "（T151 判据②·混排行面）。重打该段中文或 --allow-ascii-qmark 放行"
+                       % n_run)
     # J4 尾行守卫：既有尾字节非 \n 时先补换行，防新行并入既有尾行（T50 判例）
     tail_nl_fix = bool(text) and not raw.endswith(b"\n")
     with io.open(path, "a", encoding="utf-8", newline="") as f:
@@ -218,6 +243,20 @@ def _selftest():
         # S17 合法排版符/西文重音不误拒（J8 边界）：§·×¥ 与 é ü 必过
         c, m = append_line(p3, "Ren\u00e9e M\u00fcller §二 · 门控 × 上限 ¥29.9")
         run("S17 合法拉丁符放行", c == 0 and "§二" in open(p3, "rb").read().decode("utf-8"), m[:100])
+        # S18 整行 CJK→? 破坏拒写（J9·T151 正身：T150/T151 队列行形态）
+        before = open(p3, "rb").read()
+        c, m = append_line(p3, "01:5x ??? T151 ????????? T149 ?????????")
+        run("S18 整行问号破坏拒写 exit7",
+            c == 7 and "QMARK-CORRUPT" in m and open(p3, "rb").read() == before, m[:100])
+        # S19 混排行「??」残留拒写（J9 判据②：有中文但夹问号串）
+        c, m = append_line(p3, "T150 复评件：口径??未闭合，待补")
+        run("S19 混排问号串拒写 exit7", c == 7 and open(p3, "rb").read() == before, m[:100])
+        # S20 逃生门放行（--allow-ascii-qmark：真英文问句）
+        c, m = append_line(p3, "2026-10-28 round done: is the lane 8090 dark?", allow_ascii_qmark=True)
+        run("S20 逃生门放行", c == 0 and open(p3, "rb").read().decode("utf-8").endswith("dark?\n"), m[:100])
+        # S21 纯 ASCII 无问号不误拒（J9 零假阳性面：英文/数字行照常写）
+        c, m = append_line(p3, "2026-10-28 os-loop: round done exit=0")
+        run("S21 纯ASCII无问号放行", c == 0 and "exit=0" in open(p3, "rb").read().decode("utf-8"), m[:100])
 
     n_pass = sum(1 for _, ok, _ in checks if ok)
     for name, ok, detail in checks:
@@ -234,11 +273,13 @@ def main():
     a = sub.add_parser("append", help="追加一行（utf-8 显式编码）")
     a.add_argument("--file", required=True)
     a.add_argument("--line", required=True)
+    a.add_argument("--allow-ascii-qmark", action="store_true",
+                   help="放行含问号的纯 ASCII 行（J9 逃生门·真英文问句用）")
     sub.add_parser("selftest", help="自测（temp 夹具零污染）")
     args = ap.parse_args()
     if args.cmd == "selftest":
         sys.exit(_selftest())
-    code, msg = append_line(args.file, args.line)
+    code, msg = append_line(args.file, args.line, allow_ascii_qmark=args.allow_ascii_qmark)
     print(("APPEND " if code == 0 else "") + msg)
     if code == 0:
         print("NOTE: " + BUDGET_NOTE)

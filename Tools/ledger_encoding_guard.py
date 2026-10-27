@@ -40,7 +40,10 @@ Exit codes: 0 ok, 6 MOJIBAKE-SUSPECT, 3 unreadable input, 4 bad usage.
 import argparse
 import io
 import json
+import re
 import sys
+
+QMARK_RUN_RE = re.compile(r"\?{2,}")
 
 CJK_LO, CJK_HI = 0x4E00, 0x9FFF
 LAT_LO, LAT_HI = 0x80, 0xFF
@@ -98,8 +101,22 @@ def _double_decoded(run_text):
         return None
 
 
+def qmark_runs(text):
+    """T151: count runs of >=2 ASCII '?'.
+
+    Third damage class, invisible to both signatures above: Chinese text
+    pushed through a GBK console round-trip degrades to pure ASCII '?'.
+    The line stays valid UTF-8 with zero U+FFFD, so it reads as healthy.
+    Read-side uses only the >=2 run form (high precision on immutable
+    history - a lone '?' can be a legitimate English question); the
+    write-side J9 gate in round_append.py also rejects the whole-line
+    pure-ASCII-with-'?' form, with --allow-ascii-qmark as escape hatch.
+    """
+    return len(QMARK_RUN_RE.findall(text))
+
+
 def classify(text):
-    """-> dict(status, utf8_double, latin_runs, fffd, cjk_chars)"""
+    """-> dict(status, utf8_double, latin_runs, fffd, cjk_chars, qmark_runs)"""
     fffd = text.count("\ufffd")
     doubles = []
     for a, b in latin_runs(text):
@@ -116,6 +133,7 @@ def classify(text):
         "latin_runs": len(latin_runs(text)),
         "fffd": fffd,
         "cjk_chars": _cjk_count(text),
+        "qmark_runs": qmark_runs(text),
     }
 
 
@@ -144,6 +162,7 @@ def census(paths):
             "utf8_double_runs": len(cls["utf8_double"]),
             "latin_runs": cls["latin_runs"],
             "cjk_chars": cls["cjk_chars"],
+            "qmark_runs": cls["qmark_runs"],
             "samples": cls["utf8_double"][:3],
         })
     return rows
@@ -202,6 +221,15 @@ def _selftest():
     # H: single stray latin char cannot form a signature -> honest limitation
     c = classify("a\u00e4b")
     run("H single-char-not-flagged", c["status"] == "ENCODING-OK" and c["latin_runs"] == 1)
+
+    # I: CJK flattened to ASCII '?' (T151) shows up only as a qmark run count
+    c = classify("| T150 | ????????? T149 ?????????")
+    run("I qmark-run-counted", c["qmark_runs"] >= 2 and c["status"] == "ENCODING-OK",
+        "qmark_runs=%d" % c["qmark_runs"])
+
+    # J: lone '?' is left to the write-side gate only (read side stays precise)
+    c = classify("round done: is the lane dark?")
+    run("J lone-qmark-not-counted", c["qmark_runs"] == 0)
 
     passed = sum(1 for _, ok, _ in checks if ok)
     for name, ok, detail in checks:

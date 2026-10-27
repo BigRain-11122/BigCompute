@@ -419,6 +419,12 @@ def probe_ledger_encoding(root=None):
             "%s=%s(dbl=%s,fffd=%s)" % (os.path.basename(r["path"]), r["status"],
                                        r.get("utf8_double_runs", "-"), r.get("fffd", "-"))
             for r in bad)
+    qmark = [r for r in rows if r.get("qmark_runs", 0) > 0]
+    if qmark:
+        # T151: CJK->'?' damage is valid UTF-8 with no U+FFFD, so the
+        # signatures above cannot see it - it must be counted separately.
+        return False, "LEDGER-QMARK-BAD " + "; ".join(
+            "%s=%d" % (os.path.basename(r["path"]), r["qmark_runs"]) for r in qmark)
     tot = sum(r.get("cjk_chars", 0) for r in rows)
     return True, "ENCODING-OK files=%d cjk_chars=%d latin_runs=%d" % (
         len(rows), tot, sum(r.get("latin_runs", 0) for r in rows))

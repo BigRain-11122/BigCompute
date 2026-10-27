@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-10-28 01:56",
- "current_activity": "2026-10-28 01:5x 哨兵段轮：T149 done（L1 引用面普查工具落地 selftest 16/16·84 引用点六态分类·真 NO-FALLBACK=1 集团 bench_coder.py）| QUEUE premise_unverified=0 open=13 gpu:7d avg=16.1% n=1228 BELOW-BENCH/rolling30m 0.0% IDLE c1c4:C1C4-GREEN 4/4 | QA 12/14（8090 车道件缺失两探针=已知面 T148）",
- "latest_artifact": "docs/ops/l1-fallback-census-20261028.md（+state/l1-ref-census-20261028.json·01:5x）｜qa/smoke-20261028-0145.png",
- "next_milestone": "T150 回退面调用点级核验 + BC-P-128 L1 消费率止损线（10-28 到期）一页证据包 ≤10-29"
+ "updated_at": "2026-10-28 01:59",
+ "current_activity": "2026-10-28 02:00 轮：T151 done（round_append J9 CJK→问号闸 exit7+逃生门·selftest 21/21·读侧 ledger_encoding_guard qmark_runs 10/10+qa_smoke no.15 LEDGER-QMARK 支路·全库复扫仅 T150/T151 两队列行受损已复原·实弹拒写 exit7 零字节） gpu:7d avg=16.0% n=1231 BELOW-BENCH（门控型待机豁免·30",
+ "latest_artifact": "qa/smoke-20261028-0158.png（mtime 2026-10-28 01:58）",
+ "next_milestone": "M4 接产对齐矩阵 blocked 项随开店/平台后台逐项销 ⬜（T-27 余项）（队列状态=open）"
 }
