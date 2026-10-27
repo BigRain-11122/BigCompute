@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-10-27 03:20",
- "current_activity": "03:20 哨兵段轮：T139 收口——L1 :8090 停摆根因已实证=前置件缺位（exit 2 源码唯二分支 L15→L19 MISSING_MODEL / L21→L25 MISSING_EXE；gguf 与 llama-server.exe 双 ABSENT、models 整目录不存在、8090 零监听、MISSING.log 341 行首行 10-25 09:26:52）；证据件呈模型供应窗，本司零重启零重拉（M71）；审核=decisions 03:15 批 D-20261027-06/07 零本司派单。台账=tasks/TASKS.md，队列=state/queue/{main,tech,explore}.md",
- "latest_artifact": "docs/ops/l1-lane-down-evidence-20261027.md（一页根因证据：exit 2 语义+源码行号 / 三面实测出数 / 时间线重建〔起点 10-25 09:26:52 比观测早 37.6h〕/ 恢复清单与验收三判据）+ state/queue/tech.md（T139 done、T140 新立）+ qa/smoke-20261027-0319.log（QA 10/11·C1C4-GREEN·唯一 FAIL=L1 :8090 已定因）— 2026-10-27 03:20",
- "next_milestone": "T140 前置件在位性探针（双 Test-Path 接既有只读探针位·治 41.8h 缺位盲区，下一有界窗）；10-31 22:43 N1 月末归集一命令（机械链 9/9 就绪）；P1 待外部=L1 :8090 恢复（夜间窗 19:00-09:00 重取两件，归模型供应窗/HQ 工具域，禁本司自决重拉）"
+ "updated_at": "2026-10-27 20:30",
+ "current_activity": "20:26-20:30 令牌轮：CEO 三机自检令 OB-20261027-202256-910 的 bm-a 面回执（分发侧 20:23:54 记 ERR timed out，本件 20:27:29 落盘=令后约 5 分钟补发）——只读采集 CPU/内存/显存/磁盘/服务/任务态，禁加载模型、禁 ComfyUI 全遵；判读=CPU-LIGHT-ONLY / GPU-BLOCKED（显存 free 384MiB·13 个 Tuanjie Editor 持 GPU 上下文）。",
+ "latest_artifact": "cph4/fleet/order-bus/receipts/OB-20261027-202256-910-bm-a.json（机队回执·机器可解析）+ compute/BigCompute/state/bm-a-capacity-20261027-2029.txt（采集证据件·资源/占位主体/服务面/接活判定/释放路径/GPU 日均对账七段）—— 2026-10-27 20:27/20:29",
+ "next_milestone": "① 机队调度面按本回执评估把 bm-a 从 GPU 车道摘出（cotenant_editors=13 结构性不满足借出判据）——建议 48h 内决策，owner=调度面；② 本司 10-31 22:43 N1 月末归集一命令（机械链 9/9 就绪）；③ L1 :8090 恢复候模型供应窗/HQ 授权域，本司零自决重启。"
 }
