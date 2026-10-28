@@ -540,6 +540,56 @@ def probe_cost_contract(root=None):
     return cost_contract_judge(result)
 
 
+def scan_root_judge(report):
+    """T161: pure verdict for scan_root_census.run_census() output.
+
+    The census banner flips only on NEEDS-EXCLUDE, so a report can read
+    SCAN-ROOT-CLEAN while carrying UNVERIFIED rows (a guard literal that
+    drifted off the tool). Judging the banner alone would restore the very
+    "a cap nobody measures" default-pass the census was built to remove,
+    so this probe grades rows and never trusts the summary line.
+    """
+    rows = (report or {}).get("rows") or []
+    if not rows:
+        return False, "no registry rows in report (census did not run)"
+    fix = [r for r in rows if r.get("verdict") == "NEEDS-EXCLUDE"]
+    if fix:
+        return False, "VERDICT=FIX needs-exclude=%d: %s" % (
+            len(fix), "; ".join(str(r.get("id")) for r in fix))
+    unv = [r for r in rows if r.get("verdict") == "UNVERIFIED"]
+    if unv:
+        return False, "UNVERIFIED rows=%d (banner=%s): %s" % (
+            len(unv), (report or {}).get("verdict"),
+            "; ".join(str(r.get("id")) for r in unv))
+    unknown = [r for r in rows if r.get("verdict") not in
+               ("ROOT-SEPARATED", "STRUCTURAL-NA")]
+    if unknown:
+        return False, "unrecognised row verdict: %s" % "; ".join(
+            "%s=%s" % (r.get("id"), r.get("verdict")) for r in unknown)
+    counts = (report or {}).get("counts") or {}
+    return True, "verdict=%s rows=%d %s sweep=%d(informational)" % (
+        (report or {}).get("verdict"), len(rows),
+        " ".join("%s=%d" % kv for kv in sorted(counts.items())),
+        len((report or {}).get("sweep_candidates") or []))
+
+
+def probe_scan_roots(root=None):
+    """Probe no.17 (T161): scan-root self-reference census each round.
+
+    scan_root_census.py shipped in T160 as a manual command. A new scanner
+    that walks the repo without excluding itself, or a guard literal that
+    drifts, would only surface when someone remembered to run it.
+    """
+    if HERE not in sys.path:
+        sys.path.insert(0, HERE)
+    try:
+        import scan_root_census as src
+        rep = src.run_census(base=root or ROOT)
+    except Exception as e:  # noqa: BLE001 - probe must report, not crash
+        return False, "scan_root_census raised: %r" % e
+    return scan_root_judge(rep)
+
+
 def probe_status_export(root=None):
     """T143: the CEO-facing export face, judged every round.
 
@@ -1299,11 +1349,54 @@ def selftest_qa_functional():
     return 0 if all(results) else 1
 
 
+def selftest_scan_roots():
+    """T161 fixtures: a banner-only judge would pass the live hole."""
+    results = []
+
+    def check(name, cond):
+        results.append(bool(cond))
+        print(("PASS " if cond else "FAIL ") + name)
+
+    ok_rows = [{"id": "A", "verdict": "ROOT-SEPARATED"},
+               {"id": "B", "verdict": "STRUCTURAL-NA"}]
+
+    r1 = scan_root_judge({"verdict": "SCAN-ROOT-CLEAN", "rows": ok_rows})
+    check("S1 clean rows -> PASS", r1[0] and "rows=2" in r1[1])
+
+    r2 = scan_root_judge({"verdict": "SCAN-ROOT-FIX",
+                          "rows": ok_rows + [{"id": "C",
+                                              "verdict": "NEEDS-EXCLUDE"}]})
+    check("S2 NEEDS-EXCLUDE -> FAIL",
+          (not r2[0]) and "needs-exclude=1" in r2[1])
+
+    # The live hole: the census banner counts NEEDS-EXCLUDE only, so a
+    # drifted guard literal reads as UNVERIFIED under a CLEAN banner.
+    r3 = scan_root_judge({"verdict": "SCAN-ROOT-CLEAN",
+                          "rows": ok_rows + [{"id": "D",
+                                              "verdict": "UNVERIFIED"}]})
+    check("S3 UNVERIFIED under a CLEAN banner -> FAIL",
+          (not r3[0]) and "UNVERIFIED" in r3[1] and "D" in r3[1])
+
+    r4 = scan_root_judge({"verdict": "SCAN-ROOT-CLEAN", "rows": []})
+    check("S4 empty report -> FAIL (no default pass)", not r4[0])
+
+    check("S5 None report -> FAIL", not scan_root_judge(None)[0])
+
+    r6 = scan_root_judge({"verdict": "SCAN-ROOT-CLEAN",
+                          "rows": [{"id": "E", "verdict": "MAYBE"}]})
+    check("S6 unrecognised row verdict -> FAIL (conservative)", not r6[0])
+
+    print("selftest scan-root verdict: %d/%d PASS"
+          % (len([r for r in results if r]), len(results)))
+    return 0 if all(results) else 1
+
+
 def main():
     if len(sys.argv) > 1 and sys.argv[1] == "--selftest":
         return (selftest_tails() | selftest_coder_class()
                 | selftest_supply_fields() | selftest_cost_contract()
-                | selftest_serve_artifacts() | selftest_qa_functional())
+                | selftest_serve_artifacts() | selftest_qa_functional()
+                | selftest_scan_roots())
     os.makedirs(QA_DIR, exist_ok=True)
     ts = datetime.datetime.now().strftime("%Y%m%d-%H%M")
     log_path = os.path.join(QA_DIR, "smoke-%s.log" % ts)
@@ -1323,7 +1416,9 @@ def main():
               ("CEO status export (T143)", probe_status_export),
               ("ledger encoding health (T145)", probe_ledger_encoding),
               ("resident QA 8792 /ask function (T153)",
-               probe_resident_qa_functional)]
+               probe_resident_qa_functional),
+              ("scan root self-reference census (T161)",
+               probe_scan_roots)]
     lines, passed = [], 0
     lines.append("BigCompute QA smoke test %s (orders L254 / charter v1)"
                  % ts)
@@ -1336,7 +1431,7 @@ def main():
         lines.append(detail)
         print("[%s] %s" % ("PASS" if ok else "FAIL", label))
     lines.append("")
-    verdict = "smoke verdict: %d/%d PASS (charter 4 + T25 + E41 + BC-P-45 no.8 + T122 no.9 + T132 no.10 + T133 no.11 + T138 no.12 + T140 no.13 + T143 no.14 + T145 no.15 + T153 no.16 probes)" % (
+    verdict = "smoke verdict: %d/%d PASS (charter 4 + T25 + E41 + BC-P-45 no.8 + T122 no.9 + T132 no.10 + T133 no.11 + T138 no.12 + T140 no.13 + T143 no.14 + T145 no.15 + T153 no.16 + T161 no.17 probes)" % (
         passed, len(probes))
     lines.append(verdict)
     with open(log_path, "w", encoding="utf-8") as f:

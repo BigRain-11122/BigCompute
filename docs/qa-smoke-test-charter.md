@@ -27,6 +27,7 @@
 - 8. git-tracked 台账尾行完整性（BC-P-45/T51/T95：七台账尾换行断言+合并行嗅探+尾区空行嗅探——写侧 round_append J4/J5 之外的损伤面当轮暴露；合成负例夹具自检=`qa_smoke --selftest`〔T96〕）。
 - 9. L1 coder 车道 :8090 活体（T106·O-20261015-1335/1500 Qwen v3 final 迁移后：GET /v1/models 只读探活〔零生成零 GPU 负载·PASS=200+≥1 模型在册〕——四消费车道〔BigLife 年轮/MV 分镜/8792 后端/BigMoney advisor〕主干动脉死=当轮暴露不待消费方失败）。
 - 16. resident QA 8792 /ask 功能面（T153·10-28 实锚：探针 6 只读 /health，health 200 status=ok 而 /ask 503 后端拒连——CEO 观测窗功能死而本司 QA 数日报 PASS 的假绿面）：真实点击路径〔白名单锚民→人设提示→LLM 后端→AIGC 标识门〕端到端跑一次；后端端口无监听时跳过 POST（零浪费生成）并判 `HEALTH-OK-BACKEND-DOWN`；一答案缺失/无标识门/5xx/超时/白名单漂移一律 FAIL 不放宽。判据=selftest 全分支夹具 + live 按类判定。
+- 17. 扫描根自指普查（T161·10-29 立）：跑 `scan_root_census.run_census()`，**按行判定不信 banner**——NEEDS-EXCLUDE/UNVERIFIED/无法识别的行 verdict 一律 FAIL（普查 banner 只有 NEEDS-EXCLUDE 翻转的缺口已由 T162 补为 SCAN-ROOT-UNVERIFIED，但探针仍须判行，两层各守一面）；报告为空=FAIL（禁用「没行可判」当通过）。判据=selftest 三态夹具（S1 全绿 PASS／S2 NEEDS-EXCLUDE FAIL／S3 CLEAN banner + UNVERIFIED FAIL／S4 空报告 FAIL／S6 未知 verdict FAIL）+ live 实跑 SCAN-ROOT-CLEAN。
 
 ## 四、执行律
 

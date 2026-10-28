@@ -326,6 +326,10 @@ def run_census(registry=None, base=None):
     for r in rows:
         counts[r["verdict"]] = counts.get(r["verdict"], 0) + 1
     overall = "SCAN-ROOT-FIX" if counts.get("NEEDS-EXCLUDE") else "SCAN-ROOT-CLEAN"
+    if overall == "SCAN-ROOT-CLEAN" and counts.get("UNVERIFIED"):
+        # T162: unreadable file / drifted literal is not a green, so the
+        # banner must not read CLEAN while a row could not be judged.
+        overall = "SCAN-ROOT-UNVERIFIED"
     return {
         "generated": datetime.now().isoformat(timespec="seconds"),
         "repo": REPO,
@@ -442,6 +446,13 @@ def cmd_selftest(_args):
     check("S8 aggregation -> SCAN-ROOT-FIX",
           rep2["verdict"] == "SCAN-ROOT-FIX"
           and rep2["rows"][0]["verdict"] == "NEEDS-EXCLUDE")
+
+    # S11 an UNVERIFIED row must not ride under a CLEAN banner (T162)
+    with tempfile.TemporaryDirectory() as td11:
+        rep_unv = run_census([bad], base=td11)  # file absent -> UNVERIFIED
+    check("S11 aggregation -> SCAN-ROOT-UNVERIFIED",
+          rep_unv["verdict"] == "SCAN-ROOT-UNVERIFIED"
+          and rep_unv["rows"][0]["verdict"] == "UNVERIFIED")
 
     # S9 json round-trip
     try:

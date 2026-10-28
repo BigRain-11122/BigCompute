@@ -187,6 +187,10 @@ def run_census(registry=None, base=None):
     for r in rows:
         counts[r["verdict"]] = counts.get(r["verdict"], 0) + 1
     overall = "DENOM-FIX" if counts.get("NEEDS-FIX") else "DENOM-CLEAN"
+    if overall == "DENOM-CLEAN" and counts.get("UNVERIFIED"):
+        # T163: same banner blindness as T162 in scan_root_census - an
+        # unreadable file or a drifted literal is not a clean pass.
+        overall = "DENOM-UNVERIFIED"
     return {
         "generated": datetime.now().isoformat(timespec="seconds"),
         "repo": REPO,
@@ -296,6 +300,13 @@ def cmd_selftest(_args):
             f.write("census_rows()\n")
         check("S10 guard must live in the subject file",
               judge_row(dict(bad, guard="!= me"), "census_rows()\n")[0] == "NEEDS-FIX")
+
+    # S11 an UNVERIFIED row must not ride under a CLEAN banner (T163)
+    with tempfile.TemporaryDirectory() as td11:
+        rep_unv = run_census([bad], base=td11)  # file absent -> UNVERIFIED
+    check("S11 aggregation -> DENOM-UNVERIFIED",
+          rep_unv["verdict"] == "DENOM-UNVERIFIED"
+          and rep_unv["rows"][0]["verdict"] == "UNVERIFIED")
 
     failed = [n for n, ok in checks if not ok]
     for name, ok in checks:

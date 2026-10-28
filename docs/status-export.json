@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-10-29 00:21",
- "current_activity": "2026-10-29 00:00 轮：T160 done（产品增量 2 分件=扫描根自指普查器 Tools/scan_root_census.py：selftest 22/22 + 实跑 SCAN-ROOT-CLEAN 19 行〔ROOT-SEPARATED 6/STRUCTURAL-NA 13/NEEDS-EXCLUDE 0〕·sweep 未登记扫描器 7→0·轮内自捉同型缺陷〔模块常量 REPO 覆盖仓根路径→全行 file not readable〕即修）+T161 ",
- "latest_artifact": "state/c1c4-20261029-002121.json（mtime 2026-10-29 00:21）",
- "next_milestone": "M4 接产对齐矩阵 blocked 项随开店/平台后台逐项销 ⬜（T-27 余项）（队列状态=**blocked 如实**（10-28 23:2x 令牌轮队列卫生）：销 ⬜ ）"
+ "updated_at": "2026-10-29 00:40",
+ "current_activity": "2026-10-29 00:3x 轮：T161 done（产品增量 2 分件=qa_smoke 常驻探针 no.17「扫描根自指普查」：scan_root_judge 按行判定不信 banner + selftest 6/6 + live PASS，全套 14/16〔两 FAIL 同源已知〕；charter §三 第 17 条在件）+T162 done（普查聚合增 SCAN-ROOT-UNVERIFIED 第三态，selftest 23/23）+T163 done（ratio_denominator_census 同病即修 DENOM-UNVERIFIED，selftest 16/16）",
+ "latest_artifact": "qa/smoke-20261029-0032.log（+png，mtime 2026-10-29 00:32）｜state/c1c4-20261029-003454.json（C1C4-GREEN 4/4）",
+ "next_milestone": "同轮已闭环：扫描型普查三件 banner/行判双面一致；下一里程碑=10-29 12:00 D-20261028-10 L1 :8090 车道终审（本司 T-40 KPI 定义+探针件已在案，现读数 KPI-A=ABSENT·KPI-B=0.4 PARTIAL）"
 }
