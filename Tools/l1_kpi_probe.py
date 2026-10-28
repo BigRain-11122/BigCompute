@@ -136,15 +136,26 @@ def _load_census():
 
 
 def census_rows(port=DEFAULT_PORT):
-    """FALLBACK-OK rows in this repo, via the census tool (read-only)."""
+    """FALLBACK-OK rows in this repo, via the census tool (read-only).
+
+    Rows from this file are dropped: KPI-B measures *consumers* of the lane,
+    and the measuring instrument is not one. Without this the probe's own
+    `DEFAULT_PORT = 8090` constant shows up as a consumer row whenever the
+    module body contains failover keywords - the row count then changes
+    whenever anyone edits this tool's comments (observed 2026-10-28: an edit
+    adding "fallback" to the role-table reasons turned 5 rows into 6). A
+    metric that reacts to its own source text is not a metric.
+    """
     census = _load_census()
     roots = [HERE]
     sibling = os.path.abspath(os.path.join(REPO, "..", "..", "Tools"))
     if os.path.isdir(sibling):
         roots.append(sibling)
     rep = census.scan(roots, port, ours=REPO)
+    me = os.path.abspath(__file__)
     return [r for r in rep["refs"]
-            if r["status"] == "FALLBACK-OK" and r.get("domain", "OWN") == "OWN"]
+            if r["status"] == "FALLBACK-OK" and r.get("domain", "OWN") == "OWN"
+            and os.path.abspath(r.get("file", "")) != me]
 
 
 def scope_ports(row, default_port):
@@ -190,6 +201,74 @@ def steady_from_prober(row_states):
     return rate, "PARTIAL"
 
 
+DEFAULT_ROLE = "CONSUMPTION"
+
+# FALLBACK-OK rows whose port literal is not an outbound consumption call.
+# Declarative on purpose, and guarded twice: an entry without a reason is a
+# defect, and an entry that no longer matches a census row is stale (same
+# lesson as EXEMPT_HISTORICAL in model_ref_drift_check / OUT_OF_CENSUS in
+# rails_schema_check - an unguarded exemption table rots into a hole).
+#
+# Why segment at all (2026-10-28 T158 pre-work): none of the three dead rows
+# in KPI-B is a call site that *could* fall back. cost_ledger writes the lane
+# as ledger metadata; p0_moe_measure and qa_smoke name a lane as the subject
+# of a measurement. Handing a probe a fallback would make it measure another
+# lane and mask the outage - the exact false-green class the probes exist to
+# kill. The primary rate stays un-segmented until the 10-29 12:00 tombstone /
+# restore verdict (D-20261028-18); this table only adds a second reading.
+ROW_ROLES = [
+    {"file": "cost_ledger.py", "line": 1429, "role": "RECORD-FIELD",
+     "reason": "l1-record --endpoint default is stored in the ledger row; no "
+               "request is issued from this literal"},
+    {"file": "p0_moe_measure.py", "line": 35, "role": "DIAGNOSTIC-TARGET",
+     "reason": "V100 P0 benchmark harness: --base-url names the lane under "
+               "measurement, a fallback would silently benchmark another lane"},
+    {"file": "qa_smoke.py", "line": 772, "role": "DIAGNOSTIC-TARGET",
+     "reason": "CODER_PORT is the lane the liveness probe reports on; falling "
+               "back would hide the outage the probe exists to find"},
+]
+
+
+def role_for(row, roles=None):
+    """(role, reason) for a census row / detail row; unlisted = CONSUMPTION."""
+    roles = ROW_ROLES if roles is None else roles
+    base = os.path.basename(row.get("file", ""))
+    line = row.get("line")
+    for e in roles:
+        if e.get("file") == base and e.get("line") == line:
+            return e.get("role", DEFAULT_ROLE), e.get("reason", "")
+    return DEFAULT_ROLE, ""
+
+
+def role_issues(rows, roles=None):
+    """Table hygiene: entries lacking a reason, or no longer matching a row."""
+    roles = ROW_ROLES if roles is None else roles
+    keys = set((os.path.basename(r.get("file", "")), r.get("line")) for r in rows)
+    out = []
+    for e in roles:
+        key = (e.get("file"), e.get("line"))
+        if not (e.get("reason") or "").strip():
+            out.append({"file": key[0], "line": key[1], "problem": "NO-REASON"})
+        elif key not in keys:
+            out.append({"file": key[0], "line": key[1], "problem": "STALE"})
+    return out
+
+
+def segment_states(detail, roles=None):
+    """Split per-row live flags into (consumption states, excluded rows)."""
+    roles = ROW_ROLES if roles is None else roles
+    consumption, excluded = [], []
+    for d in detail:
+        role, reason = role_for(d, roles)
+        if role == DEFAULT_ROLE:
+            consumption.append(bool(d.get("live")))
+        else:
+            excluded.append({"file": d["file"], "line": d["line"],
+                             "role": role, "reason": reason,
+                             "live": bool(d.get("live"))})
+    return consumption, excluded
+
+
 def evaluate_fallback(rows, port=DEFAULT_PORT, prober=probe, scope_fn=scope_ports):
     """KPI-B over census rows. prober/scope_fn injectable for selftest."""
     detail = []
@@ -214,9 +293,23 @@ def evaluate_fallback(rows, port=DEFAULT_PORT, prober=probe, scope_fn=scope_port
                        "steering": row.get("steering", ""),
                        "candidates": cand, "live": live})
     rate, verdict = steady_from_prober(states)
+    live_n = sum(1 for s in states if s)
+    cons, excluded = segment_states(detail)
+    c_rate, c_verdict = steady_from_prober(cons)
     return {"port": port, "rows_total": len(rows),
-            "rows_live": sum(1 for s in states if s),
-            "rate": rate, "verdict": verdict, "rows": detail}
+            "rows_live": live_n,
+            "rate": rate, "verdict": verdict, "rows": detail,
+            "segments": {
+                "primary": {"basis": "every FALLBACK-OK row (unchanged math)",
+                            "live": live_n, "total": len(states),
+                            "rate": rate, "verdict": verdict},
+                "consumption": {"basis": "rows whose literal is an outbound call",
+                                "live": sum(1 for s in cons if s),
+                                "total": len(cons),
+                                "rate": c_rate, "verdict": c_verdict},
+                "excluded": excluded,
+                "table_issues": role_issues(rows),
+            }}
 
 
 def build_report(port=DEFAULT_PORT):
@@ -241,6 +334,7 @@ def cmd_reach(a):
 def cmd_fallback(a):
     rows = census_rows(a.port)
     rep = evaluate_fallback(rows, port=a.port)
+    seg = rep["segments"]
     print("KPI-B fallback rate=%s verdict=%s live=%d/%d port=%d" % (
         "N/A" if rep["rate"] is None else rep["rate"], rep["verdict"],
         rep["rows_live"], rep["rows_total"], a.port))
@@ -248,7 +342,17 @@ def cmd_fallback(a):
         print("  %s:%s %s -> %s" % (
             d["file"], d["line"], d["steering"] or "-",
             ",".join("%s:%s" % (c["port"], c["state"]) for c in d["candidates"])))
-    return 0 if rep["verdict"] in ("GREEN", "N/A-NO-SCOPE") else 3
+    c_ = seg["consumption"]
+    print("KPI-B segments consumption rate=%s verdict=%s live=%d/%d excluded=%d" % (
+        "N/A" if c_["rate"] is None else c_["rate"], c_["verdict"],
+        c_["live"], c_["total"], len(seg["excluded"])))
+    for e in seg["excluded"]:
+        print("  EXCLUDED %s:%s %s live=%s - %s" % (
+            e["file"], e["line"], e["role"], e["live"], e["reason"]))
+    for i in seg["table_issues"]:
+        print("  ROLE-TABLE %s %s:%s" % (i["problem"], i["file"], i["line"]))
+    face = c_ if getattr(a, "segmented", False) else rep
+    return 0 if face["verdict"] in ("GREEN", "N/A-NO-SCOPE") else 3
 
 
 def cmd_report(a):
@@ -263,6 +367,11 @@ def cmd_report(a):
     print("KPI-A %s state=%s | KPI-B rate=%s verdict=%s (%d/%d) | out=%s" % (
         a_["endpoint"], a_["state"], "N/A" if b_["rate"] is None else b_["rate"],
         b_["verdict"], b_["rows_live"], b_["rows_total"], out))
+    c_ = b_.get("segments", {}).get("consumption", {})
+    if c_:
+        print("KPI-B segments consumption rate=%s verdict=%s (%d/%d) excluded=%d" % (
+            "N/A" if c_["rate"] is None else c_["rate"], c_["verdict"],
+            c_["live"], c_["total"], len(b_["segments"]["excluded"])))
     return 0 if b_["verdict"] in ("GREEN", "N/A-NO-SCOPE") else 3
 
 
@@ -338,6 +447,49 @@ def cmd_selftest(_a):
                    2026 not in picked and 1335 not in picked
                    and {8792, 11434, 8090} <= picked))
 
+    # S11-S16 role segmentation (T158 pre-work). Segmentation is an additive
+    # second reading: the primary rate/verdict must be untouched by the table,
+    # and the table itself is guarded (reason required, stale entries flagged).
+    checks.append(("S11 unlisted row defaults to CONSUMPTION",
+                   role_for({"file": "some_tool.py", "line": 1}, ROW_ROLES)
+                   == ("CONSUMPTION", "")))
+    checks.append(("S12 declared row carries role + reason",
+                   role_for({"file": os.path.join("Tools", "qa_smoke.py"),
+                             "line": 772}, ROW_ROLES)[0] == "DIAGNOSTIC-TARGET"))
+    no_reason = [{"file": "a.py", "line": 2, "role": "RECORD-FIELD", "reason": " "}]
+    checks.append(("S13 reason-less entry flagged NO-REASON",
+                   [i["problem"] for i in role_issues([{"file": "a.py", "line": 2}],
+                                                      no_reason)] == ["NO-REASON"]))
+    stale = role_issues([{"file": "a.py", "line": 2}], ROW_ROLES)
+    checks.append(("S14 stale entries flagged (%d)" % len(stale),
+                   len(stale) == len(ROW_ROLES)
+                   and all(i["problem"] == "STALE" for i in stale)))
+    syn = [{"file": "f1.py", "line": 1, "live": True},
+           {"file": "f2.py", "line": 2, "live": True},
+           {"file": os.path.join("Tools", "qa_smoke.py"), "line": 772, "live": False}]
+    cons, exc = segment_states(syn, ROW_ROLES)
+    checks.append(("S15 segment math: excluded row cannot move consumption rate",
+                   steady_from_prober(cons) == (1.0, "GREEN") and len(exc) == 1
+                   and exc[0]["role"] == "DIAGNOSTIC-TARGET"))
+    rows_syn = [{"file": "a.py", "line": 1, "status": "FALLBACK-OK"},
+                {"file": os.path.join("Tools", "qa_smoke.py"), "line": 772,
+                 "status": "FALLBACK-OK"}]
+    rep_syn = evaluate_fallback(rows_syn, port=DEFAULT_PORT,
+                                prober=lambda *a, **k: "ABSENT",
+                                scope_fn=lambda row, p: [p])
+    checks.append(("S16 primary verdict untouched by the role table",
+                   rep_syn["rate"] == 0.0 and rep_syn["verdict"] == "RED"
+                   and rep_syn["segments"]["excluded"][0]["line"] == 772
+                   and rep_syn["segments"]["primary"]["verdict"] == "RED"))
+    if rows:
+        issues = role_issues(rows)
+        checks.append(("S17 live role table clean (%d issues)" % len(issues),
+                       not issues))
+        me = os.path.abspath(__file__)
+        checks.append(("S18 self rows excluded (%d rows)" % len(rows),
+                       all(os.path.abspath(r.get("file", "")) != me
+                           for r in rows)))
+
     bad = [name for name, ok in checks if not ok]
     for name, ok in checks:
         print("%s %s" % ("PASS" if ok else "FAIL", name))
@@ -355,6 +507,10 @@ def main(argv=None):
         p.add_argument("--port", type=int, default=DEFAULT_PORT)
         if name == "reach":
             p.add_argument("--endpoint", default=None)
+        if name == "fallback":
+            p.add_argument("--segmented", action="store_true",
+                           help="judge the exit code on the consumption "
+                                "segment (opt-in; default face is unchanged)")
         if name == "report":
             p.add_argument("--out", default=None)
         p.set_defaults(func=fn)

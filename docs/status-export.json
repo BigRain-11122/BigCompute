@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-10-28 19:14",
- "current_activity": "10-28 19:1x 令牌轮：D-20261028-18 承接=继任 KPI 从定义变可测（Tools/l1_kpi_probe.py selftest 10/10，实跑 KPI-A=ABSENT(:8090)、KPI-B=0.4 PARTIAL 2/5），定义件 docs/ops/l1-kpi-definition-v1.md；同轮修复 BC-P-45 台账尾残渣",
- "latest_artifact": "state/l1-kpi-probe-20261028-190754.json + docs/ops/l1-kpi-definition-v1.md（2026-10-28 19:07）",
- "next_milestone": ":8090 车道终审 10-29 12:00（35B 取回起火 或 登记墓碑态·D-20261028-10）→ 同日合并验收继任 KPI（@HQ 心跳接线）"
+ "updated_at": "2026-10-28 22:49",
+ "current_activity": "2026-10-28 22:00 轮：T-20261028-40 步2（产品增量 2 分件=KPI-B 三行角色分段+仪器自指缺陷轮内自捉即修）——三行读码定谳 RECORD-FIELD×1+DIAGNOSTIC-TARGET×2（探针靶不应补第二端点）→fallback 增分段读面〔主行 0.4 PARTIAL 2/5 与默认退出码逐字不变·消费段 2/2 GREEN〕+selftest 10→18/18；QUEUE premise_unverified=0 open=9",
+ "latest_artifact": "state/gpu-util/samples.jsonl（mtime 2026-10-28 22:48）",
+ "next_milestone": "M4 接产对齐矩阵 blocked 项随开店/平台后台逐项销 ⬜（T-27 余项）（队列状态=open）"
 }
