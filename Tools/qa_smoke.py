@@ -860,13 +860,20 @@ def coder_port_owner(port=CODER_PORT):
     return pid, image
 
 
-def classify_coder_failure(pid, image, err):
+def classify_coder_failure(pid, image, err, artifacts=None):
     """T122 pure verdict text for a failed :8090 probe.
 
-    Three mutually exclusive classes, all FAIL (never softened):
+    Four mutually exclusive classes, all FAIL (never softened; charter
+    §三.9 criterion stays frozen - this only names the class):
       FOREIGN-PORT - a non-lane image owns the socket (lane cannot bind)
       LANE-DOWN    - the lane image owns it but does not answer
-      LANE-DOWN    - nothing listening at all
+      LANE-DOWN    - nothing listening, prerequisites in place (should be up)
+      LANE-ABSENT  - nothing listening AND a prerequisite artifact is gone
+                     (deployment absent). D-18 ③ calls this a non-fault
+                     reading; naming it keeps ABSENT distinguishable from
+                     DOWN without touching the PASS/FAIL verdict.
+    `artifacts` is probe no.13's (ok, detail) tuple, or None when the
+    caller has no evidence - absent evidence must not invent ABSENT.
     """
     if pid and image and image.lower() != CODER_EXPECTED_IMAGE:
         return ("L1 coder serve 8090 FOREIGN-PORT: %s pid=%s owns "
@@ -878,6 +885,14 @@ def classify_coder_failure(pid, image, err):
         return ("L1 coder serve 8090 LANE-DOWN: %s pid=%s owns the port but "
                 "/v1/models is unresponsive (four consumer lanes degraded; "
                 "probe error %r)" % (image or "unknown", pid, err))
+    if artifacts is not None:
+        art_ok, art_detail = artifacts
+        if not art_ok and "LANE-ARTIFACT-MISSING" in art_detail:
+            return ("L1 coder serve 8090 LANE-ABSENT: no listener on :%d (%r) "
+                    "and a lane prerequisite is gone (%s) - deployment "
+                    "absent, D-18 ③ non-fault reading, still FAIL per "
+                    "charter §三.9 until the 12:00 verdict rules on the lane"
+                    % (CODER_PORT, err, art_detail))
     return ("L1 coder serve 8090 LANE-DOWN: no listener on :%d (%r); four "
             "consumer lanes degraded - fix next round top priority"
             % (CODER_PORT, err))
@@ -910,7 +925,8 @@ def probe_l1_coder_serve():
                     "BigMoney advisor)" % (r.status, len(models)))
     except Exception as e:  # noqa: BLE001 - probe must not crash pipeline
         pid, image = coder_port_owner()
-        return False, classify_coder_failure(pid, image, e)
+        return False, classify_coder_failure(pid, image, e,
+                                             probe_serve_artifacts())
 
 
 TAIL_PROBE_FILES = (
@@ -1072,18 +1088,28 @@ def selftest_coder_class():
       A foreign image on the port -> FOREIGN-PORT + owner name/pid
       B lane image, no answer     -> LANE-DOWN (owner named)
       C nobody listening          -> LANE-DOWN (no listener)
-    All three must stay FAIL - a softened verdict would hide a dead lane.
+      D nobody listening + prerequisite gone -> LANE-ABSENT (D-18 ③ class,
+        still FAIL: naming the class must not soften the verdict)
+      E nobody listening + artifacts fine    -> LANE-DOWN (should be up)
+    All five must stay FAIL - a softened verdict would hide a dead lane.
     """
+    miss = (False, "LANE-ARTIFACT-MISSING model=D:\\x.gguf - gone")
     cases = [
         ("A foreign owner -> FOREIGN-PORT",
-         ("28008", "eCloud.exe", "timed out"),
+         ("28008", "eCloud.exe", "timed out", None),
          "FOREIGN-PORT: eCloud.exe pid=28008"),
         ("B lane owner unresponsive -> LANE-DOWN",
-         ("4242", "llama-server.exe", "timed out"),
+         ("4242", "llama-server.exe", "timed out", None),
          "LANE-DOWN: llama-server.exe pid=4242"),
         ("C no listener -> LANE-DOWN",
-         (None, None, "connection refused"),
+         (None, None, "connection refused", None),
          "no listener on :8090"),
+        ("D no listener + artifact gone -> LANE-ABSENT",
+         (None, None, "connection refused", miss),
+         "LANE-ABSENT"),
+        ("E no listener + artifacts ok -> LANE-DOWN",
+         (None, None, "connection refused", (True, "artifacts in place")),
+         "LANE-DOWN: no listener"),
     ]
     results = []
     print("qa_smoke probe no.9 selftest (T122 port-owner classification)")

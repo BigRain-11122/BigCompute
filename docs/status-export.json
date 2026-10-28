@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-10-29 00:40",
- "current_activity": "2026-10-29 00:3x 轮：T161 done（产品增量 2 分件=qa_smoke 常驻探针 no.17「扫描根自指普查」：scan_root_judge 按行判定不信 banner + selftest 6/6 + live PASS，全套 14/16〔两 FAIL 同源已知〕；charter §三 第 17 条在件）+T162 done（普查聚合增 SCAN-ROOT-UNVERIFIED 第三态，selftest 23/23）+T163 done（ratio_denominator_census 同病即修 DENOM-UNVERIFIED，selftest 16/16）",
- "latest_artifact": "qa/smoke-20261029-0032.log（+png，mtime 2026-10-29 00:32）｜state/c1c4-20261029-003454.json（C1C4-GREEN 4/4）",
- "next_milestone": "同轮已闭环：扫描型普查三件 banner/行判双面一致；下一里程碑=10-29 12:00 D-20261028-10 L1 :8090 车道终审（本司 T-40 KPI 定义+探针件已在案，现读数 KPI-A=ABSENT·KPI-B=0.4 PARTIAL）"
+ "updated_at": "2026-10-29 01:05",
+ "current_activity": "2026-10-29 01:1x 轮：T164 done（产品增量 2 分件=qa_smoke no.9 失败分类接工件证据，新增 LANE-ABSENT 第四类，与 KPI 定义件 ABSENT 同词：selftest_coder_class 3→5/5 PASS，live 消息 LANE-ABSENT 带 model/exe 缺位路径，与 l1_kpi_probe reach 的同窗读数 KPI-A=ABSENT 一致；charter PASS/FAIL 判据未动，四类仍全 FAIL，改判据留今日 12:00 终审后）+定义件 §六.3 落盘 + 提案 BC-P-138",
+ "latest_artifact": "qa/smoke-20261029-0059.log（+png，mtime 2026-10-29 00:59，14/16 PASS）｜docs/ops/l1-kpi-definition-v1.md §六.3（跨工具词表归一）｜state/c1c4-20261029-010307.json（C1C4-GREEN 4/4）",
+ "next_milestone": "今日 12:00 D-20261028-10 L1 :8090 车道终审：呈件已在案（KPI-A=ABSENT·KPI-B=0.4 PARTIAL·三行角色分类·消费段升主面待裁），本司待裁决落地即改 charter §三.9 判据面"
 }

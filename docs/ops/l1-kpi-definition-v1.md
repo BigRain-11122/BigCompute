@@ -80,3 +80,26 @@ KPI-B segments consumption rate=1.0 verdict=GREEN live=2/2 excluded=3
 ### 六.2 轮内自捉缺陷（仪器自指）
 
 本轮角色表落在模块层，普查的模块级 `FAILOVER-KW` 作用域判据因此把本文件 `DEFAULT_PORT = 8090` 翻成一条 FALLBACK-OK 行（5 行→6 行）。定谳＝**KPI-B 不能因被测仪器自己的注释文本而变**：`census_rows` 增自指排除（本文件行一律剔除），selftest S18 钉死。修正后行数回到 5，主判据 0.4 与 19:07 轮读数逐字一致。
+
+### 六.3 跨工具词表归一（10-29 00:5x 令牌轮·产品增量）
+
+`qa_smoke.py` 探针 no.9（charter §三.9·L1 coder 车道 :8090 活体）此前把三种失败都写成 `LANE-DOWN`，其中「无监听」一档把 §一 的 **ABSENT（未部署·非故障读数）** 与 **DOWN（该up而未up）** 混成了一个词——同一台机器同一时刻，KPI 探针读 ABSENT、QA 探针读 LANE-DOWN，12:00 终审要在两个词之间人工换算。
+
+本轮把 no.9 的分类器接到探针 no.13 的工件证据上，新增第四类（**判据未动**，四类全 FAIL，charter §三.9 冻结）：
+
+| 类 | 判据 | 对 §一 词表 |
+|---|---|---|
+| FOREIGN-PORT | 非 lane 镜像占住端口 | DOWN（不可绑定） |
+| LANE-DOWN | lane 镜像在听但不答 | DOWN |
+| LANE-DOWN | 无监听且工件在位（应该 up） | DOWN |
+| **LANE-ABSENT** | 无监听**且** no.13 报 `LANE-ARTIFACT-MISSING` | **ABSENT（D-18 ③ 非故障读数）** |
+
+实跑一致（2026-10-29 00:5x 同窗两工具）：
+
+```
+l1_kpi_probe reach  ->  KPI-A state=ABSENT
+qa_smoke no.9       ->  L1 coder serve 8090 LANE-ABSENT: no listener on :8090 ... and a
+                        lane prerequisite is gone (LANE-ARTIFACT-MISSING model=...gguf, exe=...)
+```
+
+`selftest_coder_class` 3→**5/5 PASS**（新增 D=工件缺→LANE-ABSENT、E=工件在位→LANE-DOWN，钉死两档不可互串）。**未做**：charter 的 PASS 判据未改一毫（10-29 12:00 终审后按裁决再动），工件缺失也不因「已知」而降级。
