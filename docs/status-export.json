@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-10-28 06:10",
- "current_activity": "2026-10-28 03:00 轮：T153 done（产品增量 2 分件：8792 /ask 功能面探针）+T152 dispatched（派单落日清行）+队列卫生四行并 T155 | QUEUE premise_unverified=0 open=9（轮首 12·净减 3） | 审核:orders/decisions 自上一轮收讫后零新行（mtime 快检 过） | 提案:BC-P-131（存活探针 vs 功能探针分离律·三问过闸） | C1C4:C1C4-GREEN",
- "latest_artifact": "state/clean-window-log.jsonl（mtime 2026-10-28 06:09）",
- "next_milestone": "M4 接产对齐矩阵 blocked 项随开店/平台后台逐项销 ⬜（T-27 余项）（队列状态=open）"
+ "updated_at": "2026-10-28 19:14",
+ "current_activity": "10-28 19:1x 令牌轮：D-20261028-18 承接=继任 KPI 从定义变可测（Tools/l1_kpi_probe.py selftest 10/10，实跑 KPI-A=ABSENT(:8090)、KPI-B=0.4 PARTIAL 2/5），定义件 docs/ops/l1-kpi-definition-v1.md；同轮修复 BC-P-45 台账尾残渣",
+ "latest_artifact": "state/l1-kpi-probe-20261028-190754.json + docs/ops/l1-kpi-definition-v1.md（2026-10-28 19:07）",
+ "next_milestone": ":8090 车道终审 10-29 12:00（35B 取回起火 或 登记墓碑态·D-20261028-10）→ 同日合并验收继任 KPI（@HQ 心跳接线）"
 }
