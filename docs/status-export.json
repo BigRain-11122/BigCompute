@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-10-28 22:49",
- "current_activity": "2026-10-28 22:00 轮：T-20261028-40 步2（产品增量 2 分件=KPI-B 三行角色分段+仪器自指缺陷轮内自捉即修）——三行读码定谳 RECORD-FIELD×1+DIAGNOSTIC-TARGET×2（探针靶不应补第二端点）→fallback 增分段读面〔主行 0.4 PARTIAL 2/5 与默认退出码逐字不变·消费段 2/2 GREEN〕+selftest 10→18/18；QUEUE premise_unverified=0 open=9",
- "latest_artifact": "state/gpu-util/samples.jsonl（mtime 2026-10-28 22:48）",
- "next_milestone": "M4 接产对齐矩阵 blocked 项随开店/平台后台逐项销 ⬜（T-27 余项）（队列状态=open）"
+ "updated_at": "2026-10-28 23:12",
+ "current_activity": "2026-10-28 23:2x 令牌轮：T159 比率探针分母自指普查（产品增量 2 分件=可跑普查器+真实出数）——六探针分母来源登记，实跑 DENOM-CLEAN（SELF-EXCLUDED=2 / STRUCTURAL-NA=4 / NEEDS-FIX=0），selftest 15/15；同时承接 OB-20261028-230512-410 全面开工令并按 bm-a 车道自领，回执已落 order-bus",
+ "latest_artifact": "docs/ops/ratio-denominator-census-v1.md + state/denom-census-20261028-2315.json（2026-10-28 23:15）",
+ "next_milestone": "T160 分子侧扫描根自指排查（下轮可执行件，24h 内）；D-20261028-10 :8090 车道终审窗 10-29 12:00（外部裁决，本司不预判）"
 }
