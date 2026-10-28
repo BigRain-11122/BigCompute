@@ -97,6 +97,12 @@ SELF_STALE_DAYS = 3.0  # 预注册：本机 claim 超 3 日未 done = 陈旧自�
 DEPT_TAG_RE = re.compile(r"【([^】]{1,24})】")
 MACHINE_DEPT = {"bm-a": "HQ", "bm-b": "HQ", "bm-c": "HQ", "bm-d": "HQ"}
 DEPT_ALIAS = {"集团": "HQ", "FluxGroup": "HQ", "fluxgroup": "HQ", "HQ": "HQ"}
+# J13e（10-29 轮）：无主行 lane 归属闸——无 claim 的行此前一律计入 fresh/effective，
+# 但行内 `lane=bm-x` 声明的是指定机位的单车道活（如 bm-b GPU 车道），本机领不动。
+# 与 J13b/J13c 同法：ready_ignitable/ready_fresh 维持集团同源语义，另设诊断列
+# ready_lane_foreign，并把该行从 effective_ignitable 剔除（外机车道活=本车道无新供给）。
+LANE_MACHINE_RE = re.compile(r"lane\s*=\s*(bm-[a-z])")
+LANE_FOREIGN_IDS_CAP = 20  # 诊断列上限（防超长行堆积）
 # J11（T105·BC-P-78）：陈旧 M 态守卫常量——真实 git 路径优先（PATH git=
 # gitsilent 转发器吞 stdout·10-08 判例·探针零输出=假净面）
 STALE_M_LATCH = os.path.join(PROJECT, "state", "stale-m.latch.json")
@@ -596,12 +602,17 @@ def ignitable_face(backlog_path=BACKLOG, machines_dir=None,
     J13c（T124·BC-P-105）：claim 行再判 lane 归属——行首【司标签】=交付司，
     claim 机归属司（MACHINE_DEPT）≠ 交付司 → lane_mismatch，同样不计入
     effective_ignitable（外司池活被跨司机占用=本车道无新供给）。
+
+    J13e（10-29 轮）：无 claim 行再判 `lane=bm-x` 声明——声明机位≠本机 → 计入
+    ready_lane_foreign 并不计入 effective_ignitable（外机车道活本机领不动）；
+    行内无 lane 声明维持旧语义（视为通用可领）。
     """
     face = {"ready_total": 0, "ready_ignitable": 0, "ready_foreign_alive": 0,
             "ready_foreign_silent": 0, "ready_owner_unknown": 0,
             "ready_fresh": 0, "ready_self_active": 0, "ready_self_stale": 0,
             "self_stale_ids": [], "self_age_unknown": 0,
             "effective_ignitable": 0,
+            "ready_lane_foreign": 0, "ready_lane_foreign_ids": [],
             "lane_mismatch": 0, "lane_mismatch_ids": [],
             "takeover_candidate_ids": [], "silent_owners": {},
             "unknown_owners": [], "floor": floor, "breach": False,
@@ -622,6 +633,12 @@ def ignitable_face(backlog_path=BACKLOG, machines_dir=None,
             if not claims:
                 face["ready_ignitable"] += 1
                 face["ready_fresh"] += 1
+                lane_decl = LANE_MACHINE_RE.search(line)
+                if lane_decl and lane_decl.group(1) != self_machine:
+                    face["ready_lane_foreign"] += 1
+                    if len(face["ready_lane_foreign_ids"]) < LANE_FOREIGN_IDS_CAP:
+                        face["ready_lane_foreign_ids"].append(_row_id(line))
+                    continue
                 eff += 1
                 continue
             owner = claims[-1]
@@ -1035,45 +1052,58 @@ def selftest():
         with open(os.path.join(md, "bm-c.json"), "w", encoding="utf-8") as f:
             json.dump({"clock_read": (now - datetime.timedelta(hours=30))
                        .strftime("%Y-%m-%dT%H:%M:%S+08:00")}, f)
+        # 夹具日期改相对时标（10-29 轮修：写死 10-24 的 claim 一旦跨过
+        # SELF_STALE_DAYS=3 就被判陈旧，断言随日期漂移转红——自测夹具不得依赖当日）
+        d = lambda days: (now + datetime.timedelta(days=days)).strftime("%m-%d %H:%M")
         bl = os.path.join(td, "backlog.md")
         with open(bl, "w", encoding="utf-8") as f:
             f.write("1. 【HQ】无主——可领\n"
-                    "2. 【HQ】本机——可领（claimed@bm-a@10-07 22:33）\n"
-                    "3. 【BigMoney】活他机——可领（claimed@bm-b@10-24 17:00）\n"
-                    "4. 【BigMoney】死他机——可领（claimed@bm-c@10-21 08:00）\n"
+                    "2. 【HQ】本机——可领（claimed@bm-a@%s）\n"
+                    "3. 【BigMoney】活他机——可领（claimed@bm-b@%s）\n"
+                    "4. 【BigMoney】死他机——可领（claimed@bm-c@%s）\n"
                     "5. 【BigMoney】已完——可领（claimed@bm-b@10-20）done@10-21\n"
-                    "6. 【BigMoney】无状态件——可领（claimed@bm-d@10-24）\n"
-                    "7. 【FluxVerse】跨司机占——可领（claimed@bm-a@10-24 12:00）\n")
-        fc = ignitable_face(bl, machines_dir=md, floor=4)
-        fc2 = ignitable_face(bl, machines_dir=md, floor=3)
+                    "6. 【BigMoney】无状态件——可领（claimed@bm-d@%s）\n"
+                    "7. 【FluxVerse】跨司机占——可领（claimed@bm-a@%s）\n"
+                    "8. 【HQ】外机车道——可领（lane=bm-b 本机 GPU 单车道）\n"
+                    "9. 【HQ】本机车道——可领（lane=bm-a 单车道）\n"
+                    % (d(-10), d(0), d(-10), d(0), d(-1)))
+        fc = ignitable_face(bl, machines_dir=md, floor=6)
+        fc2 = ignitable_face(bl, machines_dir=md, floor=5)
         age_c = machine_silent_minutes("bm-c", md)
         print("J13 ignitable: total=%d ign=%d alive=%d silent=%d unknown=%d "
               "fresh=%d self_active=%d self_stale=%d eff=%d lane_mm=%d "
-              "breach=%s breach@3=%s breach_eff=%s take=%s silent_owners=%s"
+              "lane_foreign=%d breach=%s breach@3=%s breach_eff=%s take=%s "
+              "silent_owners=%s"
               % (fc["ready_total"], fc["ready_ignitable"],
                  fc["ready_foreign_alive"], fc["ready_foreign_silent"],
                  fc["ready_owner_unknown"], fc["ready_fresh"],
                  fc["ready_self_active"], fc["ready_self_stale"],
                  fc["effective_ignitable"], fc["lane_mismatch"],
+                 fc["ready_lane_foreign"],
                  fc["breach"], fc2["breach"],
                  fc["breach_effective"], fc["takeover_candidate_ids"],
                  fc["silent_owners"]))
-        ok &= fc["readable"] and fc["ready_total"] == 6
-        ok &= fc["ready_ignitable"] == 3          # 无主 + 本机 ×2
+        ok &= fc["readable"] and fc["ready_total"] == 8
+        ok &= fc["ready_ignitable"] == 5          # 无主 ×3 + 本机 ×2
         ok &= fc["ready_foreign_alive"] == 1
         ok &= fc["ready_foreign_silent"] == 1 and "bm-c" in fc["silent_owners"]
         ok &= fc["ready_owner_unknown"] == 1      # bm-d 无状态件=不判死
         ok &= fc["takeover_candidate_ids"] == ["backlog#4"]
         ok &= fc["breach"] is True and fc2["breach"] is False  # floor 数学
         # J13b（M86）：本机陈旧自占用拆列——row#2 的 10-07 claim 已 17 天
-        ok &= fc["ready_fresh"] == 1
+        ok &= fc["ready_fresh"] == 3
         ok &= fc["ready_self_stale"] == 1 and fc["ready_self_active"] == 1
         ok &= fc["self_stale_ids"] == ["backlog#2"]
         # J13c（T124）：交付司标签≠claim 机司 → lane_mismatch，不计入 effective
         # （只计本机持有行：他机持有行本就不入 effective，另在其桶内诊断）
         ok &= fc["lane_mismatch"] == 1
         ok &= fc["lane_mismatch_ids"] == ["backlog#7"]
-        ok &= fc["effective_ignitable"] == 1      # fresh 1 + active(row7 跨司机占剔除)
+        # J13e：无主行声明外机 lane → 诊断列命中且不计入 effective（row8 bm-b）
+        ok &= fc["ready_lane_foreign"] == 1
+        ok &= fc["ready_lane_foreign_ids"] == ["backlog#8"]
+        ok &= fc["effective_ignitable"] == 2      # fresh#1 + fresh#9 本机车道
+        ok &= LANE_MACHINE_RE.search("lane = bm-c x").group(1) == "bm-c"
+        ok &= LANE_MACHINE_RE.search("无 lane 声明") is None
         ok &= fc["breach_effective"] is True and fc["self_stale_days"] == 3.0
         ok &= _row_dept("8. 【集团】x") == "HQ" and _row_dept("9. 无标签") is None
         ok &= _dept_of("bm-zzz") is None
@@ -1081,9 +1111,9 @@ def selftest():
         ok &= _claim_age_days("garbage") is None
         ok &= age_c is not None and age_c > IGNITABLE_SILENT_MIN
         ok &= ignitable_face(os.path.join(td, "nope.md"))["readable"] is False
-        # T128：供给读数口径切 effective——ready=3 而 eff=1，旧口径会假绿；
+        # T128：供给读数口径切 effective——ready=5 而 eff=2，旧口径会假绿；
         # 面不可读时回退池行数（fail-open）。
-        ok &= supply_gate_value(fc, 99) == 1
+        ok &= supply_gate_value(fc, 99) == 2
         ok &= supply_gate_value(fc, 99) != fc["ready_ignitable"]
         ok &= supply_gate_value(ignitable_face(os.path.join(td, "nope.md")),
                                 7) == 7

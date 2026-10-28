@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-10-29 01:05",
- "current_activity": "2026-10-29 01:1x 轮：T164 done（产品增量 2 分件=qa_smoke no.9 失败分类接工件证据，新增 LANE-ABSENT 第四类，与 KPI 定义件 ABSENT 同词：selftest_coder_class 3→5/5 PASS，live 消息 LANE-ABSENT 带 model/exe 缺位路径，与 l1_kpi_probe reach 的同窗读数 KPI-A=ABSENT 一致；charter PASS/FAIL 判据未动，四类仍全 FAIL，改判据留今日 12:00 终审后）+定义件 §六.3 落盘 + 提案 BC-P-138",
- "latest_artifact": "qa/smoke-20261029-0059.log（+png，mtime 2026-10-29 00:59，14/16 PASS）｜docs/ops/l1-kpi-definition-v1.md §六.3（跨工具词表归一）｜state/c1c4-20261029-010307.json（C1C4-GREEN 4/4）",
- "next_milestone": "今日 12:00 D-20261028-10 L1 :8090 车道终审：呈件已在案（KPI-A=ABSENT·KPI-B=0.4 PARTIAL·三行角色分类·消费段升主面待裁），本司待裁决落地即改 charter §三.9 判据面"
+ "updated_at": "2026-10-29 01:52",
+ "current_activity": "2026-10-29 01:5x 轮：T165 done（产品增量 2 分件=供给面 lane 归属闸 J13e：无 claim 的池行若声明 lane=bm-x 且非本机，则计入诊断列 ready_lane_foreign 并从 effective_ignitable 剔除；selftest 增四断言 PASS，实跑 pool_effective 1→0 证明旧口径把 bm-b GPU 车道活当成本机可点火=假绿）+ 同轮自捉并修「夹具绝对日期漂移致 selftest 自 10-27 起转红」+ 提案 BC-P-139",
+ "latest_artifact": "state/idle-face-20261029-01.txt（实跑供给面读数：pool_effective=0 / ready_lane_foreign 命中 backlog#15）｜Tools/idle_selfcheck.py（selftest PASS）｜qa/smoke-20261029-0142.log（+png，14/16 PASS）｜state/c1c4-20261029-014249.json（C1C4-GREEN 4/4）",
+ "next_milestone": "今日 12:00 D-20261028-10 L1 :8090 车道终审（呈件在案：KPI-A=ABSENT·KPI-B=0.4 PARTIAL·三行角色分类），裁决落地即改 charter §三.9；同窗 T166 完成心跳 pool_claimable/effective 口径标签化（≤24h）"
 }
