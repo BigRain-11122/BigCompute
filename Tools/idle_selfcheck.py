@@ -12,7 +12,10 @@ VRAM≥6GB〕→ 领池检（fleet/backlog 可领行计数）→ 池空拉本司
 判据（预注册·回访 10-13/14 并窗）：
   J1 资源读数面：RAM 空闲% = ctypes GlobalMemoryStatusEx 实读；VRAM free MiB =
      nvidia-smi 单源直读（O-20261006-2358 face 2·WMI 已知 bug 不用）
-  J2 计数面：pool_claimable = fleet/backlog.md 含「可领」且无 claimed@ 的行数；
+  J2 计数面：pool_claimable（旧名·已改 pool_rows_candidate）= fleet/backlog.md
+     含「可领」且无 claimed@ 的行数——**候选行数不是供给**（T166：含陈旧自占与
+     跨司机错占，供给面读 pool_effective）；心跳行只打 pool_rows_candidate，
+     旧名保留在状态件一窗兼容（T128 双字段并存律）；
      queue_open = state/queue/{main,tech,explore}.md 含 open 的任务行数
   J3 写路面：双字段行经 round_append.py append 落 state/heartbeat.txt；
      轮间状态件 state/idle_selfcheck.json（consecutive_idle/idle_rounds 持久化）
@@ -876,6 +879,20 @@ def supply_gate_value(face, pool):
     return face["effective_ignitable"] if face["readable"] else pool
 
 
+POOL_RAW_TOKEN = "pool_rows_candidate"
+POOL_LEGACY_TOKEN = "pool_claimable"
+
+
+def supply_label(pool_raw, pool_eff):
+    """T166：心跳行供给标签的单一构造点。
+
+    旧名 pool_claimable 在同一行与 pool_effective 并排时，人读会把候选行数当
+    供给（10-29 实锚：pool_claimable=1 而 pool_effective=0）。此处只打自描述的
+    pool_rows_candidate + 治理口径 pool_effective，旧名留状态件一窗兼容。
+    """
+    return "%s=%d pool_effective=%d" % (POOL_RAW_TOKEN, pool_raw, pool_eff)
+
+
 def check():
     ram_pct = probe_ram_free_pct()
     vram_mb = probe_vram_free_mb()
@@ -923,7 +940,9 @@ def check():
     st["last_check"] = time.strftime("%Y-%m-%d %H:%M:%S")
     st["last_read"] = {"ram_free_pct": ram_pct, "vram_free_mb": vram_mb,
                        "py_cpu": py_cpu, "cpu_lane_idle": cpu_idle,
-                       "pool_claimable": pool, "queue_open": q_open,
+                       "pool_claimable": pool,  # 旧名（T166 弃用·仅状态件兼容）
+                       "pool_rows_candidate": pool,
+                       "queue_open": q_open,
                        # T128 切换期双字段并存：pool_ignitable 保集团同源口径
                        # （诊断/兼容），pool_effective 为饥饿与心跳的治理口径。
                        "pool_effective": pool_ign,
@@ -942,18 +961,19 @@ def check():
 
     line = ("%s idle_selfcheck: verdict=%s ram_free_pct=%s vram_free_mb=%s "
             "py_cpu=%s cpu_lane_idle=%s "
-            "pool_claimable=%d queue_open=%d consecutive_idle=%d "
+            "%s queue_open=%d consecutive_idle=%d "
             "idle_rounds=%d agenda_starved=%s serve_alive=%s serve_detail=%s"
             " task_face=%s model_drift=%s"
-            " pool_effective=%d pool_ignitable=%d"
+            " pool_ignitable=%d"
             " pool_foreign_silent=%d pool_owner_unknown=%d"
             " pool_fresh=%d pool_self_stale=%d pool_lane_mm=%d"
             " breach_eff=%s lane8090=%s c1c4_line=%s hq_line=%s"
             % (time.strftime("%Y-%m-%d %H:%M:%S"), verdict, ram_pct,
-               vram_mb, py_cpu, str(cpu_idle).lower(), pool, q_open,
+               vram_mb, py_cpu, str(cpu_idle).lower(),
+               supply_label(pool, pool_ign), q_open,
                st["consecutive_idle"], st["idle_rounds"], str(starved).lower(),
                str(serve_alive).lower(), serve_detail, task_face,
-               model_drift, pool_ign,
+               model_drift,
                (face["ready_ignitable"] if face["readable"] else pool),
                face["ready_foreign_silent"],
                face["ready_owner_unknown"], face["ready_fresh"],
@@ -1341,6 +1361,21 @@ def selftest():
     print("J15 hq-line: %s | live=%s"
           % (" ".join("%s=%s" % (k, v["token"]) for k, v in j15.items()),
              hq_line_age()["token"]))
+
+    # J16 供给标签口径（T166）：同一行里候选行数不得被读成供给。
+    # 夹具池 raw=1/eff=0（10-29 实锚几何）——标签必须自带语义、旧名不出行、
+    # 且不产生重复 token（重复=两个数字并列，正是 T166 要消的面）。
+    lab = supply_label(1, 0)
+    lab_up = supply_label(7, 3)
+    tokens = [t.split("=")[0] for t in lab.split()]
+    print("J16 supply label: raw>eff=%r raw<eff=%r tokens=%s deprecated_in_line=%s"
+          % (lab, lab_up, tokens, POOL_LEGACY_TOKEN in tokens))
+    ok &= lab == "%s=1 pool_effective=0" % POOL_RAW_TOKEN
+    ok &= lab_up == "%s=7 pool_effective=3" % POOL_RAW_TOKEN
+    ok &= tokens == [POOL_RAW_TOKEN, "pool_effective"]
+    ok &= len(set(tokens)) == len(tokens)          # 无重复 token
+    ok &= POOL_LEGACY_TOKEN not in tokens          # 旧名只在状态件兼容
+    ok &= "candidate" in POOL_RAW_TOKEN            # 名称自描述（非「可领」）
     print("SELFTEST %s" % ("PASS" if ok else "FAIL"))
     return 0 if ok else 1
 
