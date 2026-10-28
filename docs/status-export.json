@@ -1,7 +1,7 @@
-{
+﻿{
  "company": "BigCompute",
- "updated_at": "2026-10-29 03:06",
- "current_activity": "2026-10-29 03:00 轮：T166 done（产品增量 2 分件=心跳供给读数收成单构造点 supply_label：旧名 pool_claimable 改 pool_rows_candidate 且只与 pool_effective 成对出行，pool_ignitable 留 ready 诊断列，旧名留状态件一窗兼容〔T128 双字段并存律〕；selftest 增 J16 五断言〔token 唯一/旧名不出行/名称自描述/raw>eff 与 raw<eff 两",
- "latest_artifact": "state/c1c4-20261029-030517.json（mtime 2026-10-29 03:05）",
- "next_milestone": "M4 接产对齐矩阵 blocked 项随开店/平台后台逐项销 ⬜（T-27 余项）（队列状态=**blocked 如实**（10-28 23:2x 令牌轮队列卫生）：销 ⬜ ） ｜ T167 心跳供给标签探针侧守卫（qa no.10 断言旧名回潮即红）＋ D-20261028-10 12 时终审对表（车道回位或墓碑，本司零重启零重拉）"
+ "updated_at": "2026-10-29 06:10",
+ "current_activity": "2026-10-29 06:0x 轮：T167 done（产品增量 2 分件=qa_smoke 探针 no.10 补写侧改名的探针侧守卫：心跳行出现旧名 pool_claimable= 或缺失自描述 pool_rows_candidate 即判红，夹具 6→8 条〔新增两负例〕8/8 PASS，live no.10 PASS、smoke 14/16〔两 FAIL 同源已知=:8090 DARK+lane artifacts〕）",
+ "latest_artifact": "qa/smoke-20261029-0610.log + .png（mtime 2026-10-29 06:07）",
+ "next_milestone": "T168 心跳 token 写侧→探针守卫映射普查（找出无守卫 token）｜D-20261028-10 12 时终审对表（车道回位或墓碑，本司零重启零重拉）｜M4 接产对齐矩阵 blocked 项随开店/平台后台逐项销 ⬜（T-27 余项·blocked 如实）"
 }

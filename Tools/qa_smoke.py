@@ -456,6 +456,10 @@ def probe_resident_qa_functional(port_owner=None):
 SUPPLY_MARK_RE = re.compile(r"idle_selfcheck")
 
 
+POOL_CANDIDATE_TOKEN = "pool_rows_candidate"
+POOL_LEGACY_TOKEN = "pool_claimable"
+
+
 def supply_dual_fields(line):
     """T132 (probe no.10): read-side guard for the two supply counters.
 
@@ -465,13 +469,26 @@ def supply_dual_fields(line):
     reader can no longer pick the wrong one by accident - provided the
     line actually carries both. Missing field or effective > ready means
     the pair drifted apart and the reading is untrustworthy.
+    T167 extends this to the label itself: the writer only emits
+    `pool_rows_candidate` (T166 single construction point), so a line
+    that brings the deprecated `pool_claimable=` back - hand-stitched
+    or a third bare counter - is a regression the probe must flag.
+
     Pure function over one heartbeat line so the selftest can feed
     synthetic fixtures.
     """
-    m_eff = re.search(r"pool_effective=(\d+)", line or "")
-    m_ign = re.search(r"pool_ignitable=(\d+)", line or "")
+    line = line or ""
+    if re.search(r"\b%s\s*=" % POOL_LEGACY_TOKEN, line):
+        return False, ("deprecated %s= back on heartbeat line (use %s)"
+                       % (POOL_LEGACY_TOKEN, POOL_CANDIDATE_TOKEN))
+    m_eff = re.search(r"pool_effective=(\d+)", line)
+    m_ign = re.search(r"pool_ignitable=(\d+)", line)
+    m_cand = re.search(r"%s=(\d+)" % POOL_CANDIDATE_TOKEN, line)
     if not m_eff and not m_ign:
         return False, "no pool_effective/pool_ignitable on heartbeat line"
+    if not m_cand:
+        return False, ("%s missing (self-describing candidate label "
+                       "required)" % POOL_CANDIDATE_TOKEN)
     if not m_eff:
         return False, "pool_effective missing (pool_ignitable present)"
     if not m_ign:
@@ -1126,29 +1143,42 @@ def selftest_coder_class():
 
 
 def selftest_supply_fields():
-    """T132 fixtures for supply_dual_fields().
+    """T132 fixtures for supply_dual_fields(), extended by T167.
 
     Live heartbeat can only show the current pair, so every rejection
     branch is pinned: a line carrying just one counter is exactly the
     accidental-read the T128 split created, and effective > ready is
-    arithmetically impossible unless one side went stale.
+    arithmetically impossible unless one side went stale. T167 adds the
+    label side: the deprecated name coming back, and the self-describing
+    candidate label going missing, must both fail rather than pass.
     """
     cases = [
         ("both fields, effective < ready",
-         "idle_selfcheck: verdict=busy pool_effective=0 pool_ignitable=2",
+         "idle_selfcheck: verdict=busy pool_rows_candidate=2 "
+         "pool_effective=0 pool_ignitable=2",
          True, "effective <= ready"),
-        ("both fields, equal", "pool_effective=3 pool_ignitable=3", True,
+        ("both fields, equal",
+         "pool_rows_candidate=3 pool_effective=3 pool_ignitable=3", True,
          "pool_effective=3"),
-        ("effective missing", "pool_ignitable=2", False,
+        ("effective missing", "pool_rows_candidate=2 pool_ignitable=2", False,
          "pool_effective missing"),
-        ("ready missing", "pool_effective=0", False,
+        ("ready missing", "pool_rows_candidate=1 pool_effective=0", False,
          "pool_ignitable missing"),
-        ("inverted", "pool_effective=4 pool_ignitable=2", False, "inverted"),
+        ("inverted",
+         "pool_rows_candidate=4 pool_effective=4 pool_ignitable=2", False,
+         "inverted"),
         ("no counters at all", "idle_selfcheck: verdict=busy", False,
          "no pool_effective/pool_ignitable"),
+        ("deprecated pool_claimable= back",
+         "idle_selfcheck: verdict=busy pool_rows_candidate=1 "
+         "pool_effective=0 pool_ignitable=1 pool_claimable=1",
+         False, "deprecated pool_claimable="),
+        ("candidate label missing",
+         "idle_selfcheck: verdict=busy pool_effective=0 pool_ignitable=2",
+         False, "pool_rows_candidate missing"),
     ]
     results = []
-    print("qa_smoke probe no.10 selftest (T132 supply dual-field reading)")
+    print("qa_smoke probe no.10 selftest (T132/T167 supply reading+labels)")
     for label, line, want_ok, needle in cases:
         ok, detail = supply_dual_fields(line)
         good = ok == want_ok and needle in detail
