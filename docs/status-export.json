@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-10-28 23:12",
- "current_activity": "2026-10-28 23:2x 令牌轮：T159 比率探针分母自指普查（产品增量 2 分件=可跑普查器+真实出数）——六探针分母来源登记，实跑 DENOM-CLEAN（SELF-EXCLUDED=2 / STRUCTURAL-NA=4 / NEEDS-FIX=0），selftest 15/15；同时承接 OB-20261028-230512-410 全面开工令并按 bm-a 车道自领，回执已落 order-bus",
- "latest_artifact": "docs/ops/ratio-denominator-census-v1.md + state/denom-census-20261028-2315.json（2026-10-28 23:15）",
- "next_milestone": "T160 分子侧扫描根自指排查（下轮可执行件，24h 内）；D-20261028-10 :8090 车道终审窗 10-29 12:00（外部裁决，本司不预判）"
+ "updated_at": "2026-10-29 00:21",
+ "current_activity": "2026-10-29 00:00 轮：T160 done（产品增量 2 分件=扫描根自指普查器 Tools/scan_root_census.py：selftest 22/22 + 实跑 SCAN-ROOT-CLEAN 19 行〔ROOT-SEPARATED 6/STRUCTURAL-NA 13/NEEDS-EXCLUDE 0〕·sweep 未登记扫描器 7→0·轮内自捉同型缺陷〔模块常量 REPO 覆盖仓根路径→全行 file not readable〕即修）+T161 ",
+ "latest_artifact": "state/c1c4-20261029-002121.json（mtime 2026-10-29 00:21）",
+ "next_milestone": "M4 接产对齐矩阵 blocked 项随开店/平台后台逐项销 ⬜（T-27 余项）（队列状态=**blocked 如实**（10-28 23:2x 令牌轮队列卫生）：销 ⬜ ）"
 }
