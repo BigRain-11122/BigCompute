@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-10-29 23:15",
- "current_activity": "2026-10-29 23:1x 令牌轮：心跳 token 守卫批次 1（T170·产品增量 2 分件）——九个枚举/布尔 token 值域守卫一次补齐（bool×4：cpu_lane_idle/agenda_starved/serve_alive/breach_eff；task_face/model_drift/lane8090/c1c4_line/hq_line），只判形状域不重算语义；census 实跑 guarded 9→18、unguarded 16→7、stale=0。",
- "latest_artifact": "Tools/qa_smoke.py（no.18 值域守卫·夹具 8→15 全绿）+ docs/qa-smoke-test-charter.md §三.18 + state/heartbeat-token-census-20261029-2315.json + qa/smoke-20261029-2314.log/.png（live 17/17 PASS·exit 0）",
- "next_milestone": "①T170 批次 2（余 7 项：verdict 37 读点属语义面、serve_detail、五供给子计数）｜②T169 status-export 写侧 BOM 自检（本窗实证现文件无 BOM 且 JSON 可解析，但写侧仍缺守卫）｜③M4 接产对齐矩阵 blocked 项随开店平台后台逐项销 ⬜（blocked 如实）"
+ "updated_at": "2026-10-30 00:34",
+ "current_activity": "2026-10-29 23:00 轮：T170 批次 1 done（产品增量 2 分件=心跳 token 守卫 9→18 项：bool×4〔cpu_lane_idle/agenda_starved/serve_alive/breach_eff〕+task_face/model_drift/lane8090+两 STATE 行〔c1c4_line/hq_line〕值域判器 heartbeat_enum_ok·只判形状域不重算语义；qa_smoke no.18 夹具 8→15/",
+ "latest_artifact": "Tools/status_export_check.py（mtime 2026-10-30 00:33）",
+ "next_milestone": "M4 接产对齐矩阵 blocked 项随开店/平台后台逐项销 ⬜（T-27 余项）（队列状态=**blocked 如实**（10-28 23:2x 令牌轮队列卫生）：销 ⬜ ） ｜ T168 心跳 token 写侧→探针守卫映射普查（找出无守卫 token）｜D-20261028-10 12 时终审对表（车道回位或墓碑，本司零重启零重拉）"
 }

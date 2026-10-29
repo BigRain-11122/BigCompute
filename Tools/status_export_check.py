@@ -28,6 +28,14 @@ drifts silently; a composed one cannot claim work the ledgers do not show.
 `docs/status-export-overrides.json` is an append-only supplement layer --
 it may add text after a generated line, never replace it.
 
+T169 adds the write-side half of the same defect: the read gate could see
+a BOM but nobody asserted the *writer* produced none. An editor save or a
+PowerShell `Out-File` aimed at this file re-introduces the BOM and the face
+breaks again with no warning at the moment of writing. `compose --write`
+now verifies the bytes it just put on disk (BOM-free, byte-identical,
+strict-UTF-8 parseable) and refuses the write loudly when they are not;
+a BOM'd overrides file is reported instead of being silently dropped.
+
 Commands:
     python Tools/status_export_check.py check [--now "YYYY-MM-DD HH:MM"]
     python Tools/status_export_check.py compose [--write] [--now "..."]
@@ -51,6 +59,10 @@ LAG_H = 2.0
 
 TS_RE = re.compile(r"^(\d{4})-(\d{2})-(\d{2})[ T](\d{2})(?::(\d{2}))?")
 PLACEHOLDER_TOKENS = ("tbd", "todo", "n/a", "...", "-")
+# T169: a UTF-8 BOM makes strict `json.load(open(..., encoding='utf-8'))`
+# raise, so a BOM'd export is broken for every consumer even though the
+# text looks fine in an editor.
+BOM = b"\xef\xbb\xbf"
 
 
 def parse_ts(text):
@@ -104,6 +116,11 @@ def export_verdict(raw_bytes, now=None, rounds_text="", exists=True):
     now = now or datetime.datetime.now()
     if not exists:
         return "EXPORT-MISSING", "%s does not exist" % EXPORT_PATH
+    if isinstance(raw_bytes, (bytes, bytearray)) and bytes(raw_bytes[:3]) == BOM:
+        # Named explicitly: the generic JSON error ("Unexpected UTF-8 BOM")
+        # is easy to misread as a content problem instead of an encoding one.
+        return "EXPORT-BAD", ("first 3 bytes are EF BB BF (UTF-8 BOM); strict "
+                              "utf-8 readers reject this file")
     try:
         text = raw_bytes.decode("utf-8")
     except (UnicodeDecodeError, AttributeError) as e:
@@ -334,6 +351,60 @@ def _print_safe(text):
         print(text.encode(enc, "replace").decode(enc, "replace"))
 
 
+def verify_written(on_disk, data):
+    """Pure: problems with the bytes that landed, given the payload intended."""
+    problems = []
+    if on_disk.startswith(BOM):
+        problems.append("first 3 bytes are EF BB BF (UTF-8 BOM)")
+    if on_disk != data:
+        problems.append("bytes on disk differ from the payload written")
+    try:
+        json.loads(on_disk.decode("utf-8"))
+    except (UnicodeDecodeError, ValueError) as e:
+        problems.append("post-write strict utf-8 read failed: %r" % e)
+    return problems
+
+
+def guarded_write(path, payload_lines):
+    """Write UTF-8 (no BOM) and then verify the bytes actually on disk.
+
+    Return (problems, first3). An empty `problems` list means the file we
+    will hand to the CEO is byte-identical to what we meant to write and
+    strictly decodes as UTF-8 JSON. Anything else is a refusal, not a
+    warning: a half-wrong CEO-facing face is worse than a red write.
+    """
+    data = (json.dumps(payload_lines, ensure_ascii=False, indent=1) + "\n").encode("utf-8")
+    parent = os.path.dirname(path)
+    if parent and not os.path.isdir(parent):
+        os.makedirs(parent)
+    with open(path, "wb") as f:
+        f.write(data)
+    with open(path, "rb") as f:
+        on_disk = f.read()
+    return verify_written(on_disk, data), on_disk[:3]
+
+
+def _read_overrides(path):
+    """(dict, warning) -- BOM tolerated on read, but never silently dropped."""
+    try:
+        with open(path, "rb") as f:
+            raw = f.read()
+    except OSError:
+        return {}, None
+    has_bom = raw.startswith(BOM)
+    try:
+        payload = json.loads(raw.decode("utf-8-sig"))
+    except ValueError as e:
+        return {}, "%s unparsable: %s" % (OVERRIDES_PATH, e)
+    if not isinstance(payload, dict):
+        return {}, "%s top level is not an object" % OVERRIDES_PATH
+    warn = None
+    if has_bom:
+        warn = ("%s carries a UTF-8 BOM (tolerated on read; the writer must "
+                "save it BOM-free)" % OVERRIDES_PATH)
+    return payload, warn
+
+
 def compose(root=None, now=None, write=False):
     """Live compose; --write also gates the result through check()."""
     root = root or ROOT
@@ -342,23 +413,20 @@ def compose(root=None, now=None, write=False):
     overrides = {}
     ov_path = os.path.join(root, *OVERRIDES_PATH.split("/"))
     if os.path.exists(ov_path):
-        try:
-            overrides = json.loads(_read_text(ov_path))
-        except ValueError:
-            overrides = {}
-        if not isinstance(overrides, dict):
-            overrides = {}
+        overrides, warn = _read_overrides(ov_path)
+        if warn:
+            _print_safe("NOTE %s" % warn)
     lines = compose_lines(rounds_text, queue_text, collect_files(root),
                           now=now, overrides=overrides)
     if write:
         path = os.path.join(root, *EXPORT_PATH.split("/"))
-        parent = os.path.dirname(path)
-        if parent and not os.path.isdir(parent):
-            os.makedirs(parent)
-        with open(path, "wb") as f:
-            f.write((json.dumps(lines, ensure_ascii=False, indent=1) + "\n").encode("utf-8"))
+        problems, first3 = guarded_write(path, lines)
+        if problems:
+            _print_safe("WRITE-REJECTED %s: %s" % (EXPORT_PATH, "; ".join(problems)))
+            return 3
         verdict, detail = check(root=root, now=now)
-        _print_safe("WROTE %s -> VERDICT=%s %s" % (EXPORT_PATH, verdict, detail))
+        _print_safe("WROTE %s first3=%s -> VERDICT=%s %s"
+                    % (EXPORT_PATH, first3.hex(), verdict, detail))
         return 0 if verdict == "EXPORT-GREEN" else 1
     _print_safe(json.dumps(lines, ensure_ascii=False, indent=1))
     return 0
@@ -490,6 +558,39 @@ def selftest():
     cases.append(latin_ok)
     print("  [%s] N Latin-1 mojibake rejected by readability, ASCII kept"
           % ("PASS" if latin_ok else "FAIL"))
+
+    # T169 O: a BOM'd export must be named as an encoding fault, not
+    # reported as a generic content problem.
+    bom_raw = BOM + enc(good)
+    v, detail = export_verdict(bom_raw, now=now, rounds_text=rounds_old)
+    o_ok = v == "EXPORT-BAD" and "BOM" in detail
+    cases.append(o_ok)
+    print("  [%s] O UTF-8 BOM export -> BAD named as BOM (%s)"
+          % ("PASS" if o_ok else "FAIL", v))
+
+    # T169 P: write-side assertion. The writer's own verify must accept a
+    # clean write and refuse a BOM'd or altered one -- this is the half
+    # that was missing: the reader could see it, the writer never checked.
+    data_clean = enc(good)
+    p_ok = (verify_written(data_clean, data_clean) == []
+            and bool(verify_written(BOM + data_clean, data_clean))
+            and bool(verify_written(data_clean + b" ", data_clean)))
+    cases.append(p_ok)
+    print("  [%s] P write-side verify: clean ok, BOM/altered refused"
+          % ("PASS" if p_ok else "FAIL"))
+
+    # T169 Q: a real write into a scratch root must land BOM-free and read
+    # back GREEN (end-to-end, not just the pure helper).
+    with tempfile.TemporaryDirectory() as td:
+        path = os.path.join(td, *EXPORT_PATH.split("/"))
+        problems, first3 = guarded_write(path, good)
+        with open(path, "rb") as f:
+            landed = f.read()
+        v_live, _ = export_verdict(landed, now=now, rounds_text=rounds_old)
+    q_ok = (not problems and first3 != BOM and v_live == "EXPORT-GREEN")
+    cases.append(q_ok)
+    print("  [%s] Q guarded write lands BOM-free (first3=%s) and reads GREEN"
+          % ("PASS" if q_ok else "FAIL", first3.hex()))
 
     print("status_export_check selftest: %d/%d PASS" % (sum(cases), len(cases)))
     return 0 if all(cases) else 1
