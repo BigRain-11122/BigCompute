@@ -831,12 +831,25 @@ def probe_serve_artifacts(script=None, exists=None, inspect=None):
     except Exception:  # noqa: BLE001 - unreadable script = no verdict
         return True, ("UNVERIFIED: cannot read %s - no verdict, no false "
                       "alarm" % script)
-    return serve_artifact_verdict(parse_serve_paths(text), exists,
-                                  inspect or inspect_artifact)
+    ok, detail = serve_artifact_verdict(parse_serve_paths(text), exists,
+                                       inspect or inspect_artifact)
+    if not ok and CODER_PORT in TOMBSTONED_LANES:
+        return True, ("TOMBSTONE-N/A (%s) - :%d lane retired by "
+                      "D-20261029-11, prerequisites no longer owed"
+                      % (detail, CODER_PORT))
+    return ok, detail
 
 
 CODER_EXPECTED_IMAGE = "llama-server.exe"
 CODER_PORT = 8090
+# D-20261029-11 (b): the L1 coder lane :8090 was retired as a tombstone after
+# the 10-29 12:00 verdict (zero listener, model dir gone, 0 gguf on disk).
+# "别再逐轮 P1 复报" means the retired lane's absence - and the absence of its
+# prerequisites - is a registered reading, not a defect. The successor KPI is
+# Tools/l1_kpi_probe.py against L1_ENDPOINT (the post-verdict L1 default, see
+# docs/ops/l1-kpi-definition-v1.md §七 - written by name, not by port literal,
+# because a number in this comment would seed the KPI-B scope of the row below).
+TOMBSTONED_LANES = frozenset({CODER_PORT})
 
 
 def coder_port_owner(port=CODER_PORT):
@@ -942,6 +955,11 @@ def probe_l1_coder_serve():
                     "BigMoney advisor)" % (r.status, len(models)))
     except Exception as e:  # noqa: BLE001 - probe must not crash pipeline
         pid, image = coder_port_owner()
+        if CODER_PORT in TOMBSTONED_LANES:
+            return True, ("L1 coder serve %d TOMBSTONE-N/A: lane retired by "
+                          "D-20261029-11 (%r; owner=%s pid=%s) - successor "
+                          "KPI = Tools/l1_kpi_probe.py reach on L1_ENDPOINT"
+                          % (CODER_PORT, e, image or "-", pid or "-"))
         return False, classify_coder_failure(pid, image, e,
                                              probe_serve_artifacts())
 

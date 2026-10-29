@@ -1,7 +1,7 @@
-﻿{
+{
  "company": "BigCompute",
- "updated_at": "2026-10-29 06:10",
- "current_activity": "2026-10-29 06:0x 轮：T167 done（产品增量 2 分件=qa_smoke 探针 no.10 补写侧改名的探针侧守卫：心跳行出现旧名 pool_claimable= 或缺失自描述 pool_rows_candidate 即判红，夹具 6→8 条〔新增两负例〕8/8 PASS，live no.10 PASS、smoke 14/16〔两 FAIL 同源已知=:8090 DARK+lane artifacts〕）",
- "latest_artifact": "qa/smoke-20261029-0610.log + .png（mtime 2026-10-29 06:07）",
- "next_milestone": "T168 心跳 token 写侧→探针守卫映射普查（找出无守卫 token）｜D-20261028-10 12 时终审对表（车道回位或墓碑，本司零重启零重拉）｜M4 接产对齐矩阵 blocked 项随开店/平台后台逐项销 ⬜（T-27 余项·blocked 如实）"
+ "updated_at": "2026-10-29 19:14",
+ "current_activity": "2026-10-29 19:0x 轮：D-20261029-11 (b) 承接（产品增量 2 分件=①`:8090` 墓碑登记：l1_kpi_probe 拆出 L1 默认端点 :11434 与墓碑端口 :8090 两个概念〔防止把活端口种进只有 8090 字面量的消费行=构造性假绿〕，墓碑端口恒判 TOMBSTONE 且 reach 退出码 0；②无回退登记簿 docs/ops/l1-no-fallback-registry.json 三行〔RECORD-FIELD×1/DIAGNOSTIC-TARGET×2·逐行理由〕+残余读数〔主行 0.4 不变·消费段 1.0 GREEN·残余段 1.0 GREEN〕·selftest 18→24/24 PASS·qa_smoke no.9/no.13 tombstone-aware 后 qa_smoke 16/16 PASS exit 0〔墓碑豁免销 no.9/no.13 两 FAIL + 实况面刷新销 no.14〕）",
+ "latest_artifact": "Tools/l1_kpi_probe.py selftest 23/23 PASS + docs/ops/l1-no-fallback-registry.json + qa/smoke-20261029-1913.log + .png（16/16 PASS·exit 0·mtime 2026-10-29 19:13）",
+ "next_milestone": "①D-20261029-11 在制品：继任 KPI 定义件 §七 墓碑注册节回填 + HQ 探针接线（死线 10-30 12:00）｜③T168 心跳 token 写侧→探针守卫映射普查（needs-based·下轮首对象）｜④M4 接产对齐矩阵 blocked 项随开店/平台后台逐项销 ⬜（T-27 余项·blocked 如实）"
 }

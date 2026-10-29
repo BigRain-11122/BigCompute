@@ -103,3 +103,41 @@ qa_smoke no.9       ->  L1 coder serve 8090 LANE-ABSENT: no listener on :8090 ..
 ```
 
 `selftest_coder_class` 3→**5/5 PASS**（新增 D=工件缺→LANE-ABSENT、E=工件在位→LANE-DOWN，钉死两档不可互串）。**未做**：charter 的 PASS 判据未改一毫（10-29 12:00 终审后按裁决再动），工件缺失也不因「已知」而降级。
+
+## 七、终审落 (b)：墓碑注册与继任 KPI 启用（2026-10-29 19:0x·D-20261029-11）
+
+D-20261029-11（10-29 12:00 决策轮，本班实测：`:8090` 零监听、`C:\Users\sjs20\models` 不存在、全盘 `*.gguf` 0 件、`:11434` 在线）按 D-10 ② 自动落分支 **(b)**：`:8090` **登记降级态退役**，L1 默认端点改 `:11434`。本节是本司对「墓碑登记 + 继任 KPI 定义」的落地口径。
+
+### 七.1 两个端口概念必须分开（防构造性假绿）
+
+改默认端点时若把「测量端点」与「消费行扫描种子」混成一个常量，会把 `:11434` 种进只写 `8090` 字面量的消费行，KPI-B 立刻假绿。探针拆为三个常量：
+
+| 常量 | 值 | 职责 |
+|---|---|---|
+| `L1_DEFAULT_PORT` | `11434` | KPI-A 在 `L1_ENDPOINT` 未设时的默认测量端点（D-11 ②） |
+| `TOMBSTONED_PORTS` | `(8090,)` | 退役车道；恒判 `TOMBSTONE`，绝不计活（即使有人重新起监听） |
+| `CENSUS_SEED_PORT` | `8090` | 消费行作用域种子，保持原语义不变 |
+
+### 七.2 KPI-A 三态 + 墓碑例外
+
+`UP/DOWN/ABSENT` 三态不变；墓碑端口返回第四读数 **`TOMBSTONE`**，`reach` 退出码 **0**（D-11 ①：不再计 DARK 为缺陷、不再逐轮 P1 复报）。墓碑期间任何以「`:8090` 不可用」立 P1/提案＝路由违规（D-11 ④）。
+
+### 七.3 KPI-B 三段读数（主行不变）
+
+| 段 | 分母 | 2026-10-29 19:0x 实读 |
+|---|---|---|
+| 主行（primary，沿用原数学） | 全部 `FALLBACK-OK` 行 = 5 | 0.4 **PARTIAL**（2/5·逐字与 10-28 19:07 一致） |
+| 消费段（consumption） | 字面量属出站调用 = 2 | 1.0 **GREEN** |
+| 残余段（residual，本轮新增） | 仍未登记回退义务的行 = 2 | 1.0 **GREEN** |
+
+### 七.4 无回退登记簿（禁沉默）
+
+`docs/ops/l1-no-fallback-registry.json`（schema `l1-no-fallback-registry/v1`）逐行登记三行「不接回退」的理由与生效日：`cost_ledger.py:1429`（RECORD-FIELD）、`p0_moe_measure.py:35`（DIAGNOSTIC-TARGET）、`qa_smoke.py:839`（DIAGNOSTIC-TARGET，行号随 10-29 文件增长由 772 漂到 839，登记簿与角色表同步勘正）。守卫＝`registry_issues`：理由空→`NO-REASON`、行号漂移→`STALE`，任一出现 selftest 转红。
+
+### 七.5 qa_smoke 侧「不再计缺陷」
+
+no.9（车道存活）与 no.13（工件在位）对墓碑端口返回 **PASS + `TOMBSTONE-N/A`** 标记（`TOMBSTONED_LANES = frozenset({8090})`），保留原消息文本与四类分类器不动——判据的例外是**登记**的，不是擦掉的：charter §三.9/13 记一行墓碑豁免出处（D-20261029-11 ①）。
+
+### 七.6 验证（本窗实跑）
+
+`python Tools/l1_kpi_probe.py selftest` → **23/23 PASS**（新增 S19 墓碑恒判/ S20 监听中的墓碑不计活 / S21 登记簿卫生 / S22 残余段只剔登记行 / S23 在役登记簿零问题）；`reach` → `state=UP`（`:11434`）；`fallback` → 主行 0.4 PARTIAL + 消费段 1.0 + 残余段 1.0 + `NO-FALLBACK` 三行逐行打印；`qa_smoke` live → 见 `qa/smoke-20261029-*.log`。

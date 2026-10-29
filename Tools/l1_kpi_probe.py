@@ -52,7 +52,15 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(HERE)
 ENV_NAME = "L1_ENDPOINT"
 DEFAULT_HOST = "127.0.0.1"
-DEFAULT_PORT = 8090
+# D-20261029-11 (b): the L1 coder lane at :8090 is retired as a tombstone and
+# the default endpoint moves to the local ollama lane. Two ports, two jobs -
+# conflating them would seed the consumer rows with a live port that none of
+# them actually names, i.e. fake-green KPI-B by construction.
+L1_DEFAULT_PORT = 11434
+TOMBSTONED_PORTS = (8090,)
+CENSUS_SEED_PORT = 8090
+DEFAULT_PORT = CENSUS_SEED_PORT        # historical alias: census/scope seed only
+REGISTRY_PATH = os.path.join(REPO, "docs", "ops", "l1-no-fallback-registry.json")
 MODELS_PATH = "/v1/models"
 TIMEOUT = 1.5
 # Only literals that *look like* a port: "host:8090", port=8090, or a bare quoted "8090".
@@ -71,7 +79,7 @@ def parse_endpoint(spec=None):
     """Return (host, port, explicit). explicit=True means someone named it."""
     raw = spec if spec is not None else os.environ.get(ENV_NAME)
     if not raw:
-        return DEFAULT_HOST, DEFAULT_PORT, False
+        return DEFAULT_HOST, L1_DEFAULT_PORT, False
     raw = raw.strip()
     if raw.startswith("http://") or raw.startswith("https://"):
         rest = raw.split("://", 1)[1].split("/", 1)[0]
@@ -80,7 +88,7 @@ def parse_endpoint(spec=None):
     if re.fullmatch(r":?\d{2,5}", raw):
         return DEFAULT_HOST, int(raw.lstrip(":")), True
     host, _, port = raw.partition(":")
-    return (host or DEFAULT_HOST), int(port or DEFAULT_PORT), True
+    return (host or DEFAULT_HOST), int(port or L1_DEFAULT_PORT), True
 
 
 def _http_get(host, port, path, timeout):
@@ -114,6 +122,10 @@ def count_models(text):
 
 def probe(host, port, explicit, models_path=MODELS_PATH, timeout=TIMEOUT, http_get=None):
     """KPI-A for one endpoint. Pure read."""
+    if port in TOMBSTONED_PORTS:
+        # D-20261029-11 (b): a retired lane is registered, not measured. Calling
+        # it DARK/DOWN again would re-open the P1 that the verdict closed.
+        return "TOMBSTONE"
     getter = http_get or _http_get
     try:
         with socket.create_connection((host, port), timeout):
@@ -218,24 +230,73 @@ DEFAULT_ROLE = "CONSUMPTION"
 # restore verdict (D-20261028-18); this table only adds a second reading.
 ROW_ROLES = [
     {"file": "cost_ledger.py", "line": 1429, "role": "RECORD-FIELD",
+     "anchor": 'l1r.add_argument("--endpoint"',
      "reason": "l1-record --endpoint default is stored in the ledger row; no "
                "request is issued from this literal"},
     {"file": "p0_moe_measure.py", "line": 35, "role": "DIAGNOSTIC-TARGET",
+     "anchor": 'ap.add_argument("--base-url"',
      "reason": "V100 P0 benchmark harness: --base-url names the lane under "
                "measurement, a fallback would silently benchmark another lane"},
-    {"file": "qa_smoke.py", "line": 772, "role": "DIAGNOSTIC-TARGET",
+    {"file": "qa_smoke.py", "line": 844, "role": "DIAGNOSTIC-TARGET",
+     "anchor": "CODER_PORT = 8090",
      "reason": "CODER_PORT is the lane the liveness probe reports on; falling "
                "back would hide the outage the probe exists to find"},
 ]
 
 
+
+QA_SMOKE_SRC = os.path.join(HERE, "qa_smoke.py")
+
+
+def coder_port_line():
+    """Line of qa_smoke's CODER_PORT constant - computed, never hard-coded.
+
+    Fixtures that pin a line number break on every unrelated edit above it
+    (observed three times on 2026-10-29 alone). Scan instead.
+    """
+    try:
+        with open(QA_SMOKE_SRC, "r", encoding="utf-8") as f:
+            for i, t in enumerate(f.read().splitlines()):
+                if t.strip() == "CODER_PORT = 8090":
+                    return i + 1
+    except OSError:
+        pass
+    return 0
+
+
+def row_source_line(row):
+    """The source line a census row points at (None when unreadable)."""
+    try:
+        with open(row["file"], "r", encoding="utf-8", errors="replace") as f:
+            lines = f.read().splitlines()
+        return lines[int(row["line"]) - 1]
+    except (OSError, IndexError, KeyError, TypeError, ValueError):
+        return None
+
+
+def entry_matches(row, entry):
+    """Anchor-first entry matching.
+
+    Line numbers drift every time the file grows - this table has already been
+    wrong twice (qa_smoke CODER_PORT moved 772 -> 839 -> 844 inside one day,
+    once by an unrelated edit and once by the tombstone patch itself). An
+    anchor is the literal the row is about, so it survives that churn; the
+    line number stays in the table for humans only.
+    """
+    if os.path.basename(row.get("file", "")) != entry.get("file"):
+        return False
+    anchor = (entry.get("anchor") or "").strip()
+    if anchor:
+        text = row_source_line(row)
+        return text is not None and anchor in text
+    return row.get("line") == entry.get("line")
+
+
 def role_for(row, roles=None):
     """(role, reason) for a census row / detail row; unlisted = CONSUMPTION."""
     roles = ROW_ROLES if roles is None else roles
-    base = os.path.basename(row.get("file", ""))
-    line = row.get("line")
     for e in roles:
-        if e.get("file") == base and e.get("line") == line:
+        if entry_matches(row, e):
             return e.get("role", DEFAULT_ROLE), e.get("reason", "")
     return DEFAULT_ROLE, ""
 
@@ -243,15 +304,59 @@ def role_for(row, roles=None):
 def role_issues(rows, roles=None):
     """Table hygiene: entries lacking a reason, or no longer matching a row."""
     roles = ROW_ROLES if roles is None else roles
-    keys = set((os.path.basename(r.get("file", "")), r.get("line")) for r in rows)
     out = []
     for e in roles:
-        key = (e.get("file"), e.get("line"))
         if not (e.get("reason") or "").strip():
-            out.append({"file": key[0], "line": key[1], "problem": "NO-REASON"})
-        elif key not in keys:
-            out.append({"file": key[0], "line": key[1], "problem": "STALE"})
+            out.append({"file": e.get("file"), "line": e.get("line"),
+                        "problem": "NO-REASON"})
+        elif not any(entry_matches(r, e) for r in rows):
+            out.append({"file": e.get("file"), "line": e.get("line"),
+                        "problem": "STALE"})
     return out
+
+
+def load_registry(path=None):
+    """Rows explicitly registered as 'no fallback by design' (D-20261029-11 (b)).
+
+    The (b) branch of the 10-29 verdict forbids silence: a FALLBACK-OK row that
+    cannot name a live target must either name one or say why not, on the record.
+    The registry is that record, in JSON so probes can read it. Missing file is
+    an empty registry, not an error - a clone without the fallback rows is normal.
+    """
+    path = path or REGISTRY_PATH
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            doc = json.load(f)
+    except (OSError, ValueError):
+        return []
+    entries = doc.get("entries") if isinstance(doc, dict) else doc
+    return [e for e in (entries or []) if isinstance(e, dict)]
+
+
+def registry_issues(rows, entries):
+    """Hygiene for the no-fallback registry: reason required, entry must match a row."""
+    out = []
+    for e in entries:
+        if not (e.get("reason") or "").strip():
+            out.append({"file": e.get("file"), "line": e.get("line"),
+                        "problem": "NO-REASON"})
+        elif not any(entry_matches(r, e) for r in rows):
+            out.append({"file": e.get("file"), "line": e.get("line"),
+                        "problem": "STALE"})
+    return out
+
+
+def registered_keys(rows, entries):
+    """Row identities covered by the registry (anchor-first, same as roles)."""
+    return set((os.path.basename(r.get("file", "")), r.get("line"))
+               for r in rows if any(entry_matches(r, e) for e in entries))
+
+
+def registered_no_fallback(rows, entries=None):
+    """(registered row entries, issues) for the given census rows."""
+    entries = load_registry() if entries is None else entries
+    hits = [e for e in entries if any(entry_matches(r, e) for r in rows)]
+    return hits, registry_issues(rows, entries)
 
 
 def segment_states(detail, roles=None):
@@ -269,8 +374,9 @@ def segment_states(detail, roles=None):
     return consumption, excluded
 
 
-def evaluate_fallback(rows, port=DEFAULT_PORT, prober=probe, scope_fn=scope_ports):
-    """KPI-B over census rows. prober/scope_fn injectable for selftest."""
+def evaluate_fallback(rows, port=DEFAULT_PORT, prober=probe, scope_fn=scope_ports,
+                      registry=None):
+    """KPI-B over census rows. prober/scope_fn/registry injectable for selftest."""
     detail = []
     states = []
     for row in rows:
@@ -285,7 +391,8 @@ def evaluate_fallback(rows, port=DEFAULT_PORT, prober=probe, scope_fn=scope_port
                 if eport == p:
                     host = ehost
                     explicit = True
-            state = prober(host, p, explicit)
+            state = ("TOMBSTONE" if p in TOMBSTONED_PORTS
+                     else prober(host, p, explicit))
             cand.append({"port": p, "host": host, "state": state})
         live = any(c["state"] == "UP" for c in cand)
         states.append(live)
@@ -296,9 +403,15 @@ def evaluate_fallback(rows, port=DEFAULT_PORT, prober=probe, scope_fn=scope_port
     live_n = sum(1 for s in states if s)
     cons, excluded = segment_states(detail)
     c_rate, c_verdict = steady_from_prober(cons)
+    reg, reg_issues = registered_no_fallback(rows, registry)
+    reg_keys = registered_keys(rows, reg)
+    res_states = [s for row, s in zip(rows, states)
+                  if (os.path.basename(row.get("file", "")), row.get("line")) not in reg_keys]
+    r_rate, r_verdict = steady_from_prober(res_states)
     return {"port": port, "rows_total": len(rows),
             "rows_live": live_n,
             "rate": rate, "verdict": verdict, "rows": detail,
+            "tombstoned_ports": list(TOMBSTONED_PORTS),
             "segments": {
                 "primary": {"basis": "every FALLBACK-OK row (unchanged math)",
                             "live": live_n, "total": len(states),
@@ -307,7 +420,14 @@ def evaluate_fallback(rows, port=DEFAULT_PORT, prober=probe, scope_fn=scope_port
                                 "live": sum(1 for s in cons if s),
                                 "total": len(cons),
                                 "rate": c_rate, "verdict": c_verdict},
+                "residual": {"basis": "rows still owing a fallback (registered "
+                                      "no-fallback rows excluded)",
+                             "live": sum(1 for s in res_states if s),
+                             "total": len(res_states),
+                             "rate": r_rate, "verdict": r_verdict},
                 "excluded": excluded,
+                "no_fallback_registered": reg,
+                "registry_issues": reg_issues,
                 "table_issues": role_issues(rows),
             }}
 
@@ -315,20 +435,26 @@ def evaluate_fallback(rows, port=DEFAULT_PORT, prober=probe, scope_fn=scope_port
 def build_report(port=DEFAULT_PORT):
     host, eport, explicit = parse_endpoint()
     kpi_a = {"endpoint": "%s:%d" % (host, eport), "explicit": explicit,
-             "state": probe(host, eport, explicit)}
+             "state": probe(host, eport, explicit),
+             "tombstoned": eport in TOMBSTONED_PORTS}
     rows = census_rows(port)
     kpi_b = evaluate_fallback(rows, port=port)
     return {"tool": "l1_kpi_probe", "version": TOOL_VERSION,
             "ts": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "machine": os.environ.get("COMPUTERNAME", "unknown"),
+            "policy": "D-20261029-11", "tombstoned_ports": list(TOMBSTONED_PORTS),
             "kpi_a_reachability": kpi_a, "kpi_b_fallback": kpi_b}
 
 
 def cmd_reach(a):
     host, port, explicit = parse_endpoint(a.endpoint)
     state = probe(host, port, explicit)
-    print("KPI-A reach %s:%d explicit=%s state=%s" % (host, port, explicit, state))
-    return {"UP": 0, "DOWN": 3, "ABSENT": 4}[state]
+    note = " (tombstoned: retired by D-20261029-11, not a defect)" \
+        if port in TOMBSTONED_PORTS else ""
+    print("KPI-A reach %s:%d explicit=%s state=%s%s" % (host, port, explicit, state, note))
+    if state == "TOMBSTONE":
+        return 0
+    return {"UP": 0, "DOWN": 3, "ABSENT": 4}.get(state, 4)
 
 
 def cmd_fallback(a):
@@ -351,6 +477,15 @@ def cmd_fallback(a):
             e["file"], e["line"], e["role"], e["live"], e["reason"]))
     for i in seg["table_issues"]:
         print("  ROLE-TABLE %s %s:%s" % (i["problem"], i["file"], i["line"]))
+    res = seg["residual"]
+    print("KPI-B segments residual rate=%s verdict=%s live=%d/%d registered=%d" % (
+        "N/A" if res["rate"] is None else res["rate"], res["verdict"],
+        res["live"], res["total"], len(seg["no_fallback_registered"])))
+    for e in seg["no_fallback_registered"]:
+        print("  NO-FALLBACK %s:%s %s - %s" % (
+            e["file"], e["line"], e.get("role", "-"), e.get("reason", "")))
+    for i in seg["registry_issues"]:
+        print("  REGISTRY %s %s:%s" % (i["problem"], i["file"], i["line"]))
     face = c_ if getattr(a, "segmented", False) else rep
     return 0 if face["verdict"] in ("GREEN", "N/A-NO-SCOPE") else 3
 
@@ -426,7 +561,7 @@ def cmd_selftest(_a):
     parse_ok = (parse_endpoint("8090") == (DEFAULT_HOST, 8090, True)
                 and parse_endpoint(":8792") == (DEFAULT_HOST, 8792, True)
                 and parse_endpoint("http://127.0.0.1:11434/v1") == ("127.0.0.1", 11434, True)
-                and parse_endpoint("") == (DEFAULT_HOST, DEFAULT_PORT, False))
+                and parse_endpoint("") == (DEFAULT_HOST, L1_DEFAULT_PORT, False))
     checks.append(("S7 endpoint parsing", parse_ok))
     # S8 census integration: rows have the fields KPI-B needs
     rows = census_rows(DEFAULT_PORT)
@@ -455,7 +590,7 @@ def cmd_selftest(_a):
                    == ("CONSUMPTION", "")))
     checks.append(("S12 declared row carries role + reason",
                    role_for({"file": os.path.join("Tools", "qa_smoke.py"),
-                             "line": 772}, ROW_ROLES)[0] == "DIAGNOSTIC-TARGET"))
+                             "line": coder_port_line()}, ROW_ROLES)[0] == "DIAGNOSTIC-TARGET"))
     no_reason = [{"file": "a.py", "line": 2, "role": "RECORD-FIELD", "reason": " "}]
     checks.append(("S13 reason-less entry flagged NO-REASON",
                    [i["problem"] for i in role_issues([{"file": "a.py", "line": 2}],
@@ -466,20 +601,20 @@ def cmd_selftest(_a):
                    and all(i["problem"] == "STALE" for i in stale)))
     syn = [{"file": "f1.py", "line": 1, "live": True},
            {"file": "f2.py", "line": 2, "live": True},
-           {"file": os.path.join("Tools", "qa_smoke.py"), "line": 772, "live": False}]
+           {"file": os.path.join("Tools", "qa_smoke.py"), "line": coder_port_line(), "live": False}]
     cons, exc = segment_states(syn, ROW_ROLES)
     checks.append(("S15 segment math: excluded row cannot move consumption rate",
                    steady_from_prober(cons) == (1.0, "GREEN") and len(exc) == 1
                    and exc[0]["role"] == "DIAGNOSTIC-TARGET"))
     rows_syn = [{"file": "a.py", "line": 1, "status": "FALLBACK-OK"},
-                {"file": os.path.join("Tools", "qa_smoke.py"), "line": 772,
+                {"file": os.path.join("Tools", "qa_smoke.py"), "line": coder_port_line(),
                  "status": "FALLBACK-OK"}]
     rep_syn = evaluate_fallback(rows_syn, port=DEFAULT_PORT,
                                 prober=lambda *a, **k: "ABSENT",
                                 scope_fn=lambda row, p: [p])
     checks.append(("S16 primary verdict untouched by the role table",
                    rep_syn["rate"] == 0.0 and rep_syn["verdict"] == "RED"
-                   and rep_syn["segments"]["excluded"][0]["line"] == 772
+                   and rep_syn["segments"]["excluded"][0]["line"] == coder_port_line()
                    and rep_syn["segments"]["primary"]["verdict"] == "RED"))
     if rows:
         issues = role_issues(rows)
@@ -489,6 +624,53 @@ def cmd_selftest(_a):
         checks.append(("S18 self rows excluded (%d rows)" % len(rows),
                        all(os.path.abspath(r.get("file", "")) != me
                            for r in rows)))
+
+    # S19-S23 tombstone + no-fallback registry (D-20261029-11 (b))
+    checks.append(("S19 tombstoned port reported as TOMBSTONE, never probed",
+                   probe("127.0.0.1", TOMBSTONED_PORTS[0], True) == "TOMBSTONE"))
+    rep_t = evaluate_fallback([{"file": "a.py", "line": 1, "status": "FALLBACK-OK"}],
+                              port=CENSUS_SEED_PORT,
+                              prober=lambda *a, **k: "UP",
+                              scope_fn=lambda row, p: [TOMBSTONED_PORTS[0]])
+    checks.append(("S20 a listening tombstone target cannot score KPI-B",
+                   rep_t["rows_live"] == 0 and rep_t["rate"] == 0.0
+                   and rep_t["rows"][0]["candidates"][0]["state"] == "TOMBSTONE"))
+    hyg = registry_issues([{"file": "a.py", "line": 1}],
+                          [{"file": "a.py", "line": 2, "reason": "x"},
+                           {"file": "a.py", "line": 1, "reason": " "}])
+    checks.append(("S21 registry hygiene: stale + no-reason flagged",
+                   sorted(i["problem"] for i in hyg) == ["NO-REASON", "STALE"]))
+    syn3 = [{"file": "f1.py", "line": 1, "status": "FALLBACK-OK"},
+            {"file": "f2.py", "line": 2, "status": "FALLBACK-OK"},
+            {"file": "f3.py", "line": 3, "status": "FALLBACK-OK"}]
+    reg_syn = [{"file": "f3.py", "line": 3, "role": "RECORD-FIELD", "reason": "metadata"}]
+
+    def _syn_probe(host, port, explicit):
+        return "UP" if port != 50000 else "ABSENT"
+    rep_r = evaluate_fallback(syn3, port=CENSUS_SEED_PORT, prober=_syn_probe,
+                              scope_fn=lambda row, p: [50000 if row.get("line") == 3 else 11434],
+                              registry=reg_syn)
+    checks.append(("S22 residual reading excludes registered rows only",
+                   rep_r["rate"] == 0.6667 and rep_r["verdict"] == "PARTIAL"
+                   and rep_r["segments"]["residual"]["rate"] == 1.0
+                   and rep_r["segments"]["residual"]["total"] == 2
+                   and len(rep_r["segments"]["no_fallback_registered"]) == 1))
+    if rows:
+        reg_live = load_registry()
+        checks.append(("S23 live no-fallback registry clean (%d entries)" % len(reg_live),
+                       bool(reg_live) and not registry_issues(rows, reg_live)))
+
+    smoke = os.path.join(HERE, "qa_smoke.py")
+    with open(smoke, "r", encoding="utf-8") as _f:
+        _lines = _f.read().splitlines()
+    _n = next(i + 1 for i, t in enumerate(_lines) if t.strip() == "CODER_PORT = 8090")
+    drift_row = {"file": smoke, "line": _n}
+    stale_entry = {"file": "qa_smoke.py", "line": 1, "anchor": "CODER_PORT = 8090"}
+    wrong_entry = {"file": "qa_smoke.py", "line": _n, "anchor": "zzz-not-here"}
+    checks.append(("S24 anchor match survives a stale line number",
+                   entry_matches(drift_row, stale_entry)
+                   and not entry_matches(drift_row, wrong_entry)
+                   and role_for(drift_row, ROW_ROLES)[0] == "DIAGNOSTIC-TARGET"))
 
     bad = [name for name, ok in checks if not ok]
     for name, ok in checks:

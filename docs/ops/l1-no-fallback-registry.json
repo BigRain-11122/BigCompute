@@ -1,0 +1,31 @@
+{
+  "schema": "l1-no-fallback-registry/v1",
+  "policy": "D-20261029-11",
+  "note": "L1 coder lane :8090 retired as tombstone (D-20261029-11 (b)). Under the (b) branch every FALLBACK-OK row that cannot name a live target must either name one or register why not - silence is forbidden. These three rows are registered exceptions, not defects. Read by Tools/l1_kpi_probe.py (registry_issues/registered_no_fallback); stale line references turn the probe's selftest red on purpose.",
+  "entries": [
+    {
+      "file": "cost_ledger.py",
+      "line": 1429,
+      "anchor": "l1r.add_argument(\"--endpoint\"",
+      "role": "RECORD-FIELD",
+      "reason": "l1-record --endpoint default is written into the ledger row; no request is issued from this literal, so there is no call to fall back on.",
+      "since": "2026-10-29"
+    },
+    {
+      "file": "p0_moe_measure.py",
+      "line": 35,
+      "anchor": "ap.add_argument(\"--base-url\"",
+      "role": "DIAGNOSTIC-TARGET",
+      "reason": "V100 P0 benchmark harness: --base-url names the lane under measurement. A fallback would silently benchmark a different lane, which is the false-green class this probe exists to kill.",
+      "since": "2026-10-29"
+    },
+    {
+      "file": "qa_smoke.py",
+      "line": 844,
+      "anchor": "CODER_PORT = 8090",
+      "role": "DIAGNOSTIC-TARGET",
+      "reason": "CODER_PORT is the lane the liveness probe reports on. Falling back would hide the outage the probe is there to find. Matched by anchor, not line: this constant moved 772 -> 839 -> 844 in one day.",
+      "since": "2026-10-29"
+    }
+  ]
+}

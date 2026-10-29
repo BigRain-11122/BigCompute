@@ -1,0 +1,75 @@
+BigCompute QA smoke test 20261029-1913 (orders L254 / charter v1)
+
+[gpu collector] PASS -> gpu collector
+machine_borrowable=NOT-BORROWABLE[VRAM|COTENANT] vram_free=878MiB(line>=6144MiB) cotenant_editors=6(line 0) (D-20261004-04 dual probe; decoupled from GREEN-IDLE loop state; R-41 fleet-row field)
+gpu report 2026-10-29 machine=bm-a: n=110 avg=60.3% max=100% kpi=PASS
+3-day rolling baseline (pre-registered, C-20260929-02): 2026-10-27..2026-10-29 n=446 avg=30.0% (call-out 30%; 70% target = directional ref)
+borrow-window declared: 2026-10-08..2026-10-08 consumer=MV ���� H3 ���� i2v ���Դ���mv-carve �����桤480P/768P �������� (source=rounds.log E63 �С��������� +1.9608������+�����������ų��գ�--baseline-range 10-01,10-07 �ų� 10-08 ���Դ��գ�)
+borrow-window declared: 2026-10-09..2026-10-10 consumer=MV ���� KF �ؼ�֡����bm-a ���ؽӹ� 44 ����Krea2 turbo��44/44 ���� 10-10 23:35:08�� (source=orders 2026-10-10 23:0x @bm-c �����У�bm-a ���ؽӹܣ�+rounds.log E62 ���ô����߻ؼƼ۵�������10-09 +0.795/10-10 +0.5016 kWh��LoRA 0.7948 ���� E59��)
+borrow-window declared: 2026-10-11..2026-10-11 consumer=BigStream ����Ƶ��/MV ���߱��� GPU ���ⴰ��meme KF-P/KF-N �ؼ�֡+i2v �ڲ��� (source=rounds.log 12:0x �� gpu �ֻ��С�MV/KF ���ô�̧����ʵ����+heartbeat idle_selfcheck 12:14 busy��vram_free 329MiB��cotenant ���أ�ʵê)
+borrow-window declared: 2026-10-12..2026-10-12 consumer=������ء������� 2026-10-12 09:5x��ʵ��=LLM ��פ�����أ�ollama qwen2.5:14b-8k��10.5GB VRAM pin���������� util 97%������ԭ������BigStream ר�� KN i2v ���ش���δ��VRAM �� LLM ռ����H3 int8 19.5GB �����ء�ComfyUI 8188 ���������+������ KN ��Ƭʵ֤�����ռ���������ά�֣��� SELF ������ʵ��E57 ������������ 14:53�� (source=orders O-20261011-21xx ר�����У�������ڲᣩ+E57 �������ݹ�����ʵê��state/h3-window-energy-llmserve-interim-20261012-0958.json+ollama /api/ps ʵ����)
+borrow-window declared: 2026-10-12..2026-10-13 consumer=BigStream mv0001 KF demo ѡ����ҹ����bm-a seeds 9012-9014 ѡ����+E01c ��ʽ��ء�O-20261012-2025 CEO �°�ȫ�����ƽ���˫�� KF ���ӷֹ���ҹ����ǰ�� 20:2x��i2v ���� INT8 ˫����ͬ������� (source=orders O-20261012-2025��origin ac305c5��10-12 20:2x �У�+���̬ʵ�� 20:3x��GPU util 1%/used 8770MiB��llama-server PID 74832 ����+ComfyUI PID 10336 ��λ=��δ���ǰ��̬��)
+borrow-window declared: 2026-10-13..2026-10-13 consumer=BigStream mv0001 ����������׼֡������ҹ����O-20261012-2330 �� bm-a ҹ�� GPU��jman LoRA RAW 52 ���������� turbo �ݰ桤��ס/�Ķ�/����/��Ȼ/���� 5-7 �š�����ϯ���� (source=orders O-20261012-2330 �� bm-a ҹ�� GPU=����������׼֡�������У�origin 6a5e0cf��10-12 23:3x��+���̬ʵ�� 10-13 00:14:52��GPU util 1%/used 9323MiB �� llama-server PID 74648 �����7����ִ�� #5 ˫ɱ�� used 4227/free 7771=����ϯ����ǰ�þ�����)
+borrow-window declared: 2026-10-13..2026-10-14 consumer=����ϯ mv0001 V3 ��� bm-a �Σ���� fullres ������ 7/7 locked seeds 1344��768 jman0.6��orders 6851396 19:41 ʵê��+21:0x CEO �°�ȫ�����������Σ�O-20261013-2200 bm-a=�ල+װ��˵��ȡ�CPU �棩 (source=orders 6851396��10-13 19:41 @bm-a V3 fullres 7/7 relay��+O-20261013-2100 CEO �°�ȫ������+O-20261013-2200 ȫ������֤�bm-a=�ල+װ��˵������ۣ�)
+7-day benchmark (D-20260930-36 R-C1, head-firm gap line): 2026-10-23..2026-10-29 n=1317 avg=19.4% -> BELOW-BENCH(<50% structural-failure line on 7-day avg, R-C1 D-20260930-36) (gap line only; sole call-out stays 30%; 70% target = directional ref pending R- threshold-calibration receipts)
+rolling 30-min window: n=2 avg=35.0% -> IDLE
+
+[ollama response] PASS -> ollama response
+answer="1 + 1 = 2. 😊\n\nThat's a simple but fundamental result in arithmetic! If you're asking about something more complex or in a" eval_count=32 138.80 tok/s
+residency: pre=FOREVER post=FOREVER (maintained)
+NAME                 ID              SIZE      PROCESSOR    CONTEXT    RUNNER      UNTIL   
+qwen3:4b-instruct    0edcdef34593    7.5 GB    100% GPU     16384      llamacpp    Forever
+NAME                 ID              SIZE      PROCESSOR    CONTEXT    RUNNER      UNTIL   
+qwen3:4b-instruct    0edcdef34593    7.5 GB    100% GPU     16384      llamacpp    Forever
+
+[queue rows] PASS -> queue rows
+main.md: 87 rows
+tech.md: 170 rows
+explore.md: 79 rows
+
+[cost ledger] PASS -> cost ledger
+selftest: math=True determinism=True count=ok t94date=True sli8=True (orders+quota-gate+count+cloud+borrow+l1+t94date+sli8) -> PASS
+
+[rounds.log strict-decode] PASS -> rounds.log strict-decode
+strict utf-8 decode ok: 408138 bytes / 344 lines
+
+[resident QA serve 8792] PASS -> resident QA serve 8792
+health 200 status=ok anchors=20 server=resident-qa v1.1 (BigCompute MaaS consumer face) model=qwen3.6-35b
+
+[L1 coder serve 8090] PASS -> L1 coder serve 8090
+L1 coder serve 8090 TOMBSTONE-N/A: lane retired by D-20261029-11 (URLError(ConnectionRefusedError(10061, '由于目标计算机积极拒绝，无法连接。', None, 10061, None)); owner=- pid=-) - successor KPI = Tools/l1_kpi_probe.py reach on L1_ENDPOINT
+
+[ledger tail integrity (BC-P-45)] PASS -> ledger tail integrity (BC-P-45)
+state/rounds.log: tail_nl=ok tail_empty=0 last_markers=1 last_len=1204
+state/heartbeat.txt: tail_nl=ok tail_empty=0 last_markers=1 last_len=49
+HQ-FEEDBACK.md: tail_nl=ok tail_empty=0 last_markers=0 last_len=535
+state/proposals.md: tail_nl=ok tail_empty=0 last_markers=1 last_len=549
+state/queue/main.md: tail_nl=ok tail_empty=0 last_markers=1 last_len=1215
+state/queue/tech.md: tail_nl=ok tail_empty=0 last_markers=1 last_len=569
+state/queue/explore.md: tail_nl=ok tail_empty=0 last_markers=1 last_len=797
+
+[supply dual-field reading (T132)] PASS -> supply dual-field reading (T132)
+pool_effective=0 pool_ignitable=3 (effective <= ready)
+
+[runbook size budget (T133)] PASS -> runbook size budget (T133)
+runbook 2038 bytes <= 2048 cap
+
+[cost contract census (T138)] PASS -> cost contract census (T138)
+verdict=COST-CONTRACT-GREEN rails=5 gaps=0
+
+[lane artifacts presence+integrity (T140/T141)] PASS -> lane artifacts presence+integrity (T140/T141)
+TOMBSTONE-N/A (LANE-ARTIFACT-MISSING model=C:\Users\sjs20\models\qwen36-35b\Qwen3.6-35B-A3B-UD-IQ4_XS.gguf, exe=C:\Users\sjs20\models\llamacpp-b11429\llama-server.exe - the :8090 lane cannot start while a prerequisite is gone; a port probe only sees this after the old listener dies (10-25 09:26 first MISSING -> 10-27 03:16 first notice = 41.8h blind window; restore = model-supply window / group launcher, this suite only makes it visible)) - :8090 lane retired by D-20261029-11, prerequisites no longer owed
+
+[CEO status export (T143)] PASS -> CEO status export (T143)
+verdict=EXPORT-GREEN three lines present, updated_at=2026-10-29 19:12 age=0.0h
+
+[ledger encoding health (T145)] PASS -> ledger encoding health (T145)
+ENCODING-OK files=2 cjk_chars=93923 latin_runs=6488
+
+[resident QA 8792 /ask function (T153)] PASS -> resident QA 8792 /ask function (T153)
+ASK-OK: ask 200 reply_len=65 gate=..AI...qwen3:4b-instruct.FALLBACK.......58tok/4.57s L1-DOWN(fallback lane :11434 serving)
+
+[scan root self-reference census (T161)] PASS -> scan root self-reference census (T161)
+verdict=SCAN-ROOT-CLEAN rows=19 ROOT-SEPARATED=6 STRUCTURAL-NA=13 sweep=0(informational)
+
+smoke verdict: 16/16 PASS (charter 4 + T25 + E41 + BC-P-45 no.8 + T122 no.9 + T132 no.10 + T133 no.11 + T138 no.12 + T140 no.13 + T143 no.14 + T145 no.15 + T153 no.16 + T161 no.17 probes)
