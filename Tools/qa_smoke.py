@@ -530,7 +530,26 @@ HEARTBEAT_GUARDED_TOKENS = (
     (POOL_CANDIDATE_TOKEN, "count"),
     ("pool_effective", "count"),
     ("pool_ignitable", "count"),
+    # T170 batch 1: enum/boolean faces. These carry lane and alert state,
+    # so a silent value drift (e.g. task_face=paused instead of
+    # pause-exempt) reads as "something" to a human but matches no branch
+    # in any reader. Domain check only - the guard does not recompute the
+    # decision the value encodes.
+    ("cpu_lane_idle", "bool"),
+    ("agenda_starved", "bool"),
+    ("serve_alive", "bool"),
+    ("breach_eff", "bool"),
+    ("task_face", "task_face"),
+    ("model_drift", "model_drift"),
+    ("lane8090", "lane"),
+    ("c1c4_line", "state:rounds_ago"),
+    ("hq_line", "state:age_h"),
 )
+
+TASK_FACE_LITERALS = ("ok", "pause-exempt", "probe-error")
+MODEL_DRIFT_LITERALS = ("GREEN", "UNVERIFIED")
+MODEL_DRIFT_DRIFT_RE = re.compile(r"^DRIFT\(m=\d+,a=\d+\)$")
+STATE_LINE_RE = re.compile(r"^([A-Z][A-Z0-9-]*)\((.*)\)$")
 
 
 def heartbeat_fields(line):
@@ -544,8 +563,25 @@ def heartbeat_fields(line):
     return out
 
 
+def heartbeat_enum_ok(kind, raw):
+    """T170: value-domain judge for one non-numeric heartbeat token."""
+    if kind == "bool":
+        return raw in ("true", "false")
+    if kind == "task_face":
+        return raw in TASK_FACE_LITERALS or raw.startswith("ALERT:")
+    if kind == "model_drift":
+        return raw in MODEL_DRIFT_LITERALS or bool(
+            MODEL_DRIFT_DRIFT_RE.match(raw))
+    if kind == "lane":
+        return raw == "UP" or (raw.startswith("DARK[") and raw.endswith("]"))
+    if kind.startswith("state:"):
+        m = STATE_LINE_RE.match(raw)
+        return bool(m) and ("%s=" % kind.split(":", 1)[1]) in m.group(2)
+    return False
+
+
 def heartbeat_token_guard(line):
-    """T168 pure judge: guarded numeric tokens present, numeric, in range."""
+    """T168/T170 pure judge: guarded tokens present, typed, in domain."""
     if not line:
         return False, "no heartbeat line"
     fields = heartbeat_fields(line)
@@ -554,18 +590,21 @@ def heartbeat_token_guard(line):
         raw = fields.get(name)
         if raw is None:
             return False, "%s missing (writer renamed or dropped it)" % name
-        try:
-            val = float(raw)
-        except (TypeError, ValueError):
-            return False, "%s not numeric: %r" % (name, raw)
-        if kind == "pct":
-            if not (0.0 <= val <= 100.0):
-                return False, "%s out of range: %r" % (name, raw)
-        else:
-            if val < 0:
-                return False, "%s negative: %r" % (name, raw)
-            if val != int(val):
-                return False, "%s not integral: %r" % (name, raw)
+        if kind in ("pct", "count"):
+            try:
+                val = float(raw)
+            except (TypeError, ValueError):
+                return False, "%s not numeric: %r" % (name, raw)
+            if kind == "pct":
+                if not (0.0 <= val <= 100.0):
+                    return False, "%s out of range: %r" % (name, raw)
+            else:
+                if val < 0:
+                    return False, "%s negative: %r" % (name, raw)
+                if val != int(val):
+                    return False, "%s not integral: %r" % (name, raw)
+        elif not heartbeat_enum_ok(kind, raw):
+            return False, "%s outside %s domain: %r" % (name, kind, raw)
         seen.append("%s=%s" % (name, raw))
     return True, "guarded=%d %s" % (len(seen), " ".join(seen))
 
@@ -1559,10 +1598,14 @@ def selftest_heartbeat_tokens():
             "ram_free_pct=46.7 vram_free_mb=1906 py_cpu=53.0 "
             "cpu_lane_idle=true pool_rows_candidate=1 pool_effective=0 "
             "queue_open=57 consecutive_idle=0 idle_rounds=0 "
-            "agenda_starved=false pool_ignitable=3 lane8090=DARK[DOWN]")
+            "agenda_starved=false serve_alive=true task_face=ok "
+            "model_drift=DRIFT(m=2,a=0) breach_eff=true "
+            "pool_ignitable=3 lane8090=DARK[DOWN] "
+            "c1c4_line=FRESH(rounds_ago=0,verdict=C1C4-GREEN) "
+            "hq_line=FRESH(age_h=0.4,date=2026-10-29)")
 
     r1 = heartbeat_token_guard(good)
-    check("S1 healthy row -> PASS", r1[0] and "guarded=9" in r1[1])
+    check("S1 healthy row -> PASS", r1[0] and "guarded=18" in r1[1])
 
     r2 = heartbeat_token_guard(good.replace("ram_free_pct=", "ram_pct="))
     check("S2 renamed token -> FAIL naming it",
@@ -1591,6 +1634,43 @@ def selftest_heartbeat_tokens():
 
     ok10, _ = supply_dual_fields(good)
     check("S8 supply trio still reads as a pair (no.10 agreement)", ok10)
+
+    # T170 batch 1: enum/boolean drift the numeric guard cannot see.
+    r9 = heartbeat_token_guard(good.replace("cpu_lane_idle=true",
+                                            "cpu_lane_idle=idle"))
+    check("S9 boolean token with non-boolean value -> FAIL",
+          (not r9[0]) and "cpu_lane_idle outside bool domain" in r9[1])
+
+    r10 = heartbeat_token_guard(good.replace("task_face=ok",
+                                             "task_face=paused"))
+    check("S10 unknown task_face value -> FAIL",
+          (not r10[0]) and "task_face outside task_face domain" in r10[1])
+
+    r11 = heartbeat_token_guard(good.replace("task_face=ok",
+                                             "task_face=ALERT:updater"))
+    check("S11 ALERT: prefixed task_face still accepted (open-ended branch)",
+          r11[0])
+
+    r12 = heartbeat_token_guard(good.replace("model_drift=DRIFT(m=2,a=0)",
+                                             "model_drift=DRIFT(m=2)"))
+    check("S12 malformed model_drift -> FAIL",
+          (not r12[0]) and "model_drift outside" in r12[1])
+
+    r13 = heartbeat_token_guard(good.replace("lane8090=DARK[DOWN]",
+                                             "lane8090=DARK-DOWN"))
+    check("S13 unparseable lane state -> FAIL",
+          (not r13[0]) and "lane8090 outside" in r13[1])
+
+    r14 = heartbeat_token_guard(good.replace(
+        "c1c4_line=FRESH(rounds_ago=0,verdict=C1C4-GREEN)",
+        "c1c4_line=FRESH(age_h=1)"))
+    check("S14 c1c4_line without rounds_ago key -> FAIL",
+          (not r14[0]) and "c1c4_line outside" in r14[1])
+
+    r15 = heartbeat_token_guard(good.replace(
+        "hq_line=FRESH(age_h=0.4,date=2026-10-29)", "hq_line=FRESH"))
+    check("S15 hq_line without parenthesised payload -> FAIL",
+          (not r15[0]) and "hq_line outside" in r15[1])
 
     print("selftest heartbeat-token verdict: %d/%d PASS"
           % (len([r for r in results if r]), len(results)))

@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-10-29 22:50",
- "current_activity": "2026-10-29 22:4x 夜班轮：心跳 token 写侧→守卫映射普查（T168·产品增量 2 分件=①新增普查器 Tools/heartbeat_token_census.py：AST 从 idle_selfcheck 的 check() 格式串提写出侧 25 个 token，与 qa_smoke 守卫集双向比对，STALE-GUARD 判硬错、UNGUARDED 记 advisory；实跑 VERDICT=HEARTBEAT-GUARD-PARTIAL emitted=25 guarded=9 unguarded=16 stale=0；②守卫补丁=qa_smoke 新增第 18 号探针，九个被阈值算术消费的数值 token 逐个校验在场/可解析/区间，改名与越界即点名 FAIL）",
- "latest_artifact": "Tools/heartbeat_token_census.py（selftest 9/9 PASS）+ Tools/qa_smoke.py no.18（夹具 8/8）+ state/heartbeat-token-census-20261029-224646.json + qa/smoke-20261029-2247.log + .png（17/17 PASS·exit 0·首个 17 全绿·mtime 2026-10-29 22:47）",
- "next_milestone": "①T170 心跳字符串 token 守卫分批（unguarded 剩 13 项·先补 serve_alive/task_face/lane8090 三组枚举值域）｜②T169 status-export 写侧 BOM 自检（BC-P-142·防 no.14 复发）｜③M4 接产对齐矩阵 blocked 项随开店/平台后台逐项销 ⬜（blocked 如实）"
+ "updated_at": "2026-10-29 23:15",
+ "current_activity": "2026-10-29 23:1x 令牌轮：心跳 token 守卫批次 1（T170·产品增量 2 分件）——九个枚举/布尔 token 值域守卫一次补齐（bool×4：cpu_lane_idle/agenda_starved/serve_alive/breach_eff；task_face/model_drift/lane8090/c1c4_line/hq_line），只判形状域不重算语义；census 实跑 guarded 9→18、unguarded 16→7、stale=0。",
+ "latest_artifact": "Tools/qa_smoke.py（no.18 值域守卫·夹具 8→15 全绿）+ docs/qa-smoke-test-charter.md §三.18 + state/heartbeat-token-census-20261029-2315.json + qa/smoke-20261029-2314.log/.png（live 17/17 PASS·exit 0）",
+ "next_milestone": "①T170 批次 2（余 7 项：verdict 37 读点属语义面、serve_detail、五供给子计数）｜②T169 status-export 写侧 BOM 自检（本窗实证现文件无 BOM 且 JSON 可解析，但写侧仍缺守卫）｜③M4 接产对齐矩阵 blocked 项随开店平台后台逐项销 ⬜（blocked 如实）"
 }
