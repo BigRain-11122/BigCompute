@@ -515,6 +515,82 @@ def probe_supply_dual_fields(root=None):
     return supply_dual_fields(hits[-1])
 
 
+# T168: heartbeat numeric tokens that decide thresholds elsewhere (RAM/VRAM
+# gates, CPU-lane sentinel, starvation counters, supply counters). T167 only
+# guarded the three supply labels, so a writer-side rename of e.g.
+# ram_free_pct -> ram_pct would leave every reader comparing against nothing
+# while the row still reads healthy. The guard is shape+range, not semantics.
+HEARTBEAT_GUARDED_TOKENS = (
+    ("ram_free_pct", "pct"),
+    ("vram_free_mb", "count"),
+    ("py_cpu", "pct"),
+    ("queue_open", "count"),
+    ("consecutive_idle", "count"),
+    ("idle_rounds", "count"),
+    (POOL_CANDIDATE_TOKEN, "count"),
+    ("pool_effective", "count"),
+    ("pool_ignitable", "count"),
+)
+
+
+def heartbeat_fields(line):
+    """Token -> raw value for one heartbeat row (whitespace split)."""
+    out = {}
+    for part in (line or "").split():
+        if "=" not in part:
+            continue
+        key, _, val = part.partition("=")
+        out.setdefault(key, val)
+    return out
+
+
+def heartbeat_token_guard(line):
+    """T168 pure judge: guarded numeric tokens present, numeric, in range."""
+    if not line:
+        return False, "no heartbeat line"
+    fields = heartbeat_fields(line)
+    seen = []
+    for name, kind in HEARTBEAT_GUARDED_TOKENS:
+        raw = fields.get(name)
+        if raw is None:
+            return False, "%s missing (writer renamed or dropped it)" % name
+        try:
+            val = float(raw)
+        except (TypeError, ValueError):
+            return False, "%s not numeric: %r" % (name, raw)
+        if kind == "pct":
+            if not (0.0 <= val <= 100.0):
+                return False, "%s out of range: %r" % (name, raw)
+        else:
+            if val < 0:
+                return False, "%s negative: %r" % (name, raw)
+            if val != int(val):
+                return False, "%s not integral: %r" % (name, raw)
+        seen.append("%s=%s" % (name, raw))
+    return True, "guarded=%d %s" % (len(seen), " ".join(seen))
+
+
+def probe_heartbeat_tokens(root=None):
+    """Probe no.18 (T168): guarded numeric heartbeat tokens each round.
+
+    no.10 reads the supply trio as a pair; the rest of the row (RAM/VRAM
+    gates, CPU-lane sentinel, starvation counters) had no probe side at
+    all, so those tokens could be renamed on the write side and no round
+    would turn red. Advisory scope: this checks structure and ranges, it
+    does not re-derive the gate decisions.
+    """
+    root = root or ROOT
+    path = os.path.join(root, "state", "heartbeat.txt")
+    if not os.path.exists(path):
+        return False, "state/heartbeat.txt missing"
+    with open(path, "r", encoding="utf-8", errors="replace") as f:
+        lines = [ln.rstrip("\n") for ln in f if ln.strip()]
+    hits = [ln for ln in lines if SUPPLY_MARK_RE.search(ln)]
+    if not hits:
+        return False, "no idle_selfcheck line in heartbeat"
+    return heartbeat_token_guard(hits[-1])
+
+
 CONTRACT_VERDICT_OK = "COST-CONTRACT-GREEN"
 
 
@@ -1465,12 +1541,68 @@ def selftest_scan_roots():
     return 0 if all(results) else 1
 
 
+def selftest_heartbeat_tokens():
+    """T168 fixtures: every silent-drift branch of the guarded token set.
+
+    Live rows can only show today's healthy shape, so the rename, the
+    unit flip, the non-numeric value and the non-integral counter are all
+    pinned synthetically; S8 re-checks that the supply trio is still read
+    together with no.10's pair semantics.
+    """
+    results = []
+
+    def check(name, cond):
+        results.append(bool(cond))
+        print(("PASS " if cond else "FAIL ") + name)
+
+    good = ("2026-10-29 22:43:09 idle_selfcheck: verdict=busy "
+            "ram_free_pct=46.7 vram_free_mb=1906 py_cpu=53.0 "
+            "cpu_lane_idle=true pool_rows_candidate=1 pool_effective=0 "
+            "queue_open=57 consecutive_idle=0 idle_rounds=0 "
+            "agenda_starved=false pool_ignitable=3 lane8090=DARK[DOWN]")
+
+    r1 = heartbeat_token_guard(good)
+    check("S1 healthy row -> PASS", r1[0] and "guarded=9" in r1[1])
+
+    r2 = heartbeat_token_guard(good.replace("ram_free_pct=", "ram_pct="))
+    check("S2 renamed token -> FAIL naming it",
+          (not r2[0]) and "ram_free_pct missing" in r2[1])
+
+    r3 = heartbeat_token_guard(good.replace("ram_free_pct=46.7",
+                                            "ram_free_pct=140"))
+    check("S3 percent out of range -> FAIL",
+          (not r3[0]) and "out of range" in r3[1])
+
+    r4 = heartbeat_token_guard(good.replace("vram_free_mb=1906",
+                                            "vram_free_mb=-1"))
+    check("S4 negative counter -> FAIL",
+          (not r4[0]) and "negative" in r4[1])
+
+    r5 = heartbeat_token_guard(good.replace("py_cpu=53.0", "py_cpu=na"))
+    check("S5 non-numeric value -> FAIL",
+          (not r5[0]) and "not numeric" in r5[1])
+
+    r6 = heartbeat_token_guard(good.replace("queue_open=57",
+                                            "queue_open=57.5"))
+    check("S6 non-integral counter -> FAIL",
+          (not r6[0]) and "not integral" in r6[1])
+
+    check("S7 empty line -> FAIL", not heartbeat_token_guard("")[0])
+
+    ok10, _ = supply_dual_fields(good)
+    check("S8 supply trio still reads as a pair (no.10 agreement)", ok10)
+
+    print("selftest heartbeat-token verdict: %d/%d PASS"
+          % (len([r for r in results if r]), len(results)))
+    return 0 if all(results) else 1
+
+
 def main():
     if len(sys.argv) > 1 and sys.argv[1] == "--selftest":
         return (selftest_tails() | selftest_coder_class()
                 | selftest_supply_fields() | selftest_cost_contract()
                 | selftest_serve_artifacts() | selftest_qa_functional()
-                | selftest_scan_roots())
+                | selftest_scan_roots() | selftest_heartbeat_tokens())
     os.makedirs(QA_DIR, exist_ok=True)
     ts = datetime.datetime.now().strftime("%Y%m%d-%H%M")
     log_path = os.path.join(QA_DIR, "smoke-%s.log" % ts)
@@ -1492,7 +1624,9 @@ def main():
               ("resident QA 8792 /ask function (T153)",
                probe_resident_qa_functional),
               ("scan root self-reference census (T161)",
-               probe_scan_roots)]
+               probe_scan_roots),
+              ("heartbeat guarded numeric tokens (T168)",
+               probe_heartbeat_tokens)]
     lines, passed = [], 0
     lines.append("BigCompute QA smoke test %s (orders L254 / charter v1)"
                  % ts)
@@ -1505,7 +1639,7 @@ def main():
         lines.append(detail)
         print("[%s] %s" % ("PASS" if ok else "FAIL", label))
     lines.append("")
-    verdict = "smoke verdict: %d/%d PASS (charter 4 + T25 + E41 + BC-P-45 no.8 + T122 no.9 + T132 no.10 + T133 no.11 + T138 no.12 + T140 no.13 + T143 no.14 + T145 no.15 + T153 no.16 + T161 no.17 probes)" % (
+    verdict = "smoke verdict: %d/%d PASS (charter 4 + T25 + E41 + BC-P-45 no.8 + T122 no.9 + T132 no.10 + T133 no.11 + T138 no.12 + T140 no.13 + T143 no.14 + T145 no.15 + T153 no.16 + T161 no.17 + T168 no.18 probes)" % (
         passed, len(probes))
     lines.append(verdict)
     with open(log_path, "w", encoding="utf-8") as f:
