@@ -1079,9 +1079,29 @@ def probe_l1_coder_serve():
                                              probe_serve_artifacts())
 
 
+# T171 (BC-P-63 approved by the 2026-10-29 23:55 ban-lift order): the
+# heartbeat row used to count ANY "HH:MM" anywhere in the line, so a scratch
+# line that merely CITES a second-hand time (e.g. "orders 13:42:04 ...") was
+# read as two fused rows -> false merged-rows FAIL. Replacement = combo marker:
+#   (1) line-start anchor  ^\\?\\d{2}:\\d{1,2}x?   -- one per real entry head
+#   (2) time immediately followed by a known line-opening word -- catches the
+#       embedded head of a truly fused line, x-tolerant ("18:0x") and with an
+#       optional :SS for os-loop / idle_selfcheck stamps.
+# Openers are written as \u escapes so this file stays pure ASCII.
+# Evidence: state/t63-marker-eval-20261009.txt (J1/J2/J3 gates, 93 live
+# false positives eliminated, 0 new false positives, 2 fresh x-form gains).
+HB_OPENERS = (u"\u8F6E\u4E2D\u523B\u75D5|\u8F6E\u5C3E\u5FC3\u8DF3|"
+              u"\u8F6E\u5C3E\u65F6\u95F4\u6233|\u8865\u8BB0\u8F6E\u6BD5|"
+              u"\u8F6E\u6BD5|\u8F6E\u5C3E|\u8F6E\u9996|\u8F6E\u8865|"
+              u"\u65F6\u6807\u52D8\u6B63|"
+              r"os-loop|idle_selfcheck|round_end|round_append|night_watch"
+              r"|mid-round")
+HB_MARKER = (r"(^\s*\\?\d{2}:\d{1,2}x?)"
+             r"|(\d{2}:\d{1,2}x?(?::\d{2}x?)?\s*(?:" + HB_OPENERS + r"))")
+
 TAIL_PROBE_FILES = (
     ("state/rounds.log", r"\d{4}-\d{2}-\d{2}( [\d:.x]+)? tokens"),
-    ("state/heartbeat.txt", r"\d{2}:\d{2}"),
+    ("state/heartbeat.txt", HB_MARKER),
     ("HQ-FEEDBACK.md", "\u65e5\u6e05[:\uff1a]"),
     # BC-P-45 判例（10-13 T86 行实锚）：ID 形锚=「| <编号> |」整胞——裸
     # \| T\d+ 会把证据胞里合法的「| T85 行+…」开头误计成第二行 ID（假
@@ -1225,6 +1245,26 @@ def selftest_tails():
     scenario("D missing trailing newline -> FAIL tail_nl",
              ("state/heartbeat.txt", "13:00 round heartbeat ok"),
              False, "trailing newline missing")
+    # T171 / BC-P-63: heartbeat marker combo judgement (applied 2026-10-30).
+    # E = the 10-08 false-positive class: ONE logical line citing a
+    # second-hand time must stay a PASS (old any-position marker read 2).
+    scenario("E second-hand time citation -> PASS (no false merged)",
+             ("state/heartbeat.txt",
+              "13:00 \u8F6E\u4E2D\u523B\u75D5\uFF1A\u5BA1\u6838\u6B65\u6BD5"
+              "\uFF08orders 13:42:04 \u65B0\u884C\uFF09\n"),
+             True, None)
+    # F = true fused rows keep being caught (embedded head follows time).
+    scenario("F fused rows (two heads) -> FAIL 2 markers",
+             ("state/heartbeat.txt",
+              "13:00 \u8F6E\u4E2D\u523B\u75D5 a "
+              "14:30 \u8F6E\u5C3E T99 done\n"),
+             False, "2 markers in last line")
+    # G = x-form head ("18:0x 轮中刻痕") is a real entry head the old marker
+    #     missed entirely; it must still count as exactly one row.
+    scenario("G x-form entry head -> PASS (single row)",
+             ("state/heartbeat.txt",
+              "18:0x \u8F6E\u4E2D\u523B\u75D5\uFF1A\u961F\u5217\u6B65\u6BD5\n"),
+             True, None)
     print("selftest verdict: %d/%d PASS"
           % (len([r for r in results if r]), len(results)))
     return 0 if all(results) else 1

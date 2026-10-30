@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-10-30 00:34",
- "current_activity": "2026-10-29 23:00 轮：T170 批次 1 done（产品增量 2 分件=心跳 token 守卫 9→18 项：bool×4〔cpu_lane_idle/agenda_starved/serve_alive/breach_eff〕+task_face/model_drift/lane8090+两 STATE 行〔c1c4_line/hq_line〕值域判器 heartbeat_enum_ok·只判形状域不重算语义；qa_smoke no.18 夹具 8→15/",
- "latest_artifact": "Tools/status_export_check.py（mtime 2026-10-30 00:33）",
+ "updated_at": "2026-10-30 19:08",
+ "current_activity": "2026-10-30 19:00 轮：T171 ① done（产品优先律 2 分件=qa_smoke no.8 heartbeat 合并行 marker 换装：旧「任意位置 HH:MM >=2」-> 新组合 marker（行首锚 或 时间紧跟行首词·x 形容忍·秒段可选·openers 用 \\u 转义保 ASCII）。实锚：心跳 1372 行旧口径标 113 行假阳、新口径标 3 行且均为真融合行；no.8 夹具 4->7/7 PASS（新增二手时刻引用 PASS／真融合 ",
+ "latest_artifact": "state/model-ref-baseline-diff-20261030-190702.json（mtime 2026-10-30 19:07）",
  "next_milestone": "M4 接产对齐矩阵 blocked 项随开店/平台后台逐项销 ⬜（T-27 余项）（队列状态=**blocked 如实**（10-28 23:2x 令牌轮队列卫生）：销 ⬜ ） ｜ T168 心跳 token 写侧→探针守卫映射普查（找出无守卫 token）｜D-20261028-10 12 时终审对表（车道回位或墓碑，本司零重启零重拉）"
 }
