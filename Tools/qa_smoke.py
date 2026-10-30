@@ -1090,14 +1090,13 @@ def probe_l1_coder_serve():
 # Openers are written as \u escapes so this file stays pure ASCII.
 # Evidence: state/t63-marker-eval-20261009.txt (J1/J2/J3 gates, 93 live
 # false positives eliminated, 0 new false positives, 2 fresh x-form gains).
-HB_OPENERS = (u"\u8F6E\u4E2D\u523B\u75D5|\u8F6E\u5C3E\u5FC3\u8DF3|"
-              u"\u8F6E\u5C3E\u65F6\u95F4\u6233|\u8865\u8BB0\u8F6E\u6BD5|"
-              u"\u8F6E\u6BD5|\u8F6E\u5C3E|\u8F6E\u9996|\u8F6E\u8865|"
-              u"\u65F6\u6807\u52D8\u6B63|"
-              r"os-loop|idle_selfcheck|round_end|round_append|night_watch"
-              r"|mid-round")
-HB_MARKER = (r"(^\s*\\?\d{2}:\d{1,2}x?)"
-             r"|(\d{2}:\d{1,2}x?(?::\d{2}x?)?\s*(?:" + HB_OPENERS + r"))")
+# T172: the marker now lives in Tools/ledger_markers.py so the WRITE side
+# (round_append J5) judges rows with this exact regex instead of a
+# different rule ("any HH:MM >= 2"), which used to refuse legal
+# second-hand time citations that this reader accepts.
+if HERE not in sys.path:
+    sys.path.insert(0, HERE)
+from ledger_markers import HB_OPENERS, HB_MARKER  # noqa: E402
 
 TAIL_PROBE_FILES = (
     ("state/rounds.log", r"\d{4}-\d{2}-\d{2}( [\d:.x]+)? tokens"),

@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-10-30 22:47",
- "current_activity": "2026-10-30 22:43 轮：T173① done=GPU 派活指针接 dispatch_precheck（gate 戳入行+CLOSED 不假可派+fail-closed UNPARSED/64）selftest PASS+受控演练 gate=CLOSED(exit 2) 真快照 gpu:bm-a 当日 n util avg 87.4% busy（vram 10469MiB·apps_compute=4n）·gate 读数 CLOSED vram_free=153",
- "latest_artifact": "state/t173_roundbooks.py（mtime 2026-10-30 22:46） ｜ 实质改动=Tools/gpu_idle_collector.py 新增 dispatch_gate()（指针写入前必答车道闸）+指针行 gate= 字段；审计面=state/dispatch-gate.jsonl（consumer=gpu-dispatch-pointer 快照 22:45:45）",
+ "updated_at": "2026-10-31 00:23",
+ "current_activity": "2026-10-31 00:00 轮：T172 done=写侧 J5 换装共享 marker 单源：抽件 Tools/ledger_markers.py（HB_OPENERS/HB_MARKER 唯一字面），round_append 与 qa_smoke no.8 同 regex 判「一行 vs 两行并一」；语义变化=纯二手时刻引用行由拒写改放行（旧「任意 HH:MM>=2」会拒写读侧认可的行=义务不对等），真融合行仍拒（FUSED-ROW-REJECT exit4）；se",
+ "latest_artifact": "state/t172_hq.py（mtime 2026-10-31 00:23） ｜ 实质改动=Tools/gpu_idle_collector.py 新增 dispatch_gate()（指针写入前必答车道闸）+指针行 gate= 字段；审计面=state/dispatch-gate.jsonl（consumer=gpu-dispatch-pointer 快照 22:45:45）",
  "next_milestone": "M4 接产对齐矩阵 blocked 项随开店/平台后台逐项销 ⬜（T-27 余项）（队列状态=**blocked 如实**（10-28 23:2x 令牌轮队列卫生）：销 ⬜ ） ｜ T173② 给集团 fleet-idle-watch v2 出「读 lane_gate 字段」一行建议（跨仓派单面，窗口 ≤48h：10-31 夜轮或更早）｜T171③ BC-P-58 更新器钉住（auto_update_enabled）｜T171④ BC-P-74 serve 存活复拍（选取窗避共租借用窗）｜M25 室内烘焙实弹=净窗一命令（当前 gate 读数 CLOSED vram_free 1534<6144 如实）"
 }

@@ -16,11 +16,14 @@ utf-8 显式编码唯一写入路径——轮账本/心跳 append 一律走本�
   J3 目标不存在时创建（utf-8 无 BOM·LF 行尾）
   J4 尾行守卫（T50·HQ-FEEDBACK 04/05 行合并判例）：既有文件尾字节非 \\n 时
      先补一个换行再追加——防新行并入既有尾行（合并=行账本可读性损·10-05 即修实证）
-  J5 双时标 lint（T81·BC-P-45 写入侧升格·10-12 复发实锚）：目标行 HH:MM
-     正则计数 ≥2 → 拒写 exit 4（与 qa_smoke no.8 读侧探针同判据镜像）——
-     事故类=自身时标+二手 HH:MM 引用并线（22:5x 刻痕引 20:49:44 类）；
-     改写法=二手时刻一律 x 形（20:49x / 23:2x）或去冒号。lint 自身异常
-     =fail-closed 拒写。检查单→lint→脚本断言链闭环（10-13 CEO 令）。
+  J5 融合行 lint（T81 立·T172 换装）：判据单源=Tools/ledger_markers.py
+     的组合 marker（与 qa_smoke no.8 读侧同一 regex，禁复制字面）——
+     行首锚 ∨ 时刻+行首词（轮中刻痕/轮尾/os-loop/…）计数 ≥2 → 拒写 exit 4。
+     事故类=两行并一（自身时标+第二个行头）；
+     改写：真融合行拆成两行分写。纯「二手时刻引用」（如引 orders 的
+     HH:MM 证据时刻）在换装后放行——读侧早已如此判，写侧此前用「任意
+     HH:MM ≥2」会拒写读侧认可的行，义务不对等（T172 立行实证）。
+     lint 自身异常=fail-closed 拒写。检查单→lint→脚本断言链闭环（10-13 CEO 令）。
   J6 空追加闸（T130·10-26 立）：--line 纯空白/零长或含换行 → 拒写 exit 5。
      事故类=台账 mtime 被刷新而内容零增（读者按 mtime 判续鲜会误读为已续鲜·
      D-20261026-03 实锚），本条把该路径在工具面关死。
@@ -52,8 +55,13 @@ except Exception:  # 同目录导入（被当脚本直跑时 sys.path[0] 已是 
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
     from ledger_encoding_guard import classify as _enc_classify
 
-# 读侧 qa_smoke no.8（BC-P-45）heartbeat marker 同判据——写侧镜像（闸一致）
-HHMM_RE = re.compile(r"\d{2}:\d{2}")
+# T172：J5 判据单源=ledger_markers（与 qa_smoke no.8 读侧同一 regex·禁复制字面）
+try:
+    from ledger_markers import count_markers, count_raw_stamps
+except Exception:  # 同目录导入兜底
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from ledger_markers import count_markers, count_raw_stamps
+
 DUAL_TS_LIMIT = 2
 # J9（T151）：CJK 被 GBK 控制台吞成 ASCII 问号的破坏形态
 QMARK_RUN_RE = re.compile(r"\?{2,}")
@@ -109,15 +117,16 @@ def append_line(path, line, allow_ascii_qmark=False):
     if text:
         if _last_nonempty(text) == line:
             return 2, "DUPLICATE-SKIP: --line 与末非空行一致（幂等护栏，零追加）"
-    # J5 双时标 lint（T81·BC-P-45 写入侧升格）：HH:MM 计数 ≥2 → 拒写 fail-closed
-    try:
-        n_ts = len(HHMM_RE.findall(line))
-    except Exception as e:  # lint 自身异常 = fail-closed 拒写（宁拒不写）
-        return 4, "LINT-ERROR: 双时标 lint 自身异常——fail-closed 拒写（%s）" % e
-    if n_ts >= DUAL_TS_LIMIT:
-        return 4, ("DUAL-TIMESTAMP-REJECT: 目标行含 %d 处 HH:MM（≥%d）——二手时标引用面"
-                   "（BC-P-45 升格·与 qa_smoke no.8 读侧同判据）·改写：二手时刻一律 x 形"
-                   "（如 20:49x / 23:2x / 15:1x-22:3x）或去冒号后重试") % (n_ts, DUAL_TS_LIMIT)
+    # J5 融合行 lint（T81 立·T172 换装）：组合 marker 计数 ≥2 → 拒写 fail-closed
+    n_mark = count_markers(line)
+    if n_mark is None:  # lint 自身异常 = fail-closed 拒写（宁拒不写）
+        return 4, "LINT-ERROR: 融合行 lint 自身异常——fail-closed 拒写"
+    if n_mark >= DUAL_TS_LIMIT:
+        n_raw = count_raw_stamps(line) or 0
+        return 4, ("FUSED-ROW-REJECT: 目标行含 %d 处行头 marker（≥%d·裸 HH:MM %d 处）——"
+                   "两行并一形态（与 qa_smoke no.8 读侧同判据·T172 换装）·正解=拆成两行分写；"
+                   "纯二手时刻引用（引他人证据时刻）不在此列，可直接重试"
+                   % (n_mark, DUAL_TS_LIMIT, n_raw))
     # J8 mojibake 闸（T145·判据单源=ledger_encoding_guard.classify）
     try:
         enc = _enc_classify(line)
@@ -205,10 +214,10 @@ def _selftest():
         c, m = append_line(p3, "行C")
         txt4 = open(p3, "rb").read().decode("utf-8")
         run("S6 正常尾零动作", c == 0 and txt4 == "行A（尾无换行）\n行B（追加行）\n行C\n" and "tail_nl_fix" not in m, m)
-        # S7 二手引用行拒写（J5·事故类正身：自身完整时标+二手 HH:MM 并线=2 处）
+        # S7 事故类融合行拒写（J5·T172 换装后仍拒：自身时标+轮尾行头=两处 marker）
         before = open(p3, "rb").read()
-        c, m = append_line(p3, "22:55 刻痕：第三方复活被杀（20:49:44 击发实锚）")
-        run("S7 二手引用行拒写 exit4", c == 4 and "DUAL-TIMESTAMP" in m and open(p3, "rb").read() == before, m)
+        c, m = append_line(p3, "22:55 刻痕：第三方复活被杀 20:49 轮尾行并入")
+        run("S7 事故类融合行拒写 exit4", c == 4 and "FUSED-ROW" in m and open(p3, "rb").read() == before, m)
         # S8 融合行拒写（两行并一形态）
         c, m = append_line(p3, "22:43 排程轮行（22:50 轮尾行并入=融合形态）")
         run("S8 融合行拒写 exit4", c == 4 and open(p3, "rb").read() == before, m)
@@ -257,6 +266,9 @@ def _selftest():
         # S21 纯 ASCII 无问号不误拒（J9 零假阳性面：英文/数字行照常写）
         c, m = append_line(p3, "2026-10-28 os-loop: round done exit=0")
         run("S21 纯ASCII无问号放行", c == 0 and "exit=0" in open(p3, "rb").read().decode("utf-8"), m[:100])
+        # S22 二手时刻引用放行（J5·T172 义务对等面：读侧认的行写侧不得拒）
+        c, m = append_line(p3, "22:56 刻痕：第三方复活被杀（20:49:44 击发实锚·引他人证据时刻）")
+        run("S22 二手引用行放行", c == 0 and "击发实锚" in open(p3, "rb").read().decode("utf-8"), m[:120])
 
     n_pass = sum(1 for _, ok, _ in checks if ok)
     for name, ok, detail in checks:
