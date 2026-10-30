@@ -22,11 +22,15 @@ This tool NEVER dispatches anything - it machine-checks the stocking sheet:
 Commands:
   list      print all cards (lane summary + per-card lines)
   validate  run J1-J5 against the registry, exit 1 on any violation
+  gate      pre-dispatch check for one card: consult Tools/lane_gate.py via
+            Tools/dispatch_precheck.py (BC-P-144) and fail closed unless the
+            card's lane is OPEN (or an explicit EXEMPT reason is given)
   selftest  offline fixtures for every check (no registry needed)
 
 Usage:
   python Tools/batch_pool.py validate
   python Tools/batch_pool.py list
+  python Tools/batch_pool.py gate --batch-id B-CITY3D-01
   python Tools/batch_pool.py selftest
 """
 import argparse
@@ -40,6 +44,7 @@ except Exception:
     pass
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+HERE = os.path.dirname(os.path.abspath(__file__))
 REGISTRY = os.path.join(ROOT, "docs", "ops", "batch-pool-stock-v1.jsonl")
 
 REQUIRED_FIELDS = [
@@ -152,6 +157,49 @@ def cmd_validate(path):
     return 0
 
 
+def cmd_gate(path, batch_id, consumer=None, exempt=None, as_json=False):
+    """Pre-dispatch gate for one card (BC-P-144).
+
+    The registry says what a card *is*, the lane gate says whether this box may
+    run it *now*.  Neither answers alone: J5 only forbids in-flight status, and
+    lane_gate never saw the pool.  Fail-closed on a closed/stale/unreadable
+    lane, and never guess a lane for an unregistered category.
+    """
+    if not os.path.exists(path):
+        print("FAIL registry not found: %s" % path)
+        return 1
+    rows = load_rows(path)
+    card = next((r for r in rows if r.get("batch_id") == batch_id), None)
+    if card is None:
+        print("FAIL batch_id not found: %s" % batch_id)
+        return 64
+    if HERE not in sys.path:
+        sys.path.insert(0, HERE)
+    import dispatch_precheck
+    lane = dispatch_precheck.lane_for_category(card.get("category"))
+    if lane is None:
+        print("FAIL category '%s' has no pre-registered lane "
+              "(BC-P-144: refuse to guess; pass --lane via dispatch_precheck)"
+              % card.get("category"))
+        return 64
+    if str(card.get("status", "")).upper() in IN_FLIGHT_STATUSES:
+        print("WARN %s status=%s is in-flight (J5); gate reads resources only"
+              % (batch_id, card.get("status")))
+    result, exit_code = dispatch_precheck.evaluate(
+        lane, consumer or "batch-pool:%s" % batch_id, exempt)
+    log_path = dispatch_precheck.append_snapshot(result)
+    result["snapshot"] = os.path.relpath(log_path, ROOT)
+    result["batch_id"] = batch_id
+    if as_json:
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+    else:
+        print("batch-gate: %s category=%s %s"
+              % (batch_id, card.get("category"),
+                 dispatch_precheck.render_line(result)))
+        print("batch-gate: snapshot=%s" % result["snapshot"])
+    return exit_code
+
+
 def _fixture(base=None, **over):
     row = {
         "batch_id": "B-T-01", "lane": CITY3D_LANE, "category":
@@ -205,8 +253,17 @@ def cmd_selftest():
     r1 = check_rows([_fixture(), _fixture()])[0]
     r2 = check_rows([_fixture(), _fixture()])[0]
     assert r1 == r2, "determinism"
-    print("selftest PASS (J1-J6 + determinism, %d checks)"
-          % 12)
+    # gate (BC-P-144): lane mapping is explicit and unknown categories are
+    # refused rather than guessed
+    import dispatch_precheck
+    assert dispatch_precheck.lane_for_category(CITY3D_CATEGORY) == "gpu", \
+        "gate lane map (gpu)"
+    assert dispatch_precheck.lane_for_category("cpu_batch") == "cpu", \
+        "gate lane map (cpu)"
+    assert dispatch_precheck.lane_for_category("no_such_category") is None, \
+        "gate unknown category must not be guessed"
+    print("selftest PASS (J1-J6 + gate lane map + determinism, %d checks)"
+          % 15)
     return 0
 
 
@@ -217,12 +274,21 @@ def main():
     p_l.add_argument("--registry", default=REGISTRY)
     p_v = sub.add_parser("validate", help="machine-check the stocking sheet")
     p_v.add_argument("--registry", default=REGISTRY)
+    p_g = sub.add_parser("gate", help="pre-dispatch lane gate for one card")
+    p_g.add_argument("--batch-id", required=True)
+    p_g.add_argument("--registry", default=REGISTRY)
+    p_g.add_argument("--consumer", help="who is dispatching (audit field)")
+    p_g.add_argument("--exempt", help="exemption reason (artifact-arrival paths)")
+    p_g.add_argument("--json", action="store_true")
     sub.add_parser("selftest", help="offline fixture checks")
     args = ap.parse_args()
     if args.cmd == "list":
         return cmd_list(args.registry)
     if args.cmd == "validate":
         return cmd_validate(args.registry)
+    if args.cmd == "gate":
+        return cmd_gate(args.registry, args.batch_id, args.consumer,
+                        args.exempt, args.json)
     return cmd_selftest()
 
 

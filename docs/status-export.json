@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-10-30 19:54",
- "current_activity": "2026-10-30 19:00 轮：T-20261030-45 done（T171② 产品优先律 2 分件=Tools/lane_gate.py 车道闸消费器落地：cpu_lane_idle 从只广播变可裁判·阈值 from idle_selfcheck 单一源禁复制字面·心跳超 30min 判 STALE 且两车道一律 CLOSED＋producer 旗与 RAM 阈值矛盾判 CONSISTENCY-MISMATCH 仍 CLOSED＝读数过期/自相矛盾皆非许可·exi",
- "latest_artifact": "state/c1c4-20261030-195417.json（mtime 2026-10-30 19:54）",
- "next_milestone": "M4 接产对齐矩阵 blocked 项随开店/平台后台逐项销 ⬜（T-27 余项）（队列状态=**blocked 如实**（10-28 23:2x 令牌轮队列卫生）：销 ⬜ ） ｜ T168 心跳 token 写侧→探针守卫映射普查（找出无守卫 token）｜D-20261028-10 12 时终审对表（车道回位或墓碑，本司零重启零重拉）"
+ "updated_at": "2026-10-30 21:02",
+ "current_activity": "2026-10-30 20:5x 令牌轮：BC-P-144 adopted——Tools/dispatch_precheck.py 派工前置闸落地（OPEN/EXEMPT→exit 0；CLOSED/STALE→2；UNPARSED→3 一律 fail-closed；EXEMPT 须带非空理由；每次检查必落 state/dispatch-gate.jsonl 快照＝无快照不可审计；阈值 in-process 取自 lane_gate 禁复制字面），Tools/batch_pool.py 新增 gate 子命令把批池卡接上闸（J5 只管状态、闸只管资源，二者合一方可派）；selftest 13/13 + 批池 15/15，live：B-CITY3D-01=CLOSED(exit 2·vram 1407<6144)、B-LANE-A-01=OPEN(exit 0·ram 49.8>=40.0)；余=GPU 派活指针接闸+集团 fleet-idle-watch v2 读同字段（tech T173）",
+ "latest_artifact": "Tools/dispatch_precheck.py + state/dispatch-gate.jsonl 快照（2026-10-30 20:57-20:58 三条实跑读数）",
+ "next_milestone": "T173 剩余派工点接闸（GPU 派活指针 DRY-RUN 带 gate 快照 + 集团侧只出派单一行建议），窗 ≤48h（10-31 22:43 夜轮或更早）｜T171 ③BC-P-58 ④BC-P-74 分轮推进｜M25 室内烘焙实弹=净窗一命令（当前 GPU 已占，闸读数 vram 1407<6144 如实）"
 }
