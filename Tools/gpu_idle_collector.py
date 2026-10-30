@@ -573,6 +573,25 @@ def _parse_last_ts(text):
         return None
 
 
+def dispatch_gate(consumer="gpu-dispatch-pointer"):
+    """Ask the pre-dispatch gate (BC-P-144/T173) and leave an audit snapshot.
+
+    Returns (verdict, exit_code, reason).  A dispatch pointer without a gate
+    reading is not auditable, so an unreadable gate reports UNPARSED(64) --
+    never an optimistic default (fail-closed, same law as dispatch_precheck).
+    """
+    if HERE not in sys.path:
+        sys.path.insert(0, HERE)
+    try:
+        import dispatch_precheck
+        result, code = dispatch_precheck.evaluate("gpu", consumer=consumer)
+        dispatch_precheck.append_snapshot(result)
+    except Exception as exc:  # gate missing/broken must not read as permission
+        return ("UNPARSED", 64, "gate unavailable: %s" % exc.__class__.__name__)
+    return (result.get("verdict", "UNPARSED"), int(code),
+            result.get("reason", "-"))
+
+
 def maybe_dispatch(rows):
     inwin, complete = window(rows)
     if not complete:
@@ -596,18 +615,23 @@ def maybe_dispatch(rows):
             minutes=DISPATCH_COOLDOWN_MIN):
         return ("idle avg %.1f%% but dispatch on cooldown (last %s)"
                 % (avg, last_ts.isoformat(timespec="seconds")))
+    # BC-P-144/T173: a pointer that claims "idle, go" without asking the lane
+    # gate is the BC-P-72 failure again.  Take the reading first, stamp it.
+    verdict, gate_exit, gate_reason = dispatch_gate()
+    gate_tag = "gate=%s(exit %d)" % (verdict, gate_exit)
     os.makedirs(UTIL_DIR, exist_ok=True)
     new_file = not os.path.exists(DISPATCH)
     with open(DISPATCH, "a", encoding="utf-8") as f:
         if new_file:
             f.write(DISPATCH_HEADER)
         f.write("| %s | IDLE window avg %.1f%% (%d samples/%d min) | %s | "
-                "DRY-RUN observe only, NO dispatch (CEO safety-fix "
+                "%s | DRY-RUN observe only, NO dispatch (CEO safety-fix "
                 "2026-09-28; activation deferred past 2026-10-05 review); "
                 "batch pool BC-P-01: 0 in-flight (plan state) |\n"
                 % (now().isoformat(timespec="seconds"), avg, len(inwin),
-                   WINDOW_MIN, queue_head_pointer()))
-    return "IDLE avg %.1f%% -> dry-run observation line appended (no dispatch)" % avg
+                   WINDOW_MIN, gate_tag, queue_head_pointer()))
+    return ("IDLE avg %.1f%% -> dry-run observation line appended "
+            "(no dispatch; %s: %s)" % (avg, gate_tag, gate_reason))
 
 
 def read_vram_free():
@@ -1174,6 +1198,25 @@ def cmd_selftest():
         datetime.datetime(2026, 9, 28, 9, 33, 28), "dispatch ts parse"
     assert _parse_last_ts("not a dispatch row") is None, "non-row -> None"
     assert _parse_last_ts("| garbage | IDLE x | y |") is None, "bad ts -> None"
+    # BC-P-144/T173: the pointer must carry a gate reading, never a bare "go"
+    g_verdict, g_exit, g_reason = dispatch_gate("selftest")
+    assert g_verdict in ("OPEN", "CLOSED", "EXEMPT", "UNPARSED"), \
+        "gate returns a known verdict, never an ad-hoc string"
+    assert (g_exit == 0) == (g_verdict in ("OPEN", "EXEMPT")), \
+        "only OPEN/EXEMPT may exit 0 (fail-closed for CLOSED/STALE/UNPARSED)"
+    assert g_verdict != "OPEN" or g_exit == 0, "OPEN must map to exit 0"
+    with open(os.path.abspath(__file__), "r", encoding="utf-8") as _f:
+        _src = _f.read()
+    assert "gate=%s(exit %d)" in _src and "dispatch_gate()" in _src, \
+        "pointer write keeps the gate stamp (regression guard)"
+    # Build the needles at runtime: a literal here would match this very line
+    # (same self-reference trap as scan_root_census S6).
+    _perm_a = "may " + "dispatch"
+    _perm_b = "DISPATCH" + "-OK"
+    assert _perm_a not in _src and _perm_b not in _src, \
+        "no wording may read the pointer as permission while gate is CLOSED"
+    assert "UNPARSED" in g_reason or g_verdict != "UNPARSED", \
+        "unreadable gate leaves a diagnosable reason"
     # D-20260930-36 R-C1: 7-day benchmark gap line (not an enforcement line)
     b7_days = roll_dates(BENCH_DAYS, at)
     assert b7_days[0] == "2026-09-28" and b7_days[-1] == "2026-09-22", \

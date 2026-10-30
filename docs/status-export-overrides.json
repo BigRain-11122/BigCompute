@@ -1,3 +1,4 @@
 {
- "next_milestone": "T168 心跳 token 写侧→探针守卫映射普查（找出无守卫 token）｜D-20261028-10 12 时终审对表（车道回位或墓碑，本司零重启零重拉）"
+ "latest_artifact": "实质改动=Tools/gpu_idle_collector.py 新增 dispatch_gate()（指针写入前必答车道闸）+指针行 gate= 字段；审计面=state/dispatch-gate.jsonl（consumer=gpu-dispatch-pointer 快照 22:45:45）",
+ "next_milestone": "T173② 给集团 fleet-idle-watch v2 出「读 lane_gate 字段」一行建议（跨仓派单面，窗口 ≤48h：10-31 夜轮或更早）｜T171③ BC-P-58 更新器钉住（auto_update_enabled）｜T171④ BC-P-74 serve 存活复拍（选取窗避共租借用窗）｜M25 室内烘焙实弹=净窗一命令（当前 gate 读数 CLOSED vram_free 1534<6144 如实）"
 }

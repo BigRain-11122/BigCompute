@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-10-30 21:02",
- "current_activity": "2026-10-30 20:5x 令牌轮：BC-P-144 adopted——Tools/dispatch_precheck.py 派工前置闸落地（OPEN/EXEMPT→exit 0；CLOSED/STALE→2；UNPARSED→3 一律 fail-closed；EXEMPT 须带非空理由；每次检查必落 state/dispatch-gate.jsonl 快照＝无快照不可审计；阈值 in-process 取自 lane_gate 禁复制字面），Tools/batch_pool.py 新增 gate 子命令把批池卡接上闸（J5 只管状态、闸只管资源，二者合一方可派）；selftest 13/13 + 批池 15/15，live：B-CITY3D-01=CLOSED(exit 2·vram 1407<6144)、B-LANE-A-01=OPEN(exit 0·ram 49.8>=40.0)；余=GPU 派活指针接闸+集团 fleet-idle-watch v2 读同字段（tech T173）",
- "latest_artifact": "Tools/dispatch_precheck.py + state/dispatch-gate.jsonl 快照（2026-10-30 20:57-20:58 三条实跑读数）",
- "next_milestone": "T173 剩余派工点接闸（GPU 派活指针 DRY-RUN 带 gate 快照 + 集团侧只出派单一行建议），窗 ≤48h（10-31 22:43 夜轮或更早）｜T171 ③BC-P-58 ④BC-P-74 分轮推进｜M25 室内烘焙实弹=净窗一命令（当前 GPU 已占，闸读数 vram 1407<6144 如实）"
+ "updated_at": "2026-10-30 22:47",
+ "current_activity": "2026-10-30 22:43 轮：T173① done=GPU 派活指针接 dispatch_precheck（gate 戳入行+CLOSED 不假可派+fail-closed UNPARSED/64）selftest PASS+受控演练 gate=CLOSED(exit 2) 真快照 gpu:bm-a 当日 n util avg 87.4% busy（vram 10469MiB·apps_compute=4n）·gate 读数 CLOSED vram_free=153",
+ "latest_artifact": "state/t173_roundbooks.py（mtime 2026-10-30 22:46） ｜ 实质改动=Tools/gpu_idle_collector.py 新增 dispatch_gate()（指针写入前必答车道闸）+指针行 gate= 字段；审计面=state/dispatch-gate.jsonl（consumer=gpu-dispatch-pointer 快照 22:45:45）",
+ "next_milestone": "M4 接产对齐矩阵 blocked 项随开店/平台后台逐项销 ⬜（T-27 余项）（队列状态=**blocked 如实**（10-28 23:2x 令牌轮队列卫生）：销 ⬜ ） ｜ T173② 给集团 fleet-idle-watch v2 出「读 lane_gate 字段」一行建议（跨仓派单面，窗口 ≤48h：10-31 夜轮或更早）｜T171③ BC-P-58 更新器钉住（auto_update_enabled）｜T171④ BC-P-74 serve 存活复拍（选取窗避共租借用窗）｜M25 室内烘焙实弹=净窗一命令（当前 gate 读数 CLOSED vram_free 1534<6144 如实）"
 }
