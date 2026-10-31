@@ -25,12 +25,16 @@ Commands:
   gate      pre-dispatch check for one card: consult Tools/lane_gate.py via
             Tools/dispatch_precheck.py (BC-P-144) and fail closed unless the
             card's lane is OPEN (or an explicit EXEMPT reason is given)
+  review    monthly DRY-RUN observation review (M66): machine-readable
+            snapshot of validate verdict + lane/status stock + consumer_plan
+            coverage + dry-run age vs DRY_RUN_END. Writes state JSON.
   selftest  offline fixtures for every check (no registry needed)
 
 Usage:
   python Tools/batch_pool.py validate
   python Tools/batch_pool.py list
   python Tools/batch_pool.py gate --batch-id B-CITY3D-01
+  python Tools/batch_pool.py review
   python Tools/batch_pool.py selftest
 """
 import argparse
@@ -56,6 +60,7 @@ IN_FLIGHT_STATUSES = {"IN_FLIGHT", "RUNNING", "DISPATCHED"}
 CITY3D_LANE = "City3D/FluxVerse"
 CITY3D_CATEGORY = "3d_offline_render"
 CITY3D_MIN = 2  # O-20260929-007: >=2 stocked 3D offline render batches
+DRY_RUN_END = "2026-10-05"  # J5 observation window end (M46 review package)
 
 
 def load_rows(path):
@@ -200,6 +205,94 @@ def cmd_gate(path, batch_id, consumer=None, exempt=None, as_json=False):
     return exit_code
 
 
+def build_review(rows, today=None):
+    """Assemble the M66 monthly review snapshot from stocked cards.
+
+    Pure (no I/O, no clock unless today is omitted) so selftest can pin dates.
+    `today` is a date or None. The dry-run age is the gap between DRY_RUN_END
+    and today; a positive age with zero in-flight cards means the J5 gate is
+    still the only thing holding every card at STOCKED.
+    """
+    import datetime
+    if today is None:
+        today = datetime.date.today()
+    problems, info = check_rows(rows)
+    lanes, statuses, modes = {}, {}, {}
+    named = 0
+    for row in rows:
+        lanes[str(row.get("lane", "?"))] = \
+            lanes.get(str(row.get("lane", "?")), 0) + 1
+        st = str(row.get("status", "?")).upper() or "?"
+        statuses[st] = statuses.get(st, 0) + 1
+        md = str(row.get("dispatch_mode", "?") or "?")
+        modes[md] = modes.get(md, 0) + 1
+        if str(row.get("consumer_plan", "") or "").strip():
+            named += 1
+    in_flight = sum(statuses.get(s, 0) for s in IN_FLIGHT_STATUSES)
+    end = datetime.date(*[int(x) for x in DRY_RUN_END.split("-")])
+    age_days = (today - end).days
+    overdue = age_days > 0
+    findings = []
+    if overdue and in_flight == 0:
+        findings.append(
+            "J5 dry-run window ended %s (%d days ago) but no card may leave "
+            "STOCKED while J5 discards in-flight statuses; activation needs an "
+            "explicit J5 revision, not a silent status edit"
+            % (DRY_RUN_END, age_days))
+    if named < len(rows):
+        findings.append(
+            "consumer_plan named on %d/%d cards (备货律指名)" % (named, len(rows)))
+    if problems:
+        findings.append("validate reported %d problem(s)" % len(problems))
+    return {
+        "cards": len(rows),
+        "lanes": lanes,
+        "statuses": statuses,
+        "dispatch_modes": modes,
+        "consumer_plan_named": named,
+        "in_flight": in_flight,
+        "dry_run_end": DRY_RUN_END,
+        "dry_run_age_days": age_days,
+        "dry_run_overdue": overdue,
+        "j5_blocks_activation": bool(overdue and in_flight == 0),
+        "problems": problems,
+        "info": info,
+        "findings": findings,
+        "generated_at": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+    }
+
+
+def cmd_review(path, as_json=False, write=True):
+    if not os.path.exists(path):
+        print("FAIL registry not found: %s" % path)
+        return 1
+    rows = load_rows(path)
+    review = build_review(rows)
+    review["registry"] = os.path.relpath(path, ROOT)
+    print("REVIEW cards=%d lanes=%d named=%d in_flight=%d dry_run_end=%s "
+          "overdue=%s j5_blocks_activation=%s"
+          % (review["cards"], len(review["lanes"]),
+             review["consumer_plan_named"], review["in_flight"],
+             review["dry_run_end"], review["dry_run_overdue"],
+             review["j5_blocks_activation"]))
+    for f in review["findings"]:
+        print("FINDING " + f)
+    if as_json:
+        print(json.dumps(review, ensure_ascii=False, indent=2))
+    review_exit = 1 if review["problems"] else 0
+    print("VERDICT=%s" % ("POOL-REVIEW-FAIL" if review_exit
+                          else "POOL-REVIEW-GREEN"))
+    if write:
+        stamp = review["generated_at"].replace("-", "").replace(":", "") \
+            .replace(" ", "-")
+        out = os.path.join(ROOT, "state", "batch-pool-review-%s.json" % stamp)
+        os.makedirs(os.path.dirname(out), exist_ok=True)
+        with open(out, "w", encoding="utf-8") as f:
+            json.dump(review, f, ensure_ascii=False, indent=2)
+        print("evidence=%s" % os.path.relpath(out, ROOT))
+    return review_exit
+
+
 def _fixture(base=None, **over):
     row = {
         "batch_id": "B-T-01", "lane": CITY3D_LANE, "category":
@@ -262,8 +355,34 @@ def cmd_selftest():
         "gate lane map (cpu)"
     assert dispatch_precheck.lane_for_category("no_such_category") is None, \
         "gate unknown category must not be guessed"
-    print("selftest PASS (J1-J6 + gate lane map + determinism, %d checks)"
-          % 15)
+    # review (M66): stock snapshot + dry-run age are pinned by fixtures
+    import datetime
+    pair = [_fixture(), _fixture(base={"batch_id": "B-T-02"})]
+    rev = build_review(pair, today=datetime.date(2026, 10, 20))
+    assert rev["cards"] == 2 and rev["consumer_plan_named"] == 2, "review counts"
+    assert rev["in_flight"] == 0 and rev["statuses"].get("STOCKED") == 2, \
+        "review status tally"
+    assert rev["dry_run_age_days"] == 15 and rev["dry_run_overdue"], \
+        "review dry-run age"
+    assert rev["j5_blocks_activation"], "review must flag J5 blocker"
+    assert any("J5 dry-run window ended" in f for f in rev["findings"]), \
+        "review finding text"
+    early = build_review(pair, today=datetime.date(2026, 10, 1))
+    assert not early["dry_run_overdue"] and not early["j5_blocks_activation"], \
+        "review pre-end must not flag blocker"
+    flying = build_review(
+        [_fixture(), _fixture(base={"batch_id": "B-T-02", "status": "RUNNING"})],
+        today=datetime.date(2026, 10, 20))
+    assert flying["in_flight"] == 1 and not flying["j5_blocks_activation"], \
+        "review must not claim J5 blocks when a card is already in-flight"
+    assert any("J5" in p for p in flying["problems"]), "review carries validate"
+    r1 = build_review(pair, today=datetime.date(2026, 10, 20))
+    r2 = build_review(pair, today=datetime.date(2026, 10, 20))
+    r1.pop("generated_at")
+    r2.pop("generated_at")
+    assert r1 == r2, "review determinism"
+    print("selftest PASS (J1-J6 + gate lane map + review + determinism, %d checks)"
+          % 20)
     return 0
 
 
@@ -280,6 +399,11 @@ def main():
     p_g.add_argument("--consumer", help="who is dispatching (audit field)")
     p_g.add_argument("--exempt", help="exemption reason (artifact-arrival paths)")
     p_g.add_argument("--json", action="store_true")
+    p_r = sub.add_parser("review", help="M66 monthly dry-run review snapshot")
+    p_r.add_argument("--registry", default=REGISTRY)
+    p_r.add_argument("--json", action="store_true")
+    p_r.add_argument("--no-write", action="store_true",
+                     help="print only, skip state/batch-pool-review-*.json")
     sub.add_parser("selftest", help="offline fixture checks")
     args = ap.parse_args()
     if args.cmd == "list":
@@ -289,6 +413,8 @@ def main():
     if args.cmd == "gate":
         return cmd_gate(args.registry, args.batch_id, args.consumer,
                         args.exempt, args.json)
+    if args.cmd == "review":
+        return cmd_review(args.registry, args.json, not args.no_write)
     return cmd_selftest()
 
 
