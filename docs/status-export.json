@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-10-31 11:24",
- "current_activity": "2026-10-31 11:2x 轮：M66 批池首月 DRY-RUN 回访——batch_pool.py 新增 review 命令（build_review 纯函数 + state JSON 证据）并实跑：cards=6/lanes=4/consumer_plan 6/6/in_flight=0/validate POOL_GREEN。结构性发现=J5 干跑闸声明端点 2026-10-05 已过期 26 天（10-05 包已由 C-20261010-03 放行、观察期 10-10 起算），6 张卡在现有代码下永久无法离开 STOCKED=批池实质不可点火；已立提案 BC-P-146 改为「以当轮 gate 快照为凭证」的放行，本轮不动闸码（禁静默改状态）。",
- "latest_artifact": "state/batch-pool-review-20261031-112251.json（机读回访快照·2026-10-31 11:24）+ Tools/batch_pool.py review 命令（selftest 20/20）+ 提案 BC-P-146；QA 17/17=qa/smoke-20261031-1123.log/.png",
- "next_milestone": "M66 收口=BC-P-146 裁决后实施 J5 凭证式放行（并把激活动作留书面记录），窗口 48h（11-02 前）；N1 月末归集=10-31 22:43 一命令（month_end_collect run，月末日窗口）；M25 室内烘焙实弹=净窗一命令（当轮 gate 读数 CLOSED vram_free 2104<6144）；T173⑤ 给集团 fleet-idle-watch v2 出「读 lane_gate 字段」一行建议（窗口 ≤48h）。"
+ "updated_at": "2026-10-31 13:12",
+ "current_activity": "2026-10-31 13:1x 轮：T174 台账行标单源收口——Tools/ledger_markers.py 新增 TAIL_PROBE_FILES（七件台账行头表），qa_smoke 与 ledger_tail_fix 双导入、零本地副本；修掉 fixer 自带的那份更松的行标表（queue 标记缺尾胞锚 + heartbeat 用裸 HH:MM 计数），实测现行台账尾行过计 2/7。新增普查件 Tools/marker_literal_census.py（SOURCE/IMPORT/DIFF 三判 + 未登记时标字面 sweep）：selftest 19/19、实跑 MARKER-CLEAN。",
+ "latest_artifact": "Tools/marker_literal_census.py（run/--json/selftest）+ state/marker-census-20261031-1310.json（MARKER-CLEAN，SOURCE 3/IMPORT 3/DIFF 3，unregistered 0）+ state/marker-t174-delta-20261031.txt（旧松表 2/7 过计实测）；regression=ledger_tail_fix selftest 12/12（新增二手时刻不误报/真合并仍报）；QA 15/17=qa/smoke-20261031-1312.log/.png",
+ "next_milestone": "P1 待观察：bm-a ollama 推理面挂起（/api/tags 200 但 /api/generate 60s 零字节，8792 /ask 随之下游 FAIL），证据 state/ollama-gen-down-20261031.txt——连续两轮不恢复即立修复单；T176 心跳机器行全日期头未入锚面（下轮 1 件，窗口 48h）；N1 月末归集=10-31 22:43 一命令；M25 室内烘焙实弹待净窗（当轮 gate=CLOSED vram_free 427<6144）。"
 }
