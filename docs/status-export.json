@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-11-01 00:22",
- "current_activity": "2026-11-01 00:00 轮：T177 done=台账融合行全文普查上线（Tools/ledger_parallel_census.py selftest 11/11·live 3 行全部人工核对后采纳为白名单·PARALLEL-CLEAN·qa no.20 每轮判+selftest 4/4） | 提案:BC-P-156 写侧粘行守卫 | QA:18/18=smoke-20261101-0019 | C1C4:C1C4-GREEN 4/4 evidence=stat",
- "latest_artifact": "state/c1c4-20261101-002116.json（mtime 2026-11-01 00:21） ｜ state/month-end-202610.json（N1 十月月末归集报告·sources_ok=10·机械链 9/9·mtime 2026-10-31 22:45）+ qa/smoke-20261031-2244.log/.png（QA 17/17 PASS）",
- "next_milestone": "M4 接产对齐矩阵 blocked 项随开店/平台后台逐项销 ⬜（T-27 余项）（队列状态=**blocked 如实**（10-28 23:2x 令牌轮队列卫生）：销 ⬜ ） ｜ N1 月末归集已毕（10-31 22:4x）；下一步=①BC-P-155 self/borrowed 分列判据待批（采纳后下一个月末行起出 verdict 列）②M25/T26 室内烘焙样板间实弹=净窗一命令（BLOCKED 计数在册·净窗开后 ≤1 轮兑现）③D-20261031-05 ② lane8090 复活判定点 11-02 03:07"
+ "updated_at": "2026-11-01 06:17",
+ "current_activity": "2026-11-01 06:1x 令牌轮：D-20261101-03 承办 done=执行器活性三面判读器 Tools/executor_liveness.py（selftest 11/11·五机实跑 bm-a/bm-c/bm-m=ALIVE、bm-b/bm-d=NO-EVIDENCE 如实非死）+ 判据勘正两条（lanes/<node>.json 是派工载荷不含 last_result；0x800710E0=PT1M 重复触发被 IgnoreNew 拒绝，非常驻实例死） | 提案:BC-P-157 执行器活性接心跳+集团任务触发去重 | QA:18/18=smoke-20261101-0612 | C1C4:C1C4-GREEN 4/4 evidence=state/c1c4-20261101-061256.json",
+ "latest_artifact": "Tools/executor_liveness.py（执行器五态判读·selftest 11/11·mtime 2026-11-01 06:1x）· state/d03-executor-liveness-20261101.txt（D-20261101-03 承办证据件·三条定谳）· state/executor-liveness-20261101.json（bm-a 三面明细）· qa/smoke-20261101-0612.log/.png（QA 18/18 PASS）",
+ "next_milestone": "①BC-P-157 批文至=执行器活性读数接 idle_selfcheck 心跳（一行 executor=<verdict>，不升红门）+ sop_coverage_check F3 周读点 ②M25/T26 室内烘焙样板间实弹=净窗一命令（BLOCKED 计数在册，净窗开口 1 轮兑现）③D-20261031-05 :8090 复活判定持续至 11-02 03:07 ④tech T184 服务代码-进程版本漂移探针（needs-based）"
 }
