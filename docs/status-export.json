@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-10-31 14:38",
- "current_activity": "2026-10-31 14:2x 令牌轮：T176 收口——心跳行头锚补全日期机器行形（HB_MARKER 增 YYYY-MM-DD HH:MM[:SS] 头 + 嵌入式「全日期+P1/P2」第三支），live 实证 heartbeat 零头行 40→7、零新增假阳性；同轮把上轮悬着的 P1 追到根因：bm-a 推理面卡死不是模型缺位，而是 GPU 被同机他方负载占满（99% 利用率、11765/12282 MiB，并行计算应用含 ComfyUI 与 Tuanjie Editor），ollama 运行器在列但拿不到时间片。",
- "latest_artifact": "Tools/ledger_markers.py（HB_MARKER 全日期头 + 并行告警行第三支）+ Tools/qa_smoke.py no.8 夹具 7→9（H 单机器行=1 头 / I 全日期告警并行=2 头）；证据 state/t176-marker-live-20261031.txt（heartbeat heads {0:7,1:1391,2:2,3:1}·组合夹具四例）+ state/ollama-gen-down-20261031-2.txt（卡死证据与 nvidia-smi 争用读数）；回归=qa_selftest exit0 / tailfix 12/12 / marker census 19/19+MARKER-CLEAN；qa/smoke-20261031-1441.log/.png (15/17；两 FAIL 同源=ollama 生成超时)；C1C4-GREEN 4/4（state/c1c4-20261031-142832.json）。",
- "next_milestone": "T178 推理面卡死修复单（下一轮第一优先级，三供选：owner 让路／接受 GPU-CONTENDED 归类／CPU 档兜底）；N1 月末归集=10-31 22:43 夜班一命令；tech T177 账本全文并行行普查（心跳已存 3 行 heads>=2 且永远落在 tail-12 之外，窗口 48h）；BC-P-148 运行器三态判别探针待裁；M25 室内烘焙实弹=净窗一命令（当轮 gate 读数 CLOSED，vram_free 117<6144 如实）。"
+ "updated_at": "2026-10-31 15:0x",
+ "current_activity": "2026-10-31 14:51-15:0x 令牌轮：T178 推理面卡死收口——不杀他线产线（ComfyUI/Tuanjie 属机队视频让路序），改在 QA 探针侧加争用感知层（nvidia-smi 判 CONTENDED→只调预算+加 CPU 降级道，判据不放宽）；实弹争用 util=99%/vram_free=686MiB 下 CPU 道 15.8s 出真答复，正式 smoke 17/17 全绿（本司首见）",
+ "latest_artifact": "Tools/qa_smoke.py（`gpu_contention_verdict`+`ollama_cpu_lane`+`selftest_gpu_contention` 7/7）+ docs/qa-smoke-test-charter.md §三.19 + qa/smoke-20261031-1459.log/.png（17/17 PASS；ollama 32tok @6.72tok/s、/ask 200 reply_len=51 44tok/14.45s，均真答复）+ state/t178-queue patch 后的 tech T178 done / T179 立行",
+ "next_milestone": "T179 服务端 CPU 降级道（8792 resident_qa_server.ollama_chat 双道超时后加一次 CPU 道·需重启 8792 窗口）——下一令牌轮第一优先级；同轮候选=tech T177 心跳全文件普查；N1 周末归集=10-31 22:43 夜班"
 }

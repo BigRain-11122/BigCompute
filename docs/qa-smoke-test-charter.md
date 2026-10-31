@@ -48,4 +48,12 @@
 | explore E37 长假探针 | state/queue/explore.md |
 | 盘点清单 G1 行 | docs/ops/sop-inventory-gap-list-v1.md |
 
-（v1.0 完·2026-10-04 OSLoop 哨兵轮·M49 步②）
+### 三.19 探针 2/16 争用感知预算（T178·2026-10-31 修订）
+
+外部产线占满 GPU（实测 ComfyUI+Tuanjie Editor：util 99%、11782/12282 MiB）时，常驻 runner 被时间片切成事实不可用——8 token 一次生成 >300s。固定预算会把「调度事实」记成「设备故障」。修订=探针调用前读一次 `nvidia-smi`（`gpu_state`/`gpu_contention_verdict`；阈值 util≥90% 或 vram_free<1024MiB=CONTENDED），**只调预算与降级路径，判据不放宽**：
+
+- 探针 2（ollama 真响应）：争用时 GPU 道预算 60s；失败后一次 CPU 道（`num_gpu:0`+`keep_alive:0`+8 token）取**真实答复**，PASS 标 `CPU-LANE-DEGRADED`（实测 15.8s 出 `1 + 1 = 2.`）；两道路均无答复=BOTH-LANES FAIL。
+- 探针 16（8792 /ask）：争用时 40s→60s 单次（服务端后端同为 GPU 道，拉长预算只烧墙钟），FAIL 行必带 `gpu: GPU-CONTENDED(...)`，禁读成「8792 窗坏了」。
+- GPU 读数不可得=GPU-UNREADABLE，**不**买额外预算也不判绿；selftest `selftest_gpu_contention` 七夹具（G1-G7）。
+
+（v1.0 完·2026-10-04 OSLoop 哨兵轮·M49 步②·三.19 增补 2026-10-31 T178 轮）
