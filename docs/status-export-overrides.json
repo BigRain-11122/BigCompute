@@ -1,4 +1,4 @@
 {
- "latest_artifact": "Tools/lane8090_ledger.py（append-only 探针台账·尾部连续 UP 段判定·15min 去重·selftest 8/8）+ 首行实证 state/lane8090-probe-log.jsonl（2026-10-31T18:08:25 DARK[DOWN]）+ 接入 idle_selfcheck 每轮自动落行 + qa/smoke-20261031-1811.log/.png（17/17 PASS）",
- "next_milestone": "N1 月末聚合一命令=2026-10-31 22:43 夜轮；同窗候选=tech T180（8792 /health 增 cpu_lane 披露段）；D-20261031-05 ② 复活判据判定点=11-02 03:07（读 `python Tools/lane8090_ledger.py status`，当前 NOT-MET 如实）"
+ "latest_artifact": "state/month-end-202610.json（N1 十月月末归集报告·sources_ok=10·机械链 9/9·mtime 2026-10-31 22:45）+ qa/smoke-20261031-2244.log/.png（QA 17/17 PASS）",
+ "next_milestone": "N1 月末归集已毕（10-31 22:4x）；下一步=①BC-P-155 self/borrowed 分列判据待批（采纳后下一个月末行起出 verdict 列）②M25/T26 室内烘焙样板间实弹=净窗一命令（BLOCKED 计数在册·净窗开后 ≤1 轮兑现）③D-20261031-05 ② lane8090 复活判定点 11-02 03:07"
 }
