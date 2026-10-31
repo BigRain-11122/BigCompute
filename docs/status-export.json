@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-10-31 13:12",
- "current_activity": "2026-10-31 13:1x 轮：T174 台账行标单源收口——Tools/ledger_markers.py 新增 TAIL_PROBE_FILES（七件台账行头表），qa_smoke 与 ledger_tail_fix 双导入、零本地副本；修掉 fixer 自带的那份更松的行标表（queue 标记缺尾胞锚 + heartbeat 用裸 HH:MM 计数），实测现行台账尾行过计 2/7。新增普查件 Tools/marker_literal_census.py（SOURCE/IMPORT/DIFF 三判 + 未登记时标字面 sweep）：selftest 19/19、实跑 MARKER-CLEAN。",
- "latest_artifact": "Tools/marker_literal_census.py（run/--json/selftest）+ state/marker-census-20261031-1310.json（MARKER-CLEAN，SOURCE 3/IMPORT 3/DIFF 3，unregistered 0）+ state/marker-t174-delta-20261031.txt（旧松表 2/7 过计实测）；regression=ledger_tail_fix selftest 12/12（新增二手时刻不误报/真合并仍报）；QA 15/17=qa/smoke-20261031-1312.log/.png",
- "next_milestone": "P1 待观察：bm-a ollama 推理面挂起（/api/tags 200 但 /api/generate 60s 零字节，8792 /ask 随之下游 FAIL），证据 state/ollama-gen-down-20261031.txt——连续两轮不恢复即立修复单；T176 心跳机器行全日期头未入锚面（下轮 1 件，窗口 48h）；N1 月末归集=10-31 22:43 一命令；M25 室内烘焙实弹待净窗（当轮 gate=CLOSED vram_free 427<6144）。"
+ "updated_at": "2026-10-31 14:38",
+ "current_activity": "2026-10-31 14:2x 令牌轮：T176 收口——心跳行头锚补全日期机器行形（HB_MARKER 增 YYYY-MM-DD HH:MM[:SS] 头 + 嵌入式「全日期+P1/P2」第三支），live 实证 heartbeat 零头行 40→7、零新增假阳性；同轮把上轮悬着的 P1 追到根因：bm-a 推理面卡死不是模型缺位，而是 GPU 被同机他方负载占满（99% 利用率、11765/12282 MiB，并行计算应用含 ComfyUI 与 Tuanjie Editor），ollama 运行器在列但拿不到时间片。",
+ "latest_artifact": "Tools/ledger_markers.py（HB_MARKER 全日期头 + 并行告警行第三支）+ Tools/qa_smoke.py no.8 夹具 7→9（H 单机器行=1 头 / I 全日期告警并行=2 头）；证据 state/t176-marker-live-20261031.txt（heartbeat heads {0:7,1:1391,2:2,3:1}·组合夹具四例）+ state/ollama-gen-down-20261031-2.txt（卡死证据与 nvidia-smi 争用读数）；回归=qa_selftest exit0 / tailfix 12/12 / marker census 19/19+MARKER-CLEAN；qa/smoke-20261031-1441.log/.png (15/17；两 FAIL 同源=ollama 生成超时)；C1C4-GREEN 4/4（state/c1c4-20261031-142832.json）。",
+ "next_milestone": "T178 推理面卡死修复单（下一轮第一优先级，三供选：owner 让路／接受 GPU-CONTENDED 归类／CPU 档兜底）；N1 月末归集=10-31 22:43 夜班一命令；tech T177 账本全文并行行普查（心跳已存 3 行 heads>=2 且永远落在 tail-12 之外，窗口 48h）；BC-P-148 运行器三态判别探针待裁；M25 室内烘焙实弹=净窗一命令（当轮 gate 读数 CLOSED，vram_free 117<6144 如实）。"
 }

@@ -11,10 +11,17 @@ writer yet accepted by the reader. T172 removes that asymmetry by moving
 the marker here and having both sides import it (no literal duplication).
 
 Marker shape (combo):
-  (1) line-start anchor  ^\\?\\d{2}:\\d{1,2}x?  -- one per real entry head
+  (1) line-start anchor  ^\\?\\d{2}:\\d{1,2}x?  -- one per real entry head.
+      Also accepts the machine-line form "2026-10-31 12:43:09 ..." written by
+      os-loop / idle_selfcheck (T176): those rows used to score ZERO heads,
+      so a fused pair of them could read as one row. Measured live delta on
+      state/heartbeat.txt: 40 zero-marker rows -> 7, zero rows pushed 1->2.
   (2) time immediately followed by a known line-opening word -- catches the
       embedded head of a truly fused line, x-tolerant ("18:0x") and with an
       optional :SS for os-loop / idle_selfcheck stamps.
+  (3) an embedded full-date stamp followed by a P1/P2 severity token -- the
+      second half of a fused pair of alarm rows carries no opener word, so
+      branch (2) alone still missed it (T176 combination fixture).
 
 Openers are written as \\u escapes so this file stays pure ASCII (group
 coding law). Evidence: state/t63-marker-eval-20261009.txt (J1/J2/J3 gates,
@@ -30,8 +37,11 @@ HB_OPENERS = (u"\u8F6E\u4E2D\u523B\u75D5|\u8F6E\u5C3E\u5FC3\u8DF3|"
               u"\u65F6\u6807\u52D8\u6B63|"
               r"os-loop|idle_selfcheck|round_end|round_append|night_watch"
               r"|mid-round")
-HB_MARKER = (r"(^\s*\\?\d{2}:\d{1,2}x?)"
-             r"|(\d{2}:\d{1,2}x?(?::\d{2}x?)?\s*(?:" + HB_OPENERS + r"))")
+# Machine-written full-date stamp ("2026-10-31 12:43", optional :SS).
+HB_DATE = r"\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}(?::\d{2})?"
+HB_MARKER = (r"(^\s*(?:\\?\d{2}:\d{1,2}x?|" + HB_DATE + r"))"
+             r"|(\d{2}:\d{1,2}x?(?::\d{2}x?)?\s*(?:" + HB_OPENERS + r"))"
+             r"|(" + HB_DATE + r"\s+P[12]\s)")
 
 HB_MARKER_RE = re.compile(HB_MARKER)
 # Raw "HH:MM" shape, kept only for diagnostics in reject messages

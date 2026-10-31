@@ -1257,6 +1257,19 @@ def selftest_tails():
              ("state/heartbeat.txt",
               "18:0x \u8F6E\u4E2D\u523B\u75D5\uFF1A\u961F\u5217\u6B65\u6BD5\n"),
              True, None)
+    # H / I = T176: machine-written rows carry a full date head and, for
+    #     alarm rows, no opener word at all. H used to score 0 heads (a
+    #     single row looking like no row); I used to score 0 as well, so a
+    #     fused pair stayed invisible. Both must now read 1 and 2.
+    scenario("H full-date machine row -> PASS (single row)",
+             ("state/heartbeat.txt",
+              "2026-10-31 14:11:01 P2 hq_feedback: MISSED(age_h=17.0)\n"),
+             True, None)
+    scenario("I fused pair of full-date alarm rows -> FAIL 2 markers",
+             ("state/heartbeat.txt",
+              "2026-10-31 14:11:01 P2 hq_feedback: MISSED "
+              "2026-10-31 12:43:09 P2 hq_feedback: MISSED\n"),
+             False, "2 markers in last line")
     print("selftest verdict: %d/%d PASS"
           % (len([r for r in results if r]), len(results)))
     return 0 if all(results) else 1
