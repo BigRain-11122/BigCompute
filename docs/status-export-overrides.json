@@ -1,4 +1,4 @@
 {
- "latest_artifact": "实质改动=Tools/gpu_idle_collector.py 新增 dispatch_gate()（指针写入前必答车道闸）+指针行 gate= 字段；审计面=state/dispatch-gate.jsonl（consumer=gpu-dispatch-pointer 快照 22:45:45）",
- "next_milestone": "T173② 给集团 fleet-idle-watch v2 出「读 lane_gate 字段」一行建议（跨仓派单面，窗口 ≤48h：10-31 夜轮或更早）｜T171③ BC-P-58 更新器钉住（auto_update_enabled）｜T171④ BC-P-74 serve 存活复拍（选取窗避共租借用窗）｜M25 室内烘焙实弹=净窗一命令（当前 gate 读数 CLOSED vram_free 1534<6144 如实）"
+ "latest_artifact": "Tools/lane8090_ledger.py（append-only 探针台账·尾部连续 UP 段判定·15min 去重·selftest 8/8）+ 首行实证 state/lane8090-probe-log.jsonl（2026-10-31T18:08:25 DARK[DOWN]）+ 接入 idle_selfcheck 每轮自动落行 + qa/smoke-20261031-1811.log/.png（17/17 PASS）",
+ "next_milestone": "N1 月末聚合一命令=2026-10-31 22:43 夜轮；同窗候选=tech T180（8792 /health 增 cpu_lane 披露段）；D-20261031-05 ② 复活判据判定点=11-02 03:07（读 `python Tools/lane8090_ledger.py status`，当前 NOT-MET 如实）"
 }

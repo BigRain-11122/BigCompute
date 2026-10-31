@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-10-31 17:5x",
- "current_activity": "2026-10-31 17:4x-17:5x 令牌轮：①承接 CEO 17:40 全面开工令 OB-20261031-174059-609，本机 machine-state resume 实跑（Bigmoney 三任务+量化审计两任务 Disabled→Ready，本司六任务全 Ready/Running 实读复验）；②T179 8792 服务端 CPU 降级道落地并重启在役 v1.2。",
- "latest_artifact": "Tools/resident_qa_server.py v1.2（两道路全失败→本机 Ollama 原生 /api/chat + num_gpu=0 + keep_alive=0，gate 增 ·CPU-LANE· 披露；selftest 17/17）+ 注入式实弹 state/resident-qa-cpulane-live-20261031-175113.json（/ask 200·CPU-LANE·49tok/12.04s）+ qa/smoke-20261031-1752.log/.png（17/17 PASS）+ 回执 cph4/fleet/order-bus/receipts/OB-20261031-174059-609-bm-a.json",
- "next_milestone": "N1 月末聚合一命令=2026-10-31 22:43 夜轮；同窗候选=tech T177 账本全文并行行普查（needs-based），BC-P-150 gate 车道单源提案待判"
+ "updated_at": "2026-10-31 18:12",
+ "current_activity": "2026-10-31 18:00 轮：T181 done=承接 D-20261031-05 ②（墓碑复活判据的可评序列）：新件 Tools/lane8090_ledger.py＝append-only JSONL（state/lane8090-probe-log.jsonl）+尾部连续 UP 段判定（run_len>=3 且 span>=24h 才 MET，出现 DOWN 即断）+同 token 15min 去重防刷+status 三行/MET 时打印 STATUS 面动作",
+ "latest_artifact": "state/c1c4-20261031-181140.json（mtime 2026-10-31 18:11） ｜ Tools/lane8090_ledger.py（append-only 探针台账·尾部连续 UP 段判定·15min 去重·selftest 8/8）+ 首行实证 state/lane8090-probe-log.jsonl（2026-10-31T18:08:25 DARK[DOWN]）+ 接入 idle_selfcheck 每轮自动落行 + qa/smoke-20261031-1811.log/.png（17/17 PASS）",
+ "next_milestone": "M4 接产对齐矩阵 blocked 项随开店/平台后台逐项销 ⬜（T-27 余项）（队列状态=**blocked 如实**（10-28 23:2x 令牌轮队列卫生）：销 ⬜ ） ｜ N1 月末聚合一命令=2026-10-31 22:43 夜轮；同窗候选=tech T180（8792 /health 增 cpu_lane 披露段）；D-20261031-05 ② 复活判据判定点=11-02 03:07（读 `python Tools/lane8090_ledger.py status`，当前 NOT-MET 如实）"
 }

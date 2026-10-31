@@ -908,6 +908,15 @@ def check():
     q_open = count_queue_open()
     serve_alive, serve_detail = probe_serve_liveness()
     lane8090 = probe_lane8090()
+    # T181（D-20261031-05 ②）：墓碑复活判据需要「连续 N 次 UP + 跨度」的可评
+    # 序列，心跳快照评不出来。每轮探测顺手落一行 JSONL（15min 内同 token 去
+    # 重由 ledger 自管）；ledger 恒 advisory，任何异常吃掉不阻断心跳。
+    try:
+        sys.path.insert(0, os.path.join(PROJECT, "Tools"))
+        import lane8090_ledger
+        lane8090_ledger.append_probe(lane8090)
+    except Exception:
+        pass
     model_drift = probe_model_drift()
     c1c4_line = c1c4_line_age()
     hq_line = hq_line_age()
