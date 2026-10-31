@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-10-31 18:27",
- "current_activity": "2026-10-31 18:00 轮：T180 done=8792 /health llm 段增 cpu_lane 四字段（url/模型名/tokens/timeout_s·零凭据回显）＋轮内先修 idle_selfcheck 日清判据标题形缺口（旧正则只认「日清 日期」致 MISSED 假告警·selftest 加双形态回归）＝t180 与假告警两件同窗收口；QUEUE premise_unverified=0 | 提案:BC-P-152（8792 健康面 cpu_lan",
- "latest_artifact": "qa/smoke-20261031-1827.png（mtime 2026-10-31 18:27） ｜ Tools/lane8090_ledger.py（append-only 探针台账·尾部连续 UP 段判定·15min 去重·selftest 8/8）+ 首行实证 state/lane8090-probe-log.jsonl（2026-10-31T18:08:25 DARK[DOWN]）+ 接入 idle_selfcheck 每轮自动落行 + qa/smoke-20261031-1811.log/.png（17/17 PASS）",
+ "updated_at": "2026-10-31 18:36",
+ "current_activity": "2026-10-31 18:00 轮：T183 done=8792 重启按端口 PID 收敛：Tools/qa_restart.py（status/restart/selftest）一条命令走完 找LISTENING PID→校验属本仓脚本→停→schtasks /Run→轮询 /health；安全闸=端口有他司属主时整体拒杀 REFUSED-FOREIGN exit 4；判定四分 RESTARTED/STARTED/PID-ROLLED/SAME-VER/NO-HEALT",
+ "latest_artifact": "state/clean-window-log.jsonl（mtime 2026-10-31 18:34） ｜ Tools/lane8090_ledger.py（append-only 探针台账·尾部连续 UP 段判定·15min 去重·selftest 8/8）+ 首行实证 state/lane8090-probe-log.jsonl（2026-10-31T18:08:25 DARK[DOWN]）+ 接入 idle_selfcheck 每轮自动落行 + qa/smoke-20261031-1811.log/.png（17/17 PASS）",
  "next_milestone": "M4 接产对齐矩阵 blocked 项随开店/平台后台逐项销 ⬜（T-27 余项）（队列状态=**blocked 如实**（10-28 23:2x 令牌轮队列卫生）：销 ⬜ ） ｜ N1 月末聚合一命令=2026-10-31 22:43 夜轮；同窗候选=tech T180（8792 /health 增 cpu_lane 披露段）；D-20261031-05 ② 复活判据判定点=11-02 03:07（读 `python Tools/lane8090_ledger.py status`，当前 NOT-MET 如实）"
 }
