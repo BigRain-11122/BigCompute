@@ -1096,20 +1096,13 @@ def probe_l1_coder_serve():
 # second-hand time citations that this reader accepts.
 if HERE not in sys.path:
     sys.path.insert(0, HERE)
-from ledger_markers import HB_OPENERS, HB_MARKER  # noqa: E402
-
-TAIL_PROBE_FILES = (
-    ("state/rounds.log", r"\d{4}-\d{2}-\d{2}( [\d:.x]+)? tokens"),
-    ("state/heartbeat.txt", HB_MARKER),
-    ("HQ-FEEDBACK.md", "\u65e5\u6e05[:\uff1a]"),
-    # BC-P-45 判例（10-13 T86 行实锚）：ID 形锚=「| <编号> |」整胞——裸
-    # \| T\d+ 会把证据胞里合法的「| T85 行+…」开头误计成第二行 ID（假
-    # merged-rows FAIL）；真合并行的第二行 ID 恒为整胞形态仍命中双计。
-    ("state/proposals.md", r"\| BC-P-\d+ \|"),
-    ("state/queue/main.md", r"\| M\d+ \|"),
-    ("state/queue/tech.md", r"\| T\d+ \|"),
-    ("state/queue/explore.md", r"\| E\d+ \|"),
-)
+# T174: the seven-file marker table now lives in ledger_markers too, so the
+# tail fixer cannot drift into a looser rule than this probe.
+from ledger_markers import HB_OPENERS, HB_MARKER, TAIL_PROBE_FILES  # noqa: E402
+# BC-P-45 判例（10-13 T86 行实锚）：ID 形锚=「| <编号> |」整胞——裸
+# \| T\d+ 会把证据胞里合法的「| T85 行+…」开头误计成第二行 ID（假
+# merged-rows FAIL）；真合并行的第二行 ID 恒为整胞形态仍命中双计。
+# 该表本体=Tools/ledger_markers.py（T174 单源），本文件只导入不重定义。
 
 
 def probe_ledger_tails(root=None):

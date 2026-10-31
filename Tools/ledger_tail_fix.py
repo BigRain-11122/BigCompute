@@ -22,16 +22,20 @@ import tempfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-# 七件清单与行标 regex 镜像 qa_smoke.TAIL_PROBE_FILES（T51）
-SEVEN_FILES = (
-    ("state/rounds.log", r"\d{4}-\d{2}-\d{2}"),
-    ("state/heartbeat.txt", r"\d{2}:\d{2}"),
-    ("HQ-FEEDBACK.md", "日清[:：]"),
-    ("state/proposals.md", r"\| BC-P-\d+"),
-    ("state/queue/main.md", r"\| M\d+"),
-    ("state/queue/tech.md", r"\| T\d+"),
-    ("state/queue/explore.md", r"\| E\d+"),
-)
+# 单源=Tools/ledger_markers.py（T174·此前本件自带一份更松的行标表=「| T\d+」
+# 无尾胞锚 → 正文里合法引用的「| T85 |」被误计成第二行=假 MANUAL-REVIEW，
+# 与 T172 修掉的读写不对等同类）。
+try:
+    from ledger_markers import HB_MARKER, TAIL_PROBE_FILES, count_markers
+except Exception:  # 同目录导入降级（脚本直跑时 sys.path[0] 未必是 Tools/）
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from ledger_markers import HB_MARKER, TAIL_PROBE_FILES, count_markers
+
+def _count(text, marker):
+    """一行内行标数。heartbeat 面走单源计数函数（引擎故障=None=fail-closed）。"""
+    if marker == HB_MARKER:
+        return count_markers(text)
+    return len(re.findall(marker, text))
 
 
 def _path(base, rel):
@@ -62,9 +66,12 @@ def scan(base, files):
             except UnicodeDecodeError as e:
                 note += " | DECODE-WARN last line utf-8 fail at byte %d" % e.start
             else:
-                if len(re.findall(marker, text)) >= 2:
+                n = _count(text, marker)
+                if n is None:
+                    note += " | MARKER-ENGINE-FAIL"
+                elif n >= 2:
                     note += (" | MANUAL-REVIEW %d markers in last line "
-                             "(merged rows?)" % len(re.findall(marker, text)))
+                             "(merged rows?)" % n)
         out.append((rel, status, note))
     return out
 
@@ -162,6 +169,30 @@ def _selftest():
         and apply_fix(tmp, "e.md") == 0
         and open(fe, "rb").read() == merged, repr(rows))
 
+    # T174: the fixer now judges the heartbeat tail with the single-source
+    # combo marker, so a legal second-hand time citation is not a fused row.
+    fh = os.path.join(tmp, "heartbeat.txt")
+    second_hand = "18:05 \u8f6e\u5c3e\uff1aorders 13:42:04 \u590d\u6838\u6bd5\n"
+    with open(fh, "w", encoding="utf-8") as f:
+        f.write(second_hand)
+    rows = scan(tmp, (("heartbeat.txt", HB_MARKER),))
+    run("S7 二手时刻引用不误报合并", rows[0][1] == "ok"
+        and "MANUAL-REVIEW" not in rows[0][2], rows[0][2])
+
+    fused = "18:05 \u8f6e\u5c3e\uff1aa 19:10 \u8f6e\u5c3e\uff1ab\n"
+    with open(fh, "w", encoding="utf-8") as f:
+        f.write(fused)
+    rows = scan(tmp, (("heartbeat.txt", HB_MARKER),))
+    run("S8 真合并行仍报 MANUAL-REVIEW", "MANUAL-REVIEW" in rows[0][2],
+        rows[0][2])
+
+    # T174: the table is imported, never redefined locally
+    src = open(os.path.abspath(__file__), "r", encoding="utf-8",
+               errors="replace").read()
+    redef = ("TAIL_PROBE_FILES" + " = (", "SEVEN" + "FILES = (")
+    run("S9 行标表单源导入零重定义",
+        not any(x in src for x in redef))
+
     ok = all(checks)
     print("SELFTEST %d/%d PASS" % (sum(checks), len(checks)))
     return 0 if ok else 1
@@ -172,11 +203,11 @@ def main():
     if "--selftest" in args:
         sys.exit(_selftest())
     if "--apply" in args:
-        sys.exit(run_apply(ROOT, SEVEN_FILES))
+        sys.exit(run_apply(ROOT, TAIL_PROBE_FILES))
     if args and args[0] != "--dry":
         print("usage: ledger_tail_fix.py [--dry|--apply|--selftest]")
         sys.exit(2)
-    sys.exit(run_dry(ROOT, SEVEN_FILES))
+    sys.exit(run_dry(ROOT, TAIL_PROBE_FILES))
 
 
 if __name__ == "__main__":

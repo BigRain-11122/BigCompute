@@ -38,6 +38,23 @@ HB_MARKER_RE = re.compile(HB_MARKER)
 # (never used as a verdict: that was the T172 asymmetry).
 RAW_TS_RE = re.compile(r"\d{2}:\d{2}")
 
+# Seven git-tracked ledgers and their row-head marker (T174 single source).
+# The QA read side (qa_smoke.TAIL_PROBE_FILES) and the tail fixer
+# (ledger_tail_fix) both import this table. Before T174 the fixer carried a
+# looser copy ("\| T\d+" with no trailing cell anchor) that flagged a legal
+# body-text mention as a fused row -- the same asymmetry class as T172.
+# BC-P-45 / T86 lesson: the queue markers need the trailing " |" cell anchor,
+# otherwise an ID cited mid-row reads as a second head.
+TAIL_PROBE_FILES = (
+    ("state/rounds.log", "\\d{4}-\\d{2}-\\d{2}( [\\d:.x]+)? tokens"),
+    ("state/heartbeat.txt", HB_MARKER),
+    ("HQ-FEEDBACK.md", "\u65e5\u6e05[:\uff1a]"),
+    ("state/proposals.md", "\\| BC-P-\\d+ \\|"),
+    ("state/queue/main.md", "\\| M\\d+ \\|"),
+    ("state/queue/tech.md", "\\| T\\d+ \\|"),
+    ("state/queue/explore.md", "\\| E\\d+ \\|"),
+)
+
 
 def count_markers(line):
     """Row-head markers in one line. None = marker engine failed (fail-closed)."""
