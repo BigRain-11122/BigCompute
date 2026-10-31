@@ -124,6 +124,12 @@ HQ_MAX_AGE_HOURS = 24.0  # C-20261009-02 派单① 快速件 SLA 12h 之上的�
 HQ_LINE_RE = re.compile(
     r"日清\s+(\d{4}-\d{1,2}-\d{1,2}|\d{1,2}-\d{1,2})"
     r"(?:\s+(\d{1,2}):([0-9xX]{2}))?")
+# 标题形（10-31 实锚）：日清区小节头写成「## 2026-10-31 17:5x 日清（…）」，
+# 日期在「日清」之前，HQ_LINE_RE 匹配不到——曾使 hq_line 恒读旧写法末行
+# （10-31 18:20 实测报 MISSED(date=2026-10-30) 而当日两节均已在盘）。
+HQ_HEAD_RE = re.compile(
+    r"^\s{0,3}#{0,3}\s*(\d{4}-\d{1,2}-\d{1,2}|\d{1,2}-\d{1,2})"
+    r"\s+(\d{1,2}):([0-9xX]{2})\s+日清")
 ROUND_ROW_RE = re.compile(r"^(\d{4})-(\d{2})-(\d{2}) .* tokens: ")
 
 # §8.2 旗标判据（resource-chain L101·预注册·禁调参不经立法）
@@ -345,9 +351,12 @@ def parse_hq_line(line, today=None):
     · 时分在场则用之（'4x' 掩码形按 …49 取上界：22:4x→22:49）；
     · 时分缺席 → 当日 23:59（该行最晚可能落笔时刻）；
     · 省略年份的 MM-DD 以当年推，推得日期晚于明日则回退上一年（跨年窗）。
+    · 两种写法：正文「日清 <日期> <时分>」与标题「## <日期> <时分> 日清（…）」。
     返回 datetime 或 None。
     """
     m = HQ_LINE_RE.search(line or "")
+    if not m:
+        m = HQ_HEAD_RE.match(line or "")
     if not m:
         return None
     today = today or datetime.date.today()
@@ -1367,6 +1376,17 @@ def selftest():
                         ).strftime("%Y-%m-%d") == "2026-10-25"
     ok &= parse_hq_line("日清 12-31 23:2x", today=datetime.date(2027, 1, 1)
                         ).year == 2026
+    # 标题形（10-31 实锚回归）：日期在「日清」之前的现行小节头必须能读；
+    # 缺「日清」二字的同类标题不得被冒认。
+    hq_head = "## 2026-10-26 03:1x 日清（哨兵段轮）：无 P0/P1\n"
+    j15["headform"] = hq_line_age(now=now15, _lines=[hq_old, hq_head],
+                                  _rounds=[r_today])
+    ok &= j15["headform"]["state"] == "FRESH"
+    ok &= j15["headform"]["date"] == "2026-10-26"
+    ok &= parse_hq_line(hq_head, today=now15.date()
+                        ).strftime("%H:%M") == "03:19"
+    ok &= parse_hq_line("## 2026-10-26 03:1x 轮账本：无待报",
+                        today=now15.date()) is None
     print("J15 hq-line: %s | live=%s"
           % (" ".join("%s=%s" % (k, v["token"]) for k, v in j15.items()),
              hq_line_age()["token"]))

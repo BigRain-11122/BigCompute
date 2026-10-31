@@ -45,9 +45,10 @@ CPU_LANE_TAG = "CPU-LANE"
 CPU_LANE_URL = os.environ.get("RESIDENT_QA_CPU_LANE_URL", "")  # 空=由 FALLBACK_URL 派生原生口
 CPU_LANE_MAX_TOKENS = int(os.environ.get("RESIDENT_QA_CPU_LANE_TOKENS", "120"))
 CPU_LANE_TIMEOUT = int(os.environ.get("RESIDENT_QA_CPU_LANE_TIMEOUT", "120"))
-SERVER_VER = "resident-qa v1.2 (BigCompute MaaS consumer face)"
+SERVER_VER = "resident-qa v1.3 (BigCompute MaaS consumer face)"
 _MODEL_CACHE = {}  # chat_url -> (model_id, ts)
 _LAST_LANE = {"lane": None, "model": None, "primary_down": False}
+_CPU_MODEL_CACHE = {}  # T180：CPU 道模型名 ttl 缓存（/health 调用不打每次触网）
 
 
 def load_anchors(data_path):
@@ -120,19 +121,44 @@ def _cpu_lane_url():
     return _native_chat_url(raw) or (raw or "").rstrip("/")
 
 
-def _cpu_lane_model(url):
-    """CPU 道模型名：显式 env 优先，其次本机 /v1/models 实读，最后退回 FALLBACK 侧解析。"""
+def _cpu_lane_model(url, ttl=300):
+    """CPU 道模型名：显式 env 优先，其次本机 /v1/models 实读，最后退回 FALLBACK 侧解析。
+
+    T180：结果带 ttl 缓存——/health 披露面会调用它，不能让健康探针每次去触网。
+    """
     if FALLBACK_MODEL:
         return FALLBACK_MODEL
     mu = _models_url_from_native(url)
+    now = time.time()
+    hit = _CPU_MODEL_CACHE.get(mu or "")
+    if hit and now - hit[1] < ttl:
+        return hit[0]
+    name = None
     if mu:
         try:
             ids = [d.get("id") for d in (_http_json(mu, timeout=5).get("data") or []) if d.get("id")]
             if ids:
-                return ids[0]
+                name = ids[0]
         except Exception:
             pass
-    return resolve_model(FALLBACK_URL, "")
+    if name is None:
+        name = resolve_model(FALLBACK_URL, "")
+    _CPU_MODEL_CACHE[mu or ""] = (name, now)
+    return name
+
+
+def cpu_lane_info():
+    """T180：/health 披露的降级道配置面（url/模型名/tokens/timeout_s·零凭据回显）。
+
+    只读展示 import 时定值的 env 与派生结果——env 拼错时运维在 /health 当场可见，
+    不必等真出事才暴露。任何异常都降级为 error 字段，不影响健康面本身。
+    """
+    try:
+        u = _cpu_lane_url()
+        return {"url": u, "model": _cpu_lane_model(u),
+                "tokens": CPU_LANE_MAX_TOKENS, "timeout_s": CPU_LANE_TIMEOUT}
+    except Exception as e:
+        return {"error": type(e).__name__}
 
 
 def _http_json(url, payload=None, timeout=30):
@@ -265,7 +291,8 @@ class _Handler(BaseHTTPRequestHandler):
                 "status": "ok", "server": SERVER_VER, "model": MODEL,
                 "anchors": len(srv.anchors), "whitelist": "anchors20_v1",
                 "uptime_s": int(time.time() - srv.started),
-                "llm": dict(_LAST_LANE, primary_url=LLM_URL, fallback_url=FALLBACK_URL),
+                "llm": dict(_LAST_LANE, primary_url=LLM_URL, fallback_url=FALLBACK_URL,
+                            cpu_lane=cpu_lane_info()),
             })
         else:
             self._json(404, {"err": "not found"})
@@ -499,9 +526,42 @@ def selftest(_args):
           code == 200 and f"·{CPU_LANE_TAG}·" in j.get("gate", "") and "5tok" in j.get("gate", ""))
     srv2.shutdown()
 
+    # T180：降级道配置面可观测——/health 须如实反映派生后的 url/tokens/timeout，
+    # 且零凭据回显（env 拼错在健康面即可见，不必等真出事）。
+    g_cpu2, g_tok, g_to, g_fbmodel = (globals().get("CPU_LANE_URL", ""),
+                                      globals()["CPU_LANE_MAX_TOKENS"],
+                                      globals()["CPU_LANE_TIMEOUT"],
+                                      globals()["FALLBACK_MODEL"])
+    try:
+        globals()["CPU_LANE_URL"] = "http://127.0.0.1:11434/api/chat"
+        globals()["CPU_LANE_MAX_TOKENS"] = 77
+        globals()["CPU_LANE_TIMEOUT"] = 42
+        globals()["FALLBACK_MODEL"] = "m-fallback-cpu"
+        info = cpu_lane_info()
+        srv3 = QAServer(("127.0.0.1", 0), load_anchors(fx), cpu_mock)
+        p3 = srv3.server_address[1]
+        threading.Thread(target=srv3.serve_forever, daemon=True).start()
+        with urllib.request.urlopen(f"http://127.0.0.1:{p3}/health", timeout=10) as r:
+            h3 = json.loads(r.read().decode("utf-8"))
+        srv3.shutdown()
+        cl = (h3.get("llm") or {}).get("cpu_lane") or {}
+    finally:
+        globals()["CPU_LANE_URL"] = g_cpu2
+        globals()["CPU_LANE_MAX_TOKENS"] = g_tok
+        globals()["CPU_LANE_TIMEOUT"] = g_to
+        globals()["FALLBACK_MODEL"] = g_fbmodel
+    check("S18 health 披露 cpu_lane 四字段且随 env 走",
+          info.get("url") == "http://127.0.0.1:11434/api/chat"
+          and info.get("tokens") == 77 and info.get("timeout_s") == 42
+          and info.get("model") == "m-fallback-cpu"
+          and cl.get("url") == "http://127.0.0.1:11434/api/chat"
+          and cl.get("tokens") == 77 and cl.get("timeout_s") == 42
+          and cl.get("model") == "m-fallback-cpu"
+          and not any(k for k in cl if "key" in k.lower() or "secret" in k.lower()))
+
     srv.shutdown()
-    print(f"SELFTEST {'PASS' if ok[0] == 17 else 'FAIL'} {ok[0]}/17")
-    return 0 if ok[0] == 17 else 1
+    print(f"SELFTEST {'PASS' if ok[0] == 18 else 'FAIL'} {ok[0]}/18")
+    return 0 if ok[0] == 18 else 1
 
 
 def main():

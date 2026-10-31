@@ -468,3 +468,6 @@ P0 无。**承接 OB-20261031-174059-609（全面开工 resume）**：本机 `ma
 ## 2026-10-31 18:1x 令牌轮（承接 D-20261031-05 ② 墓碑复活判据）
 P0 无。**承接 D-20261031-05**：委员会议决 `:8090` 墓碑态维持，复活唯一出口=「连续 3 次探针 UP 且跨度 ≥24h」，达标本司自行落 exit tombstone 待核销（判定点 11-02 03:07）。本轮补上该判据缺的可评序列：`Tools/lane8090_ledger.py`（append-only JSONL＋尾部连续 UP 段判定＋15min 同 token 去重）selftest 8/8，接入 `idle_selfcheck` 每轮落一行；当前 verdict=NOT-MET（航迹从墓碑态起，probes=1），**不立缺件/P1/提案行**（承 D-20261029-11 ④ 与 D-31-05 ③）。
 P1 无。P2=GPU 结构面不变（vram_free 2660MiB、NOT-BORROWABLE[VRAM|COTENANT]，本司走 CPU 面）；提案 BC-P-151（status-export 里程碑指针漂移探针，本轮实读 `next_milestone` 与队列头不符为证）。下个里程碑=N1 月末聚合 10-31 22:43 夜轮。
+## 2026-10-31 18:5x 日清（令牌轮：日清判据旧写法缺口收口 + T180 8792 降级道配置面）
+P0 无。P1 无。**产品增量 2 分件（两件）**：① `idle_selfcheck` 日清新鲜度判据补标题形——现行日清小节头把日期写在「日清」之前（`## 日期 时分 日清（…）`），旧正则只认「日清 <日期>」，致全天两节已在盘却报 MISSED 假告警；补 HQ_HEAD_RE 双形态 + selftest 加标题形回归与反例，live 由 MISSED(2026-10-30) 转 FRESH(2026-10-31)。② T180 `/health` 的 llm 段增 cpu_lane 四字段（派生 url、模型名、tokens、timeout_s，零凭据回显）——env 拼错在健康面即可见；selftest 17→18/18 PASS，服务重启 v1.3 后实读 url=http://127.0.0.1:11434/api/chat model=qwen3:4b-instruct tokens=120 timeout=120。
+P2 同仓多窗并存下 8792 由非任务壳进程持有（先后两个 pythonw），`schtasks /End` 加 `/Run` 打不到真监听者，须按端口 PID 收敛——本轮两跳才落到 v1.3，如实记并入 T180 余面。审核步：orders 尾行仍为 17:40 全面开工令（已回执），decisions 无本日新行=无待承接。QA 17/17 PASS（smoke-20261031-1826）·C1C4-GREEN 4/4。下个里程碑=N1 月末一聚合命令 10-31 22:43 夜窗。
