@@ -38,7 +38,14 @@ MODEL = "qwen3.6-35b"
 # 降级链（T148 R3/T149 普查正法）：L1 8090 不可达→本机 Ollama 常驻面，声明链与代码同源
 FALLBACK_URL = os.environ.get("RESIDENT_QA_LLM_FALLBACK_URL", "http://127.0.0.1:11434/v1/chat/completions")
 FALLBACK_MODEL = os.environ.get("RESIDENT_QA_FALLBACK_MODEL", "")  # 空=按 /v1/models 实读
-SERVER_VER = "resident-qa v1.1 (BigCompute MaaS consumer face)"
+# T179 CPU 降级道：L1/fallback 两道路均失败（GPU 被外部产线占满时常见）再走一次
+# Ollama 原生 /api/chat + options.num_gpu=0；keep_alive=0 用完即卸，不夺常驻 GPU runner 的位置。
+# 与 Tools/qa_smoke.py ollama_cpu_lane 同法（探针面与服务面同一条降级语义）。
+CPU_LANE_TAG = "CPU-LANE"
+CPU_LANE_URL = os.environ.get("RESIDENT_QA_CPU_LANE_URL", "")  # 空=由 FALLBACK_URL 派生原生口
+CPU_LANE_MAX_TOKENS = int(os.environ.get("RESIDENT_QA_CPU_LANE_TOKENS", "120"))
+CPU_LANE_TIMEOUT = int(os.environ.get("RESIDENT_QA_CPU_LANE_TIMEOUT", "120"))
+SERVER_VER = "resident-qa v1.2 (BigCompute MaaS consumer face)"
 _MODEL_CACHE = {}  # chat_url -> (model_id, ts)
 _LAST_LANE = {"lane": None, "model": None, "primary_down": False}
 
@@ -89,6 +96,45 @@ def _models_url(chat_url):
     return u[: -len(marker)] + "/models" if u.endswith(marker) else ""
 
 
+def _native_chat_url(chat_url):
+    """OpenAI 兼容 chat URL → 同源 Ollama 原生 /api/chat URL（非该形态返回空串）。
+
+    原生口才带 options.num_gpu / keep_alive（OpenAI 兼容口不保证透传），
+    故 CPU 降级道只走原生口。
+    """
+    u = (chat_url or "").rstrip("/")
+    marker = "/v1/chat/completions"
+    return u[: -len(marker)] + "/api/chat" if u.endswith(marker) else ""
+
+
+def _models_url_from_native(native_url):
+    """Ollama 原生 /api/chat URL → 同源 /v1/models URL（CPU 道自读模型名用）。"""
+    u = (native_url or "").rstrip("/")
+    marker = "/api/chat"
+    return u[: -len(marker)] + "/v1/models" if u.endswith(marker) else ""
+
+
+def _cpu_lane_url():
+    """CPU 道目标：RESIDENT_QA_CPU_LANE_URL 优先，否则由 FALLBACK_URL 派生原生口。"""
+    raw = CPU_LANE_URL or FALLBACK_URL
+    return _native_chat_url(raw) or (raw or "").rstrip("/")
+
+
+def _cpu_lane_model(url):
+    """CPU 道模型名：显式 env 优先，其次本机 /v1/models 实读，最后退回 FALLBACK 侧解析。"""
+    if FALLBACK_MODEL:
+        return FALLBACK_MODEL
+    mu = _models_url_from_native(url)
+    if mu:
+        try:
+            ids = [d.get("id") for d in (_http_json(mu, timeout=5).get("data") or []) if d.get("id")]
+            if ids:
+                return ids[0]
+        except Exception:
+            pass
+    return resolve_model(FALLBACK_URL, "")
+
+
 def _http_json(url, payload=None, timeout=30):
     data = json.dumps(payload).encode("utf-8") if payload is not None else None
     req = urllib.request.Request(
@@ -132,8 +178,32 @@ def _chat_one(url, model, messages, timeout):
     return (ch.get("message") or {}).get("content", "").strip(), u.get("completion_tokens", 0)
 
 
+def _cpu_lane_chat(messages, timeout=None):
+    """T179 CPU 降级道：本机 Ollama 原生 /api/chat，num_gpu=0 + keep_alive=0。
+
+    短预算（CPU_LANE_MAX_TOKENS）保证超时可控；空答复视为失败（判据不放宽）。
+    返回 (reply, eval_count, model)。
+    """
+    url = _cpu_lane_url()
+    if not url:
+        raise RuntimeError("no native ollama url")
+    model = _cpu_lane_model(url)
+    payload = {
+        "model": model, "messages": messages, "stream": False,
+        "keep_alive": 0,  # 用完即卸：不夺常驻 GPU runner 的位置
+        "options": {"num_predict": CPU_LANE_MAX_TOKENS, "num_gpu": 0},
+    }
+    j = _http_json(url, payload, timeout or CPU_LANE_TIMEOUT)
+    text = ((j.get("message") or {}).get("content") or "").strip()
+    if not text:
+        raise RuntimeError("cpu lane empty reply")
+    return text, j.get("eval_count", 0), model
+
+
 def ollama_chat(messages, timeout=150):
-    """真实推理调用：L1 舰队脑（:8090）→ 不可达降级本机 Ollama。返回 (reply, eval_count, meta)。"""
+    """真实推理调用：L1 舰队脑（:8090）→ 不可达降级本机 Ollama
+    → 两道路均失败再走 CPU 降级道（T179·多 GPU 被占满时的兜底）。
+    返回 (reply, eval_count, meta)。"""
     lanes = [("L1", LLM_URL, MODEL)]
     if FALLBACK_URL and FALLBACK_URL != LLM_URL:
         lanes.append(("FALLBACK", FALLBACK_URL, FALLBACK_MODEL))
@@ -148,6 +218,13 @@ def ollama_chat(messages, timeout=150):
             errors.append(f"{lane}={type(e).__name__}")
             if lane == "L1":
                 _LAST_LANE["primary_down"] = True
+    try:
+        reply, ev, model = _cpu_lane_chat(messages)
+        _LAST_LANE.update({"lane": CPU_LANE_TAG, "model": model,
+                           "primary_down": True, "degraded": True})
+        return reply, ev, {"lane": CPU_LANE_TAG, "model": model, "degraded": True}
+    except Exception as e:
+        errors.append(f"{CPU_LANE_TAG}={type(e).__name__}")
     raise RuntimeError("all lanes down: " + " ".join(errors))
 
 
@@ -354,14 +431,77 @@ def selftest(_args):
         try:
             ollama_chat([{"role": "user", "content": "x"}], timeout=2)
         except RuntimeError as e:
-            raised = "all lanes down" in str(e) and "L1=" in str(e)
-        check("S13 两道不可达显式抛错(不假绿)", raised)
+            msg = str(e)
+            # T179：两道路失败后必须试过 CPU 道，且仍不假绿
+            raised = "all lanes down" in msg and "L1=" in msg and f"{CPU_LANE_TAG}=" in msg
+        check("S13 三道全不可达显式抛错(不假绿)", raised)
     finally:
         globals()["LLM_URL"], globals()["FALLBACK_URL"] = g_llm, g_fb
 
+    # T179 CPU 降级道：原生口派生 / 两道路失败后走 CPU 道 / 空答复不放宽 / gate 披露车道
+    g_cpu_url = globals().get("CPU_LANE_URL", "")
+    try:
+        globals()["CPU_LANE_URL"] = ""
+        derived = _cpu_lane_url()
+        globals()["CPU_LANE_URL"] = "http://h:2/api/chat"
+        overridden = _cpu_lane_url()
+        globals()["CPU_LANE_URL"] = "http://h:3/v1/chat/completions"
+        overridden_oa = _cpu_lane_url()
+    finally:
+        globals()["CPU_LANE_URL"] = g_cpu_url
+    check("S14 原生口派生+CPU 道 URL 覆盖",
+          _native_chat_url("http://h:1/v1/chat/completions") == "http://h:1/api/chat"
+          and _native_chat_url("http://h:1/x") == ""
+          and _models_url_from_native("http://h:2/api/chat") == "http://h:2/v1/models"
+          and _models_url_from_native("http://h:2/x") == ""
+          and derived.endswith("/api/chat") and overridden == "http://h:2/api/chat"
+          and overridden_oa == "http://h:3/api/chat")
+    real_cpu = globals()["_cpu_lane_chat"]
+    try:
+        globals()["LLM_URL"] = "http://127.0.0.1:9/v1/chat/completions"
+        globals()["FALLBACK_URL"] = "http://127.0.0.1:9/v1/chat/completions"
+        globals()["_cpu_lane_chat"] = lambda msgs, timeout=None: ("侬晓得伐，慢点也答得上。", 7, "cpu-m")
+        reply, ev, meta = ollama_chat([{"role": "user", "content": "x"}], timeout=2)
+        check("S15 两道路失败→CPU 道真答复+车道披露",
+              "侬晓得伐" in reply and ev == 7
+              and meta.get("lane") == CPU_LANE_TAG and meta.get("degraded") is True
+              and _LAST_LANE.get("degraded") is True)
+
+        def _empty_cpu(_msgs, timeout=None):
+            raise RuntimeError("cpu lane empty reply")
+        globals()["_cpu_lane_chat"] = _empty_cpu
+        raised = False
+        try:
+            ollama_chat([{"role": "user", "content": "x"}], timeout=2)
+        except RuntimeError as e:
+            raised = "all lanes down" in str(e) and f"{CPU_LANE_TAG}=RuntimeError" in str(e)
+        check("S16 CPU 道空答复仍抛错(判据不放宽)", raised)
+    finally:
+        globals()["LLM_URL"], globals()["FALLBACK_URL"] = g_llm, g_fb
+        globals()["_cpu_lane_chat"] = real_cpu
+
+    def cpu_mock(messages, timeout=60):
+        return "降级道也能说话。", 5, {"lane": CPU_LANE_TAG, "model": "m-cpu"}
+
+    srv2 = QAServer(("127.0.0.1", 0), load_anchors(fx), cpu_mock)
+    p2 = srv2.server_address[1]
+    threading.Thread(target=srv2.serve_forever, daemon=True).start()
+
+    def post2(path, obj):
+        r = urllib.request.Request(f"http://127.0.0.1:{p2}" + path,
+                                   data=json.dumps(obj).encode("utf-8"),
+                                   headers={"Content-Type": "application/json"})
+        with urllib.request.urlopen(r, timeout=10) as resp:
+            return resp.status, json.loads(resp.read().decode("utf-8"))
+
+    code, j = post2("/ask", {"id": "C-00010", "q": "生意怎么样？"})
+    check("S17 gate 带 CPU-LANE 车道披露",
+          code == 200 and f"·{CPU_LANE_TAG}·" in j.get("gate", "") and "5tok" in j.get("gate", ""))
+    srv2.shutdown()
+
     srv.shutdown()
-    print(f"SELFTEST {'PASS' if ok[0] == 13 else 'FAIL'} {ok[0]}/13")
-    return 0 if ok[0] == 13 else 1
+    print(f"SELFTEST {'PASS' if ok[0] == 17 else 'FAIL'} {ok[0]}/17")
+    return 0 if ok[0] == 17 else 1
 
 
 def main():

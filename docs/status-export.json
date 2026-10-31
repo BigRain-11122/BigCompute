@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-10-31 15:0x",
- "current_activity": "2026-10-31 14:51-15:0x 令牌轮：T178 推理面卡死收口——不杀他线产线（ComfyUI/Tuanjie 属机队视频让路序），改在 QA 探针侧加争用感知层（nvidia-smi 判 CONTENDED→只调预算+加 CPU 降级道，判据不放宽）；实弹争用 util=99%/vram_free=686MiB 下 CPU 道 15.8s 出真答复，正式 smoke 17/17 全绿（本司首见）",
- "latest_artifact": "Tools/qa_smoke.py（`gpu_contention_verdict`+`ollama_cpu_lane`+`selftest_gpu_contention` 7/7）+ docs/qa-smoke-test-charter.md §三.19 + qa/smoke-20261031-1459.log/.png（17/17 PASS；ollama 32tok @6.72tok/s、/ask 200 reply_len=51 44tok/14.45s，均真答复）+ state/t178-queue patch 后的 tech T178 done / T179 立行",
- "next_milestone": "T179 服务端 CPU 降级道（8792 resident_qa_server.ollama_chat 双道超时后加一次 CPU 道·需重启 8792 窗口）——下一令牌轮第一优先级；同轮候选=tech T177 心跳全文件普查；N1 周末归集=10-31 22:43 夜班"
+ "updated_at": "2026-10-31 17:5x",
+ "current_activity": "2026-10-31 17:4x-17:5x 令牌轮：①承接 CEO 17:40 全面开工令 OB-20261031-174059-609，本机 machine-state resume 实跑（Bigmoney 三任务+量化审计两任务 Disabled→Ready，本司六任务全 Ready/Running 实读复验）；②T179 8792 服务端 CPU 降级道落地并重启在役 v1.2。",
+ "latest_artifact": "Tools/resident_qa_server.py v1.2（两道路全失败→本机 Ollama 原生 /api/chat + num_gpu=0 + keep_alive=0，gate 增 ·CPU-LANE· 披露；selftest 17/17）+ 注入式实弹 state/resident-qa-cpulane-live-20261031-175113.json（/ask 200·CPU-LANE·49tok/12.04s）+ qa/smoke-20261031-1752.log/.png（17/17 PASS）+ 回执 cph4/fleet/order-bus/receipts/OB-20261031-174059-609-bm-a.json",
+ "next_milestone": "N1 月末聚合一命令=2026-10-31 22:43 夜轮；同窗候选=tech T177 账本全文并行行普查（needs-based），BC-P-150 gate 车道单源提案待判"
 }
