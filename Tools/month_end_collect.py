@@ -130,9 +130,11 @@ def windows_in_month(bw_rows, month):
     return out
 
 
-def month_borrow_split(sample_rows, covered_dates, month):
+def month_borrow_split(sample_rows, covered_dates, month, call_pct=None):
     """月窗样本按声明借用日分列 self/borrowed（纯函数·日级人工声明零启发式·E62 归因律同源）。
-    self=30% 执行线读数面；borrowed=借出负载不计自产（BC-P-62 口径）。"""
+    self=30% 执行线读数面；borrowed=借出负载不计自产（BC-P-62 口径）。
+    call_pct=点名阈值（调用方从 collector 单源导入·本函数零字面复制）；仅给 self 出 verdict
+    （BC-P-155：self avg < 线=CALLOUT 月度档注记；n=0 或阈值缺=None）。"""
     rows = [r for r in (sample_rows or [])
             if str(r.get("ts", "")).startswith(month + "-")]
     self_rows = [r for r in rows if str(r["ts"])[:10] not in covered_dates]
@@ -144,8 +146,11 @@ def month_borrow_split(sample_rows, covered_dates, month):
                 "avg_pct": round(sum(r["util_pct"] for r in rs) / len(rs), 1) if rs else None,
                 "days": days}
 
-    return {"available": True, "month": month,
-            "self": face(self_rows), "borrowed": face(borrow_rows)}
+    self_face = face(self_rows)
+    if call_pct is not None and self_face["n"]:
+        self_face["verdict"] = "CALLOUT" if self_face["avg_pct"] < call_pct else "OK"
+    return {"available": True, "month": month, "call_pct": call_pct,
+            "self": self_face, "borrowed": face(borrow_rows)}
 
 
 def s4b_borrow_split(month, sample_rows=None, bw_rows=None):
@@ -161,10 +166,13 @@ def s4b_borrow_split(month, sample_rows=None, bw_rows=None):
         sample_rows = gic.load_samples()
     if bw_rows is None:
         bw_rows = gic.load_borrow_windows()
-    split = month_borrow_split(sample_rows, gic.borrow_covered_dates(bw_rows), month)
+    call_pct = getattr(gic, "CALL_PCT", None)  # 阈值单源=collector（禁本文件复制字面）
+    split = month_borrow_split(sample_rows, gic.borrow_covered_dates(bw_rows), month,
+                               call_pct=call_pct)
     split["windows_in_month"] = windows_in_month(bw_rows, month)
     split["note"] = ("BC-P-62 声明台账=日级人工声明零启发式（E62 归因律同源）"
-                     "·self=30% 执行线读数面·借出负载不计自产·M66 月度对账供数")
+                     "·self=30% 执行线读数面·借出负载不计自产·M66 月度对账供数"
+                     "·BC-P-155 self 月度 verdict 接线（阈值单源=collector CALL_PCT）")
     return split
 
 
@@ -508,10 +516,15 @@ def assemble(month, s1, s2, s3, s4, s5, now_iso, s6=None, s4b=None, s7=None, s8=
             b_avg = "%.1f%%" % b["avg_pct"] if b.get("avg_pct") is not None else "-"
             wins_txt = ("借用窗 " + "/".join(str(w.get("id")) for w in wins)) if wins \
                 else "零声明借用窗=全月 SELF 口径"
+            v_txt = ""
+            sv, cp = s.get("verdict"), s4b.get("call_pct")
+            if sv:
+                v_txt = (f"·月度 verdict={sv}（self avg {'<' if sv == 'CALLOUT' else '≥'} {cp}% 点名线"
+                         f"·M66 月度档注记·不影响商业结算）")
             s4b_seg = (f"｜S4b GPU self/borrowed 分列（BC-P-62 声明台账·日级人工声明零启发式）"
                        f"=SELF n={s.get('n', 0)} avg={s_avg}（{len(s.get('days') or [])} 日·30% 执行线读数面）"
                        f"vs 借用 n={b.get('n', 0)} avg={b_avg}（{len(b.get('days') or [])} 日·{wins_txt}"
-                       f"·借出负载不计自产·M66 月度对账供数）")
+                       f"·借出负载不计自产·M66 月度对账供数）{v_txt}")
         else:
             s4b_seg = "｜S4b GPU self/borrowed 分列=源不可用降级如实（N2 零编造）"
     s7_seg = ""
@@ -711,33 +724,52 @@ def cmd_selftest():
                   s6={"available": False, "note": "S6 能耗剖面源不可用（报告未解析出·采集面缺或工具失败）·月末行降级如实（N2 零编造）"})
     check("S6 不可用=降级行+机械链 5/7（N2 零编造）", "S6 能耗剖面源=不可用" in p5["month_end_line"]
           and "机械链 5/7" in p5["month_end_line"])
+    sbw_fix = [{"id": "BW-001", "date_from": "2026-10-08", "date_to": "2026-10-08", "consumer": "H3 test"},
+               {"id": "BW-002", "date_from": "2026-10-09", "date_to": "2026-10-10", "consumer": "KF batch"},
+               {"id": "BW-003", "date_from": "2026-11-01", "date_to": "2026-11-02", "consumer": "next month"}]
     ssamp_fix = [{"ts": "2026-10-01T10:00:00", "util_pct": 10.0},
                  {"ts": "2026-10-01T11:00:00", "util_pct": 20.0},
                  {"ts": "2026-10-09T10:00:00", "util_pct": 90.0},
                  {"ts": "2026-10-10T10:00:00", "util_pct": 70.0},
                  {"ts": "2026-11-01T10:00:00", "util_pct": 99.0}]
     covered_fix = {"2026-10-08", "2026-10-09", "2026-10-10", "2026-11-01", "2026-11-02"}
-    sp = month_borrow_split(ssamp_fix, covered_fix, "2026-10")
+    # BC-P-155：点名线单源=collector CALL_PCT（此处经真实源取，源不可用才用夹具期望值兜底）
+    s4b_src = s4b_borrow_split("2026-10", sample_rows=ssamp_fix, bw_rows=sbw_fix)
+    check("BC-P-155 阈值单源接线=collector CALL_PCT（本文件零阈值字面复制）",
+          s4b_src.get("available") is True and s4b_src.get("call_pct") is not None
+          and "BC-P-155" in (s4b_src.get("note") or ""))
+    _cp = s4b_src.get("call_pct")
+    sp = month_borrow_split(ssamp_fix, covered_fix, "2026-10", call_pct=_cp)
     check("S4b 月窗分列=self n=2 avg=15.0%·借用 n=2 avg=80.0%·他月排除·借用日分列",
           sp["self"]["n"] == 2 and sp["self"]["avg_pct"] == 15.0
           and sp["self"]["days"] == ["2026-10-01"]
           and sp["borrowed"]["n"] == 2 and sp["borrowed"]["avg_pct"] == 80.0
           and sp["borrowed"]["days"] == ["2026-10-09", "2026-10-10"])
-    sbw_fix = [{"id": "BW-001", "date_from": "2026-10-08", "date_to": "2026-10-08", "consumer": "H3 test"},
-               {"id": "BW-002", "date_from": "2026-10-09", "date_to": "2026-10-10", "consumer": "KF batch"},
-               {"id": "BW-003", "date_from": "2026-11-01", "date_to": "2026-11-02", "consumer": "next month"}]
+    check("BC-P-155 self 月均低于点名线→verdict=CALLOUT（15.0% 对线）",
+          sp["self"].get("verdict") == "CALLOUT")
+    sp_ok = month_borrow_split([{"ts": "2026-10-02T10:00:00", "util_pct": 55.0}], set(),
+                               "2026-10", call_pct=_cp)
+    check("BC-P-155 self 月均不低于线→verdict=OK", sp_ok["self"].get("verdict") == "OK")
+    sp_na = month_borrow_split([], set(), "2026-10", call_pct=_cp)
+    check("BC-P-155 self n=0→无 verdict（禁假判 OK/CALLOUT）", "verdict" not in sp_na["self"])
+    sp_nocp = month_borrow_split([{"ts": "2026-10-02T10:00:00", "util_pct": 5.0}], set(),
+                                 "2026-10", call_pct=None)
+    check("BC-P-155 阈值不可得→无 verdict（N2 零编造不默认通过）", "verdict" not in sp_nocp["self"])
     wm = windows_in_month(sbw_fix, "2026-10")
     check("S4b 窗月窗切片=10 月内 BW-001/002·他月窗排除", [w["id"] for w in wm] == ["BW-001", "BW-002"])
     s4b_fix = dict(sp, windows_in_month=wm,
                    note="BC-P-62 声明台账=日级人工声明零启发式（E62 归因律同源）·self=30% 执行线读数面·借出负载不计自产·M66 月度对账供数")
     p6 = assemble("2026-10", s1, s2, {"files": [], "generated": 0}, s4, s5, "T3",
                   s6=s6_fix, s4b=s4b_fix)
-    check("S4b 并入月末行=self/借用分列+借用窗行+payload 源携带",
+    check("S4b 并入月末行=self/借用分列+借用窗行+payload 源携带+月度 verdict 面",
           "S4b GPU self/borrowed 分列" in p6["month_end_line"]
           and "SELF n=2 avg=15.0%" in p6["month_end_line"]
           and "借用 n=2 avg=80.0%" in p6["month_end_line"]
           and "借用窗 BW-001/BW-002" in p6["month_end_line"]
-          and p6["sources"]["s4b_borrow_split"]["self"]["n"] == 2)
+          and "月度 verdict=CALLOUT" in p6["month_end_line"]
+          and "不影响商业结算" in p6["month_end_line"]
+          and p6["sources"]["s4b_borrow_split"]["self"]["n"] == 2
+          and p6["sources"]["s4b_borrow_split"]["self"]["verdict"] == "CALLOUT")
     p7 = assemble("2026-10", s1, s2, {"files": [], "generated": 0}, s4, s5, "T3",
                   s6=s6_fix, s4b={"available": True, "month": "2026-10",
                                   "self": {"n": 3, "avg_pct": 12.0, "days": ["2026-10-01"]},
@@ -860,7 +892,7 @@ def cmd_selftest():
     check("T134 required-only 键也算已声明（required∪properties 双源合并）",
           schema_key_gap("delivery", _req_only) == [])
     check("T134 schema 不可用=None 降级（不假绿）", schema_key_gap("distr", {}) is None)
-    total = 37
+    total = 42
     print(f"selftest: {ok[0]}/{total} PASS" if ok[0] == total else f"selftest: FAIL ({ok[0]}/{total})")
     return 0 if ok[0] == total else 1
 
