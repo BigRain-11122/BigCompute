@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-11-01 00:12",
- "current_activity": "2026-11-01 00:0x 周日轮：BC-P-155 采纳落地=S4b self/borrowed 分列新增 self 月度 verdict（CALLOUT/OK/缺省），阈值单源取 collector CALL_PCT 零字面复制（Tools/month_end_collect.py，selftest 42/42 PASS）",
- "latest_artifact": "state/month-end-202610.json（N1 十月复跑·S4b self n=3319（24 日）avg=26.9% → 月度 verdict=CALLOUT·借用 n=548 avg=34.4% 仅归因·mtime 2026-11-01 00:0x）｜ qa/smoke-20261101-0010.log/.png（QA 17/17 PASS）｜ state/proposals.md BC-P-155 行（adopted+证据）",
- "next_milestone": "①D-20261031-05 ② lane :8090 复活判定点 11-02 03:07（到点按墓碑登记簿判复活/维持 DARK）②M25/T26 室内烘焙样板间实弹=净窗一命令（仍 BLOCKED·CleanWindowProbe 15min 滚动·净窗开后 ≤1 轮兑现）③M66 月度档对账模板引用 self verdict 列（BC-P-155 后续·≤11-07）"
+ "updated_at": "2026-11-01 00:22",
+ "current_activity": "2026-11-01 00:00 轮：T177 done=台账融合行全文普查上线（Tools/ledger_parallel_census.py selftest 11/11·live 3 行全部人工核对后采纳为白名单·PARALLEL-CLEAN·qa no.20 每轮判+selftest 4/4） | 提案:BC-P-156 写侧粘行守卫 | QA:18/18=smoke-20261101-0019 | C1C4:C1C4-GREEN 4/4 evidence=stat",
+ "latest_artifact": "state/c1c4-20261101-002116.json（mtime 2026-11-01 00:21） ｜ state/month-end-202610.json（N1 十月月末归集报告·sources_ok=10·机械链 9/9·mtime 2026-10-31 22:45）+ qa/smoke-20261031-2244.log/.png（QA 17/17 PASS）",
+ "next_milestone": "M4 接产对齐矩阵 blocked 项随开店/平台后台逐项销 ⬜（T-27 余项）（队列状态=**blocked 如实**（10-28 23:2x 令牌轮队列卫生）：销 ⬜ ） ｜ N1 月末归集已毕（10-31 22:4x）；下一步=①BC-P-155 self/borrowed 分列判据待批（采纳后下一个月末行起出 verdict 列）②M25/T26 室内烘焙样板间实弹=净窗一命令（BLOCKED 计数在册·净窗开后 ≤1 轮兑现）③D-20261031-05 ② lane8090 复活判定点 11-02 03:07"
 }

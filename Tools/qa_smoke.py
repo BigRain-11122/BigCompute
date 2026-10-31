@@ -780,6 +780,41 @@ def cost_contract_judge(result):
     return True, "verdict=%s rails=%d gaps=0" % (verdict, len(rails))
 
 
+def probe_ledger_parallel(root=None):
+    """T177 (probe no.20): fused-row census over the FULL ledgers.
+
+    Probe no.8 only sniffs the last 12 lines, so a fused row landing in
+    the middle of a long ledger was invisible (T176 found three such rows
+    in state/heartbeat.txt by hand). This runs the full-text census and
+    passes only when every fused row is on the confirmed whitelist:
+    historically confirmed rows stay quiet, anything new turns red the
+    next round.
+    """
+    root = root or ROOT
+    if HERE not in sys.path:
+        sys.path.insert(0, HERE)
+    try:
+        import ledger_parallel_census as lpc
+        table = lpc.compile_table()
+        wl = lpc.load_whitelist(os.path.join(root, "state",
+                                            "ledger-parallel-whitelist.json"))
+        report = lpc.scan(table, wl, root=root)
+    except Exception as e:  # noqa: BLE001 - probe must report, not crash
+        return False, "census raised: %r" % e
+    verdict = lpc.verdict_of(report)
+    counts = report["counts"]
+    detail = "verdict=%s files=%d lines=%d parallel=%d whitelisted=%d new=%d" % (
+        verdict, report["files_scanned"], report["lines_scanned"],
+        counts["parallel"], counts["whitelisted"], counts["new"])
+    for hit in report["hits"]:
+        if not hit["whitelisted"]:
+            detail += "\n  NEW %s:%d markers=%d %s" % (
+                hit["file"], hit["line"], hit["markers"], hit["preview"])
+    for err in report["errors"]:
+        detail += "\n  ERROR %s %s" % (err["file"], err["error"])
+    return verdict == "PARALLEL-CLEAN", detail
+
+
 def probe_cost_contract(root=None):
     """Tech T138: cost-rail field contract census, judged every round.
 
@@ -1899,13 +1934,76 @@ def selftest_heartbeat_tokens():
     return 0 if all(results) else 1
 
 
+def selftest_ledger_parallel():
+    """T177: fixtures for probe no.20 (full-text fused-row census).
+
+    The live ledger only carries confirmed rows, so a broken probe would
+    read as PASS forever. Three states are pinned here: a clean file
+    passes, an unlisted fused row fails, and the same row passes once it
+    is on the whitelist (which is the only way the baseline may grow).
+    """
+    import tempfile
+    results = []
+
+    def check(name, ok, detail=""):
+        results.append(bool(ok))
+        print("%s %s%s" % ("PASS" if ok else "FAIL", name,
+                           "" if ok else " -> %r" % (detail,)))
+
+    with tempfile.TemporaryDirectory() as tmp:
+        root = os.path.join(tmp, "root")
+        os.makedirs(os.path.join(root, "state"))
+        with open(os.path.join(root, "state", "heartbeat.txt"), "w",
+                  encoding="utf-8", newline="\n") as f:
+            f.write(u"09:10 \u8f6e\u5c3e\u65f6\u95f4\u6233 ok\n"
+                    u"2026-11-01 09:12:03 os-loop: round done exit=0\n")
+        for rel, _pat in TAIL_PROBE_FILES:
+            path = os.path.join(root, *rel.split("/"))
+            if os.path.exists(path):
+                continue
+            parent = os.path.dirname(path)
+            if parent:
+                os.makedirs(parent, exist_ok=True)
+            with open(path, "w", encoding="utf-8", newline="\n") as f:
+                f.write(u"\u65e5\u6e05: none\n")
+        ok, detail = probe_ledger_parallel(root=root)
+        check("S1 clean ledgers -> PASS", ok and "new=0" in detail, detail)
+
+        with open(os.path.join(root, "state", "heartbeat.txt"), "a",
+                  encoding="utf-8", newline="\n") as f:
+            f.write(u"09:20 \u8f6e\u5c3e ok 09:25 os-loop: round done exit=0\n")
+        ok, detail = probe_ledger_parallel(root=root)
+        check("S2 fused row without whitelist -> FAIL",
+              (not ok) and "PARALLEL-NEW" in detail and "NEW " in detail,
+              detail)
+
+        if HERE not in sys.path:
+            sys.path.insert(0, HERE)
+        import ledger_parallel_census as lpc
+        wl_path = os.path.join(root, "state", "ledger-parallel-whitelist.json")
+        report = lpc.scan(lpc.compile_table(), {}, root=root)
+        filled = lpc.adopt_existing(report, wl_path, "selftest fixture")
+        ok, detail = probe_ledger_parallel(root=root)
+        check("S3 whitelisted row -> PASS", ok and "PARALLEL-CLEAN" in detail,
+              (filled, detail))
+
+        os.remove(os.path.join(root, "state", "queue", "tech.md"))
+        ok, detail = probe_ledger_parallel(root=root)
+        check("S4 missing ledger -> FAIL (fail closed)",
+              (not ok) and "PARALLEL-ENGINE-FAIL" in detail, detail)
+
+    print("selftest ledger-parallel verdict: %d/%d PASS"
+          % (len([r for r in results if r]), len(results)))
+    return 0 if all(results) else 1
+
+
 def main():
     if len(sys.argv) > 1 and sys.argv[1] == "--selftest":
         return (selftest_tails() | selftest_coder_class()
                 | selftest_supply_fields() | selftest_cost_contract()
                 | selftest_serve_artifacts() | selftest_qa_functional()
                 | selftest_scan_roots() | selftest_heartbeat_tokens()
-                | selftest_gpu_contention())
+                | selftest_gpu_contention() | selftest_ledger_parallel())
     os.makedirs(QA_DIR, exist_ok=True)
     ts = datetime.datetime.now().strftime("%Y%m%d-%H%M")
     log_path = os.path.join(QA_DIR, "smoke-%s.log" % ts)
@@ -1929,7 +2027,9 @@ def main():
               ("scan root self-reference census (T161)",
                probe_scan_roots),
               ("heartbeat guarded numeric tokens (T168)",
-               probe_heartbeat_tokens)]
+               probe_heartbeat_tokens),
+              ("ledger parallel fused-row census (T177)",
+               probe_ledger_parallel)]
     lines, passed = [], 0
     lines.append("BigCompute QA smoke test %s (orders L254 / charter v1)"
                  % ts)
@@ -1942,7 +2042,7 @@ def main():
         lines.append(detail)
         print("[%s] %s" % ("PASS" if ok else "FAIL", label))
     lines.append("")
-    verdict = "smoke verdict: %d/%d PASS (charter 4 + T25 + E41 + BC-P-45 no.8 + T122 no.9 + T132 no.10 + T133 no.11 + T138 no.12 + T140 no.13 + T143 no.14 + T145 no.15 + T153 no.16 + T161 no.17 + T168 no.18 probes)" % (
+    verdict = "smoke verdict: %d/%d PASS (charter 4 + T25 + E41 + BC-P-45 no.8 + T122 no.9 + T132 no.10 + T133 no.11 + T138 no.12 + T140 no.13 + T143 no.14 + T145 no.15 + T153 no.16 + T161 no.17 + T168 no.18 + T177 no.20 probes)" % (
         passed, len(probes))
     lines.append(verdict)
     with open(log_path, "w", encoding="utf-8") as f:
