@@ -22,9 +22,24 @@ master 下发的**派工载荷**（jobs/idle_reason），根本不含结果字�
     DEAD   三面全无（真死）
     UNKNOWN 证据面本身读不到（路径/网络异常）——不冒认 DEAD，也不假绿
 
+追加面（CEO 2026-11-01 10:4x 模型与执行政策令 ⑤「四信号上报（hb/agent上报/claim/
+receipt），缺一不得称健康」）：
+    `signals` 子命令把四条信号各自绑到一个**真实存在的**证据面，逐条判 FRESH/STALE/
+    ABSENT/N-A/UNREADABLE，并按字面执行「缺一不得称健康」——只有 4/4 全鲜才给
+    SIGNALS-GREEN，其余一律 INCOMPLETE（点名缺哪条），不拿「差不多」冒充健康。
+    映射（每条都指到生产代码的写入行，禁凭空造信号名）：
+        hb        KV `state.<node>`                ← fleet_hb.py 心跳发布
+        agent上报 KV `lane.result.<node>`          ← lane_agent.py 执行链自报
+        claim     本机 `queue-receipts/_last_lane_<node>.json` 的 job 字段
+        receipt   本机 `queue-receipts/<job>-<node>.json` 按单回执
+    后两条是**机器本地面**：查他机时不存在属预期（n/a），不能算「缺信号」，也不能
+    因为查不到就判健康——故他机最优结论只能是 INCOMPLETE（本地两条 n/a）。
+
 Usage:
     python Tools/executor_liveness.py run --node bm-a
     python Tools/executor_liveness.py run --json-out state/executor-liveness.json
+    python Tools/executor_liveness.py signals --node bm-a
+    python Tools/executor_liveness.py signals --nodes bm-a,bm-b,bm-c
     python Tools/executor_liveness.py selftest
 """
 
@@ -44,9 +59,24 @@ DEFAULT_MAX_AGE_MIN = 30.0
 
 
 def _parse_ts(value):
+    """解析证据时间戳，统一折算到本机时区后返回 naive datetime。
+
+    实读三形态（11-01 全机取证）：`2026-11-01T12:45:13.030`（本机 naive）/
+    `2026-11-01T04:45:34.133Z`（bm-m UTC 带 Z）/ `2026-10-31T22:43+08:00`（带偏移）。
+    后两种若被当成本机时间直接比，会把主控判成陈旧 8 小时、或直接 TypeError 崩掉
+    ——「读表读成假死」正是本工具要防的那类自欺，故时间戳一律先归一到本地再判。
+    """
     if not value:
         return None
-    text = str(value).strip().replace("Z", "")
+    text = str(value).strip()
+    try:
+        iso = text[:-1] + "+00:00" if text.endswith("Z") else text
+        dt = datetime.datetime.fromisoformat(iso)
+        if dt.tzinfo is not None:
+            dt = dt.astimezone().replace(tzinfo=None)
+        return dt
+    except ValueError:
+        pass
     for fmt in ("%Y-%m-%dT%H:%M:%S.%f", "%Y-%m-%dT%H:%M:%S",
                 "%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M"):
         try:
@@ -54,10 +84,7 @@ def _parse_ts(value):
                                               if fmt.endswith("%S") else text, fmt)
         except ValueError:
             continue
-    try:
-        return datetime.datetime.fromisoformat(text[:19])
-    except ValueError:
-        return None
+    return None
 
 
 def _age_min(ts_value, now):
@@ -206,7 +233,358 @@ def one_line(res):
             % (res["verdict"], res["node"], fresh, ages, states))
 
 
+# ------------------------------------------------- 四信号（CEO 2026-11-01 令 ⑤）
+
+SIGNAL_ORDER = ("hb", "agent", "claim", "receipt")
+
+# 每条信号指向的真实写入点（改这里前先回读生产代码，禁凭印象改映射）
+SIGNAL_SOURCE = {
+    "hb": "KV state.<node> (fleet_hb.py 心跳发布)",
+    "agent": "KV lane.result.<node> (lane_agent.py 执行链自报)",
+    "claim": "queue-receipts/_last_lane_<node>.json job 字段 (lane_agent.py write_last)",
+    "receipt": "queue-receipts/<job>-<node>.json 按单回执 (lane_agent.py run_job)",
+}
+
+
+def _kv_get(key, kv_reader=None):
+    """读一个 KV 键。『键不存在』与『读不到』分开：前者是没报过，后者是我不知道。"""
+    try:
+        if kv_reader is None:
+            sys.path.insert(0, os.path.join(GROUP_DEFAULT, "Tools", "fleet"))
+            import fleet_lane as fl  # noqa: E402
+            kv_reader = fl.kv_get
+        got = kv_reader(key)
+    except Exception as e:  # noqa: BLE001 - 读不到不冒认
+        return {"ok": False, "record": {}, "error": str(e)[:160]}
+    if not got:
+        return {"ok": True, "applicable": False, "record": {}, "absent": "kv-key-absent"}
+    return {"ok": True, "record": got}
+
+
+def read_claim_surface(node, root):
+    """claim 面：本机 _last_lane_<node>.json。有 job 字段才算真的领到活。
+
+    lane_agent 每轮都会写这个文件，IDLE 轮也写——所以「文件在」不等于「领到活」，
+    必须看 job 非空。把 IDLE 轮的写盘当成领取证据，就是又一次「活的看起来像死的」
+    的镜像错误。
+    """
+    path = os.path.join(root, "cph4", "fleet", "queue-receipts",
+                        "_last_lane_%s.json" % node)
+    if not os.path.exists(path):
+        return {"ok": True, "applicable": False, "record": {},
+                "absent": "last-lane-not-on-this-box"}
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            rec = json.load(f)
+    except Exception as e:  # noqa: BLE001
+        return {"ok": False, "record": {}, "error": "%s: %s"
+                % (type(e).__name__, str(e)[:120])}
+    if not rec.get("job"):
+        return {"ok": True, "applicable": False, "record": rec,
+                "absent": "no-job-claimed (state=%s)" % (rec.get("state") or "-")}
+    return {"ok": True, "record": rec}
+
+
+def read_receipt_file_surface(node, root):
+    """receipt 面：按单回执 <job>-<node>.json，取最新一枚。"""
+    d = os.path.join(root, "cph4", "fleet", "queue-receipts")
+    if not os.path.isdir(d):
+        return {"ok": True, "applicable": False, "record": {},
+                "absent": "receipts-dir-absent"}
+    best = None
+    try:
+        names = [n for n in os.listdir(d)
+                 if n.endswith("-%s.json" % node) and not n.startswith("_")]
+    except Exception as e:  # noqa: BLE001
+        return {"ok": False, "record": {}, "error": "%s: %s"
+                % (type(e).__name__, str(e)[:120])}
+    for name in names:
+        path = os.path.join(d, name)
+        try:
+            # utf-8-sig：实读多枚回执带 BOM（OB-20261031-*-bm-b.json 等），用纯 utf-8
+            # 读会整枚被判「不可解」而静默丢掉真实证据。
+            with open(path, "r", encoding="utf-8-sig") as f:
+                rec = json.load(f)
+        except Exception:  # noqa: BLE001 - 单枚坏件不拖垮整条信号
+            continue
+        rec.setdefault("id", name[: -len("-%s.json" % node)])
+        ts = _parse_ts(rec.get("ts"))
+        if ts is None:
+            # 没有 ts 的回执（如卡面/对齐类件）用落盘 mtime 兜底，并标明来源，
+            # 不让「有份回执但没有时间字段」变成零证据。
+            try:
+                ts = datetime.datetime.fromtimestamp(os.path.getmtime(path))
+                rec["_ts_source"] = "file-mtime"
+            except Exception:  # noqa: BLE001
+                continue
+        else:
+            rec["_ts_source"] = "record-ts"
+        if best is None or ts > best[0]:
+            best = (ts, rec)
+    if best is None:
+        return {"ok": True, "applicable": False, "record": {},
+                "absent": "no-job-receipt-on-this-box" if not names
+                else "receipts-present-but-no-parseable-ts"}
+    rec = dict(best[1])
+    if not rec.get("ts"):
+        rec["ts"] = best[0].strftime("%Y-%m-%dT%H:%M:%S")
+    return {"ok": True, "record": rec}
+
+
+def _signal_row(got, now, max_age_min):
+    rec = got.get("record") or {}
+    age = _age_min(rec.get("ts"), now)
+    absent = got.get("absent")
+    # N-A（本机不适用）与 ABSENT（该有却没有）必须分开：
+    #   他机查不到 claim/receipt、本机 IDLE 轮没有 job —— 是不适用，不是缺失；
+    #   钥匙（kv key）不存在、回执目录有但零可解件 —— 是缺失。
+    na_reasons = ("last-lane-not-on-this-box", "no-job-claimed")
+    if not got.get("ok"):
+        state = "UNREADABLE"
+    elif absent and absent.startswith(na_reasons):
+        state = "N-A"
+    elif age is None:
+        state = "ABSENT"
+    else:
+        state = "FRESH" if age <= max_age_min else "STALE"
+    return {"state": state, "ts": rec.get("ts"), "age_min": age,
+            "absent": absent, "error": got.get("error"),
+            "job": rec.get("job") or rec.get("id"), "rc": rec.get("rc")}
+
+
+def evaluate_signals(node, root=None, max_age_min=DEFAULT_MAX_AGE_MIN, now=None,
+                     kv_reader=None, hard_dead_min=None):
+    """四条信号逐条判，并字面执行「缺一不得称健康」。
+
+    SIGNALS-GREEN       4/4 FRESH（唯一的「健康」）
+    SIGNALS-INCOMPLETE  有鲜证据但不足四条（点名缺哪条 + 是过期/无证据/本机不适用）
+    SIGNALS-STALE       四条都有证据但全部过期（仍在硬死线内）
+    SIGNALS-DEAD        最新证据已过硬死线
+    SIGNALS-UNKNOWN     一条都读不到（且没有可读的空证据面）
+    """
+    root = root or GROUP_DEFAULT
+    now = now or datetime.datetime.now()
+    hard_dead_min = (hard_dead_min if hard_dead_min is not None
+                     else max_age_min * 6)
+    got = {
+        "hb": _kv_get("state.%s" % node, kv_reader),
+        "agent": _kv_get("lane.result.%s" % node, kv_reader),
+        "claim": read_claim_surface(node, root),
+        "receipt": read_receipt_file_surface(node, root),
+    }
+    rows = {name: _signal_row(got[name], now, max_age_min) for name in SIGNAL_ORDER}
+    fresh = [n for n in SIGNAL_ORDER if rows[n]["state"] == "FRESH"]
+    stale = [n for n in SIGNAL_ORDER if rows[n]["state"] == "STALE"]
+    unreadable = [n for n in SIGNAL_ORDER if rows[n]["state"] == "UNREADABLE"]
+    aged = [rows[n]["age_min"] for n in SIGNAL_ORDER
+            if rows[n]["age_min"] is not None]
+
+    if len(fresh) == len(SIGNAL_ORDER):
+        verdict = "SIGNALS-GREEN"
+    elif fresh:
+        verdict = "SIGNALS-INCOMPLETE"
+    elif aged:
+        verdict = "SIGNALS-STALE" if min(aged) <= hard_dead_min else "SIGNALS-DEAD"
+    elif unreadable and len(unreadable) == len(SIGNAL_ORDER):
+        verdict = "SIGNALS-UNKNOWN"
+    elif unreadable:
+        verdict = "SIGNALS-UNKNOWN"
+    else:
+        verdict = "SIGNALS-INCOMPLETE"   # 可读但零证据 = 缺四，不是死
+
+    return {
+        "check": "executor-signals",
+        "node": node,
+        "verdict": verdict,
+        "healthy": verdict == "SIGNALS-GREEN",
+        "max_age_min": max_age_min,
+        "hard_dead_min": hard_dead_min,
+        "now": now.strftime("%Y-%m-%dT%H:%M:%S"),
+        "ok_count": len(fresh),
+        "missing": [n for n in SIGNAL_ORDER if n not in fresh],
+        "fresh_signals": fresh,
+        "signals": rows,
+        "sources": SIGNAL_SOURCE,
+        "note": ("四信号=CEO 2026-11-01 令 ⑤；claim/receipt 是机器本地面，"
+                 "查他机恒为 N-A，故他机最优只能到 INCOMPLETE"),
+    }
+
+
+def signals_one_line(res):
+    def _cell(r):
+        if r["age_min"] is not None:
+            return "%s=%.1fm" % (r["state"][:6], r["age_min"])
+        return "%s" % r["state"]
+
+    cells = " ".join("%s:%s" % (n, _cell(res["signals"][n])) for n in SIGNAL_ORDER)
+    miss = ",".join(res["missing"]) or "-"
+    return ("SIGNALS %s node=%s ok=%d/4 missing=%s [%s]"
+            % (res["verdict"], res["node"], res["ok_count"], miss, cells))
+
+
 # ---------------------------------------------------------------- selftest
+
+def selftest_signals():
+    """四信号判读夹具：既钉死「缺一不得称健康」，也钉死「查不到≠死」。"""
+    import tempfile
+    results = []
+
+    def check(name, ok, detail=""):
+        results.append(bool(ok))
+        print("%s %s%s" % ("PASS" if ok else "FAIL", name,
+                           "" if ok else " -> %r" % (detail,)))
+
+    now = datetime.datetime(2026, 11, 1, 12, 0, 0)
+
+    def ts(minutes_ago):
+        return (now - datetime.timedelta(minutes=minutes_ago)
+                ).strftime("%Y-%m-%dT%H:%M:%S")
+
+    with tempfile.TemporaryDirectory() as tmp:
+        root = tmp
+        rcpt = os.path.join(root, "cph4", "fleet", "queue-receipts")
+        os.makedirs(rcpt)
+
+        def kv_all(hb_min, agent_min):
+            vals = {}
+            if hb_min is not None:
+                vals["state.bm-a"] = {"ts": ts(hb_min), "node": "bm-a"}
+            if agent_min is not None:
+                vals["lane.result.bm-a"] = {"ts": ts(agent_min), "state": "RESULT",
+                                            "job": "J-1"}
+            return lambda key: vals.get(key)
+
+        def write_last(job=None, state="IDLE", minutes_ago=1):
+            rec = {"ts": ts(minutes_ago), "node": "bm-a", "state": state}
+            if job:
+                rec["job"] = job
+            with open(os.path.join(rcpt, "_last_lane_bm-a.json"), "w",
+                      encoding="utf-8") as f:
+                json.dump(rec, f)
+
+        def write_receipt(minutes_ago=1, jid="J-1"):
+            with open(os.path.join(rcpt, "%s-bm-a.json" % jid), "w",
+                      encoding="utf-8") as f:
+                json.dump({"id": jid, "node": "bm-a", "rc": 0,
+                           "ts": ts(minutes_ago)}, f)
+
+        # S12 四信号全鲜 = 唯一健康态
+        write_last("J-1", "RESULT", 1)
+        write_receipt(1)
+        res = evaluate_signals("bm-a", root=root, now=now,
+                               kv_reader=kv_all(1, 2))
+        check("S12 four fresh signals -> SIGNALS-GREEN (only healthy state)",
+              res["verdict"] == "SIGNALS-GREEN" and res["ok_count"] == 4
+              and res["healthy"] is True, res["verdict"])
+
+        # S13 缺回执 = 不得称健康（CEO「缺一不得称健康」的字面执行）
+        os.remove(os.path.join(rcpt, "J-1-bm-a.json"))
+        res = evaluate_signals("bm-a", root=root, now=now,
+                               kv_reader=kv_all(1, 2))
+        check("S13 missing receipt -> INCOMPLETE, never GREEN",
+              res["verdict"] == "SIGNALS-INCOMPLETE" and res["healthy"] is False
+              and res["missing"] == ["receipt"], (res["verdict"], res["missing"]))
+
+        # S14 IDLE 轮的 _last_lane 写盘不算领取证据
+        write_receipt(1)
+        write_last(None, "IDLE", 1)
+        res = evaluate_signals("bm-a", root=root, now=now,
+                               kv_reader=kv_all(1, 2))
+        check("S14 idle write is not a claim",
+              res["signals"]["claim"]["state"] == "N-A"
+              and "no-job-claimed" in (res["signals"]["claim"]["absent"] or "")
+              and res["verdict"] == "SIGNALS-INCOMPLETE",
+              res["signals"]["claim"])
+
+        # S15 他机：本地两面查不到，不许判绿也不许判死。
+        #     注意诚实边界：本机上「文件不在」与「他机文件不在这台盘」不可区分，
+        #     故 receipt 落 ABSENT、claim 落 N-A（后者 absent 语义明确），结论同为
+        #     INCOMPLETE —— 缺信号时**只**能说缺，不能顺势推健康或死亡。
+        os.remove(os.path.join(rcpt, "_last_lane_bm-a.json"))
+        os.remove(os.path.join(rcpt, "J-1-bm-a.json"))
+        res = evaluate_signals("bm-a", root=root, now=now,
+                               kv_reader=kv_all(1, 2))
+        check("S15 local-only surfaces absent -> INCOMPLETE (never GREEN, never DEAD)",
+              res["verdict"] == "SIGNALS-INCOMPLETE"
+              and res["signals"]["claim"]["state"] == "N-A"
+              and res["signals"]["receipt"]["state"] in ("N-A", "ABSENT"),
+              (res["verdict"], res["signals"]["claim"]["state"],
+               res["signals"]["receipt"]["state"]))
+
+        # S16 可读但零证据 = 缺四，不是死
+        res = evaluate_signals("bm-a", root=root, now=now,
+                               kv_reader=lambda key: None)
+        check("S16 readable but no evidence -> INCOMPLETE (not DEAD)",
+              res["verdict"] == "SIGNALS-INCOMPLETE" and res["ok_count"] == 0,
+              res["verdict"])
+
+        # S17 KV 两条都读不到且本地无件 = UNKNOWN（不冒认 DEAD）
+        def kv_boom(key):
+            raise OSError("hub unreachable")
+
+        res = evaluate_signals("bm-a", root=root, now=now, kv_reader=kv_boom)
+        check("S17 all unreadable -> SIGNALS-UNKNOWN (not DEAD)",
+              res["verdict"] == "SIGNALS-UNKNOWN"
+              and res["signals"]["hb"]["state"] == "UNREADABLE", res["verdict"])
+
+        # S18 四条全过期 -> STALE；过硬死线 -> DEAD（真死要能点名）
+        os.makedirs(rcpt, exist_ok=True)
+        write_last("J-9", "RESULT", 90)
+        write_receipt(100, jid="J-9")
+        res = evaluate_signals("bm-a", root=root, now=now, max_age_min=30.0,
+                               kv_reader=kv_all(120, 150))
+        stale_ok = res["verdict"] == "SIGNALS-STALE"
+        write_last("J-9", "RESULT", 400)
+        write_receipt(500, jid="J-9")
+        res2 = evaluate_signals("bm-a", root=root, now=now, max_age_min=30.0,
+                                kv_reader=kv_all(400, 450))
+        check("S18 all stale -> STALE, past hard line -> DEAD",
+              stale_ok and res2["verdict"] == "SIGNALS-DEAD",
+              (res["verdict"], res2["verdict"]))
+
+        # S19 单行渲染带 ok=n/4 与缺失点名
+        write_last("J-1", "RESULT", 1)
+        write_receipt(1)
+        res = evaluate_signals("bm-a", root=root, now=now, kv_reader=kv_all(1, 1))
+        line = signals_one_line(res)
+        check("S19 one-line carries ok=n/4 and missing list",
+              line.startswith("SIGNALS SIGNALS-GREEN node=bm-a ok=4/4")
+              and "missing=-" in line, line)
+
+    # S20 实读三形态时间戳：naive / Z（bm-m UTC）/ +08:00 偏移都要能解析，
+        #    且必须归一到本地后再比——否则主控被判陈旧 8h，或直接 TypeError 崩掉。
+        p_naive = _parse_ts("2026-11-01T12:45:13.030")
+        p_z = _parse_ts("2026-11-01T04:45:34.133Z")
+        p_off = _parse_ts("2026-10-31T22:43+08:00")
+        p_utc = _parse_ts("2026-11-01T04:45:34.133+00:00")
+        check("S20 Z / offset / naive ts all parse to local-naive (no crash, no 8h fake staleness)",
+              p_naive is not None and p_z is not None and p_off is not None
+              and p_z.tzinfo is None and p_off.tzinfo is None
+              and p_z == p_utc, (p_naive, p_z, p_off))
+
+        # S21 带 BOM 的回执不能被静默丢掉（实读 OB-20261031-*-bm-b.json 即带 BOM）
+        with open(os.path.join(rcpt, "BOM-JOB-bm-a.json"), "wb") as f:
+            f.write(b"\xef\xbb\xbf" + json.dumps(
+                {"id": "BOM-JOB", "node": "bm-a", "rc": 0,
+                 "ts": ts(2)}, ensure_ascii=False).encode("utf-8"))
+        got = read_receipt_file_surface("bm-a", root)
+        check("S21 BOM receipt is readable (utf-8-sig)",
+              got["ok"] and got["record"].get("rc") == 0
+              and got["record"].get("_ts_source") == "record-ts", got)
+
+        # S22 有回执但无 ts 字段（卡面/对齐类件）→ 落盘 mtime 兜底并标明来源
+        os.remove(os.path.join(rcpt, "BOM-JOB-bm-a.json"))
+        with open(os.path.join(rcpt, "NO-TS-bm-a.json"), "w", encoding="utf-8") as f:
+            json.dump({"card": "POOL-0020", "node": "bm-a"}, f)
+        got2 = read_receipt_file_surface("bm-a", root)
+        check("S22 ts-less receipt falls back to mtime (evidence kept, source labelled)",
+              got2["ok"] and got2["record"].get("_ts_source") == "file-mtime"
+              and got2["record"].get("ts"), got2)
+
+    print("selftest executor-signals verdict: %d/%d PASS"
+          % (len([r for r in results if r]), len(results)))
+    return 0 if all(results) else 1
+
 
 def selftest():
     import tempfile
@@ -349,23 +727,58 @@ def selftest():
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("sub", choices=["run", "selftest"])
+    ap.add_argument("sub", choices=["run", "signals", "selftest"])
     ap.add_argument("--node", default="bm-a")
+    ap.add_argument("--nodes", default=None,
+                    help="signals 子命令批量节点，逗号分隔（如 bm-a,bm-b,bm-c）")
     ap.add_argument("--root", default=None)
     ap.add_argument("--max-age-min", type=float, default=DEFAULT_MAX_AGE_MIN)
     ap.add_argument("--json-out", default=None)
     a = ap.parse_args()
     if a.sub == "selftest":
-        return selftest()
+        rc1 = selftest()
+        rc2 = selftest_signals()
+        return 0 if (rc1 == 0 and rc2 == 0) else 1
+
+    nodes = ([n.strip() for n in a.nodes.split(",") if n.strip()]
+             if a.nodes else [a.node])
+
+    def _dump(path, payload):
+        path = path if os.path.isabs(path) else os.path.join(REPO, path)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(payload, f, ensure_ascii=False, indent=1)
+        print("json -> %s" % path)
+
+    if a.sub == "signals":
+        out = []
+        worst = None
+        for node in nodes:
+            res = evaluate_signals(node, root=a.root, max_age_min=a.max_age_min)
+            out.append(res)
+            print(signals_one_line(res))
+            for name in SIGNAL_ORDER:
+                r = res["signals"][name]
+                if r["state"] != "FRESH":
+                    why = (r["absent"] or r["error"]
+                           or ("age=%.1fm" % r["age_min"] if r["age_min"] is not None
+                               else "-"))
+                    print("  %-7s %-10s %s" % (name, r["state"], why))
+            # 批量输出时取最差：GREEN 只在全部 GREEN 时出现
+            if worst is None or out[-1]["ok_count"] < worst["ok_count"]:
+                worst = res
+        if a.json_out:
+            _dump(a.json_out, out[0] if len(out) == 1 else
+                  {"check": "executor-signals-batch", "nodes": nodes, "results": out,
+                   "all_green": all(r["verdict"] == "SIGNALS-GREEN" for r in out)})
+        # exit 语义：GREEN=0 / INCOMPLETE=2 / STALE=3 / DEAD=4 / UNKNOWN=5
+        return {"SIGNALS-GREEN": 0, "SIGNALS-INCOMPLETE": 2, "SIGNALS-STALE": 3,
+                "SIGNALS-DEAD": 4, "SIGNALS-UNKNOWN": 5}[worst["verdict"]]
 
     res = evaluate(a.node, root=a.root, max_age_min=a.max_age_min)
     print(one_line(res))
     if a.json_out:
-        path = a.json_out if os.path.isabs(a.json_out) else os.path.join(REPO, a.json_out)
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump(res, f, ensure_ascii=False, indent=1)
-        print("json -> %s" % path)
+        _dump(a.json_out, res)
     # exit 语义：ALIVE=0 / STALE=2 / DEAD=3 / UNKNOWN=4 / NO-EVIDENCE=5
     return {"ALIVE": 0, "STALE": 2, "DEAD": 3, "UNKNOWN": 4,
             "NO-EVIDENCE": 5}[res["verdict"]]

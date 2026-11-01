@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-11-01 12:18",
- "current_activity": "2026-11-01 12:1x 周日轮：承办 D-20261101-15（executor_liveness 三态复判五机）+ D-20261101-16 ①（车道任务自愈守卫）。三态结论 bm-a/bm-b/bm-c/bm-m=ALIVE、bm-d=NO-EVIDENCE；守卫 Tools/lane-task-guard.ps1 selftest 16/16 + 注册 BigCompute-LaneTaskGuard(5min) 首火 rc=0 且实跑 ALL-READY 零误动",
- "latest_artifact": "Tools/lane-task-guard.ps1 + Tools/register_lane_guard_task.ps1（mtime 2026-11-01 12:1x，selftest 16/16） · state/d16-lane-guard-20261101.txt · state/d15-executor-liveness-20261101-1215.json · qa/smoke-20261101-1217.log/.png",
- "next_milestone": "①D-20261101-16 ②（停用留痕闸）已随守卫落地，集团侧单一复活清单 LANE-REGISTRY.json 归 @HQ 工具域 11-02 03:07 ②D-20261031-05 :8090 复活判定持续观察至 11-02 03:07 ③M90 月度对账件口径行对齐（11-30 月末行自然生效）"
+ "updated_at": "2026-11-01 12:50",
+ "current_activity": "2026-11-01 12:4x 午班正轮：承办 CEO 11-01 10:4x 政策令 ⑤「四信号（hb/agent上报/claim/receipt）缺一不得称健康」——executor_liveness.py 增 signals 五态判读，四条信号各绑一个真实写入面；selftest 22/22 PASS；五机实跑 bm-a/bm-b/bm-c/bm-m ok=2/4、bm-d 0/4，无一机达 4/4（如实报，不凑绿）",
+ "latest_artifact": "Tools/executor_liveness.py（signals 子命令·mtime 2026-11-01 12:4x·selftest 22/22） · state/d47-executor-signals-20261101.txt · state/executor-signals-20261101.json · qa/smoke-20261101-1249.log/.png",
+ "next_milestone": "①四信号「机队级」读数的采集面归属（claim/receipt 是机器本地面，单机跑不出他机 4/4）→ 提案 BC-P-160 交 @HQ 主控汇总面（周轮 11-01 18:00 议程）②D-20261101-17 任务验收判据 v2 归 @HQ 工具域 11-02 12:00（本司判读器已兼容三面/四信号两口径）③D-20261101-16 停用留痕闸随守卫在役，集团单一复活清单 LANE-REGISTRY.json 归 @HQ 11-02 03:07"
 }
