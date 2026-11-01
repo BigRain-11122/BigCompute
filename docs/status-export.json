@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-11-02 00:24",
- "current_activity": "2026-11-02 00:0x 令牌轮：T-20261102-51 done=D-20261102-03 承办（产品优先律 2 分件）:text_integrity_census 默认目标固定为一线索引 7 类（tasks/queue-main/proposals/HQ-FEEDBACK/decisions/orders/reflection-journal，含集团三本只读台账），外部缺失=ABSENT-EXTERNAL 不判红、外部损坏=EXTERNAL-DAMAGED 可见不冒充本司绿；selftest 10→14/14，实跑 cats=7/7 damaged=0；qa_smoke 新增 no.19 探针（顾问档点名 loc:/ext:file:line，无 summary 即 FAIL），smoke 20/20 PASS",
- "latest_artifact": "Tools/text_integrity_census.py（默认 7 类·--rounds-line 夜轮摘要）+ Tools/qa_smoke.py no.19 probe ｜ 证据 state/text-integrity-selftest-20261102.txt + state/text-integrity-20261102-0016.json + qa/smoke-20261102-0009.log/.png（20/20 PASS·mtime 2026-11-02 00:2x）",
- "next_milestone": "①M93 后续=D-03 ② 写侧铁律的机检化（写入器编码静态普查，本轮只做人工实核+runbook 立法）②03:07 班 D-20261031-05 ② lane8090 复活判定点 + LANE-REGISTRY 交付物回执面 ③M25/T26 室内烘焙实弹=净窗一命令（BLOCKED 维持）④D-20261102-01/02 @HQ 工具域承接面本司只读配合（不放本司队列）"
+ "updated_at": "2026-11-02 06:10",
+ "current_activity": "2026-11-02 06:1x 令牌轮：T-20261102-52 done=M92 判据分层推广（D-20261101-20 / D-20261102-02）——三个只印结论的闸补「扫描域自证」：新增 Tools/scope_proof.py（domain/not_scanned/unreadable 三行 + coverage），sop_coverage_check / batch_pool validate / dispatch_precheck 已接线；task board=tasks/TASKS.md",
+ "latest_artifact": "Tools/scope_proof.py + 三闸域自证输出（sop_coverage_check selftest 9/9、batch_pool 20 checks、dispatch_precheck PASS）；实跑关键读数=SOP-COVERAGE-GREEN 但 coverage=scanned:34 skipped:58 ratio=37.0%（旧口径只印 violations=0）；证据 state/m92-scope-proof-20261102.txt + qa/smoke-20261102-0608.log/.png（20/20）",
+ "next_milestone": "①BC-P-163 裁决面=Tools 清单自申报化（F3 计数已第三次漂移 77 vs 76）②M25/T26 室内烘焙实弹=净窗一命令（BLOCKED 维持）③M90 月度档 self verdict 口径文档面对齐（11-30 月末行自然生效）④LaneTaskGuard 已 Ready（D-20261102-10 本司面核验毕）"
 }

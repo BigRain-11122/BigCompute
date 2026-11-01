@@ -496,3 +496,8 @@ P2 三条：①**重建 vs 保留的分界**=有旁证的行（T-49 有 commit c
 ## 2026-11-02 00:2x 简报（令牌轮·D-20261102-03 承办·产品优先律 2 分件）
 P0 无。P1 无。**产品增量 2 分件**：`Tools/text_integrity_census.py` 默认目标按 D-03 固定为受令 7 类一线索引（tasks/queue-main/proposals/HQ-FEEDBACK/decisions/orders/reflection-journal，其中三本是集团只读台账），并区分「外部只读」与「本地」两账——外部缺失=ABSENT-EXTERNAL 不判红、外部损坏=EXTERNAL-DAMAGED 可见但不冒充本司绿；selftest **10→14/14 PASS**，实跑 **cats=7/7** files=12 damaged=0 TEXT-INTEGRITY-CLEAN；同窗把普查接成 qa_smoke **no.19 探针**（顾问档：损坏行以 loc:/ext:file:line 点名不红门，拿不到 summary 则 UNVERIFIED FAIL），smoke **20/20 PASS**（qa/smoke-20261102-0009.log+png），charter §三 第 19 条在件。
 P2 三条：①**首跑即抓出 D-20 同族缺陷**——group_root 少推导一层时三本集团台账全部 ABSENT 而 verdict 仍报 CLEAN；若只报 verdict 不报 cats，这就是「部分覆盖当全绿」，已用 `cats=n/7` 字段显式化并当场修（现在 7/7 才是唯一可称绿形态）；②D-03 ② 写侧铁律本轮只做人工实核（c1c4_patrol/qa_smoke 显式 utf-8、round_append 走 bytes）并入 runbook，**机检化（写入器编码静态普查）尚未做**，已挂下一轮首选，不冒充已完成；③D-03 ③ 夜轮 text-integrity 行已由 `--rounds-line` 提供并写进本轮 rounds.log，但「每轮自动」目前靠 runbook 收尾链约束，属流程约束非硬闸——若要硬闸应并入 c1c4_patrol 汇总面（下一轮评估，不越权改在役绿灯工具）。
+## 2026-11-02 06:09 夜报（06:0x 令牌轮·判据分层推广·产品增量 2 分件）
+P0 无。P1 无。**产品增量**=Tools/scope_proof.py + 三闸（sop_coverage_check / batch_pool validate / dispatch_precheck）各自打印 domain/not_scanned/unreadable；实跑抓到一句诚实话：SOP 闸的 GREEN 只覆盖 34/92 个文档（coverage 37.0%），另有 58 个 docs md 从不入判——旧口径只印「violations=0」，读者会以为全库都过了。
+P2 **F3 工具计数第三次漂移**=actual 77 vs declared 76（11-01 bump 到 75 之后又落两件无人 bump，其中一件是本轮自己加的）→ 已 bump 77 + 留痕，结构性修法入 BC-P-163（工具自申报，禁靠人手改常量）。
+P2 **D-20261102-10 本司面核验**=BigCompute-LaneTaskGuard 实测 State=Ready（已由 03:07 班复活），本司无需再 enable；自愈守卫在役维持。
+

@@ -18,6 +18,8 @@ import sys
 import tempfile
 import time
 
+import scope_proof
+
 LINE_GATE = 200
 BYTE_GATE = 25600  # 25KB
 # 超线已申报件（盘点 §C ⚠ 注记·legal 是否适用单件闸=呈 10-07 聚合审定谳·本轮只报不判）
@@ -70,7 +72,7 @@ REGISTER = {
         "履约管线": ["Tools/fulfillment/test_pipeline.py"],
     },
 }
-DECLARED_TOOLS = 75  # Tools 根 py 申报数（盘点 §D·10-16 E70 轮 F3 检出累计漂移即修〔T61 同例〕：43→51=10-09 基线后七件具名 inference_energy_anchor〔E46〕/h3_window_energy〔E57〕/p0_moe_measure〔T89〕/serve_restore_manifest〔M71〕/ledger_blank_census〔T96〕/model_ref_drift_check〔T100〕/borrow_window_freshness〔E70〕+基线计数勘正 1） | 2026-11-01 bump 51->75: F3 exact-equality check had been RED for many rounds (actual 75 vs declared 51, 24 tools added without bump, nobody reads the gate) - see state/d03-executor-liveness-20261101.txt
+DECLARED_TOOLS = 77  # Tools 根 py 申报数（盘点 §D·10-16 E70 轮 F3 检出累计漂移即修〔T61 同例〕：43→51=10-09 基线后七件具名 inference_energy_anchor〔E46〕/h3_window_energy〔E57〕/p0_moe_measure〔T89〕/serve_restore_manifest〔M71〕/ledger_blank_census〔T96〕/model_ref_drift_check〔T100〕/borrow_window_freshness〔E70〕+基线计数勘正 1） | 2026-11-01 bump 51->75: F3 exact-equality check had been RED for many rounds (actual 75 vs declared 51, 24 tools added without bump, nobody reads the gate) - see state/d03-executor-liveness-20261101.txt | 2026-11-02 bump 75->77: two tools landed after the 11-01 bump and again nobody bumped — text_integrity_census.py (T-20261101-50, 11-01) + scope_proof.py (M92, 11-02); this is the third consecutive无人对账 drift, gate now prints its own domain (see scope output) | 未解结构面=每次新增 .py 都要人手改这个常量，proposal BC-P-163 建议改为工具侧自申报清单
 
 
 def _measure(path):
@@ -85,6 +87,7 @@ def audit(repo, register=None, allowlist=None, declared_tools=DECLARED_TOOLS):
     register = REGISTER if register is None else register
     allowlist = ALLOWLIST_OVERSIZE if allowlist is None else allowlist
     f1_missing, f2_over, f2_pending, summary = [], [], [], {}
+    unreadable = []
     gate_seen = set()
     for level, modules in register.items():
         lv_covered = 0
@@ -98,7 +101,11 @@ def audit(repo, register=None, allowlist=None, declared_tools=DECLARED_TOOLS):
                 if not os.path.exists(full) or not p.endswith(".md") or p in gate_seen:
                     continue
                 gate_seen.add(p)
-                lines, nbytes = _measure(full)
+                try:
+                    lines, nbytes = _measure(full)
+                except OSError as exc:
+                    unreadable.append("%s(%s)" % (p, exc.__class__.__name__))
+                    continue
                 if lines > LINE_GATE or nbytes > BYTE_GATE:
                     (f2_pending if p in allowlist else f2_over).append(
                         {"path": p, "lines": lines, "bytes": nbytes})
@@ -106,13 +113,28 @@ def audit(repo, register=None, allowlist=None, declared_tools=DECLARED_TOOLS):
     actual_tools = len(glob.glob(os.path.join(repo, "Tools", "*.py")))
     f3_drift = None if actual_tools == declared_tools else {"actual": actual_tools, "declared": declared_tools}
     viol = len(f1_missing) + len(f2_over) + (1 if f3_drift else 0)
+    # 判据分层（D-20261101-20/D-20261102-02）：注册面之外的一线文档不在本闸射程内，必须显式列出
+    repo_md = sorted(
+        os.path.relpath(os.path.join(repo, p), repo).replace(os.sep, "/")
+        for p in glob.glob(os.path.join(repo, "docs", "**", "*.md"), recursive=True)
+    )
+    registered = {p for mods in register.values() for paths in mods.values() for p in paths}
+    not_scanned = [p for p in repo_md if p not in registered]
+    n_mod = sum(len(mods) for mods in register.values())
     return {
-        "tool": "sop_coverage_check v1.0", "order": "O-2026-0930-027", "repo": repo,
+        "tool": "sop_coverage_check v1.1", "order": "O-2026-0930-027", "repo": repo,
         "verdict": "SOP-COVERAGE-GREEN" if viol == 0 else "SOP-COVERAGE-RED",
         "violations_total": viol,
         "f1_missing": f1_missing, "f2_oversize_violation": f2_over,
         "f2_declared_pending_1007": f2_pending, "f3_tools_drift": f3_drift,
         "f4_level_summary": summary,
+        "scope": {
+            "domain": "register levels=%d modules=%d files=%d + Tools/*.py=%d"
+                      % (len(register), n_mod, len(registered), actual_tools),
+            "not_scanned": not_scanned,
+            "unreadable": unreadable,
+            "scanned_files": len(gate_seen),
+        },
     }
 
 
@@ -124,6 +146,10 @@ def cmd_check(args):
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(res, f, ensure_ascii=False, indent=1)
     print("verdict=%s violations=%d" % (res["verdict"], res["violations_total"]))
+    sc = res["scope"]
+    scope_proof.emit(sc["domain"], sc["not_scanned"], sc["unreadable"])
+    print(scope_proof.coverage_line(
+        sc["scanned_files"], len(sc["not_scanned"]), len(sc["unreadable"])))
     for lv, s in res["f4_level_summary"].items():
         print("  %s covered=%d/%d" % (lv, s["covered"], s["total"]))
     for item in res["f1_missing"]:
@@ -177,8 +203,16 @@ def cmd_selftest(args):
     res = audit(repo, register=reg, allowlist=["docs/ops/big.md"], declared_tools=2)
     chk("S6 工具计数漂移→RED", res["verdict"] == "SOP-COVERAGE-RED" and res["f3_tools_drift"]["actual"] == 1)
     chk("S7 非md 件不入轻量闸（x.py 超线免测）", res["violations_total"] == 1)
-    print("selftest %d/7 %s" % (ok[0], "PASS" if ok[0] == 7 else "FAIL"))
-    return 0 if ok[0] == 7 else 1
+    with open(os.path.join(repo, "docs", "ops", "unregistered.md"), "w", encoding="utf-8") as f:
+        f.write("ok\n")
+    res = audit(repo, register=reg, allowlist=["docs/ops/big.md"], declared_tools=1)
+    chk("S8 注册面外文档进 not_scanned 且不翻绿/翻红",
+        "docs/ops/unregistered.md" in res["scope"]["not_scanned"]
+        and res["verdict"] == "SOP-COVERAGE-GREEN")
+    chk("S9 domain 自证三级注册面+工具计数",
+        res["scope"]["domain"].startswith("register levels=3") and "Tools/*.py=1" in res["scope"]["domain"])
+    print("selftest %d/9 %s" % (ok[0], "PASS" if ok[0] == 9 else "FAIL"))
+    return 0 if ok[0] == 9 else 1
 
 
 def main():

@@ -148,8 +148,28 @@ def cmd_validate(path):
     if not os.path.exists(path):
         print("FAIL registry not found: %s" % path)
         return 1
-    rows = load_rows(path)
+    try:
+        rows = load_rows(path)
+    except ValueError as exc:
+        # 读不到的登记簿也要给判据面：先报 unreadable 再判红，不抛栈（D-20261101-20 判据分层）
+        print("FAIL " + str(exc))
+        _emit_scope("registry=%s cards=0 lanes=0" % os.path.basename(path), [], [str(exc)])
+        print("VERDICT=POOL_FAIL (registry unreadable)")
+        return 1
     problems, info = check_rows(rows)
+    lanes, statuses = {}, {}
+    for r in rows:
+        lanes[r.get("lane")] = lanes.get(r.get("lane"), 0) + 1
+        statuses[r.get("status")] = statuses.get(r.get("status"), 0) + 1
+    # 判据分层：validate 只证「卡片台账合格且已备货」，不证「卡片现在能跑」——后者归 gate/J5
+    not_gated = sorted("%s:%s" % (r.get("batch_id"), r.get("status"))
+                       for r in rows if r.get("status") in IN_FLIGHT_STATUSES)
+    _emit_scope(
+        "registry=%s cards=%d lanes=%d status=%s"
+        % (os.path.basename(path), len(rows), len(lanes),
+           ",".join("%s=%d" % kv for kv in sorted(statuses.items(), key=lambda kv: str(kv[0])))),
+        not_gated, [])
+    print("scope_note=validate 判台账合格性；卡片可点火性归 batch-gate/J5（本闸不出该结论）")
     for line in info:
         print("INFO " + line)
     if problems:
@@ -160,6 +180,16 @@ def cmd_validate(path):
     print("VERDICT=POOL_GREEN (J1 fields/J2 city3d>=2/J3 unique/J4 "
           "consumer_plan/J5 dry-run/J6 data_deps-locality all PASS)")
     return 0
+
+
+def _emit_scope(domain, not_scanned=(), unreadable=()):
+    try:
+        import scope_proof
+        scope_proof.emit(domain, not_scanned, unreadable)
+    except ImportError:  # 单文件复制到机动位置时不因缺伴生模块而失判
+        print("domain=%s" % domain)
+        print("not_scanned=%d [%s]" % (len(not_scanned), ", ".join(map(str, list(not_scanned)[:5])) or "none"))
+        print("unreadable=%d [%s]" % (len(unreadable), ", ".join(map(str, list(unreadable)[:5])) or "none"))
 
 
 def cmd_gate(path, batch_id, consumer=None, exempt=None, as_json=False):

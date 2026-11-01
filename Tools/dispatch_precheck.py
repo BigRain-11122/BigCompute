@@ -179,6 +179,19 @@ def render_line(r):
                (lg.get("source") or {}).get("ts", "-"), lg.get("age_min")))
 
 
+def _emit_scope(domain, not_scanned=(), unreadable=()):
+    """判据分层（D-20261101-20/D-20261102-02）：结论必须带扫描域。"""
+    try:
+        import scope_proof
+        scope_proof.emit(domain, not_scanned, unreadable)
+    except ImportError:  # 伴生模块缺位时降级到同形三行，不让判决失声
+        print("domain=%s" % domain)
+        print("not_scanned=%d [%s]" % (
+            len(not_scanned), ", ".join(map(str, list(not_scanned)[:5])) or "none"))
+        print("unreadable=%d [%s]" % (
+            len(unreadable), ", ".join(map(str, list(unreadable)[:5])) or "none"))
+
+
 def cmd_check(args):
     lane = args.lane
     consumer = args.consumer
@@ -208,6 +221,14 @@ def cmd_check(args):
                                  max_age_min=args.max_age_min)
     log_path = append_snapshot(result, args.log)
     result["snapshot"] = os.path.relpath(log_path, ROOT)
+    lg = result.get("lane_gate", {})
+    _emit_scope(
+        "lane=%s heartbeat_src=%s age_min=%s"
+        % (lane, (lg.get("source") or {}).get("ts", "-"), lg.get("age_min")),
+        ["lane:%s 未在本判决内" % other for other in VALID_LANES if other != lane],
+        [] if result.get("verdict") != "UNPARSED"
+        else ["heartbeat:%s" % result.get("reason")])
+    print("scope_note=本闸只裁一条车道的当下可点火性；他车道、排队次序与卡片内容不在本判决内")
     if args.json:
         print(json.dumps(result, ensure_ascii=False, indent=2))
     else:
