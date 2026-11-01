@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-11-01 10:55",
- "current_activity": "2026-11-01 10:5x 排程轮：tech T184 服务代码-进程版本漂移守卫 done=qa_smoke 新探针 no.21（/health.server 对源码 SERVER_VER 比对：同值 IN-SYNC／不同 WARN+修复指针／不可测 UNVERIFIED 不假绿，不红门） | 编号冲突先查后用：原写 no.20 已被 T177 占用，改 no.21 | QA:19/19=smoke-20261101-1052 | C1C4:见 state/c1c4-*.json",
- "latest_artifact": "Tools/qa_smoke.py 探针 no.21（resident QA version drift·selftest 6/6·全套 --selftest exit=0·mtime 2026-11-01 10:5x）· state/t184-version-drift-20261101.txt（三态实证件：live VERSION-IN-SYNC v1.3 + 假端点 WARN 实录）· qa/smoke-20261101-1052.log/.png（QA 19/19 PASS）",
- "next_milestone": "①M90 月度对账件口径行对齐（文档面·随 11-30 月末行自然生效）②BC-P-157 批文至=执行器活性读数接心跳 ③M25/T26 室内烘焙样板间实弹=净窗一命令（BLOCKED 计数在册）④D-20261031-05 :8090 复活判定持续至 11-02 03:07"
+ "updated_at": "2026-11-01 12:18",
+ "current_activity": "2026-11-01 12:1x 周日轮：承办 D-20261101-15（executor_liveness 三态复判五机）+ D-20261101-16 ①（车道任务自愈守卫）。三态结论 bm-a/bm-b/bm-c/bm-m=ALIVE、bm-d=NO-EVIDENCE；守卫 Tools/lane-task-guard.ps1 selftest 16/16 + 注册 BigCompute-LaneTaskGuard(5min) 首火 rc=0 且实跑 ALL-READY 零误动",
+ "latest_artifact": "Tools/lane-task-guard.ps1 + Tools/register_lane_guard_task.ps1（mtime 2026-11-01 12:1x，selftest 16/16） · state/d16-lane-guard-20261101.txt · state/d15-executor-liveness-20261101-1215.json · qa/smoke-20261101-1217.log/.png",
+ "next_milestone": "①D-20261101-16 ②（停用留痕闸）已随守卫落地，集团侧单一复活清单 LANE-REGISTRY.json 归 @HQ 工具域 11-02 03:07 ②D-20261031-05 :8090 复活判定持续观察至 11-02 03:07 ③M90 月度对账件口径行对齐（11-30 月末行自然生效）"
 }
