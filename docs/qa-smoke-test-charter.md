@@ -32,6 +32,8 @@
 
 - 20. 台账并行（融合）行全文普查（T177·11-01 立）：no.8 只嗅七台账**尾部 12 行**，中段的融合行永久不可见（T176 手测已在 state/heartbeat.txt 找到 3 行）。本条跑 `ledger_parallel_census`（台账表单一源=`ledger_markers.TAIL_PROBE_FILES`）对七台账**全文逐行**计数行头 marker，≥2 即融合行；历史已人工确认的行按**内容指纹**（sha1 前 16 位·行号漂移不影响）登记在 `state/ledger-parallel-whitelist.json`，白名单外一律 FAIL 并点名 file:line。文件缺失/不可读=FAIL（fail-closed，禁以「没读到」当通过）。判据=selftest 四态夹具（S1 干净 PASS／S2 白名单外融合行 FAIL／S3 入白名单后 PASS／S4 台账缺失 FAIL）+ live `PARALLEL-CLEAN`（11-01 首次实跑=parallel 3 全白名单，与 T176 手测清单逐行一致）。
 
+- 21. 服务代码-进程版本漂移（T184·11-01 立；编号先查后用——no.20 已被 T177 占用）：T183 给了「一条命令把进程换到新码」，但没有任何东西发现「进程跑的还是旧码」——改完码忘重启时 `/health` 仍报旧版本而全家探针照样绿，漂移可静默数天。本条实读 `/health.server` 与 `Tools/resident_qa_server.py` 源码 `SERVER_VER` 字面量比对：同值 `VERSION-IN-SYNC`；不同判 **WARN（不红门）** 并给修复指针 `python Tools/qa_restart.py restart`（重启窗口内本就可能不一致，红了会被训练成无视）；源码读不到／服务无版本=**UNVERIFIED 不假绿**（服务死由 no.6 负责红，缺测不得升格为漂移）。判据=selftest 六夹具（V1 源码可解析／V2 同值 IN-SYNC／V3 旧版本 WARN 带修复指针／V4 源码不可读 UNVERIFIED／V5 服务静默 UNVERIFIED／V6 双侧缺失不误报）+ live 三态之一；证据 `state/t184-version-drift-20261101.txt`（live `VERSION-IN-SYNC v1.3` 19/19 PASS + 假端点实证漂移 WARN）。
+
 ## 四、执行律
 
 - 执行位=每轮收尾步 QA 自验先行（mandate §每轮固定步 8）；实装=Tools/qa_smoke.py（tech T11 一键化：探针→log+png 产出+自判行）；exit 0=全过/1=有缺。

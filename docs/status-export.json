@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-11-01 06:17",
- "current_activity": "2026-11-01 06:1x 令牌轮：D-20261101-03 承办 done=执行器活性三面判读器 Tools/executor_liveness.py（selftest 11/11·五机实跑 bm-a/bm-c/bm-m=ALIVE、bm-b/bm-d=NO-EVIDENCE 如实非死）+ 判据勘正两条（lanes/<node>.json 是派工载荷不含 last_result；0x800710E0=PT1M 重复触发被 IgnoreNew 拒绝，非常驻实例死） | 提案:BC-P-157 执行器活性接心跳+集团任务触发去重 | QA:18/18=smoke-20261101-0612 | C1C4:C1C4-GREEN 4/4 evidence=state/c1c4-20261101-061256.json",
- "latest_artifact": "Tools/executor_liveness.py（执行器五态判读·selftest 11/11·mtime 2026-11-01 06:1x）· state/d03-executor-liveness-20261101.txt（D-20261101-03 承办证据件·三条定谳）· state/executor-liveness-20261101.json（bm-a 三面明细）· qa/smoke-20261101-0612.log/.png（QA 18/18 PASS）",
- "next_milestone": "①BC-P-157 批文至=执行器活性读数接 idle_selfcheck 心跳（一行 executor=<verdict>，不升红门）+ sop_coverage_check F3 周读点 ②M25/T26 室内烘焙样板间实弹=净窗一命令（BLOCKED 计数在册，净窗开口 1 轮兑现）③D-20261031-05 :8090 复活判定持续至 11-02 03:07 ④tech T184 服务代码-进程版本漂移探针（needs-based）"
+ "updated_at": "2026-11-01 10:55",
+ "current_activity": "2026-11-01 10:5x 排程轮：tech T184 服务代码-进程版本漂移守卫 done=qa_smoke 新探针 no.21（/health.server 对源码 SERVER_VER 比对：同值 IN-SYNC／不同 WARN+修复指针／不可测 UNVERIFIED 不假绿，不红门） | 编号冲突先查后用：原写 no.20 已被 T177 占用，改 no.21 | QA:19/19=smoke-20261101-1052 | C1C4:见 state/c1c4-*.json",
+ "latest_artifact": "Tools/qa_smoke.py 探针 no.21（resident QA version drift·selftest 6/6·全套 --selftest exit=0·mtime 2026-11-01 10:5x）· state/t184-version-drift-20261101.txt（三态实证件：live VERSION-IN-SYNC v1.3 + 假端点 WARN 实录）· qa/smoke-20261101-1052.log/.png（QA 19/19 PASS）",
+ "next_milestone": "①M90 月度对账件口径行对齐（文档面·随 11-30 月末行自然生效）②BC-P-157 批文至=执行器活性读数接心跳 ③M25/T26 室内烘焙样板间实弹=净窗一命令（BLOCKED 计数在册）④D-20261031-05 :8090 复活判定持续至 11-02 03:07"
 }

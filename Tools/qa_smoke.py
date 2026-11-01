@@ -1997,13 +1997,123 @@ def selftest_ledger_parallel():
     return 0 if all(results) else 1
 
 
+# T184: T183 gave "one command swaps the process onto the new code", but
+# nothing noticed when the running process was still on OLD code. Version
+# drift can sit silently for days: edit the source, forget the restart,
+# /health keeps reporting the old version and every probe stays green.
+# Probe no.21 compares /health.server against SERVER_VER in the source.
+# Drift is WARN, never a red gate: a restart window legitimately shows a
+# mismatch for a few seconds, so turning it red would train everyone to
+# ignore it.
+SERVER_SRC = os.path.join(HERE, "resident_qa_server.py")
+SERVER_VER_RE = re.compile(r'^\s*SERVER_VER\s*=\s*"([^"]+)"', re.M)
+
+
+def server_source_version(path=None, read=None):
+    """T184: the SERVER_VER literal in the server source, or None."""
+    read = read or (lambda p: open(p, encoding="utf-8",
+                                   errors="replace").read())
+    try:
+        m = SERVER_VER_RE.search(read(path or SERVER_SRC))
+    except Exception:  # noqa: BLE001 - unreadable source is a verdict
+        return None
+    return m.group(1).strip() if m else None
+
+
+def version_drift_verdict(health_ver, source_ver):
+    """T184 pure judge -> (ok, detail). Drift warns; it never reds the gate.
+
+    Both sides must be readable before any claim is made: a silent service
+    (probe 6 covers that) or a moved source file is UNVERIFIED - an absent
+    measurement must not be dressed up as drift.
+    """
+    if not source_ver:
+        return True, ("UNVERIFIED: SERVER_VER not found in %s (moved or "
+                      "renamed) - drift unmeasurable, no false alarm"
+                      % os.path.basename(SERVER_SRC))
+    if not health_ver:
+        return True, ("UNVERIFIED: /health reported no server version "
+                      "(service down? see probe 6) - drift unmeasurable")
+    if str(health_ver).strip() == source_ver.strip():
+        return True, ("VERSION-IN-SYNC %s (running process == source)"
+                      % source_ver.strip())
+    return True, ("VERSION-DRIFT running=%s source=%s WARN - the process is "
+                  "on old code; fix: python Tools/qa_restart.py restart"
+                  % (str(health_ver).strip(), source_ver.strip()))
+
+
+def probe_resident_qa_version():
+    """Probe no.21 (T184): running /health version vs source SERVER_VER.
+
+    Read-only: one GET /health (no generation, zero GPU load) plus a local
+    file read. Never restarts anything - the fix pointer is printed, the
+    action stays with the operator.
+    """
+    health_ver = None
+    try:
+        with urllib.request.urlopen(RESIDENT_QA_URL, timeout=10) as r:
+            h = json.loads(r.read().decode("utf-8"))
+        health_ver = h.get("server")
+    except Exception:  # noqa: BLE001 - unreachable != drifted
+        health_ver = None
+    return version_drift_verdict(health_ver, server_source_version())
+
+
+def selftest_qa_version():
+    """T184 fixtures: in-sync / drift / source unreadable / service silent.
+
+    The live service is usually in sync, so a broken comparator would read
+    as PASS forever. All four states are pinned, including the two that
+    must stay quiet (unmeasurable is not a defect).
+    """
+    results = []
+
+    def check(name, ok, detail=""):
+        results.append(bool(ok))
+        print("%s %s%s" % ("PASS" if ok else "FAIL", name,
+                           "" if ok else " -> %r" % (detail,)))
+
+    src = os.path.join(HERE, "resident_qa_server.py")
+    ver = server_source_version(src)
+    check("V1 source SERVER_VER parsed", bool(ver), ver)
+
+    ok, detail = version_drift_verdict(ver, ver)
+    check("V2 same version -> VERSION-IN-SYNC",
+          ok and "VERSION-IN-SYNC" in detail, detail)
+
+    ok, detail = version_drift_verdict("resident-qa v0.1 (stale)", ver)
+    check("V3 older running version -> WARN with repair pointer",
+          ok and "VERSION-DRIFT" in detail and "qa_restart.py restart" in
+          detail, detail)
+
+    ok, detail = version_drift_verdict(ver, None)
+    check("V4 source unreadable -> UNVERIFIED (not an alarm)",
+          ok and "UNVERIFIED" in detail and "VERSION-DRIFT" not in detail,
+          detail)
+
+    ok, detail = version_drift_verdict(None, ver)
+    check("V5 silent service -> UNVERIFIED (probe 6 owns the red)",
+          ok and "UNVERIFIED" in detail and "VERSION-DRIFT" not in detail,
+          detail)
+
+    ok, detail = version_drift_verdict("x", None)
+    check("V6 both sides missing -> UNVERIFIED, never a false drift",
+          ok and "UNVERIFIED" in detail and "VERSION-DRIFT" not in detail,
+          detail)
+
+    print("selftest qa-version verdict: %d/%d PASS"
+          % (len([r for r in results if r]), len(results)))
+    return 0 if all(results) else 1
+
+
 def main():
     if len(sys.argv) > 1 and sys.argv[1] == "--selftest":
         return (selftest_tails() | selftest_coder_class()
                 | selftest_supply_fields() | selftest_cost_contract()
                 | selftest_serve_artifacts() | selftest_qa_functional()
                 | selftest_scan_roots() | selftest_heartbeat_tokens()
-                | selftest_gpu_contention() | selftest_ledger_parallel())
+                | selftest_gpu_contention() | selftest_ledger_parallel()
+                | selftest_qa_version())
     os.makedirs(QA_DIR, exist_ok=True)
     ts = datetime.datetime.now().strftime("%Y%m%d-%H%M")
     log_path = os.path.join(QA_DIR, "smoke-%s.log" % ts)
@@ -2029,7 +2139,9 @@ def main():
               ("heartbeat guarded numeric tokens (T168)",
                probe_heartbeat_tokens),
               ("ledger parallel fused-row census (T177)",
-               probe_ledger_parallel)]
+               probe_ledger_parallel),
+              ("resident QA version drift (T184)",
+               probe_resident_qa_version)]
     lines, passed = [], 0
     lines.append("BigCompute QA smoke test %s (orders L254 / charter v1)"
                  % ts)
@@ -2042,7 +2154,7 @@ def main():
         lines.append(detail)
         print("[%s] %s" % ("PASS" if ok else "FAIL", label))
     lines.append("")
-    verdict = "smoke verdict: %d/%d PASS (charter 4 + T25 + E41 + BC-P-45 no.8 + T122 no.9 + T132 no.10 + T133 no.11 + T138 no.12 + T140 no.13 + T143 no.14 + T145 no.15 + T153 no.16 + T161 no.17 + T168 no.18 + T177 no.20 probes)" % (
+    verdict = "smoke verdict: %d/%d PASS (charter 4 + T25 + E41 + BC-P-45 no.8 + T122 no.9 + T132 no.10 + T133 no.11 + T138 no.12 + T140 no.13 + T143 no.14 + T145 no.15 + T153 no.16 + T161 no.17 + T168 no.18 + T177 no.20 + T184 no.21 probes)" % (
         passed, len(probes))
     lines.append(verdict)
     with open(log_path, "w", encoding="utf-8") as f:
