@@ -33,6 +33,7 @@ param(
     [string]$ReopenWhen = '',
     [string]$By = 'BigCompute-LaneTaskGuard',
     [string]$GroupRoot = '',
+    [string[]]$OwnerFamilies = @('Big', 'HQ', 'Flux', 'Bm', 'MiniGame', 'OpenClaw'),
     [switch]$Apply,
     [switch]$SelfTest
 )
@@ -128,6 +129,90 @@ function Test-CanDisable {
     return 'ok'
 }
 
+function Get-TaskPrefix {
+    param([string]$Name)
+    if (-not $Name) { return '?' }
+    $parts = $Name -split '-'
+    if ($parts.Count -ge 1 -and $parts[0]) { return $parts[0] }
+    return '?'
+}
+
+function Test-OwnerFamily {
+    param([string]$Name, [string[]]$Families)
+    if (-not $Name) { return $false }
+    foreach ($f in @($Families)) {
+        if (-not $f) { continue }
+        if ($Name.Length -ge $f.Length -and $Name.Substring(0, $f.Length) -ieq $f) { return $true }
+    }
+    return $false
+}
+
+# D-20261101-20: an "ALL-READY / no violations" verdict is only meaningful
+# together with the domain it was computed over. A guard whose pattern is
+# "BigCompute-*" saying ALL-READY says nothing about Bigmoney-* or HQ-Patrol-*.
+# So the domain is always printed, and disabled tasks OUTSIDE the domain are
+# counted (read-only, never acted on: other owners' tasks are not ours to touch).
+# Out-of-scope counting is narrowed to owner families (Windows' own built-in
+# disabled tasks are noise); the raw out-of-domain total is printed too, so the
+# narrowing itself stays checkable.
+function Get-ScanDomain {
+    param([object[]]$AllTasks, [string]$Pattern, [string]$Self, [string[]]$Explicit, [string[]]$OwnerFamilies)
+
+    $inList = New-Object System.Collections.Generic.List[string]
+    $inDisabled = New-Object System.Collections.Generic.List[string]
+    $outOwner = New-Object System.Collections.Generic.List[string]
+    $outOther = New-Object System.Collections.Generic.List[string]
+
+    $explicitNames = @($Explicit | Where-Object { $_ })
+    $mode = if ($explicitNames.Count -gt 0) { 'explicit' } else { 'pattern:' + $Pattern }
+
+    foreach ($t in @($AllTasks)) {
+        if (-not $t) { continue }
+        $n = [string]$t.TaskName
+        if (-not $n) { continue }
+        if ($Self -and $n -ieq $Self) { continue }
+        $isDisabled = ([string]$t.State -eq 'Disabled')
+
+        $inScope = $false
+        if ($explicitNames.Count -gt 0) {
+            foreach ($e in $explicitNames) { if ($e -ieq $n) { $inScope = $true; break } }
+        } elseif ($Pattern) {
+            if ($n -like $Pattern) { $inScope = $true }
+        }
+
+        if ($inScope) {
+            $inList.Add($n)
+            if ($isDisabled) { $inDisabled.Add($n) }
+        } elseif ($isDisabled) {
+            if (Test-OwnerFamily -Name $n -Families $OwnerFamilies) { $outOwner.Add($n) } else { $outOther.Add($n) }
+        }
+    }
+
+    $counts = @{}
+    foreach ($n in $outOwner) {
+        $p = Get-TaskPrefix -Name $n
+        if ($counts.ContainsKey($p)) { $counts[$p] = $counts[$p] + 1 } else { $counts[$p] = 1 }
+    }
+
+    return [ordered]@{
+        mode                  = $mode
+        names                 = @($inList)
+        disabled_in_scope     = @($inDisabled)
+        out_of_scope_disabled = @($outOwner)
+        out_of_scope_other    = @($outOther)
+        out_prefix_counts     = $counts
+    }
+}
+
+function Format-PrefixCounts {
+    param($Counts)
+    if (-not $Counts) { return '-' }
+    $parts = New-Object System.Collections.Generic.List[string]
+    foreach ($k in ($Counts.Keys | Sort-Object)) { $parts.Add(('{0}={1}' -f $k, $Counts[$k])) }
+    if ($parts.Count -eq 0) { return '-' }
+    return ($parts -join ' ')
+}
+
 function Add-JsonLine {
     param([string]$Path, $Record)
     $dir = Split-Path -Parent $Path
@@ -182,6 +267,28 @@ function Invoke-SelfTest {
     Check 'S15 empty self keeps all' (($c2 -join ',') -eq 'X')
 
     Check 'S16 whitelist match is case-insensitive' (Test-Whitelisted -Name 'bigcompute-gpu-idlewatch' -Whitelist @('BigCompute-GPU-IdleWatch'))
+
+    # D-20261101-20 domain-reporting checks
+    $tasks = @(
+        [pscustomobject]@{ TaskName = 'BigCompute-GPU-IdleWatch'; State = 'Ready' },
+        [pscustomobject]@{ TaskName = 'BigCompute-OrderSentinel'; State = 'Disabled' },
+        [pscustomobject]@{ TaskName = 'BigCompute-LaneTaskGuard'; State = 'Ready' },
+        [pscustomobject]@{ TaskName = 'Bigmoney-IterationLoop'; State = 'Disabled' },
+        [pscustomobject]@{ TaskName = 'HQ-Patrol-BigMoney'; State = 'Disabled' },
+        [pscustomobject]@{ TaskName = 'HQ-Patrol-Group'; State = 'Ready' },
+        [pscustomobject]@{ TaskName = 'Microsoft-Windows-Foo'; State = 'Disabled' }
+    )
+    $d1 = Get-ScanDomain -AllTasks $tasks -Pattern 'BigCompute-*' -Self 'BigCompute-LaneTaskGuard' -Explicit @() -OwnerFamilies $OwnerFamilies
+    Check 'S17 domain lists in-scope names and excludes the guard itself' (($d1.names -join ',') -eq 'BigCompute-GPU-IdleWatch,BigCompute-OrderSentinel')
+    Check 'S18 domain mode names the pattern' ($d1.mode -eq 'pattern:BigCompute-*')
+    Check 'S19 out-of-scope disabled counted but not adopted' (($d1.out_of_scope_disabled.Count -eq 2) -and (($d1.out_of_scope_disabled -join ',') -eq 'Bigmoney-IterationLoop,HQ-Patrol-BigMoney'))
+    Check 'S20 out-of-scope prefix summary groups by owner' (((Format-PrefixCounts -Counts $d1.out_prefix_counts)) -eq 'Bigmoney=1 HQ=1')
+    Check 'S21 non-owner family (Windows builtin) counted separately' ($d1.out_of_scope_other.Count -eq 1)
+    $d2 = Get-ScanDomain -AllTasks $tasks -Pattern 'BigCompute-*' -Self 'BigCompute-LaneTaskGuard' -Explicit @('Bigmoney-IterationLoop') -OwnerFamilies $OwnerFamilies
+    Check 'S22 explicit mode scans exactly the named task' (($d2.mode -eq 'explicit') -and (($d2.names -join ',') -eq 'Bigmoney-IterationLoop'))
+    $d3 = Get-ScanDomain -AllTasks $tasks -Pattern 'BigCompute-*' -Self '' -Explicit @() -OwnerFamilies $OwnerFamilies
+    Check 'S23 empty self keeps every task' ($d3.names.Count -eq 3)
+    Check 'S24 owner family match is case-insensitive' ((Test-OwnerFamily -Name 'bigmoney-loop' -Families $OwnerFamilies) -and -not (Test-OwnerFamily -Name 'Microsoft-Windows-X' -Families $OwnerFamilies))
 
     Remove-Item -LiteralPath $tmp -Recurse -Force -ErrorAction SilentlyContinue
 
@@ -247,10 +354,10 @@ if ($flagMode -ne 'resumed') {
 
 $whitelist = Get-Whitelist -Path $DisabledSidecar
 
-$all = @(Get-ScheduledTask -ErrorAction SilentlyContinue | Where-Object { $_.TaskName -like $TaskPattern } | Select-Object -ExpandProperty TaskName)
-$names = @($TaskName | Where-Object { $_ })
-if ($names.Count -eq 0) { $names = $all }
-$names = Select-Candidate -Names $names -Self $SelfTaskName
+$allTasks = @(Get-ScheduledTask -ErrorAction SilentlyContinue | Select-Object TaskName, State)
+$explicit = @($TaskName | Where-Object { $_ })
+$domain = Get-ScanDomain -AllTasks $allTasks -Pattern $TaskPattern -Self $SelfTaskName -Explicit $explicit -OwnerFamilies $OwnerFamilies
+$names = @($domain.names)
 
 $revived = New-Object System.Collections.Generic.List[string]
 $skippedWl = New-Object System.Collections.Generic.List[string]
@@ -281,8 +388,15 @@ foreach ($n in $names) {
 
 $runMode = if ($Apply) { 'APPLY' } else { 'DRY-RUN' }
 $verdict = if ($errors.Count -gt 0) { 'PARTIAL' } elseif ($revived.Count -gt 0) { 'REVIVED' } elseif ($disabledCount -eq 0) { 'ALL-READY' } else { 'WHITELISTED-ONLY' }
-Write-Output ("GUARD verdict={0} mode={1} flag=resumed scanned={2} disabled={3} acted={4} whitelisted_skipped={5} errors={6} log={7}" -f `
-    $verdict, $runMode, $names.Count, $disabledCount, $revived.Count, $skippedWl.Count, $errors.Count, $ReviveLog)
+Write-Output ("GUARD verdict={0} mode={1} flag=resumed scanned={2} disabled={3} acted={4} whitelisted_skipped={5} errors={6} log={7} domain_mode={8}" -f `
+    $verdict, $runMode, $names.Count, $disabledCount, $revived.Count, $skippedWl.Count, $errors.Count, $ReviveLog, $domain.mode)
+# domain list is printed unconditionally: a readiness verdict without its
+# domain cannot be checked, and "ALL-READY" over 6 tasks is not "fleet ready"
+Write-Output ("  domain=" + (($names | Sort-Object) -join ','))
+Write-Output ("  out_of_scope_disabled={0} acted=0 (owner families; read-only) prefixes={1}" -f `
+    $domain.out_of_scope_disabled.Count, (Format-PrefixCounts -Counts $domain.out_prefix_counts))
+Write-Output ("  out_of_scope_all_disabled={0} (incl. OS builtins; narrowing above is not a claim they are fine)" -f `
+    ($domain.out_of_scope_disabled.Count + $domain.out_of_scope_other.Count))
 if ($revived.Count -gt 0) { Write-Output ("  tasks=" + ($revived -join ',')) }
 if ($skippedWl.Count -gt 0) { Write-Output ("  whitelisted=" + ($skippedWl -join ',')) }
 

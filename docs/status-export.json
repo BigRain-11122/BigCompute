@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-11-01 12:50",
- "current_activity": "2026-11-01 12:4x 午班正轮：承办 CEO 11-01 10:4x 政策令 ⑤「四信号（hb/agent上报/claim/receipt）缺一不得称健康」——executor_liveness.py 增 signals 五态判读，四条信号各绑一个真实写入面；selftest 22/22 PASS；五机实跑 bm-a/bm-b/bm-c/bm-m ok=2/4、bm-d 0/4，无一机达 4/4（如实报，不凑绿）",
- "latest_artifact": "Tools/executor_liveness.py（signals 子命令·mtime 2026-11-01 12:4x·selftest 22/22） · state/d47-executor-signals-20261101.txt · state/executor-signals-20261101.json · qa/smoke-20261101-1249.log/.png",
- "next_milestone": "①四信号「机队级」读数的采集面归属（claim/receipt 是机器本地面，单机跑不出他机 4/4）→ 提案 BC-P-160 交 @HQ 主控汇总面（周轮 11-01 18:00 议程）②D-20261101-17 任务验收判据 v2 归 @HQ 工具域 11-02 12:00（本司判读器已兼容三面/四信号两口径）③D-20261101-16 停用留痕闸随守卫在役，集团单一复活清单 LANE-REGISTRY.json 归 @HQ 11-02 03:07"
+ "updated_at": "2026-11-01 18:16",
+ "current_activity": "2026-11-01 18:00 轮：T-20261101-49 done=D-20261101-20 判据缺陷承办（守卫结论必须带扫描域）：lane-task-guard.ps1 增 Get-ScanDomain 纯函数（mode/域内名单/域内禁用/域外禁用/owner 前缀计数）+ 每次运行无条件打印 domain= 与 out_of_scope_disabled= 两行 + 域外仅只读 acted=0；selftest 16→24/24（S17-S24：域外计数不采",
+ "latest_artifact": "qa/smoke-20261101-1816.png（mtime 2026-11-01 18:16） ｜ state/month-end-202610.json（N1 十月月末归集报告·sources_ok=10·机械链 9/9·mtime 2026-10-31 22:45）+ qa/smoke-20261031-2244.log/.png（QA 17/17 PASS）",
+ "next_milestone": "M4 接产对齐矩阵 blocked 项随开店/平台后台逐项销 ⬜（T-27 余项）（队列状态=**blocked 如实**（10-28 23:2x 令牌轮队列卫生）：销 ⬜ ） ｜ N1 月末归集已毕（10-31 22:4x）；下一步=①BC-P-155 self/borrowed 分列判据待批（采纳后下一个月末行起出 verdict 列）②M25/T26 室内烘焙样板间实弹=净窗一命令（BLOCKED 计数在册·净窗开后 ≤1 轮兑现）③D-20261031-05 ② lane8090 复活判定点 11-02 03:07"
 }
