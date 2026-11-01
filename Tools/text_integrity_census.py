@@ -28,11 +28,25 @@ Deliberately NOT in scope:
     excluded by extension, which also kills the self-reference class of
     false positive (this file would otherwise flag itself).
 
-Commands:
-  run [path ...] [--json-out PATH]   census (default: LIVING_TARGETS)
-  selftest                           fixtures; exit 0 = all pass
+D-20261102-03 (CEO 决策轮 00:00 班, @BigCompute) makes the default target set a
+mandate rather than a caller choice: the seven index families that a round reads
+as instructions (tasks / queue-main / proposals / HQ-FEEDBACK / decisions /
+orders / reflection-journal) are ALWAYS scanned, including the three group-level
+ledgers this repo only reads. Two consequences are encoded here:
 
-Exit codes: 0 TEXT-INTEGRITY-CLEAN, 7 NEEDS-FIX, 3 unreadable/bad usage.
+  - a missing EXTERNAL target is reported as ABSENT-EXTERNAL and does not turn
+    this repo's verdict red (other nodes legitimately lack the group tree);
+  - damage found in an EXTERNAL target is reported as EXTERNAL-DAMAGED and is
+    NOT repairable from here (cross-repo write is forbidden), so it never
+    silently counts as green either.
+
+--rounds-line emits the one-line summary the night round appends (D-03 ③).
+
+Commands:
+  run [path ...] [--json-out PATH] [--rounds-line]   census (default: DEFAULT_TARGETS)
+  selftest                                           fixtures; exit 0 = all pass
+
+Exit codes: 0 TEXT-INTEGRITY-CLEAN, 7 NEEDS-FIX (local), 3 unreadable/bad usage.
 """
 import argparse
 import io
@@ -49,18 +63,55 @@ except ImportError:  # standalone use keeps working with a local fallback
 
 QMARK_RUN_RE = re.compile(r"\?{2,}")
 
-# Files whose every line is read as an instruction/state by the next round.
-LIVING_TARGETS = [
-    "tasks/TASKS.md",
-    "state/queue/main.md",
+REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+def group_root():
+    """FluxGroup root; overridable for a machine that keeps it elsewhere."""
+    env = os.environ.get("FLUXGROUP_ROOT")
+    if env:
+        return env
+    return os.path.normpath(os.path.join(REPO_ROOT, os.pardir, os.pardir))
+
+
+# D-20261102-03 ①: the seven families a round reads as instructions. Fixed here
+# on purpose -- a caller must not be able to narrow the default away.
+REQUIRED_TARGETS = [
+    ("tasks", "tasks/TASKS.md"),
+    ("queue-main", "state/queue/main.md"),
+    ("proposals", "state/proposals.md"),
+    ("hq-feedback", "HQ-FEEDBACK.md"),
+    ("decisions", os.path.join(group_root(), "docs", "decisions.md")),
+    ("orders", os.path.join(group_root(), "docs", "orders.md")),
+    ("reflection-journal", os.path.join(group_root(), "cph4", "reflection-journal.md")),
+]
+REQUIRED_CATEGORIES = [c for c, _ in REQUIRED_TARGETS]
+
+# Extra local surfaces that are also read every round; kept from the 10-11 tool.
+SUPPLEMENTARY_TARGETS = [
     "state/queue/tech.md",
     "state/queue/explore.md",
-    "state/proposals.md",
-    "HQ-FEEDBACK.md",
     "state/runbook.md",
     "state/heartbeat.txt",
     "docs/status-export.json",
 ]
+
+DEFAULT_TARGETS = [p for _, p in REQUIRED_TARGETS] + SUPPLEMENTARY_TARGETS
+
+# Back-compat alias (earlier rounds and notes refer to LIVING_TARGETS).
+LIVING_TARGETS = DEFAULT_TARGETS
+
+
+def is_external(path):
+    """True only for files in the group tree that this repo reads but cannot write.
+
+    Everything else (including temp fixtures) is treated as local, so a damaged
+    local file always reds the verdict.
+    """
+    ap = os.path.abspath(path).lower()
+    gr = os.path.abspath(group_root()).lower()
+    rp = os.path.abspath(REPO_ROOT).lower()
+    return ap.startswith(gr + os.sep) and not ap.startswith(rp + os.sep)
 
 SKIP_EXTS = {".py", ".ps1", ".psm1"}
 
@@ -106,18 +157,23 @@ def classify_line(line):
 def census(paths):
     rows = []
     for p in paths:
+        ext = is_external(p)
         if os.path.splitext(p)[1].lower() in SKIP_EXTS:
-            rows.append({"path": p, "skipped": "code-file"})
+            rows.append({"path": p, "external": ext, "skipped": "code-file"})
             continue
         try:
             raw = open(p, "rb").read()
         except OSError as e:
-            rows.append({"path": p, "status": NOT_UTF8, "error": str(e)})
+            if ext and not os.path.exists(p):
+                rows.append({"path": p, "external": True, "status": "ABSENT-EXTERNAL"})
+            else:
+                rows.append({"path": p, "external": ext, "status": NOT_UTF8,
+                             "error": str(e)})
             continue
         try:
             text = raw.decode("utf-8")
         except UnicodeDecodeError as e:
-            rows.append({"path": p, "status": NOT_UTF8,
+            rows.append({"path": p, "external": ext, "status": NOT_UTF8,
                          "error": "%s at byte %d" % (e.reason, e.start)})
             continue
         lines = text.splitlines()
@@ -129,24 +185,48 @@ def census(paths):
                                 "qmark_runs": len(QMARK_RUN_RE.findall(line)),
                                 "preview": line.strip()[:110]})
         rows.append({
-            "path": p, "status": "DAMAGED" if damaged else "CLEAN",
+            "path": p, "external": ext,
+            "status": "DAMAGED" if damaged else "CLEAN",
             "bytes": len(raw), "lines": len(lines), "damaged_lines": damaged,
         })
     return rows
 
 
 def summarize(rows):
-    scanned = [r for r in rows if "skipped" not in r and "error" not in r]
-    bad = [r for r in scanned if r["status"] == "DAMAGED"]
-    unreadable = [r for r in rows if "error" in r]
-    total_lines = sum(len(r["damaged_lines"]) for r in bad)
-    verdict = "TEXT-INTEGRITY-CLEAN" if not bad and not unreadable else "TEXT-INTEGRITY-NEEDS-FIX"
+    readable = [r for r in rows
+                if "skipped" not in r and "error" not in r
+                and r.get("status") != "ABSENT-EXTERNAL"]
+    absent_ext = [r for r in rows if r.get("status") == "ABSENT-EXTERNAL"]
+    bad_local = [r for r in readable if r["status"] == "DAMAGED" and not r.get("external")]
+    bad_ext = [r for r in readable if r["status"] == "DAMAGED" and r.get("external")]
+    unreadable_local = [r for r in rows if "error" in r and not r.get("external")]
+    unreadable_ext = [r for r in rows if "error" in r and r.get("external")]
+
+    if bad_local or unreadable_local:
+        verdict = "TEXT-INTEGRITY-NEEDS-FIX"
+    elif bad_ext or unreadable_ext:
+        # Never silently green: damage exists, it is just not ours to repair.
+        verdict = "TEXT-INTEGRITY-EXTERNAL-DAMAGED"
+    else:
+        verdict = "TEXT-INTEGRITY-CLEAN"
+
+    scanned_paths = {os.path.abspath(r["path"]) for r in readable}
+    covered = [c for c, p in REQUIRED_TARGETS
+               if os.path.abspath(p) in scanned_paths]
     return {
         "verdict": verdict,
-        "files_scanned": len(scanned),
-        "files_damaged": len(bad),
-        "damaged_lines": total_lines,
-        "files_unreadable": len(unreadable),
+        "files_scanned": len(readable),
+        "files_damaged": len(bad_local),
+        "damaged_lines": sum(len(r["damaged_lines"]) for r in bad_local),
+        "external_files_damaged": len(bad_ext),
+        "external_damaged_lines": sum(len(r["damaged_lines"]) for r in bad_ext),
+        "files_unreadable": len(unreadable_local),
+        "external_unreadable": len(unreadable_ext),
+        "absent_external": [r["path"] for r in absent_ext],
+        "categories_covered": covered,
+        "categories_required": REQUIRED_CATEGORIES,
+        "categories_covered_n": len(covered),
+        "categories_required_n": len(REQUIRED_CATEGORIES),
         "rows": rows,
     }
 
@@ -211,6 +291,38 @@ def _selftest():
     os.unlink(tmp)
     run("T10 determinism", a == b)
 
+    # S11 (D-20261102-03 ④) the default target set covers all seven mandated
+    # families -- and the three group ledgers are in it, not behind a flag.
+    run("S11 default-covers-7",
+        len(REQUIRED_CATEGORIES) == 7
+        and REQUIRED_CATEGORIES == [c for c, _ in REQUIRED_TARGETS]
+        and all(p in DEFAULT_TARGETS for _, p in REQUIRED_TARGETS),
+        "categories=" + ",".join(REQUIRED_CATEGORIES))
+
+    # S11b: the seven required entries resolve to the expected file names
+    expect = {"tasks": "TASKS.md", "queue-main": "main.md",
+              "proposals": "proposals.md", "hq-feedback": "HQ-FEEDBACK.md",
+              "decisions": "decisions.md", "orders": "orders.md",
+              "reflection-journal": "reflection-journal.md"}
+    ok_names = all(os.path.basename(p) == expect[c] for c, p in REQUIRED_TARGETS)
+    run("S11b default-filenames", ok_names, str([os.path.basename(p) for _, p in REQUIRED_TARGETS]))
+
+    # S12 external damage is visible but never counted as this repo's damage
+    s = summarize([{"path": os.path.join(group_root(), "docs", "x.md"),
+                    "external": True, "status": "DAMAGED", "lines": 2,
+                    "damaged_lines": [{"line": 1}]}])
+    run("S12 external-visible-not-local",
+        s["verdict"] == "TEXT-INTEGRITY-EXTERNAL-DAMAGED"
+        and s["files_damaged"] == 0 and s["external_files_damaged"] == 1,
+        s["verdict"])
+
+    # S13 an absent external target is reported, not treated as a failure
+    s = summarize([{"path": os.path.join(group_root(), "docs", "nope.md"),
+                    "external": True, "status": "ABSENT-EXTERNAL"}])
+    run("S13 absent-external-ok",
+        s["verdict"] == "TEXT-INTEGRITY-CLEAN" and len(s["absent_external"]) == 1,
+        s["verdict"])
+
     passed = sum(1 for _, ok, _ in checks if ok)
     for name, ok, detail in checks:
         _print_safe("  [%s] %s%s" % ("PASS" if ok else "FAIL", name, ("  " + detail) if detail else ""))
@@ -218,40 +330,65 @@ def _selftest():
     return 0 if passed == len(checks) else 1
 
 
+def rounds_line(s):
+    """One line for state/rounds.log (D-20261102-03 ③). Deterministic."""
+    return ("textintegrity:%s cats=%d/%d files=%d damaged_files=%d damaged_lines=%d"
+            " ext_damaged=%d ext_absent=%d unreadable=%d"
+            % ("CLEAN" if s["verdict"] == "TEXT-INTEGRITY-CLEAN" else
+               ("EXTERNAL-DAMAGED" if s["verdict"] == "TEXT-INTEGRITY-EXTERNAL-DAMAGED"
+                else "NEEDS-FIX"),
+               s["categories_covered_n"], s["categories_required_n"],
+               s["files_scanned"], s["files_damaged"], s["damaged_lines"],
+               s["external_files_damaged"], len(s["absent_external"]),
+               s["files_unreadable"]))
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description="line-level damage census for living index files")
     ap.add_argument("command", choices=["run", "selftest"])
     ap.add_argument("paths", nargs="*")
     ap.add_argument("--json-out")
+    ap.add_argument("--rounds-line", action="store_true",
+                    help="also print the one-line rounds.log summary (D-03 ③)")
     args = ap.parse_args(argv)
 
     if args.command == "selftest":
         return _selftest()
 
-    paths = args.paths or LIVING_TARGETS
+    paths = args.paths or DEFAULT_TARGETS
     s = summarize(census(paths))
     for r in s["rows"]:
         if "skipped" in r:
             _print_safe("SKIP  %s (%s)" % (r["path"], r["skipped"]))
             continue
-        if "error" in r:
-            _print_safe("ERR   %s  %s" % (r["path"], r["error"]))
+        if r.get("status") == "ABSENT-EXTERNAL":
+            _print_safe("ABSENT %-30s (external target not on this node)" % r["path"])
             continue
-        _print_safe("%-5s %-32s lines=%-5d damaged=%d"
-                    % (r["status"], r["path"], r["lines"], len(r["damaged_lines"])))
+        if "error" in r:
+            _print_safe("ERR   %s  %s%s" % (r["path"], r["error"],
+                                            "  [external/read-only]" if r.get("external") else ""))
+            continue
+        _print_safe("%-5s %-32s lines=%-5d damaged=%d%s"
+                    % (r["status"], os.path.basename(r["path"]), r["lines"],
+                       len(r["damaged_lines"]), "  [external/read-only]" if r.get("external") else ""))
         for d in r["damaged_lines"][:6]:
             _print_safe("        L%-5d %-22s q=%-3d %s"
                         % (d["line"], ",".join(d["classes"]), d["qmark_runs"], d["preview"]))
         if len(r["damaged_lines"]) > 6:
             _print_safe("        ... %d more damaged lines" % (len(r["damaged_lines"]) - 6))
-    _print_safe("VERDICT %s files_scanned=%d files_damaged=%d damaged_lines=%d unreadable=%d"
+    _print_safe("VERDICT %s files_scanned=%d files_damaged=%d damaged_lines=%d"
+                " ext_damaged_files=%d ext_absent=%d unreadable=%d cats=%d/%d"
                 % (s["verdict"], s["files_scanned"], s["files_damaged"],
-                   s["damaged_lines"], s["files_unreadable"]))
+                   s["damaged_lines"], s["external_files_damaged"],
+                   len(s["absent_external"]), s["files_unreadable"],
+                   s["categories_covered_n"], s["categories_required_n"]))
+    if args.rounds_line:
+        _print_safe("ROUNDS-LINE " + rounds_line(s))
     if args.json_out:
         with io.open(args.json_out, "w", encoding="utf-8") as fh:
             json.dump(s, fh, ensure_ascii=False, indent=2)
         _print_safe("JSON  %s" % args.json_out)
-    return 0 if s["verdict"] == "TEXT-INTEGRITY-CLEAN" else 7
+    return 7 if s["verdict"] == "TEXT-INTEGRITY-NEEDS-FIX" else 0
 
 
 if __name__ == "__main__":

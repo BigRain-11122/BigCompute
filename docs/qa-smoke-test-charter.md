@@ -61,3 +61,4 @@
 - GPU 读数不可得=GPU-UNREADABLE，**不**买额外预算也不判绿；selftest `selftest_gpu_contention` 七夹具（G1-G7）。
 
 （v1.0 完·2026-10-04 OSLoop 哨兵轮·M49 步②·三.19 增补 2026-10-31 T178 轮）
+- 19. 一线索引文字完好性（M93 / D-20261102-03·11-02 立）：跑 	ext_integrity_census.run(DEFAULT_TARGETS)——默认目标固定为受令 7 类（tasks/queue-main/proposals/HQ-FEEDBACK/decisions/orders/reflection-journal），禁靠调用方传参收窄；判读为**顾问档**：本地/外部损坏行均以 loc:file:line、ext:file:line 点名上报且不红门（历史损坏不得阻断产线），但拿不到 summary（异常/不可读）=UNVERIFIED 一律 FAIL（读不到不得当绿）。判据=selftest 五夹具（S1 clean PASS／S2 本地损坏顾问档但点名／S3 外部损坏 ext 标签／S4 无 summary FAIL／S5 默认覆盖 7 类）+ live 出 cats=n/7 与损坏行清单。

@@ -2106,6 +2106,95 @@ def selftest_qa_version():
     return 0 if all(results) else 1
 
 
+def text_integrity_judge(s):
+    """Probe no.19 verdict (M93 / D-20261102-03 ③): advisory, never silent.
+
+    Damaged rows are reported with file:line and never block the round -- old
+    damage must not stop the line -- but a census that cannot produce a summary
+    is UNVERIFIED and reds, because "I could not read" must never look green.
+    """
+    if not isinstance(s, dict) or "verdict" not in s:
+        return False, "verdict=UNVERIFIED no summary"
+    v = s["verdict"]
+    cats = "%d/%d" % (s.get("categories_covered_n", 0),
+                      s.get("categories_required_n", 0))
+    head = "verdict=%s cats=%s files=%s" % (v, cats, s.get("files_scanned", 0))
+    hits = []
+    for r in s.get("rows") or []:
+        if r.get("status") != "DAMAGED":
+            continue
+        tag = "ext" if r.get("external") else "loc"
+        for d in r.get("damaged_lines") or []:
+            hits.append("%s:%s:%d" % (tag, os.path.basename(r.get("path", "?")),
+                                      d.get("line", 0)))
+    if v == "TEXT-INTEGRITY-CLEAN":
+        return True, head + " damaged=0"
+    return True, head + " WARN-damaged=%d %s" % (len(hits), ",".join(hits[:6]))
+
+
+def probe_text_integrity(root=None):
+    """Probe no.19 (M93 / D-20261102-03): living-index damage visible each round.
+
+    Runs the exact default target set the night round censuses (the seven
+    mandated index families, incl. the three group ledgers), so a row born
+    flattened shows up in this round's own log instead of waiting for someone
+    to remember to run the tool.
+    """
+    if HERE not in sys.path:
+        sys.path.insert(0, HERE)
+    try:
+        import text_integrity_census as tic
+        s = tic.summarize(tic.census(tic.DEFAULT_TARGETS))
+    except Exception as e:  # noqa: BLE001 - probe must report, not crash
+        return False, "text_integrity_census raised: %r" % e
+    return text_integrity_judge(s)
+
+
+def selftest_text_integrity():
+    """M93 fixtures: clean / local damage / external damage / unreadable."""
+    results = []
+
+    def check(name, cond):
+        results.append(bool(cond))
+        print(("PASS " if cond else "FAIL ") + name)
+
+    clean = {"verdict": "TEXT-INTEGRITY-CLEAN", "files_scanned": 12,
+             "categories_covered_n": 7, "categories_required_n": 7, "rows": []}
+    ok, det = text_integrity_judge(clean)
+    check("S1 clean -> PASS cats=7/7", ok and "damaged=0" in det and "cats=7/7" in det)
+
+    local_bad = dict(clean, verdict="TEXT-INTEGRITY-NEEDS-FIX",
+                     rows=[{"path": os.path.join(ROOT, "tasks", "TASKS.md"),
+                            "status": "DAMAGED", "external": False,
+                            "damaged_lines": [{"line": 53}]}])
+    ok, det = text_integrity_judge(local_bad)
+    check("S2 local damage -> advisory PASS but named",
+          ok and "WARN-damaged=1" in det and "loc:TASKS.md:53" in det)
+
+    ext_bad = dict(clean, verdict="TEXT-INTEGRITY-EXTERNAL-DAMAGED",
+                   rows=[{"path": os.path.join(os.path.dirname(ROOT),
+                                               "docs", "orders.md"),
+                          "status": "DAMAGED", "external": True,
+                          "damaged_lines": [{"line": 7}]}])
+    ok, det = text_integrity_judge(ext_bad)
+    check("S3 external damage tagged ext", ok and "ext:orders.md:7" in det)
+
+    ok, det = text_integrity_judge(None)
+    check("S4 no summary -> FAIL/UNVERIFIED", (not ok) and "UNVERIFIED" in det)
+
+    # 7 categories must be the default set, not a caller choice
+    if HERE not in sys.path:
+        sys.path.insert(0, HERE)
+    import text_integrity_census as tic
+    check("S5 default set covers 7 families",
+          len(tic.REQUIRED_CATEGORIES) == 7
+          and all(p in tic.DEFAULT_TARGETS for _, p in tic.REQUIRED_TARGETS))
+
+    print("selftest text-integrity verdict: %d/%d PASS"
+          % (len([r for r in results if r]), len(results)))
+    return 0 if all(results) else 1
+
+
 def main():
     if len(sys.argv) > 1 and sys.argv[1] == "--selftest":
         return (selftest_tails() | selftest_coder_class()
@@ -2113,7 +2202,7 @@ def main():
                 | selftest_serve_artifacts() | selftest_qa_functional()
                 | selftest_scan_roots() | selftest_heartbeat_tokens()
                 | selftest_gpu_contention() | selftest_ledger_parallel()
-                | selftest_qa_version())
+                | selftest_qa_version() | selftest_text_integrity())
     os.makedirs(QA_DIR, exist_ok=True)
     ts = datetime.datetime.now().strftime("%Y%m%d-%H%M")
     log_path = os.path.join(QA_DIR, "smoke-%s.log" % ts)
@@ -2141,7 +2230,9 @@ def main():
               ("ledger parallel fused-row census (T177)",
                probe_ledger_parallel),
               ("resident QA version drift (T184)",
-               probe_resident_qa_version)]
+               probe_resident_qa_version),
+              ("living-index text integrity (M93/D-20261102-03)",
+               probe_text_integrity)]
     lines, passed = [], 0
     lines.append("BigCompute QA smoke test %s (orders L254 / charter v1)"
                  % ts)
@@ -2154,7 +2245,7 @@ def main():
         lines.append(detail)
         print("[%s] %s" % ("PASS" if ok else "FAIL", label))
     lines.append("")
-    verdict = "smoke verdict: %d/%d PASS (charter 4 + T25 + E41 + BC-P-45 no.8 + T122 no.9 + T132 no.10 + T133 no.11 + T138 no.12 + T140 no.13 + T143 no.14 + T145 no.15 + T153 no.16 + T161 no.17 + T168 no.18 + T177 no.20 + T184 no.21 probes)" % (
+    verdict = "smoke verdict: %d/%d PASS (charter 4 + T25 + E41 + BC-P-45 no.8 + T122 no.9 + T132 no.10 + T133 no.11 + T138 no.12 + T140 no.13 + T143 no.14 + T145 no.15 + T153 no.16 + T161 no.17 + T168 no.18 + T177 no.20 + T184 no.21 + M93 no.19 probes)" % (
         passed, len(probes))
     lines.append(verdict)
     with open(log_path, "w", encoding="utf-8") as f:
