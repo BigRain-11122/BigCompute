@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-11-03 07:05",
- "current_activity": "2026-11-03 07:0x 令牌轮：模型引用普查假红治理 —— model_ref_drift_check 增家族闸 J6（字典键/端口/构建名不再冒充模型引用，误判类不静默丢→NOISE 计数+样例），selftest 13→19/19 PASS，实扫 dangling 21→10、noise=14；冒烟 20/23 PASS（余 no.22 已知历史面）[via BigCompute-OSLoop]",
- "latest_artifact": "Tools/model_ref_drift_check.py（+J6 家族闸/noise 回收，selftest 19/19）｜state/model-ref-drift-20261103-065854.json（files=14 refs=50 dangling=10 noise=14）｜qa/smoke-20261103-0700.log/.png｜HQ-FEEDBACK 07:0x 日清条+T191/BC-P-174 登记",
- "next_milestone": "①no.8/no.14 本轮已修并在下一轮冒烟复核 ②no.22 残红随 7 日窗自然滚出（BC-P-168 待批）③BC-P-174 夹具 vs 活调用引用分级（待批）④M25/T26 室内烘焙样板间实弹（净窗一命令·BLOCKED 计数在册）"
+ "updated_at": "2026-11-03 08:05",
+ "current_activity": "2026-11-03 08:0x 令牌轮：回执内容指纹对账面 —— cpu_effective_hours 增声明指纹对账（声明 sha 与盘上不一致即 sha_mismatch 剔除工时并升 ATTENTION，非指纹值不假红），报告常打印 sha_coverage；selftest 18→22/22 PASS [via BigCompute-OSLoop]",
+ "latest_artifact": "Tools/cpu_effective_hours.py（+声明指纹对账/sha_coverage，selftest 22/22）｜state/cpu-eff-sha-coverage-20261103.txt（1d counted=19 net=0.113h／7d counted=31 net=0.148h／declared=0 of 222 回执）｜state/cpu-eff-hours-1d/7d-20261103.json｜qa/smoke-20261103-0735.log/.png（21/23 PASS；no.22 历史红数值面未变：31/0.148h/5/4）",
+ "next_milestone": "①写侧收口=回执必带产物指纹（BC-P-175/tech T192，规格可即写、落地随 @HQ 采纳）②no.22 残红随 7 日窗自然滚出（BC-P-168 待批）③BC-P-174 夹具 vs 活调用引用分级（待批）④M25/T26 室内烘焙样板间实弹（净窗一命令·BLOCKED 计数在册）"
 }

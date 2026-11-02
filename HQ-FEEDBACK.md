@@ -529,3 +529,8 @@ P2 两处如实：①产物落共享 out 而非原 D:\FleetWorker\review（该�
 ## 2026-11-03 07:0x 令牌轮（模型引用普查假红治理·产品优先律 2 分件）
 P0 无。P1 无。**实物 2 分**=`Tools/model_ref_drift_check.py` 增家族闸 J6：`"state:rounds_ago"`／`"host:8090"`／`"a:latest"`／`"llamacpp-b11429"` 这类字典键、端口、构建名不再冒充模型引用，误判类不静默丢（NOISE 计数+样例入报告）；selftest 13→**19/19 PASS**，实扫 dangling **21→10**、noise=14 显式列出。
 P2 余 10 条 DANGLING 逐行读码判读=夹具/历史探针引用（cost_contract_census 夹具假数据、serve_sla_baseline 断言历史日志模型名、model_impact_probe 对象=已删模型），非在役调用断链——不豁免不伪造，转 tech 新行做「夹具 vs 活调用」分类；心跳 `model_drift=DRIFT(m=2,a=0)` 实况=bge-m3:latest／qwen3.8:27b 两模型在 10-16 基线后已剪除，非读数故障。
+
+## 2026-11-03 08:0x 令牌轮（回执内容指纹对账面·产品优先律 2 分件）
+P0 无。P1 无。**实物 2 分**=`Tools/cpu_effective_hours.py` 补声明指纹对账：回执若声明 sha/sha256，必须与盘上产物一致，不一致即 `sha_mismatch` 剔除工时并把 verdict 升 ATTENTION；非指纹形态的声明值一律当未声明（不假红）；报告常打印 `sha_coverage: declared/matched/mismatched`。selftest 18→**22/22 PASS**。
+P1 **读数结论（诚实）**：全量 **222 件回执里声明产物指纹的是 0 件**——整本「CPU 有效工时」账只能证明「某路径上此刻有个文件」，不能证明「就是回执说的那一件」；11-03 06:2x 已实证同名同字节数内容不同（full_mv_v718.mp4 现 7dac8d4c… vs 10-29 回执 79ed8614…）。本司只做读侧闸与测量，写侧要求（回执必带 sha256）转 BC-P-175 / tech T192，不代改他机回执。
+P2 实跑 1d counted=19 net=0.113h、7d counted=31 net=0.148h（窗口滑动与上轮 26/33 不同属时点差，非回归；7d 仍 5 missing + 4 copy 如实红）；证据 state/cpu-eff-sha-coverage-20261103.txt。

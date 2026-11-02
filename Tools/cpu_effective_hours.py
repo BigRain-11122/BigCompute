@@ -44,7 +44,12 @@ HASH_CAP = 16 * 1024 * 1024  # 超过 16MB 只取前 1MB+size 做指纹，避免
 
 BUCKETS = ("verified", "remote_unverif", "missing_local", "rc_fail",
            "replay", "copy", "zero_seconds", "no_deliverable",
-           "bad_json", "not_work_receipt", "unparsed")
+           "bad_json", "not_work_receipt", "unparsed", "sha_mismatch")
+
+# 回执可能用这些键声明产物内容指纹（BC-P-173：文件名与大小都不变、内容变了时，
+# 只有对账声明指纹才能区分「同一件被重新编码」与「换了另一个文件」）
+SHA_KEYS = ("sha", "sha256", "deliverable_sha256", "artifact_sha256")
+SHA_MIN_HEX = 7
 
 
 def _out(text):
@@ -63,6 +68,42 @@ def _sha(path):
             h.update(chunk)
             left -= len(chunk)
     return "%s:%d" % (h.hexdigest()[:16], size)
+
+
+def _norm_sha(value):
+    """回执声明的指纹 → 小写十六进制串；不像指纹的值一律当没声明（不假红）。"""
+    if not isinstance(value, str):
+        return ""
+    text = value.strip().lower()
+    if text.startswith("0x"):
+        text = text[2:]
+    text = text.split(":")[0]  # 兼容 "hex:size" 与 "sha256=hex"
+    if len(text) < SHA_MIN_HEX:
+        return ""
+    if any(ch not in "0123456789abcdef" for ch in text):
+        return ""
+    return text
+
+
+def declared_sha(doc):
+    """取回执声明的内容指纹：顶层已知键优先，其次 deliverables[] 里同路径条目。"""
+    for key in SHA_KEYS:
+        norm = _norm_sha(doc.get(key))
+        if norm:
+            return norm
+    items = doc.get("deliverables")
+    if isinstance(items, list):
+        want = str(doc.get("deliverable") or "")
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            if want and str(item.get("path") or "") not in ("", want):
+                continue
+            for key in SHA_KEYS:
+                norm = _norm_sha(item.get(key))
+                if norm:
+                    return norm
+    return ""
 
 
 def parse_ts(value):
@@ -106,6 +147,7 @@ def normalize(doc):
             "deliverable": str(doc.get("path") or ""),
             "rc_ok": state in ("DONE", "OK", "PASS"),
             "rc": state,
+            "declared_sha": declared_sha(doc),
         }
 
     rc = doc.get("rc")
@@ -123,6 +165,7 @@ def normalize(doc):
         "deliverable": str(doc.get("deliverable") or ""),
         "rc_ok": rc_ok,
         "rc": rc,
+        "declared_sha": declared_sha(doc),
     }
 
 
@@ -186,6 +229,9 @@ def evaluate(records, root, host, days=None, node=None, now=None):
     rows, skipped = [], []
     seen_keys = {}
     by_deliverable = {}
+    sha_declared = 0
+    sha_match = 0
+    sha_mismatch = []
 
     for rec in records:
         if node and rec["node"] != node:
@@ -228,6 +274,21 @@ def evaluate(records, root, host, days=None, node=None, now=None):
             skipped.append((rec, "zero-seconds"))
             continue
 
+        # 回执若声明了产物指纹，必须与盘上这一件对得上：文件在、大小也一样，
+        # 但内容已被重新编码/替换时，这条回执核销的不是它声称的那一件（BC-P-173）。
+        actual_hex = digest.split(":")[0] if digest else ""
+        declared = rec.get("declared_sha") or ""
+        if declared:
+            sha_declared += 1
+            if not (actual_hex.startswith(declared[:len(actual_hex)])
+                    or declared.startswith(actual_hex)):
+                buckets["sha_mismatch"] += 1
+                sha_mismatch.append(rec)
+                skipped.append((rec, "SHA-MISMATCH declared=%s actual=%s"
+                                % (declared[:16], actual_hex)))
+                continue
+            sha_match += 1
+
         key = (rec["id"], rec["node"], digest)
         if key in seen_keys:
             buckets["replay"] += 1
@@ -243,6 +304,8 @@ def evaluate(records, root, host, days=None, node=None, now=None):
             "hours": round(rec["seconds"] / 3600.0, 4),
             "deliverable": rec["deliverable"],
             "sha": digest,
+            "sha_declared": declared,
+            "sha_match": True if declared else None,
             "receipt": rec["receipt"],
             "schema": rec["schema"],
             "state": "VERIFIED",
@@ -278,7 +341,8 @@ def evaluate(records, root, host, days=None, node=None, now=None):
         slot["seconds"] = round(slot["seconds"] + row["seconds"], 1)
 
     verdict = "ATTENTION" if (buckets["missing_local"] or buckets["copy"]
-                              or buckets["replay"] or buckets["zero_seconds"]) else "CLEAN"
+                              or buckets["replay"] or buckets["zero_seconds"]
+                              or buckets["sha_mismatch"]) else "CLEAN"
     payload = {
         "tool": "cpu_effective_hours",
         "generated_at": datetime.now().isoformat(timespec="seconds"),
@@ -295,6 +359,13 @@ def evaluate(records, root, host, days=None, node=None, now=None):
             "net_hours": round(net_seconds / 3600.0, 3),
         },
         "buckets": buckets,
+        "sha_coverage": {
+            "declared": sha_declared,
+            "matched": sha_match,
+            "mismatched": len(sha_mismatch),
+            "note": ("declared=n 表示有多少条回执声明了产物内容指纹；"
+                     "declared=0 说明整批回执无法区分「同一件被重新编码」与「换了另一个文件」"),
+        },
         "per_node": per_node,
         "rows": rows,
         "copies": [{"id": r["id"], "node": r["node"], "copy_of": r["copy_of"],
@@ -320,6 +391,10 @@ def report(payload, show_list=False):
             b["missing_local"], b["rc_fail"], b["replay"], b["copy"],
             b["zero_seconds"], b["no_deliverable"], b["bad_json"],
             b["not_work_receipt"]))
+    cover = payload.get("sha_coverage") or {}
+    _out("sha_coverage: declared=%s matched=%s mismatched=%s"
+         % (cover.get("declared", "?"), cover.get("matched", "?"),
+            cover.get("mismatched", "?")))
     for node in sorted(payload["per_node"]):
         slot = payload["per_node"][node]
         _out("  node=%-6s counted=%-3d effective_h=%.3f"
@@ -467,6 +542,41 @@ def selftest():
              p["buckets"]["no_deliverable"] == 1 and p["totals"]["counted"] == 4)
         want("S17 QC 结果件（非执行回执）单列 not_work_receipt",
              len(other) == 1 and p["buckets"]["not_work_receipt"] == 0)
+
+        # ---- 声明指纹对账面（BC-P-173）：隔离子树，不扰上面 17 条的计数 ----
+        sha_root = os.path.join(tmp, "sha", "root")
+        sdir = os.path.join(sha_root, RECEIPT_REL)
+        os.makedirs(sdir, exist_ok=True)
+        for name, body in (("sh1.json", {"v": "one"}), ("sh2.json", {"v": "two"}),
+                           ("sh3.json", {"v": "three"})):
+            _write(os.path.join(sha_root, "out", name), body)
+        real1 = _sha(os.path.join(sha_root, "out", "sh1.json")).split(":")[0]
+        rec_ok = _lane("J-SHA-OK", "bm-a", 60, "out/sh1.json", fresh)
+        rec_ok["sha"] = real1[:8]                      # 回执声明截断前缀也算命中
+        _write(os.path.join(sdir, "s1.json"), rec_ok)
+        rec_bad = _lane("J-SHA-BAD", "bm-a", 120, "out/sh2.json", fresh)
+        rec_bad["sha256"] = "deadbeefdeadbeef"         # 文件在、大小不变，内容不是那一件
+        _write(os.path.join(sdir, "s2.json"), rec_bad)
+        rec_junk = _lane("J-SHA-JUNK", "bm-a", 30, "out/sh3.json", fresh)
+        rec_junk["sha"] = "not-a-hash"                 # 不像指纹 → 当没声明，不假红
+        _write(os.path.join(sdir, "s3.json"), rec_junk)
+
+        srecs, _sbad, _sother = load_receipts(sdir)
+        sp = evaluate(srecs, sha_root, "bm-a", days=1, now=now)
+        want("S19 声明指纹与盘上一致（含截断前缀）→ 计入",
+             any(r["id"] == "J-SHA-OK" and r["sha_match"] for r in sp["rows"]))
+        want("S20 声明指纹与盘上不一致 → sha_mismatch 剔除+ATTENTION",
+             sp["buckets"]["sha_mismatch"] == 1
+             and any("SHA-MISMATCH" in why for _r, why in
+                     [(None, x["reason"]) for x in sp["skipped"]])
+             and sp["verdict"] == "ATTENTION")
+        want("S21 非指纹形态的声明值不假红（按未声明计）",
+             any(r["id"] == "J-SHA-JUNK" for r in sp["rows"])
+             and sp["totals"]["counted"] == 2)
+        want("S22 指纹覆盖率显式出数（declared=2 matched=1 mismatched=1）",
+             sp["sha_coverage"]["declared"] == 2
+             and sp["sha_coverage"]["matched"] == 1
+             and sp["sha_coverage"]["mismatched"] == 1)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 
