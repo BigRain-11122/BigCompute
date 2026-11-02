@@ -1,4 +1,5 @@
 {
- "latest_artifact": "state/month-end-202610.json（N1 十月月末归集报告·sources_ok=10·机械链 9/9·mtime 2026-10-31 22:45）+ qa/smoke-20261031-2244.log/.png（QA 17/17 PASS）",
- "next_milestone": "N1 月末归集已毕（10-31 22:4x）；下一步=①BC-P-155 self/borrowed 分列判据待批（采纳后下一个月末行起出 verdict 列）②M25/T26 室内烘焙样板间实弹=净窗一命令（BLOCKED 计数在册·净窗开后 ≤1 轮兑现）③D-20261031-05 ② lane8090 复活判定点 11-02 03:07"
+ "current_activity": "2026-11-03 03:2x 夜班轮：serve 瞬态判别常驻化 —— qa_smoke 新增 no.23（settle 窗口三态：UP 绿／DEGRADED 与 DOWN 红并点名 attempts／读不到 UNVERIFIED 不假绿），selftest 5/5 PASS、live no.23 PASS；同日结案上轮两 P1（orders.md 冲突块 0 命中、no.22 历史红留档）[via BigCompute-OSLoop]",
+ "latest_artifact": "qa/smoke-20261103-0317.log/.png（21/22 PASS，新探针 no.23 绿）｜Tools/qa_smoke.py（+serve_health_judge/probe/selftest，SERVE_SETTLE_S=20）｜docs/qa-smoke-test-charter.md §三 第 23 条",
+ "next_milestone": "①no.22 残红自然滚出 7 日窗（BC-P-168 提案待批，真实产出落受管目录）②tech T189 v718 质检链三步重跑（约 73s CPU，产物落 repo 受管目录）③M25/T26 室内烘焙样板间实弹（净窗一命令，BLOCKED 计数在册）"
 }

@@ -2323,6 +2323,87 @@ def selftest_receipt_product_law():
     return 0 if all(results) else 1
 
 
+SERVE_SETTLE_S = 20.0
+
+
+def serve_health_judge(result):
+    """Probe no.23 (T188): serve death may only be declared after a settle window.
+
+    The 22:43 P1 false alarm (URLError read as OLLAMA DOWN while the process was
+    alive 55s later) is the class this guards. Here the settle-window probe runs
+    every round: UP is green, DEGRADED (answers but cannot work) and DOWN
+    (window exhausted) are both red, and an unreadable payload never reads green.
+    """
+    if not isinstance(result, dict) or "verdict" not in result:
+        return False, "verdict=UNVERIFIED no summary"
+    v = result.get("verdict")
+    head = ("verdict=%s attempts=%s settle_s=%s recovered_after_s=%s models=%d"
+            % (v, result.get("attempts"), result.get("settle_s"),
+               result.get("recovered_after_s"), len(result.get("models") or [])))
+    reasons = [str(r) for r in (result.get("reasons") or [])]
+    if v == "UP":
+        return True, head
+    if reasons:
+        head += " reasons=" + "|".join(reasons[:3])
+    return False, head
+
+
+def probe_serve_health():
+    """Probe no.23 (T188): live Ollama serve verdict with a settle window."""
+    if HERE not in sys.path:
+        sys.path.insert(0, HERE)
+    try:
+        import serve_health as sh
+    except Exception as e:  # noqa: BLE001 - probe must report, not crash
+        return False, "serve_health import raised: %r" % e
+    try:
+        result = sh.run(settle_s=SERVE_SETTLE_S)
+    except Exception as e:  # noqa: BLE001
+        return False, "serve_health.run raised: %r" % e
+    return serve_health_judge(result)
+
+
+def selftest_serve_health():
+    """T188 fixtures: UP / window-exhausted DOWN / DEGRADED / no summary."""
+    results = []
+
+    def check(name, cond):
+        results.append(bool(cond))
+        print(("PASS " if cond else "FAIL ") + name)
+
+    up = {"verdict": "UP", "attempts": 1, "settle_s": 20.0,
+          "recovered_after_s": None, "models": ["qwen3:4b-instruct"],
+          "reasons": []}
+    ok, det = serve_health_judge(up)
+    check("S1 UP -> PASS", ok and "verdict=UP" in det and "models=1" in det)
+
+    rec = dict(up, attempts=3, recovered_after_s=6.4)
+    ok, det = serve_health_judge(rec)
+    check("S2 transient recovery still UP -> PASS with settled seconds",
+          ok and "recovered_after_s=6.4" in det)
+
+    down = {"verdict": "DOWN", "attempts": 7, "settle_s": 20.0,
+            "recovered_after_s": None, "models": [],
+            "reasons": ["unreachable after 7 attempts / 20.0s of a 20.0s settle window"]}
+    ok, det = serve_health_judge(down)
+    check("S3 window exhausted -> DOWN fails and names attempts",
+          (not ok) and "verdict=DOWN" in det and "attempts=7" in det)
+
+    deg = {"verdict": "DEGRADED", "attempts": 1, "settle_s": 20.0,
+           "recovered_after_s": None, "models": [],
+           "reasons": ["no models installed (/api/tags returned 0)"]}
+    ok, det = serve_health_judge(deg)
+    check("S4 DEGRADED -> FAIL and reason surfaced",
+          (not ok) and "verdict=DEGRADED" in det and "no models" in det)
+
+    ok, det = serve_health_judge(None)
+    check("S5 no summary -> FAIL/UNVERIFIED", (not ok) and "UNVERIFIED" in det)
+
+    print("selftest serve-health verdict: %d/%d PASS"
+          % (len([r for r in results if r]), len(results)))
+    return 0 if all(results) else 1
+
+
 def main():
     if len(sys.argv) > 1 and sys.argv[1] == "--selftest":
         return (selftest_tails() | selftest_coder_class()
@@ -2331,7 +2412,7 @@ def main():
                 | selftest_scan_roots() | selftest_heartbeat_tokens()
                 | selftest_gpu_contention() | selftest_ledger_parallel()
                 | selftest_qa_version() | selftest_text_integrity()
-                | selftest_receipt_product_law())
+                | selftest_receipt_product_law() | selftest_serve_health())
     os.makedirs(QA_DIR, exist_ok=True)
     ts = datetime.datetime.now().strftime("%Y%m%d-%H%M")
     log_path = os.path.join(QA_DIR, "smoke-%s.log" % ts)
@@ -2363,7 +2444,8 @@ def main():
               ("living-index text integrity (M93/D-20261102-03)",
                probe_text_integrity),
               ("receipt product law (M96/BC-P-166)",
-               probe_receipt_product_law)]
+               probe_receipt_product_law),
+              ("ollama serve death vs transient (T188)", probe_serve_health)]
     lines, passed = [], 0
     lines.append("BigCompute QA smoke test %s (orders L254 / charter v1)"
                  % ts)
@@ -2376,7 +2458,7 @@ def main():
         lines.append(detail)
         print("[%s] %s" % ("PASS" if ok else "FAIL", label))
     lines.append("")
-    verdict = "smoke verdict: %d/%d PASS (charter 4 + T25 + E41 + BC-P-45 no.8 + T122 no.9 + T132 no.10 + T133 no.11 + T138 no.12 + T140 no.13 + T143 no.14 + T145 no.15 + T153 no.16 + T161 no.17 + T168 no.18 + T177 no.20 + T184 no.21 + M93 no.19 + M96 no.22 probes)" % (
+    verdict = "smoke verdict: %d/%d PASS (charter 4 + T25 + E41 + BC-P-45 no.8 + T122 no.9 + T132 no.10 + T133 no.11 + T138 no.12 + T140 no.13 + T143 no.14 + T145 no.15 + T153 no.16 + T161 no.17 + T168 no.18 + T177 no.20 + T184 no.21 + M93 no.19 + M96 no.22 + T188 no.23 probes)" % (
         passed, len(probes))
     lines.append(verdict)
     with open(log_path, "w", encoding="utf-8") as f:

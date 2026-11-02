@@ -506,12 +506,16 @@ P2 两条：①qa_smoke no.8 本轮实弹 FAIL 抓到 `HQ-FEEDBACK.md` 尾部 2 
 ## 2026-11-02 22:4x 夜报（夜班轮·心跳 P1 误报复盘·产品优先律 2 分件）
 P0 无。P1 无。**产品增量 2 分**：Tools/serve_health.py 立件——22:43 心跳写 P1「OLLAMA DOWN」而进程 22:44:08 已起、真生成 46ms 成功，单次读失败被当死亡。新件带 settle 窗口三态（UP/DEGRADED/DOWN），窗体内容错重探测不判死，恢复记 recovered_after_s；selftest 13/13、live UP exit 0、受控假端口 DOWN exit 3；证据 state/serve-health-20261102-2258.json。
 P2 **守卫误红真发现**=qa_smoke no.18 把写入面合法形 model_drift=UNVERIFIED(m=0,a=0) 判越域（每轮必然红）→ 域扩三态参数形 + S16-S19 夹具，smoke 20/20 PASS。P2 **如实更正**=心跳「乱码」是 GBK 控制台显示假象，逐字节核验为干净 UTF-8，非写入面损坏（防后续误修）。
-## 2026-11-03 08:4x 早班（CPU 满负荷令承接·产品优先律 2 分件）
+## 2026-11-03 00:2x 夜班补班（CPU 满负荷令承接·产品优先律 2 分件）
 P0 无。P1 无。**产品优先律 2 分**：`Tools/cpu_effective_hours.py`——把 11-02 20:15 CPU 满负荷令（OB-20261102-2015-CPUFULL）的验收面「回执产物可逐条追到文件」做成可跑闸：rc=0 且产物在盘才计秒，重复重放／复制当产物／缺产物／零秒一律剔除；selftest 17/17，实跑 1d counted=26 net=0.121h、7d counted=33 net=0.148h。
 P1 **读数结论（诚实）**：CPU 车道 7 天可核销有效工时只有 **0.148 小时**，且其中 24 条 MV 门禁回执根本没有产物字段——不是「产能不足」，是**没派能算出产物的活**，与 CEO 令里「供给缺口不是产能不足」的判断一致；另 7 日有 5 条本机回执的产物（D:\FleetWorker\review 下）目录在、文件不在，这些回执此前会被当「有产出」。
 P2 待办已入队：M96（回执产物律入 QA 常驻探针）＋提案 BC-P-166；下一轮首对象=M96。
+P2 时标勘正＝本节原标「08:4x 早班」系虚标（证据件 state/cpu-eff-hours-20261103.txt 实落盘 00:18:48），按 10-14 校时判例就地正头部并留此勘误行，令义与判据不变。
 ## 2026-11-03 00:3x 夜班（回执产物律探针落地·产品增量 2 分件）
 P0 无。P1 **回执产物律首跑红（真缺陷可见面）**=qa_smoke 新增 no.22 每轮跑 cpu_effective_hours 7 日窗，首跑 FAIL：counted=33 net_h=0.148、**missing_local=5、copy=6**、no_deliverable=26；copy 六条点名 bm-c/bm-m/bm-a 跨机回执（同一内容两个 id 各计工时），属 queue-receipts 口径面——本司只呈清单不改他机回执，处置面 M97。
 P1 **集团 orders.md 尾部残留未解冲突标记**=docs/orders.md L300-307 实读 `<<<<<<< HEAD` / `|||||||` / `=======` / `>>>>>>> d2a66071`，审计台账自身带冲突块（本司只读不写集团树）→ 请 HQ 侧清理并确认受影响令行完整。
 P2 smoke 本轮 **20/21**（新 FAIL=no.22 真红非误报），charter §三第 22 条在件；`selftest_receipt_product_law` 4/4 PASS。
 P2 回执产物律（M97 triage 毕）：7 日窗 missing_local=5 + copy=4——4 条真实质检产出落在 D:\FleetWorker\review 被临时目录带走（v718 AIGC/保真/逐镜审计），1 条 Q-TEST-LOCALLLM 是假回执（cmd `print(1)` 从不写所声称产物，deliverable_exists 系自填未复核）；4 条 copy 为同节点重复交付，其一 R-NEXT-BIGSTREAMM-AUDIT-20261102 审计的输入仍是 full_mv_v717.mp4（产物日期不反映输入版本，属 @BigStream 线）。仪器跨机误判（bm-c/bm-m 同名相对路径被判复制）本轮已修，selftest 18/18。建议：lane 回执 deliverable 须落受管目录（BC-P-168）；证据 docs/ops/receipt-product-triage-20261103.md。
+## 2026-11-03 03:2x 夜班（serve 瞬态判别常驻化·产品优先律 2 分件）
+P0 无。P1 无（上轮两条 P1 结案：docs/orders.md 冲突标记实测 0 命中，已被 HQ 侧清完；no.22 回执产物律历史红按 M97 留档，随 7 日窗自然滚出，不另造豁免）。**产品增量 2 分**=qa_smoke 新增探针 **no.23**（T188）把 serve_health 的 settle 窗口三态搬进每轮冒烟——UP 绿／DEGRADED（能答干不了活）与 DOWN（窗口耗尽才判死）均红并点名 attempts+理由／载荷读不到 UNVERIFIED 不假绿；selftest 5/5 PASS，live 首跑 no.23 PASS，smoke **21/22**（余一红=no.22 已知历史面）。
+P2 charter §三 第 23 条在件；T188 与另一条 T188（写侧机检化普查）重号如实登记在 tech 队列，未合并未删行，本行只认领 serve_health 一条。

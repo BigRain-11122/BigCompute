@@ -185,3 +185,16 @@ T187 把 rounds.log 的 text-integrity 义务钉成了写侧硬闸，但闸的�
 | BC-P-166 | **回执产物律：回执要么带可核销产物，要么明写没有** | 消费方=派工方/巡检/日报；不动产出=回执字段纪律+探针 | 单位经济=零成本（静态检查） | 合规=内部只读 | **提案**：本轮 CPU 有效工时核算暴露两面——①7 日 5 条回执声称的本机产物在盘上不存在（目录在、文件不在），这些回执此前都被当「有产出」计入；②26 条回执根本没有 deliverable 字段（Q-MV-0001-0xx 系列 24 条＋2 条），无法核销也无法反驳。建议：lane 回执缺 deliverable 时必须显式标 `no_deliverable=true` 并给等价证据（日志/截图路径）；声称 deliverable 的在回执落盘时就要在盘——两者都不满足的回执按「未产出」记账，不享受工时/产能口径。工程面=M96。 | 状态=candidate·派生 M96 |
 | BC-P-167 | **回执 deliverable 路径口径约定（MISSING/COPY 判定的前提）** | 消费方=queue-receipts 写侧（各机 lane agent/执行器）+HQ 主控对账面 | 单位经济=零成本（字段约定，不新增采集）；省掉每轮人肉 triage | 合规=内部面 | **提案**：no.22 探针首跑把「产品不可核销」变成可见红（missing_local=5 / copy=6），但判定本身依赖 deliverable 字段的写法约定——现回执混用绝对路径 `D:\FleetWorker\...`、相对仓路径、以及他机拿不到的路径，读侧只能按「本机有没有这个文件」猜，同一内容被两个 id 各记一次时也只能事后判 COPY。约定三形：①本机产物=仓相对路径或本机绝对路径（须可 stat）；②他机产物=`node:<id>:<path>`（本机一律判 REMOTE-UNVERIF，不判缺失）；③非工作回执=显式 `deliverable=none` + `no_deliverable=true`（可见、不红）。跨机复制同内容仍判 COPY，但写侧应带 `derived_from=<id>` 说明来源，读侧据此把「派生」与「复制顶替」分开。**open（不动写侧代码，先立约定；采纳后由 HQ 统一各机 lane agent 写面）** | 状态=candidate·消费=M97 |
 | BC-P-168 | **回执产物须落受管目录（scratch 目录产物不得当产能凭证）** | 消费方=queue-receipts 写侧（lane agent/执行器）+ 日报「CPU 有效工时」核算 | 单位经济=零新增成本（只改落盘路径约定）；收益=不再出现「目录在、文件被清理带走」的不可核销工时 | 合规=内部纪律，不涉外部 | **提案**（11-03 01:0x 令牌轮 M97 triage 派生）：7 日窗 4 条真实质检产出（v718 AIGC 标签 172MB / fidelity_v718.json / shot_audit_v718.json / smoke_lane.txt）全部写在 `D:\FleetWorker\review` 这类临时工作区，临时清理后回执永久无法核销；目录仍在但已空，说明不是路径解析错而是产物无人收容。建议：①lane 回执 deliverable 必须落在 repo 内或持久归档目录（`state/artifacts/` 或 `media/`），否则该行记 `EPHEMERAL` 且不计入有效工时；②大件（>20MB）落盘后由执行器写 `archived_to` 指针再清 scratch；③核销口径不变（rc0+产物在盘才计秒），只把「产物在哪」变成可判字段 | 状态=candidate（承接=M97/B-168） |
+## BC-P-169 · 探针登记表单源化（11-03 03:2x 立·P3 起）
+- 消费方：qa_smoke 维护者（每加一个探针要手改三处：probes 列表、verdict 字符串、charter 条款）。
+- 现象：编号已被重号污染过一次（T188 ×2；no.20 先被台账并行普查占用，版本漂移探针只能改 no.21），verdict 字符串靠人肉串接，漏改不会红。
+- 建议：把「探针号／标签／函数／charter 条款号」收成一张 PROBES 表做单源，charter 条款与 verdict 行由表生成；新增探针时先查表再编号（先查后用机械化成断言）。
+- 判据先立：①表内编号唯一（selftest 断言）②charter 条款号与表一一对应（缺=FAIL）③verdict 行由表拼出（禁手写）。
+- 单位经济：零运行成本（纯静态），收益=消灭「加了探针但没进 verdict/没进 charter」的静默缺口。
+- 合规：不涉真实数据/资金。
+## BC-P-170 · 集团侧读本司车道闸读数（T173 ② 呈件·11-03 03:2x·跨仓建议非跨仓写）
+- 消费方：@HQ fleet-idle-watch v2（派工前置判读面）。
+- 建议原文（一行）：派工前不要自行重算「闲不闲」，直接读本司 `Tools/lane_gate.py --json` 的 `verdict`（FRESH|STALE|CONSISTENCY-MISMATCH）+ `CPU`/`GPU`（OPEN|CLOSED）+ `reasons`；`STALE` 与 `MISMATCH` 一律按 CLOSED 处理（读数过期不等于许可）。
+- 判据先立：集团侧读到 STALE 仍派工=派工方缺陷（不由本司判负）；阈值单源=本司 `idle_selfcheck` 常量，集团侧禁复制字面。
+- 单位经济：零运行成本，省掉一套重复的闲判实现与两套阈值漂移风险。
+- 合规：只读本司 JSON，不涉真实数据/资金；本司零跨仓写，建议以提案形式交 @HQ 认领。
