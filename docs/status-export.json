@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-11-02 06:10",
- "current_activity": "2026-11-02 06:1x 令牌轮：T-20261102-52 done=M92 判据分层推广（D-20261101-20 / D-20261102-02）——三个只印结论的闸补「扫描域自证」：新增 Tools/scope_proof.py（domain/not_scanned/unreadable 三行 + coverage），sop_coverage_check / batch_pool validate / dispatch_precheck 已接线；task board=tasks/TASKS.md",
- "latest_artifact": "Tools/scope_proof.py + 三闸域自证输出（sop_coverage_check selftest 9/9、batch_pool 20 checks、dispatch_precheck PASS）；实跑关键读数=SOP-COVERAGE-GREEN 但 coverage=scanned:34 skipped:58 ratio=37.0%（旧口径只印 violations=0）；证据 state/m92-scope-proof-20261102.txt + qa/smoke-20261102-0608.log/.png（20/20）",
- "next_milestone": "①BC-P-163 裁决面=Tools 清单自申报化（F3 计数已第三次漂移 77 vs 76）②M25/T26 室内烘焙实弹=净窗一命令（BLOCKED 维持）③M90 月度档 self verdict 口径文档面对齐（11-30 月末行自然生效）④LaneTaskGuard 已 Ready（D-20261102-10 本司面核验毕）"
+ "updated_at": "2026-11-02 19:16",
+ "current_activity": "2026-11-02 19:00 轮：open 10→11（+T188 写侧普查待办；本轮产出源自决策台账 D-03 非队列行·如实记偏差）",
+ "latest_artifact": "state/clean-window-log.jsonl（mtime 2026-11-02 19:14） ｜ state/month-end-202610.json（N1 十月月末归集报告·sources_ok=10·机械链 9/9·mtime 2026-10-31 22:45）+ qa/smoke-20261031-2244.log/.png（QA 17/17 PASS）",
+ "next_milestone": "M4 接产对齐矩阵 blocked 项随开店/平台后台逐项销 ⬜（T-27 余项）（队列状态=**blocked 如实**（10-28 23:2x 令牌轮队列卫生）：销 ⬜ ） ｜ N1 月末归集已毕（10-31 22:4x）；下一步=①BC-P-155 self/borrowed 分列判据待批（采纳后下一个月末行起出 verdict 列）②M25/T26 室内烘焙样板间实弹=净窗一命令（BLOCKED 计数在册·净窗开后 ≤1 轮兑现）③D-20261031-05 ② lane8090 复活判定点 11-02 03:07"
 }
