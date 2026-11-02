@@ -52,6 +52,9 @@ BARE_RE = re.compile(r'["\']((?:%s)[a-z0-9._+\-]*)["\']' % "|".join(BARE_FAMILIE
 # 提取期黑名单：进程/可执行/JSON 键形假阳性类（非模型引用·v1.1 实扫发现）
 BARE_BLOCKLIST = {"llama-server", "llama-server.exe", "llama.cpp",
                  "qwen", "qwen3", "qwen3.context_length"}
+# bare 名噪声前缀（11-03 轮实扫发现）：llama.cpp 构建名 llamacpp-b11429 只是可执行版本号，
+# 不是 ollama 模型；与 BARE_BLOCKLIST 同律在提取期排除。
+BARE_NOISE_RE = re.compile(r'^(?:llamacpp|llama-cpp|llama\.cpp|llama-server)')
 # 非 ollama 车道模型（llama-server :8090 面·v3 final 迁移正身）→ LANE-8090 态
 NON_OLLAMA_LANES = {"qwen3.6-35b"}
 # EXEMPT_HISTORICAL（T101②）：意图性/历史试验件豁免集——文件级（整件为 moot 清单或
@@ -68,8 +71,14 @@ EXEMPT_HISTORICAL = {
 }
 
 
-def extract_refs(path):
-    """单文件提取 → [(name, kind, lineno)]；kind=tagged|bare。J1 只读。"""
+def extract_refs(path, noise=None):
+    """单文件提取 → [(name, kind, lineno)]；kind=tagged|bare。J1 只读。
+
+    J6 家族闸（11-03 轮）：带 tag 的引号对只有左侧命中已知模型家族前缀才算模型引用——
+    `"state:rounds_ago"`／`"host:8090"`／`"a:latest"` 这类字典键、端口、占位串此前一律
+    计成 DANGLING，把真悬空（真被删掉的模型）淹在假红里。误判类不静默丢：调用方传
+    noise 列表即回收到 [(name, lineno)]，由 check 打印 NOISE 计数与样例。
+    """
     try:
         with io.open(path, "r", encoding="utf-8", errors="replace") as f:
             text = f.read()
@@ -79,7 +88,12 @@ def extract_refs(path):
     seen = set()
     for m in TAGGED_RE.finditer(text):
         name = m.group(1)
-        if name.split(":", 1)[0] in PREFIX_BLOCKLIST:
+        left = name.split(":", 1)[0]
+        if left in PREFIX_BLOCKLIST:
+            continue
+        if not left.startswith(BARE_FAMILIES):
+            if noise is not None:
+                noise.append((name, text.count("\n", 0, m.start()) + 1))
             continue
         lineno = text.count("\n", 0, m.start()) + 1
         key = (name, lineno)
@@ -88,7 +102,7 @@ def extract_refs(path):
             refs.append((name, "tagged", lineno))
     for m in BARE_RE.finditer(text):
         name = m.group(1)
-        if name in BARE_BLOCKLIST:
+        if name in BARE_BLOCKLIST or BARE_NOISE_RE.match(name):
             continue
         lineno = text.count("\n", 0, m.start()) + 1
         key = (name, lineno)
@@ -98,7 +112,7 @@ def extract_refs(path):
     return refs
 
 
-def scan_tools(tools_glob=TOOLS_GLOB, base_dir="Tools"):
+def scan_tools(tools_glob=TOOLS_GLOB, base_dir="Tools", noise=None):
     """Tools/**/*.py 递归全扫 → {relpath（含子目录·posix 分隔）: [(name, kind, lineno), ...]}。"""
     out = {}
     for path in sorted(glob.glob(tools_glob, recursive=True)):
@@ -106,7 +120,7 @@ def scan_tools(tools_glob=TOOLS_GLOB, base_dir="Tools"):
             continue
         if os.path.basename(path) == os.path.basename(__file__):
             continue  # v1.1：自件跳过（self fixtures 不自扫）
-        refs = extract_refs(path)
+        refs = extract_refs(path, noise=noise)
         if refs:
             key = os.path.relpath(path, base_dir).replace(os.sep, "/")
             out[key] = refs
@@ -222,18 +236,25 @@ def cmd_baseline_diff(args):
 
 
 def cmd_check(args):
-    scan = scan_tools(args.tools_glob if args.tools_glob else TOOLS_GLOB)
+    noise = []
+    scan = scan_tools(args.tools_glob if args.tools_glob else TOOLS_GLOB,
+                      noise=noise)
     live = fetch_live_tags()
     report = classify(scan, live)
+    report["noise"] = {"count": len(noise),
+                       "examples": ["%s:%d" % (n, l) for n, l in noise[:5]]}
     out_path = args.out or os.path.join(
         "state", "model-ref-drift-%s.json" % time.strftime("%Y%m%d-%H%M%S"))
     os.makedirs(os.path.dirname(out_path) or ".", exist_ok=True)
     with io.open(out_path, "w", encoding="utf-8", newline="\n") as f:
         json.dump(report, f, ensure_ascii=False, indent=1, sort_keys=True)
     t = report["totals"]
-    print("MODEL-REF-DRIFT files=%d refs=%d live=%d dangling=%d unverified=%d lane-8090=%d exempt-historical=%d" % (
+    print("MODEL-REF-DRIFT files=%d refs=%d live=%d dangling=%d unverified=%d lane-8090=%d exempt-historical=%d noise=%d" % (
         len(report["files"]), t["refs"], t["live"], t["dangling"], t["unverified"],
-        t["lane-8090"], t["exempt-historical"]))
+        t["lane-8090"], t["exempt-historical"], len(noise)))
+    if noise:
+        print("NOISE excluded=%d %s" % (
+            len(noise), ",".join("%s:%d" % (n, l) for n, l in noise[:5])))
     if live is None:
         print("API-UNAVAILABLE: fail-open J2 -> UNVERIFIED report written")
     else:
@@ -363,6 +384,27 @@ def _selftest():
         except ValueError:
             raised = True
         check(raised, "baseline invalid rejected")
+        # S15 家族闸（J6·11-03）：字典键/端口/占位串不冒充模型引用，且不静默丢
+        noise_fx = os.path.join(td, "noise_fixture.py")
+        with io.open(noise_fx, "w", encoding="utf-8") as f:
+            f.write('K1 = "state:rounds_ago"\n'
+                    'K2 = "host:8090"\n'
+                    'K3 = "a:latest"\n'
+                    'BUILD = "llamacpp-b11429"\n'
+                    'REAL = "qwen3.8:27b"\n')
+        noise = []
+        nrefs = extract_refs(noise_fx, noise=noise)
+        check([r[0] for r in nrefs] == ["qwen3.8:27b"],
+              "family gate keeps model refs only")
+        check(sorted(n for n, _ in noise) == ["a:latest", "host:8090",
+                                              "state:rounds_ago"],
+              "noise collected not silently dropped")
+        check(not any(r[0].startswith("llamacpp") for r in nrefs),
+              "llamacpp build tag excluded as bare noise")
+        # S16 调用链噪声透传（cmd_check 依赖 scan_tools 的 noise 参数）
+        scan_noise = []
+        scan_tools(noise_fx, base_dir=td, noise=scan_noise)
+        check(len(scan_noise) == 3, "scan_tools noise passthrough")
     print("SELFTEST %d/%d PASS" % (ok[0], ok[0]))
     return 0
 

@@ -526,3 +526,6 @@ P2 ①charter §三 长期缺 9 条探针条款（每轮照跑却无条款）已
 ## 2026-11-03 06:2x 令牌轮（T189 v718 质检链重建·产品优先律 2 分件）
 P0 无。P1 无。**实物 2 分**=按 10-29 原 receipt cmd 复跑 v718 三步全 rc=0：逐镜审计 13864B／AIGC 标签件 184036501B／保真 556B，落 `D:\FleetWorker\out\v718-rebuild-20261103\`；保真 SSIM All 0.988585／PSNR 40.637 → PASS(≥0.97) 与基线同结论；四件 sha256 落 state/artifacts/v718-rebuild-20261103.json（state/artifacts/ 首建）。
 P2 两处如实：①产物落共享 out 而非原 D:\FleetWorker\review（该目录已被清理且属跨司写面，未写任何兄弟司仓）；②源件文件名同但内容已变（现 sha256 7dac8d4c… vs 10-29 回执 79ed8614…，字节数同为 659718890）——历史回执 sha 不能再用于核销，重建件只对当前盘上文件成立。no.22 回执产物律仍 5 missing + 4 copy 如实红（重建件不在回执路径，不冒充核销）。
+## 2026-11-03 07:0x 令牌轮（模型引用普查假红治理·产品优先律 2 分件）
+P0 无。P1 无。**实物 2 分**=`Tools/model_ref_drift_check.py` 增家族闸 J6：`"state:rounds_ago"`／`"host:8090"`／`"a:latest"`／`"llamacpp-b11429"` 这类字典键、端口、构建名不再冒充模型引用，误判类不静默丢（NOISE 计数+样例入报告）；selftest 13→**19/19 PASS**，实扫 dangling **21→10**、noise=14 显式列出。
+P2 余 10 条 DANGLING 逐行读码判读=夹具/历史探针引用（cost_contract_census 夹具假数据、serve_sla_baseline 断言历史日志模型名、model_impact_probe 对象=已删模型），非在役调用断链——不豁免不伪造，转 tech 新行做「夹具 vs 活调用」分类；心跳 `model_drift=DRIFT(m=2,a=0)` 实况=bge-m3:latest／qwen3.8:27b 两模型在 10-16 基线后已剪除，非读数故障。
