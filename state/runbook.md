@@ -7,7 +7,7 @@
 - **CPU 常开令 O-2215**：bm-a 工作日白天 CPU 解禁（GPU 让路+CEO 10% 余量）；烧批前置=意义门四闸；py≥70% 哨兵在役。
 - **BW-007 在案**（V3 白段·夜停执法腿三条件在役）。
 - 随窗：M25/T26 净窗/E54/T64/T70 批文至则行/R-53/bm-d（E71）。
-- M66 月窗毕；N1 月末一命令毕；A 档硬门=M21；开店物理件待 CEO。
+- M66/N1 已毕；A 档硬门=M21；开店物理件待 CEO。
 
 ## 判据/红线
 - GPU=30% 唯一点名×3 日滚动·70% 参考·分机行=bm-a 实测+他机转述。
@@ -20,4 +20,4 @@
 - 写侧编码律（D-20261102-03②）：台账写入显式 UTF-8 无 BOM；禁控制台/管道直写中文行。**rounds.log 行必带 textintegrity**（J10·缺则 exit 8）。
 
 ## 关键指针
-正典=BLUEPRINT｜任务=TASKS.md｜mandate=iteration_prompt｜风险=risk-register｜回执=HQ-FEEDBACK｜账本=rounds.log
+正典=BLUEPRINT｜任务=TASKS.md｜mandate=iteration_prompt｜风险=risk-register｜回执=HQ-FEEDBACK｜账本=rounds.log｜CPU 工时=cpu_effective_hours.py（M96）

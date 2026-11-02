@@ -506,3 +506,7 @@ P2 两条：①qa_smoke no.8 本轮实弹 FAIL 抓到 `HQ-FEEDBACK.md` 尾部 2 
 ## 2026-11-02 22:4x 夜报（夜班轮·心跳 P1 误报复盘·产品优先律 2 分件）
 P0 无。P1 无。**产品增量 2 分**：Tools/serve_health.py 立件——22:43 心跳写 P1「OLLAMA DOWN」而进程 22:44:08 已起、真生成 46ms 成功，单次读失败被当死亡。新件带 settle 窗口三态（UP/DEGRADED/DOWN），窗体内容错重探测不判死，恢复记 recovered_after_s；selftest 13/13、live UP exit 0、受控假端口 DOWN exit 3；证据 state/serve-health-20261102-2258.json。
 P2 **守卫误红真发现**=qa_smoke no.18 把写入面合法形 model_drift=UNVERIFIED(m=0,a=0) 判越域（每轮必然红）→ 域扩三态参数形 + S16-S19 夹具，smoke 20/20 PASS。P2 **如实更正**=心跳「乱码」是 GBK 控制台显示假象，逐字节核验为干净 UTF-8，非写入面损坏（防后续误修）。
+## 2026-11-03 08:4x 早班（CPU 满负荷令承接·产品优先律 2 分件）
+P0 无。P1 无。**产品优先律 2 分**：`Tools/cpu_effective_hours.py`——把 11-02 20:15 CPU 满负荷令（OB-20261102-2015-CPUFULL）的验收面「回执产物可逐条追到文件」做成可跑闸：rc=0 且产物在盘才计秒，重复重放／复制当产物／缺产物／零秒一律剔除；selftest 17/17，实跑 1d counted=26 net=0.121h、7d counted=33 net=0.148h。
+P1 **读数结论（诚实）**：CPU 车道 7 天可核销有效工时只有 **0.148 小时**，且其中 24 条 MV 门禁回执根本没有产物字段——不是「产能不足」，是**没派能算出产物的活**，与 CEO 令里「供给缺口不是产能不足」的判断一致；另 7 日有 5 条本机回执的产物（D:\FleetWorker\review 下）目录在、文件不在，这些回执此前会被当「有产出」。
+P2 待办已入队：M96（回执产物律入 QA 常驻探针）＋提案 BC-P-166；下一轮首对象=M96。
