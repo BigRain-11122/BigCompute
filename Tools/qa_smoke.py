@@ -2219,6 +2219,110 @@ def selftest_text_integrity():
     return 0 if all(results) else 1
 
 
+RECEIPT_LAW_WINDOW_DAYS = 7
+
+
+def receipt_product_judge(payload):
+    """Probe no.22 verdict (M96 / BC-P-166): a receipt must trace to a file.
+
+    MISSING-LOCAL (the receipt claims a local product that is not on disk) and
+    COPY-AS-PRODUCT (the same bytes counted as two products) are red -- those
+    hours cannot be verified, so they must not read as delivered work. A
+    receipt with no deliverable at all is printed but not red: it is visible
+    evidence of a non-work receipt, not a claim about a product that lied.
+    """
+    if not isinstance(payload, dict) or "buckets" not in payload:
+        return False, "verdict=UNVERIFIED no summary"
+    b = payload["buckets"]
+    t = payload.get("totals") or {}
+    head = ("verdict=%s counted=%s net_h=%s missing_local=%d copy=%d "
+            "no_deliverable=%d"
+            % (payload.get("verdict", "?"), t.get("counted", 0),
+               t.get("net_hours", 0), b.get("missing_local", 0),
+               b.get("copy", 0), b.get("no_deliverable", 0)))
+    hits = []
+    for item in payload.get("copies") or []:
+        hits.append("copy:%s/%s<-%s" % (item.get("node"), item.get("id"),
+                                        item.get("copy_of")))
+    for item in payload.get("skipped") or []:
+        if item.get("reason") == "MISSING-LOCAL":
+            hits.append("missing:%s/%s" % (item.get("node"), item.get("id")))
+    bad = bool(b.get("missing_local") or b.get("copy"))
+    return (not bad), head + ((" " + " ".join(hits[:6])) if hits else "")
+
+
+def probe_receipt_product_law(root=None, days=RECEIPT_LAW_WINDOW_DAYS):
+    """Probe no.22 (M96 / BC-P-166): queue receipts traceable to a file.
+
+    cpu_effective_hours shipped as a manual command; the product-law claim
+    ("CPU 有效工时可逐条追到文件") therefore only held when someone ran it.
+    Here the same evaluator runs every round, so a receipt that names a
+    missing or duplicated product shows up in this round's own log.
+    """
+    if HERE not in sys.path:
+        sys.path.insert(0, HERE)
+    try:
+        import cpu_effective_hours as ceh
+        base = root or ceh.DEFAULT_ROOT
+        recs, bad, other = ceh.load_receipts(os.path.join(base, ceh.RECEIPT_REL))
+        if not recs:
+            return False, ("verdict=NO-DATA receipts_dir=%s bad_json=%d "
+                           "other=%d -- 无可核算回执即不许判绿"
+                           % (os.path.join(base, ceh.RECEIPT_REL), len(bad),
+                              len(other)))
+        payload = ceh.evaluate(recs, base, ceh.HOST_NODE, days=days)
+        payload["buckets"]["bad_json"] = len(bad)
+        payload["buckets"]["not_work_receipt"] = len(other)
+    except Exception as e:  # noqa: BLE001 - probe must report, not crash
+        return False, "cpu_effective_hours raised: %r" % e
+    return receipt_product_judge(payload)
+
+
+def selftest_receipt_product_law():
+    """M96 fixtures: clean / missing-local / copy-as-product / unreadable."""
+    results = []
+
+    def check(name, cond):
+        results.append(bool(cond))
+        print(("PASS " if cond else "FAIL ") + name)
+
+    def base(buckets=None, **kw):
+        payload = {
+            "verdict": "CLEAN",
+            "totals": {"counted": 3, "net_hours": 0.12},
+            "buckets": dict({"verified": 3, "missing_local": 0, "copy": 0,
+                             "no_deliverable": 2}, **(buckets or {})),
+            "copies": [], "skipped": [],
+        }
+        payload.update(kw)
+        return payload
+
+    ok, det = receipt_product_judge(base())
+    check("S1 clean -> PASS (no_deliverable shown, not red)",
+          ok and "missing_local=0" in det and "no_deliverable=2" in det)
+
+    miss = base({"missing_local": 1},
+                skipped=[{"id": "Q-1", "node": "bm-a",
+                          "reason": "MISSING-LOCAL", "deliverable": "x.txt"}])
+    ok, det = receipt_product_judge(miss)
+    check("S2 MISSING-LOCAL -> FAIL and named",
+          (not ok) and "missing_local=1" in det and "missing:bm-a/Q-1" in det)
+
+    copy = base({"copy": 1},
+                copies=[{"id": "Q-2", "node": "bm-a", "copy_of": "Q-1",
+                         "deliverable": "x.txt"}])
+    ok, det = receipt_product_judge(copy)
+    check("S3 COPY-AS-PRODUCT -> FAIL and named",
+          (not ok) and "copy=1" in det and "copy:bm-a/Q-2<-Q-1" in det)
+
+    ok, det = receipt_product_judge(None)
+    check("S4 no summary -> FAIL/UNVERIFIED", (not ok) and "UNVERIFIED" in det)
+
+    print("selftest receipt-product-law verdict: %d/%d PASS"
+          % (len([r for r in results if r]), len(results)))
+    return 0 if all(results) else 1
+
+
 def main():
     if len(sys.argv) > 1 and sys.argv[1] == "--selftest":
         return (selftest_tails() | selftest_coder_class()
@@ -2226,7 +2330,8 @@ def main():
                 | selftest_serve_artifacts() | selftest_qa_functional()
                 | selftest_scan_roots() | selftest_heartbeat_tokens()
                 | selftest_gpu_contention() | selftest_ledger_parallel()
-                | selftest_qa_version() | selftest_text_integrity())
+                | selftest_qa_version() | selftest_text_integrity()
+                | selftest_receipt_product_law())
     os.makedirs(QA_DIR, exist_ok=True)
     ts = datetime.datetime.now().strftime("%Y%m%d-%H%M")
     log_path = os.path.join(QA_DIR, "smoke-%s.log" % ts)
@@ -2256,7 +2361,9 @@ def main():
               ("resident QA version drift (T184)",
                probe_resident_qa_version),
               ("living-index text integrity (M93/D-20261102-03)",
-               probe_text_integrity)]
+               probe_text_integrity),
+              ("receipt product law (M96/BC-P-166)",
+               probe_receipt_product_law)]
     lines, passed = [], 0
     lines.append("BigCompute QA smoke test %s (orders L254 / charter v1)"
                  % ts)
@@ -2269,7 +2376,7 @@ def main():
         lines.append(detail)
         print("[%s] %s" % ("PASS" if ok else "FAIL", label))
     lines.append("")
-    verdict = "smoke verdict: %d/%d PASS (charter 4 + T25 + E41 + BC-P-45 no.8 + T122 no.9 + T132 no.10 + T133 no.11 + T138 no.12 + T140 no.13 + T143 no.14 + T145 no.15 + T153 no.16 + T161 no.17 + T168 no.18 + T177 no.20 + T184 no.21 + M93 no.19 probes)" % (
+    verdict = "smoke verdict: %d/%d PASS (charter 4 + T25 + E41 + BC-P-45 no.8 + T122 no.9 + T132 no.10 + T133 no.11 + T138 no.12 + T140 no.13 + T143 no.14 + T145 no.15 + T153 no.16 + T161 no.17 + T168 no.18 + T177 no.20 + T184 no.21 + M93 no.19 + M96 no.22 probes)" % (
         passed, len(probes))
     lines.append(verdict)
     with open(log_path, "w", encoding="utf-8") as f:

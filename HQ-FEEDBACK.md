@@ -510,3 +510,8 @@ P2 **守卫误红真发现**=qa_smoke no.18 把写入面合法形 model_drift=UN
 P0 无。P1 无。**产品优先律 2 分**：`Tools/cpu_effective_hours.py`——把 11-02 20:15 CPU 满负荷令（OB-20261102-2015-CPUFULL）的验收面「回执产物可逐条追到文件」做成可跑闸：rc=0 且产物在盘才计秒，重复重放／复制当产物／缺产物／零秒一律剔除；selftest 17/17，实跑 1d counted=26 net=0.121h、7d counted=33 net=0.148h。
 P1 **读数结论（诚实）**：CPU 车道 7 天可核销有效工时只有 **0.148 小时**，且其中 24 条 MV 门禁回执根本没有产物字段——不是「产能不足」，是**没派能算出产物的活**，与 CEO 令里「供给缺口不是产能不足」的判断一致；另 7 日有 5 条本机回执的产物（D:\FleetWorker\review 下）目录在、文件不在，这些回执此前会被当「有产出」。
 P2 待办已入队：M96（回执产物律入 QA 常驻探针）＋提案 BC-P-166；下一轮首对象=M96。
+## 2026-11-03 00:3x 夜班（回执产物律探针落地·产品增量 2 分件）
+
+P0 无。P1 **回执产物律首跑红（真缺陷可见面）**=qa_smoke 新增 no.22 每轮跑 cpu_effective_hours 7 日窗，首跑 FAIL：counted=33 net_h=0.148、**missing_local=5、copy=6**、no_deliverable=26；copy 六条点名 bm-c/bm-m/bm-a 跨机回执（同一内容两个 id 各计工时），属 queue-receipts 口径面——本司只呈清单不改他机回执，处置面 M97。
+P1 **集团 orders.md 尾部残留未解冲突标记**=docs/orders.md L300-307 实读 `<<<<<<< HEAD` / `|||||||` / `=======` / `>>>>>>> d2a66071`，审计台账自身带冲突块（本司只读不写集团树）→ 请 HQ 侧清理并确认受影响令行完整。
+P2 smoke 本轮 **20/21**（新 FAIL=no.22 真红非误报），charter §三第 22 条在件；`selftest_receipt_product_law` 4/4 PASS。
