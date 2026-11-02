@@ -675,7 +675,14 @@ HEARTBEAT_GUARDED_TOKENS = (
 
 TASK_FACE_LITERALS = ("ok", "pause-exempt", "probe-error")
 MODEL_DRIFT_LITERALS = ("GREEN", "UNVERIFIED")
-MODEL_DRIFT_DRIFT_RE = re.compile(r"^DRIFT\(m=\d+,a=\d+\)$")
+# Writer side (idle_selfcheck.probe_model_drift) emits "<status>(m=<n>,a=<n>)"
+# for every status model_ref_drift_check can return - GREEN / DRIFT /
+# UNVERIFIED - plus the read-failure form "UNVERIFIED(err)". The domain used
+# to accept only the DRIFT spelling, so the ordinary "UNVERIFIED(m=0,a=0)"
+# (baseline unavailable) was judged a guard violation every round: a legal
+# writer form misread as drift, i.e. the guard reported itself as the defect.
+MODEL_DRIFT_PARAM_RE = re.compile(r"^(?:GREEN|DRIFT|UNVERIFIED)\(m=\d+,a=\d+\)$")
+MODEL_DRIFT_ERR_RE = re.compile(r"^UNVERIFIED\(err\)$")
 STATE_LINE_RE = re.compile(r"^([A-Z][A-Z0-9-]*)\((.*)\)$")
 
 
@@ -697,8 +704,9 @@ def heartbeat_enum_ok(kind, raw):
     if kind == "task_face":
         return raw in TASK_FACE_LITERALS or raw.startswith("ALERT:")
     if kind == "model_drift":
-        return raw in MODEL_DRIFT_LITERALS or bool(
-            MODEL_DRIFT_DRIFT_RE.match(raw))
+        return (raw in MODEL_DRIFT_LITERALS
+                or bool(MODEL_DRIFT_PARAM_RE.match(raw))
+                or bool(MODEL_DRIFT_ERR_RE.match(raw)))
     if kind == "lane":
         return raw == "UP" or (raw.startswith("DARK[") and raw.endswith("]"))
     if kind.startswith("state:"):
@@ -1917,6 +1925,22 @@ def selftest_heartbeat_tokens():
                                              "lane8090=DARK-DOWN"))
     check("S13 unparseable lane state -> FAIL",
           (not r13[0]) and "lane8090 outside" in r13[1])
+
+    # S16-S19: the writer emits "<status>(m=,a=)" for every status
+    # model_ref_drift_check returns. Only DRIFT used to be in domain, so the
+    # routine "UNVERIFIED(m=0,a=0)" row (no baseline on disk) read as a guard
+    # violation on every round - the guard blaming a legal writer form.
+    for tag, form, want_ok in (
+        ("S16", "UNVERIFIED(m=0,a=0)", True),
+        ("S17", "GREEN(m=0,a=0)", True),
+        ("S18", "UNVERIFIED(err)", True),
+        ("S19", "MISSING(m=0,a=0)", False),
+    ):
+        rr = heartbeat_token_guard(
+            good.replace("model_drift=DRIFT(m=2,a=0)", "model_drift=" + form))
+        check("%s model_drift=%s -> %s" % (tag, form,
+                                           "PASS" if want_ok else "FAIL"),
+              bool(rr[0]) == want_ok)
 
     r14 = heartbeat_token_guard(good.replace(
         "c1c4_line=FRESH(rounds_ago=0,verdict=C1C4-GREEN)",
