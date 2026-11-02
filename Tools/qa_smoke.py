@@ -2404,6 +2404,55 @@ def selftest_serve_health():
     return 0 if all(results) else 1
 
 
+def probe_probe_registry():
+    """Probe no.24 (T190 / BC-P-169): probe numbering single-source census.
+
+    Numbers used to live only in prose (docstrings + a hand-written verdict
+    string + charter bullets), so a reused number stayed invisible twice
+    already.  The registry below is now the only place a number is declared;
+    this probe re-reads it against the charter every round.
+    """
+    try:
+        import probe_registry_census as prc
+        rep = prc.census()
+    except Exception as e:  # noqa: BLE001 - census must not kill the round
+        return False, "UNVERIFIED probe registry census: %r" % (e,)
+    ok = rep.get("verdict") == "PROBE-REGISTRY-CLEAN"
+    return ok, rep.get("summary", "no summary")
+
+
+# Single source of probe numbers (T190).  The verdict line and the charter
+# census both derive from this table; never re-declare a number elsewhere.
+PROBE_REGISTRY = [
+    (1, "gpu collector", probe_gpu),
+    (2, "ollama response", probe_ollama),
+    (3, "queue rows", probe_queues),
+    (4, "cost ledger", probe_ledger),
+    (5, "rounds.log strict-decode", probe_rounds_log),
+    (6, "resident QA serve 8792", probe_resident_qa),
+    (9, "L1 coder serve 8090", probe_l1_coder_serve),
+    (8, "ledger tail integrity (BC-P-45)", probe_ledger_tails),
+    (10, "supply dual-field reading (T132)", probe_supply_dual_fields),
+    (11, "runbook size budget (T133)", probe_runbook_budget),
+    (12, "cost contract census (T138)", probe_cost_contract),
+    (13, "lane artifacts presence+integrity (T140/T141)",
+     probe_serve_artifacts),
+    (14, "CEO status export (T143)", probe_status_export),
+    (15, "ledger encoding health (T145)", probe_ledger_encoding),
+    (16, "resident QA 8792 /ask function (T153)",
+     probe_resident_qa_functional),
+    (17, "scan root self-reference census (T161)", probe_scan_roots),
+    (18, "heartbeat guarded numeric tokens (T168)", probe_heartbeat_tokens),
+    (20, "ledger parallel fused-row census (T177)", probe_ledger_parallel),
+    (21, "resident QA version drift (T184)", probe_resident_qa_version),
+    (19, "living-index text integrity (M93/D-20261102-03)",
+     probe_text_integrity),
+    (22, "receipt product law (M96/BC-P-166)", probe_receipt_product_law),
+    (23, "ollama serve death vs transient (T188)", probe_serve_health),
+    (24, "probe registry census (T190/BC-P-169)", probe_probe_registry),
+]
+
+
 def main():
     if len(sys.argv) > 1 and sys.argv[1] == "--selftest":
         return (selftest_tails() | selftest_coder_class()
@@ -2417,49 +2466,23 @@ def main():
     ts = datetime.datetime.now().strftime("%Y%m%d-%H%M")
     log_path = os.path.join(QA_DIR, "smoke-%s.log" % ts)
     png_path = os.path.join(QA_DIR, "smoke-%s.png" % ts)
-    probes = [("gpu collector", probe_gpu), ("ollama response", probe_ollama),
-              ("queue rows", probe_queues), ("cost ledger", probe_ledger),
-              ("rounds.log strict-decode", probe_rounds_log),
-              ("resident QA serve 8792", probe_resident_qa),
-              ("L1 coder serve 8090", probe_l1_coder_serve),
-              ("ledger tail integrity (BC-P-45)", probe_ledger_tails),
-              ("supply dual-field reading (T132)",
-               probe_supply_dual_fields),
-              ("runbook size budget (T133)", probe_runbook_budget),
-              ("cost contract census (T138)", probe_cost_contract),
-              ("lane artifacts presence+integrity (T140/T141)",
-               probe_serve_artifacts),
-              ("CEO status export (T143)", probe_status_export),
-              ("ledger encoding health (T145)", probe_ledger_encoding),
-              ("resident QA 8792 /ask function (T153)",
-               probe_resident_qa_functional),
-              ("scan root self-reference census (T161)",
-               probe_scan_roots),
-              ("heartbeat guarded numeric tokens (T168)",
-               probe_heartbeat_tokens),
-              ("ledger parallel fused-row census (T177)",
-               probe_ledger_parallel),
-              ("resident QA version drift (T184)",
-               probe_resident_qa_version),
-              ("living-index text integrity (M93/D-20261102-03)",
-               probe_text_integrity),
-              ("receipt product law (M96/BC-P-166)",
-               probe_receipt_product_law),
-              ("ollama serve death vs transient (T188)", probe_serve_health)]
+    probes = PROBE_REGISTRY
     lines, passed = [], 0
     lines.append("BigCompute QA smoke test %s (orders L254 / charter v1)"
                  % ts)
-    for label, fn in probes:
+    for no, label, fn in probes:
         ok, detail = fn()
         passed += 1 if ok else 0
         lines.append("")
-        lines.append("[%s] %s -> %s" % (label, "PASS" if ok else "FAIL",
-                                         label))
+        lines.append("[%s] no.%d %s" % ("PASS" if ok else "FAIL", no, label))
         lines.append(detail)
-        print("[%s] %s" % ("PASS" if ok else "FAIL", label))
+        print("[%s] no.%d %s" % ("PASS" if ok else "FAIL", no, label))
     lines.append("")
-    verdict = "smoke verdict: %d/%d PASS (charter 4 + T25 + E41 + BC-P-45 no.8 + T122 no.9 + T132 no.10 + T133 no.11 + T138 no.12 + T140 no.13 + T143 no.14 + T145 no.15 + T153 no.16 + T161 no.17 + T168 no.18 + T177 no.20 + T184 no.21 + M93 no.19 + M96 no.22 + T188 no.23 probes)" % (
-        passed, len(probes))
+    verdict = ("smoke verdict: %d/%d PASS (charter 1-4 + extension probes "
+               "nos=%s; no.7 reserved)" % (
+                   passed, len(probes),
+                   ",".join(str(no) for no, _, _ in
+                            sorted(PROBE_REGISTRY, key=lambda p: p[0]))))
     lines.append(verdict)
     with open(log_path, "w", encoding="utf-8") as f:
         f.write("\n".join(lines) + "\n")

@@ -519,3 +519,6 @@ P2 回执产物律（M97 triage 毕）：7 日窗 missing_local=5 + copy=4——
 ## 2026-11-03 03:2x 夜班（serve 瞬态判别常驻化·产品优先律 2 分件）
 P0 无。P1 无（上轮两条 P1 结案：docs/orders.md 冲突标记实测 0 命中，已被 HQ 侧清完；no.22 回执产物律历史红按 M97 留档，随 7 日窗自然滚出，不另造豁免）。**产品增量 2 分**=qa_smoke 新增探针 **no.23**（T188）把 serve_health 的 settle 窗口三态搬进每轮冒烟——UP 绿／DEGRADED（能答干不了活）与 DOWN（窗口耗尽才判死）均红并点名 attempts+理由／载荷读不到 UNVERIFIED 不假绿；selftest 5/5 PASS，live 首跑 no.23 PASS，smoke **21/22**（余一红=no.22 已知历史面）。
 P2 charter §三 第 23 条在件；T188 与另一条 T188（写侧机检化普查）重号如实登记在 tech 队列，未合并未删行，本行只认领 serve_health 一条。
+## 2026-11-03 03:4x 令牌轮（T190 探针登记表单源化·产品优先律 2 分件）
+P0 无。P1 无。本轮新增实物=Tools/probe_registry_census.py（selftest 8/8）+qa_smoke PROBE_REGISTRY 单一源（23 件带编号）+charter §三 补 9 条漏条款并新增第 24 条闸；live 普查 PROBE-REGISTRY-CLEAN problems=0。
+P2 ①charter §三 长期缺 9 条探针条款（每轮照跑却无条款）已本轮补齐并接 no.24 闸，根因=队列行声称「条款落盘」无人对账；②SOP F3 工具数第五连漂移 78→80 已 bump，结构面仍待 BC-P-163；③集团 docs/orders.md 尾部再现冲突标记（L300-303），只读上报不代改。
