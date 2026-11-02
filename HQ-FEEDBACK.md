@@ -522,3 +522,7 @@ P2 charter §三 第 23 条在件；T188 与另一条 T188（写侧机检化普�
 ## 2026-11-03 03:4x 令牌轮（T190 探针登记表单源化·产品优先律 2 分件）
 P0 无。P1 无。本轮新增实物=Tools/probe_registry_census.py（selftest 8/8）+qa_smoke PROBE_REGISTRY 单一源（23 件带编号）+charter §三 补 9 条漏条款并新增第 24 条闸；live 普查 PROBE-REGISTRY-CLEAN problems=0。
 P2 ①charter §三 长期缺 9 条探针条款（每轮照跑却无条款）已本轮补齐并接 no.24 闸，根因=队列行声称「条款落盘」无人对账；②SOP F3 工具数第五连漂移 78→80 已 bump，结构面仍待 BC-P-163；③集团 docs/orders.md 尾部再现冲突标记（L300-303），只读上报不代改。
+
+## 2026-11-03 06:2x 令牌轮（T189 v718 质检链重建·产品优先律 2 分件）
+P0 无。P1 无。**实物 2 分**=按 10-29 原 receipt cmd 复跑 v718 三步全 rc=0：逐镜审计 13864B／AIGC 标签件 184036501B／保真 556B，落 `D:\FleetWorker\out\v718-rebuild-20261103\`；保真 SSIM All 0.988585／PSNR 40.637 → PASS(≥0.97) 与基线同结论；四件 sha256 落 state/artifacts/v718-rebuild-20261103.json（state/artifacts/ 首建）。
+P2 两处如实：①产物落共享 out 而非原 D:\FleetWorker\review（该目录已被清理且属跨司写面，未写任何兄弟司仓）；②源件文件名同但内容已变（现 sha256 7dac8d4c… vs 10-29 回执 79ed8614…，字节数同为 659718890）——历史回执 sha 不能再用于核销，重建件只对当前盘上文件成立。no.22 回执产物律仍 5 missing + 4 copy 如实红（重建件不在回执路径，不冒充核销）。
