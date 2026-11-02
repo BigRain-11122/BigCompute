@@ -39,6 +39,12 @@ utf-8 显式编码唯一写入路径——轮账本/心跳 append 一律走本�
      判据两条：①整行 non-ASCII=0 且含「?」→ 疑似整行 CJK 破坏（正身形态）；
      ②任意处「??」连续 ≥2 → 破坏残留（混排行面）。命中 → 拒写 exit 7。
      逃生门=--allow-ascii-qmark（真英文问句等合法 ASCII 行，显式声明放行）。
+  J10 rounds.log text-integrity 硬闸（D-20261102-03 ③ 收口·11-02 19:2x 立）：
+     D-03 只要求「夜轮轮账本固定追加 text-integrity 行」，实际靠 runbook 自觉
+     （D-20261102-07 实测点名「靠 runbook 非硬闸」）。判据补到出生地=写侧：
+     目标文件名 rounds.log 时，行内必须带 `textintegrity:<三态>` 字段
+     （三态取 text_integrity_census.rounds_line() 的输出），否则拒写 exit 8。
+     逃生门=--allow-missing-textintegrity "<理由>"（理由必须非空、随行打印）。
 """
 import argparse
 import io
@@ -65,6 +71,9 @@ except Exception:  # 同目录导入兜底
 DUAL_TS_LIMIT = 2
 # J9（T151）：CJK 被 GBK 控制台吞成 ASCII 问号的破坏形态
 QMARK_RUN_RE = re.compile(r"\?{2,}")
+# J10（D-20261102-03 ③）：轮账本行必须携带 text-integrity 摘要字段
+ROUNDS_LOG_BASENAME = "rounds.log"
+TEXTINTEGRITY_RE = re.compile(r"textintegrity:(CLEAN|EXTERNAL-DAMAGED|NEEDS-FIX)")
 
 
 def _read_strict(path):
@@ -97,11 +106,11 @@ def _verify_readback(path, line):
     return True, "readback=ok"
 
 
-def append_line(path, line, allow_ascii_qmark=False):
+def append_line(path, line, allow_ascii_qmark=False, allow_missing_textintegrity=None):
     """返回 (exit_code, message)。
 
     exit 0=APPENDED / 2=DUPLICATE / 3=CORRUPT / 4=DUAL-TS / 5=EMPTY-LINE
-    / 6=MOJIBAKE / 7=QMARK-CORRUPT
+    / 6=MOJIBAKE / 7=QMARK-CORRUPT / 8=MISSING-TEXTINTEGRITY
     """
     raw, text = _read_strict(path)
     if text is None:
@@ -156,6 +165,19 @@ def append_line(path, line, allow_ascii_qmark=False):
             return 7, ("QMARK-CORRUPT-REJECT: 行内「??」连续问号 %d 处——破坏残留形态"
                        "（T151 判据②·混排行面）。重打该段中文或 --allow-ascii-qmark 放行"
                        % n_run)
+    # J10 rounds.log text-integrity 硬闸（D-20261102-03 ③·出生地拦截）
+    if allow_missing_textintegrity is not None and not allow_missing_textintegrity.strip():
+        return 8, ("MISSING-TEXTINTEGRITY-REJECT: --allow-missing-textintegrity 的理由为空——"
+                   "逃生门必须写明为什么本轮没有 census 面")
+    if os.path.basename(path).lower() == ROUNDS_LOG_BASENAME and not allow_missing_textintegrity:
+        if not TEXTINTEGRITY_RE.search(line):
+            return 8, ("MISSING-TEXTINTEGRITY-REJECT: state/rounds.log 行内缺 "
+                       "textintegrity:<CLEAN|EXTERNAL-DAMAGED|NEEDS-FIX> 字段——"
+                       "夜轮行必须携带 text_integrity_census 的 ROUNDS-LINE 摘要"
+                       "（D-20261102-03 ③ 由 runbook 自觉改为写侧硬闸）。"
+                       "正解=跑 python Tools/text_integrity_census.py run --rounds-line "
+                       "取其输出拼入本行；确无该面时用 "
+                       "--allow-missing-textintegrity \"<理由>\" 显式放行")
     # J4 尾行守卫：既有尾字节非 \n 时先补换行，防新行并入既有尾行（T50 判例）
     tail_nl_fix = bool(text) and not raw.endswith(b"\n")
     with io.open(path, "a", encoding="utf-8", newline="") as f:
@@ -168,6 +190,8 @@ def append_line(path, line, allow_ascii_qmark=False):
     msg = "APPENDED ok bytes_total=%d lines_total=%d" % (len(after.encode("utf-8")), len(after.splitlines()))
     if tail_nl_fix:
         msg += " tail_nl_fix=1（既有尾行缺换行已补——J4 守卫）"
+    if allow_missing_textintegrity:
+        msg += " textintegrity_bypass=(%s)" % allow_missing_textintegrity.strip()
     rb_ok, rb_msg = _verify_readback(path, line)  # J7 回读断言（非拦截·防吞写）
     if not rb_ok:
         msg = rb_msg + " | " + msg
@@ -269,6 +293,25 @@ def _selftest():
         # S22 二手时刻引用放行（J5·T172 义务对等面：读侧认的行写侧不得拒）
         c, m = append_line(p3, "22:56 刻痕：第三方复活被杀（20:49:44 击发实锚·引他人证据时刻）")
         run("S22 二手引用行放行", c == 0 and "击发实锚" in open(p3, "rb").read().decode("utf-8"), m[:120])
+        # S23 rounds.log 缺 text-integrity 字段 → 拒写（J10·D-20261102-03 ③）
+        pr = os.path.join(td, "rounds.log")
+        c, m = append_line(pr, "2026-11-02 19:2x tokens: local=0 api=0 queue:T-x done=x")
+        run("S23 rounds行缺字段拒写 exit8",
+            c == 8 and "MISSING-TEXTINTEGRITY" in m and not os.path.exists(pr), m[:100])
+        # S24 rounds.log 带三态字段 → 放行（正常夜轮行形态）
+        c, m = append_line(pr, "2026-11-02 19:2x tokens: local=0 api=0 queue:T-x done=x"
+                               " | textintegrity:CLEAN cats=7/7 files=12 damaged_files=0")
+        run("S24 rounds行带字段放行", c == 0 and "textintegrity:CLEAN" in open(pr, "rb").read().decode("utf-8"), m[:100])
+        # S25 逃生门：理由必须非空，且放行后消息带 bypass 标记
+        c, m = append_line(pr, "2026-11-02 19:3x [month-end-amend 2026-11] 修正行",
+                           allow_missing_textintegrity="")
+        run("S25a 逃生门空理由仍拒", c == 8 and "理由为空" in m, m[:100])
+        c, m = append_line(pr, "2026-11-02 19:3x [month-end-amend 2026-11] 修正行",
+                           allow_missing_textintegrity="月末修正行非轮行·D-03 ③ 面不适用")
+        run("S25b 逃生门非空理由放行", c == 0 and "textintegrity_bypass=" in m, m[:120])
+        # S26 非 rounds.log 目标不受 J10 约束（心跳/队列照常写）
+        c, m = append_line(p3, "19:3x 刻痕：J10 不波及非轮账本目标")
+        run("S26 非rounds目标不受限", c == 0 and "textintegrity_bypass" not in m, m[:100])
 
     n_pass = sum(1 for _, ok, _ in checks if ok)
     for name, ok, detail in checks:
@@ -287,11 +330,14 @@ def main():
     a.add_argument("--line", required=True)
     a.add_argument("--allow-ascii-qmark", action="store_true",
                    help="放行含问号的纯 ASCII 行（J9 逃生门·真英文问句用）")
+    a.add_argument("--allow-missing-textintegrity", metavar="REASON",
+                   help="放行 state/rounds.log 中不带 textintegrity: 字段的行（J10 逃生门·理由必填）")
     sub.add_parser("selftest", help="自测（temp 夹具零污染）")
     args = ap.parse_args()
     if args.cmd == "selftest":
         sys.exit(_selftest())
-    code, msg = append_line(args.file, args.line, allow_ascii_qmark=args.allow_ascii_qmark)
+    code, msg = append_line(args.file, args.line, allow_ascii_qmark=args.allow_ascii_qmark,
+                            allow_missing_textintegrity=args.allow_missing_textintegrity)
     print(("APPEND " if code == 0 else "") + msg)
     if code == 0:
         print("NOTE: " + BUDGET_NOTE)

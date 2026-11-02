@@ -500,4 +500,6 @@ P2 三条：①**首跑即抓出 D-20 同族缺陷**——group_root 少推导�
 P0 无。P1 无。**产品增量**=Tools/scope_proof.py + 三闸（sop_coverage_check / batch_pool validate / dispatch_precheck）各自打印 domain/not_scanned/unreadable；实跑抓到一句诚实话：SOP 闸的 GREEN 只覆盖 34/92 个文档（coverage 37.0%），另有 58 个 docs md 从不入判——旧口径只印「violations=0」，读者会以为全库都过了。
 P2 **F3 工具计数第三次漂移**=actual 77 vs declared 76（11-01 bump 到 75 之后又落两件无人 bump，其中一件是本轮自己加的）→ 已 bump 77 + 留痕，结构性修法入 BC-P-163（工具自申报，禁靠人手改常量）。
 P2 **D-20261102-10 本司面核验**=BigCompute-LaneTaskGuard 实测 State=Ready（已由 03:07 班复活），本司无需再 enable；自愈守卫在役维持。
-
+## 2026-11-02 19:0x 夜报（19:0x 令牌轮·D-20261102-03 ③ 收口·产品增量 2 分件）
+P0 无。P1 无。**产品增量 2 分件**：`Tools/round_append.py` 增 **J10 rounds.log text-integrity 硬闸**——写 state/rounds.log 时行内必须带 `textintegrity:<CLEAN|EXTERNAL-DAMAGED|NEEDS-FIX>` 字段，否则拒写 exit 8；逃生门 `--allow-missing-textintegrity "<理由>"` 理由必填（空理由同样拒写）。selftest **22→27/27 PASS**（S23 缺字段拒写／S24 三态放行／S25a 空理由拒／S25b 非空放行／S26 非 rounds 目标不受限），本轮轮账本行即由本闸放行后落盘＝过闸 dogfood 实证。D-03 ③ 由「runbook 自觉」变为**出生地拦截**，且不动在役绿灯工具、不新增台账。
+P2 两条：①qa_smoke no.8 本轮实弹 FAIL 抓到 `HQ-FEEDBACK.md` 尾部 2 行空行残留（非规范写入残留），已当轮清除并复跑全绿——写侧 J4 只护照 python 追加，shell/手工写入的残留在读侧被抓住，两面互补成立；②D-20261102-15/16 pause 面复核：12:00 live 8 件漂移任务里本司占 4 件（OSLoop／OSLoop-PM／OrderSentinel／GPU-IdleWatch），8/8 全在 `machine-state.disabled.json` 17 件名单内＝09:00 pauseLite 合法让路，非异常停用，本司侧零动作如实登记；停用归因 UNVERIFIABLE 由 @HQ 工具域 pause_integrity 封口（不追人）。
