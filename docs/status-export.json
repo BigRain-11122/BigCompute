@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-11-03 00:39",
- "current_activity": "2026-11-03 00:00 轮：open 1→1（M96 done·新立 M97） [via BigCompute-OSLoop]",
- "latest_artifact": "state/gpu-util/samples.jsonl（mtime 2026-11-03 00:38） ｜ state/month-end-202610.json（N1 十月月末归集报告·sources_ok=10·机械链 9/9·mtime 2026-10-31 22:45）+ qa/smoke-20261031-2244.log/.png（QA 17/17 PASS）",
- "next_milestone": "M4 接产对齐矩阵 blocked 项随开店/平台后台逐项销 ⬜（T-27 余项）（队列状态=**blocked 如实**（10-28 23:2x 令牌轮队列卫生）：销 ⬜ ） ｜ N1 月末归集已毕（10-31 22:4x）；下一步=①BC-P-155 self/borrowed 分列判据待批（采纳后下一个月末行起出 verdict 列）②M25/T26 室内烘焙样板间实弹=净窗一命令（BLOCKED 计数在册·净窗开后 ≤1 轮兑现）③D-20261031-05 ② lane8090 复活判定点 11-02 03:07"
+ "updated_at": "2026-11-03 01:12",
+ "current_activity": "2026-11-03 01:0x 轮：M97 收口（回执产物律 triage）——修仪器 cpu_effective_hours 他机回执不碰本机磁盘（selftest 18/18），修后红面 5 missing+4 copy，逐条归类落 triage 件 [via BigCompute-OSLoop]",
+ "latest_artifact": "docs/ops/receipt-product-triage-20261103.md（11 条回执 triage：4 条真实产出被 scratch 清理 / 1 条假回执 / 4 条重复交付 / 2 条跨机误判已修）｜state/cpu-eff-triage-7d-20261103.json（修后实跑 counted=31 remote_unverif=78 missing=5 copy=4）｜qa/smoke-20261103-0050.log/.png（19/21）",
+ "next_milestone": "①no.22 残红收口=等 11-02 的 4 条重复交付滚出 7 日窗，同时按 BC-P-168 把回执产物落受管目录（提案待批）②tech T189=v718 质检链三步重跑（产物落 repo 受管目录，约 73s CPU）③M25/T26 室内烘焙样板间实弹=净窗一命令（BLOCKED 计数在册）"
 }

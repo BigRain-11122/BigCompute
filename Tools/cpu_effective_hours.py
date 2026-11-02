@@ -171,6 +171,11 @@ def local_path(root, rel):
     return os.path.normpath(os.path.join(root, cleaned))
 
 
+def _is_machine_node(name):
+    """bm-a/bm-b/... 这类才是机队节点名；llm schema 的 node 实为车道名，不当机判。"""
+    return bool(name) and name.replace("-", "").isalnum() and name.startswith("bm-")
+
+
 def evaluate(records, root, host, days=None, node=None, now=None):
     now = now or datetime.now()
     cutoff = None
@@ -197,21 +202,25 @@ def evaluate(records, root, host, days=None, node=None, now=None):
             skipped.append((rec, "no-deliverable"))
             continue
 
+        # 他机回执不得用本机磁盘判真：repo 相对路径在每台机上同名同构，
+        # 拿它在本机算 digest 会把两台机各自真跑出来的同名产物判成「复制当产物」，
+        # 也会把本机残留的旧文件当成他机产物已核销（D-20261103-02 回执产物律 triage）。
+        foreign = (rec["node"] and rec["node"] != host
+                   and (_is_machine_node(rec["node"])
+                        or rec["schema"] == "lane"
+                        or rec["deliverable"].startswith("/")))
+        if foreign:
+            buckets["remote_unverif"] += 1
+            skipped.append((rec, "REMOTE-UNVERIF"))
+            continue
+
         path = local_path(root, rec["deliverable"])
         exists = bool(path) and os.path.isfile(path)
         digest = _sha(path) if exists else ""
 
         if not exists:
-            if rec["node"] and rec["node"] != host and not rec["deliverable"].startswith("/"):
-                buckets["remote_unverif"] += 1
-                state = "REMOTE-UNVERIF"
-            elif rec["node"] and rec["node"] != host:
-                buckets["remote_unverif"] += 1
-                state = "REMOTE-UNVERIF"
-            else:
-                buckets["missing_local"] += 1
-                state = "MISSING-LOCAL"
-            skipped.append((rec, state))
+            buckets["missing_local"] += 1
+            skipped.append((rec, "MISSING-LOCAL"))
             continue
 
         if rec["seconds"] <= 0:
@@ -239,11 +248,12 @@ def evaluate(records, root, host, days=None, node=None, now=None):
             "state": "VERIFIED",
         }
         rows.append(row)
-        by_deliverable.setdefault(digest, []).append(row)
+        by_deliverable.setdefault((rec["node"], digest), []).append(row)
 
-    # 复制当产物：同一内容被不同 id 当成各自产物 → 后者不计净工时
+    # 复制当产物：同一节点上同一内容被不同 id 当成各自产物 → 后者不计净工时
+    # （不同节点各自跑出同名同内容产物属正常，不算复制——见上方 foreign 判定）
     copy_rows = []
-    for digest, group in by_deliverable.items():
+    for _node_digest, group in by_deliverable.items():
         if len(group) < 2:
             continue
         group = sorted(group, key=lambda r: (r["ts"], r["id"]))
@@ -398,6 +408,10 @@ def selftest():
                 "cmd": "python scan.py", "ts": fresh})
         _write(os.path.join(rdir, "r15.json"),
                {"verdict": "PASS", "fps": 24, "frames": 100, "seams": []})
+        # 他机回执声称的 repo 相对路径在本机同名存在（out/a.json）：
+        # 这是本机 J-OK 的产物，不能被当成 bm-c 的产物核销，更不得判成复制
+        _write(os.path.join(rdir, "r16.json"),
+               _lane("J-REMOTE-SAMEPATH", "bm-c", 500, "out/a.json", fresh))
 
         recs, bad, other = load_receipts(rdir)
         want("S1 坏 JSON 进 bad_json", len(bad) == 1)
@@ -414,7 +428,12 @@ def selftest():
         want("S5 rc 失败不入账", p["buckets"]["rc_fail"] >= 1)
         want("S6 本机缺产物=missing_local 且 verdict ATTENTION",
              p["buckets"]["missing_local"] == 1 and p["verdict"] == "ATTENTION")
-        want("S7 他机缺产物=remote_unverif 不判缺陷", p["buckets"]["remote_unverif"] == 1)
+        want("S7 他机回执一律 remote_unverif（含本机有同名文件的两条）",
+             p["buckets"]["remote_unverif"] == 2)
+        want("S18 他机 repo 相对路径不得用本机文件核销、也不得判复制",
+             all(r["id"] != "J-REMOTE-SAMEPATH" for r in p["rows"])
+             and all(c["id"] != "J-REMOTE-SAMEPATH" for c in p["copies"])
+             and all(c["id"] != "J-OK" for c in p["copies"]))
         want("S8 同 id 同产物重放只计一次", p["buckets"]["replay"] == 1)
         want("S9 复制当产物被抓(J-COPY2)",
              any(c["id"] == "J-COPY2" for c in p["copies"]))
