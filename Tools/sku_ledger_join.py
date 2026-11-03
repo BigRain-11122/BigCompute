@@ -45,11 +45,11 @@ SETTLE_FIELDS = ["platform_settle_id", "amount", "gross_fee",
 
 # class -> (rail, field list, matcher description)
 SPEC = [
-    ("quota_pack_19.9", "quota", QUOTA_FIELDS + ["order_id"],
+    ("quota_pack_19.9", "quota", QUOTA_FIELDS,
      {"sku_contains": ["quota"]}),
-    ("membership_3tier", "quota", QUOTA_FIELDS + ["order_id"],
+    ("membership_3tier", "quota", QUOTA_FIELDS,
      {"lane_in": ["subscription", "membership"]}),
-    ("rush_9.9", "quota", QUOTA_FIELDS + ["order_id"],
+    ("rush_9.9", "quota", QUOTA_FIELDS,
      {"sku_contains": ["rush"]}),
     ("watch_session", "revenue", REVENUE_FIELDS, {"lane_in": ["scene"]}),
     ("identity_right", "revenue", REVENUE_FIELDS,
@@ -109,9 +109,14 @@ def matches(row, matcher):
 def join(rails):
     """Join the declared classes against every rail we actually have.
 
-    A class may not own a rail file of its own (quota orders physically land in
-    the revenue rail), so row detection searches all rails; the declared rail
-    only decides which field list is required.
+    Two different questions, deliberately separated:
+      * class_state  -- does any row of this class exist anywhere (a quota order
+        physically lands in the revenue rail, linked by ref, so row detection
+        searches all rails);
+      * field_states -- does the rail the class declares actually carry the
+        declared fields. A field belongs to the rail schema, not to a class, so
+        evidence is read from the declared rail's rows as a whole. When that
+        rail has no rows at all the field is NO_ROWS, never a silent pass.
     """
     all_rows = []
     for name in ("revenue", "quota", "fulfillment", "contract", "settlement"):
@@ -119,21 +124,28 @@ def join(rails):
     out = []
     for name, rail, fields, matcher in SPEC:
         rows = [r for r in all_rows if matches(r, matcher)]
+        rail_rows = rails.get(rail, [])
         field_states = {}
         for f in fields:
-            if not rows:
+            if not rail_rows:
                 field_states[f] = NO_ROWS
-            elif any(r.get(f) is not None for r in rows):
+            elif any(r.get(f) is not None for r in rail_rows):
                 field_states[f] = EVIDENCED
             else:
                 field_states[f] = MISSING_IN_DATA
         missing = [f for f, s in field_states.items() if s == MISSING_IN_DATA]
+        if not rows:
+            class_state = NO_ROWS
+        elif missing or any(s == NO_ROWS for s in field_states.values()):
+            class_state = MISSING_IN_DATA
+        else:
+            class_state = EVIDENCED
         out.append({
             "class": name,
             "rail": rail,
             "rows": len(rows),
-            "class_state": (NO_ROWS if not rows else
-                            (MISSING_IN_DATA if missing else EVIDENCED)),
+            "rail_rows": len(rail_rows),
+            "class_state": class_state,
             "fields_total": len(fields),
             "fields_evidenced": sum(1 for s in field_states.values() if s == EVIDENCED),
             "missing_fields": missing,
@@ -163,9 +175,10 @@ def render(items, summary):
                     summary["classes_no_rows"], summary["classes_missing_fields"],
                     summary["missing_field_total"]))
     for i in items:
-        lines.append("  %-18s rail=%-11s rows=%d state=%s fields=%d/%d"
-                     % (i["class"], i["rail"], i["rows"], i["class_state"],
-                        i["fields_evidenced"], i["fields_total"]))
+        lines.append("  %-18s rail=%-11s rows=%d rail_rows=%d state=%s fields=%d/%d"
+                     % (i["class"], i["rail"], i["rows"], i["rail_rows"],
+                        i["class_state"], i["fields_evidenced"],
+                        i["fields_total"]))
         if i["missing_fields"]:
             lines.append("    missing in data: " + ", ".join(i["missing_fields"]))
     return "\n".join(lines)
@@ -179,9 +192,13 @@ def _selftest():
 
     rails = {
         "revenue": [{"order_id": "A", "lane": "gacha", "sku": "card.draw",
-                     "cost_item": "cost", "tokens_local": 5, "tier": "L2"}],
+                     "cost_item": "cost", "tokens_local": 5, "tier": "L2"},
+                    {"order_id": "B", "lane": "b2b_direct",
+                     "sku": "data.report", "price": 349.0}],
         "quota": [{"order_id": "Q", "sku": "seat.quota", "amount_mtok": 0.4}],
-        "fulfillment": [], "contract": [], "settlement": [],
+        "fulfillment": [{"order_id": "A", "cost_item": "cost",
+                         "tokens_local": 5, "tier": "L2"}],
+        "contract": [], "settlement": [],
     }
     items = {i["class"]: i for i in join(rails)}
 
@@ -190,13 +207,18 @@ def _selftest():
         items["furniture_gen"]["class_state"])
     chk("S2 present field is EVIDENCED",
         items["furniture_gen"]["field_states"]["tokens_local"] == EVIDENCED)
-    chk("S3 absent field on an existing row is MISSING-IN-DATA",
+    chk("S3 absent field on an existing rail is MISSING-IN-DATA",
         items["furniture_gen"]["field_states"]["api_reason"] == MISSING_IN_DATA
         and "api_reason" in items["furniture_gen"]["missing_fields"])
     chk("S4 class with no rows is NO-ROWS on every field",
         items["ads_3tier"]["class_state"] == NO_ROWS
         and all(s == NO_ROWS for s in items["ads_3tier"]["field_states"].values()))
-    chk("S5 quota class joins the quota rail", items["quota_pack_19.9"]["rows"] == 1)
+    chk("S5 quota class joins the quota rail",
+        items["quota_pack_19.9"]["rows"] == 1
+        and items["quota_pack_19.9"]["rail_rows"] == 1)
+    chk("S5b empty declared rail keeps fields NO-ROWS even when a class row exists",
+        items["b2b_contract"]["class_state"] == MISSING_IN_DATA
+        and items["b2b_contract"]["field_states"]["contract_no"] == NO_ROWS)
 
     summary = summarise(list(items.values()))
     chk("S6 summary counts no-rows classes honestly",
