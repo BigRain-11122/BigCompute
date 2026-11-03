@@ -555,3 +555,6 @@ P0 无。P1 **三张 `C-INFRA-AUDIT-BM-{A,B,C}-20261103` 体检卡从未进过 g
 实物 2 分：bm-a 本机实跑体检 `verdict=GAPS rc=2`（卡内 ok_rc 允许）27.9s——端口归属 ollama.exe pid 44276 / 11434、模型 qwen3.5:4b+qwen3:4b-instruct、解码 **153.2 tok/s**（llamacpp）、并发 speedup 6.9×、前缀缓存 hit=false、embedding 不可用；回执含 port_owner/server_env 两必看项，覆盖 bm-m 占位。证据 state/local-inference-audit-bm-a-20261103.md。
 P2 四条缺口=NUM_PARALLEL=2、KEEP_ALIVE=5m、CONTEXT_LENGTH=16384、无 embedding 模型；**自行发现 `OLLAMA_NUM_CTX=4096` 与 `OLLAMA_CONTEXT_LENGTH=16384` 同机并存互相矛盾**（工具静默取一个=像结论实为猜）→ 提案 **BC-P-179**（体检工具增同语义双变量 CONFLICT 判定，@HQ 工具面）。环境变量改动不在本司自决面。
 2026-11-03 20:4x 日清: 小结=**T196 收口撤回**——20:44 普查确曾 `TEXT-INTEGRITY-CLEAN`（conflict_blocks=0），20:51 复跑同一文件 L304-310 半合并块**原样复发**（conflict_blocks=2 markers=7，工作区 `M docs/orders.md` 未提交），定谳=清理不持久、他机 rebase/stash 数分钟内写回，销行判据改为「连续 2 次间隔 ≥30min 复跑均 CLEAN」；T197 新立承接卡片丢失面；实物=一台机的真读数，不是一份计划。
+2026-11-03 20:5x 日清: 无待报阻塞（T196 仍在 @HQ 面：集团 orders.md 冲突块随主树 rebase/autostash 复发，本司只报警不改）。
+P1 证据: 共享台账整表覆盖会丢活卡——`row_loss_census` 实跑 w60/w300 抓到 `MV-NEWPROC-PACKET-20261103`（QUEUE RUNNING／BACKLOG READY）在 13:10:44→13:10:53 消失后回填=瞬态洞，permanent=0；证据 state/row-loss-20261103-2057.txt、state/row-loss-20261103-w300.txt。建议=写侧改行级 append+写前锚（BC-P-180，归 @bm-m）。
+2026-11-03 20:5x 日清小结: 本轮产物=行丢失普查器+两窗实跑读数，已入 TASKS T-60／tech T198，全程未改他仓。

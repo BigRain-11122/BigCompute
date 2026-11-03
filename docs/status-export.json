@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-11-03 20:4x",
- "current_activity": "2026-11-03 20:4x 令牌轮：冲突标记读侧探测（T195）——text_integrity_census 增文件级半合并签名（列首成对才判红、栈式配对嵌套块、围栏内引用只记 quoted、未配对只记 orphan），把集团 docs/orders.md 尾部长期漏报的半合并块变成机器可评读数 [via BigCompute-OSLoop]",
- "latest_artifact": "Tools/text_integrity_census.py（selftest 14→20/20 PASS）｜state/text-integrity-20261103-2040.json（VERDICT=EXTERNAL-DAMAGED cats=7/7 conflict_blocks=2 markers=7）｜docs/qa-smoke-test-charter.md §三 第 19 条（两族损坏）+第 8 条（尾部卫生 A 方案）｜qa/smoke-20261103-2033.log/.png（23/24 PASS·唯一红=no.22 M96 既有面）",
- "next_milestone": "①集团 orders.md 半合并块由 @HQ 清理，本司复跑普查回 TEXT-INTEGRITY-CLEAN 才销 T196（≤11-05）；②BC-P-178 表格列数族（TABLE-BREAK）评估与落地（≤11-06）；③no.22 回执产物律残红等 @HQ 写侧 sha256（BC-P-175）；④M25/T26 室内烘焙样板间实弹仍等净窗一命令"
+ "updated_at": "2026-11-03 21:0x",
+ "current_activity": "2026-11-03 21:0x 夜班令牌轮：行丢失普查器（T-20261103-60/T197 根因测量面）——按 git 历史逐 commit 比对共享 jsonl 台账的 id 集合，把「整表覆盖丢活卡」从一次性观察变成可复跑读数，并区分终态清理／瞬态洞／永久丢失 [via BigCompute-OSLoop]",
+ "latest_artifact": "Tools/row_loss_census.py（selftest 17/17 PASS）｜state/row-loss-20261103-2057.txt/.json（w60：ROW-LOSS-TRANSIENT，MV-NEWPROC-PACKET-20261103 在 13:10:44→13:10:53 消失后回填）｜state/row-loss-20261103-w300.txt/.json（w300：permanent=0 terminal_removed=0 bad_lines=72）｜qa/smoke-20261103-2104.log/.png（23/24 PASS·唯一红=no.22 M96 既有面）",
+ "next_milestone": "①row_loss_census 接 qa_smoke no.26 常驻探针（瞬态可见/永久红门，tech T198·≤11-05）；②BC-P-180 写侧行级 append+写前锚交 @bm-m（≤11-06）；③T196 集团 orders.md 冲突块：本轮普查回 CLEAN 属第 1 次，需 ≥30min 后第 2 次 CLEAN 才销行（≤11-05）；④no.22 残红等 @HQ 写侧 sha256（BC-P-175）"
 }
