@@ -594,3 +594,6 @@ P2: 队列 main open=6（M4/M25/M91 结构性 blocked·可执行 M103/M104/M113�
 2026-11-04 00:58 补记：M103 退款率回溯校准落地（selftest 29/29·drill 植入集 5 月份声明值 0 偏差·恰好 +2.00pp 边界不误报）——预设计 §四「>2pp 出调率提案」终于有机器判据；三条闭门律=阈值未落值拒判／售后行全缺拒判／越阈只出提案文本绝不回写费率。
 P2: 真轨与 MOCK 轨首跑都是 `REFUND-NO-DATA` / `REFUND-CANNOT-JUDGE`——九条 rail 里没有售后/退款轨，这条判据眼下只能在植入集自证；补轨演练挂 M114、提案 BC-P-188。
 P2: 队列 main open 4→3（M103 done·M91 转 @HQ 域）并新增 M114；三队列 3/7/1 仍低于常备 ≥10，缺口如实不造活，随开店物理件到件与 M98 面补足。
+2026-11-04 01:2x 日清：无待报。M114 售后台账轨 schema + MOCK 合成售后行落成——退款率校准器从「只能拒判」变「可算」（`REFUND-CALIBRATED` gross 401.90 / 预提 32.1500=8.00% / 实退 28.9900=7.2132% / dev=−0.7863pp < 2pp 阈），逐单面同时点名 R2 无售后行（dev=−8.00pp）。
+P2: 真实售后轨 state/aftersale-ledger.jsonl 仍 absent（随平台后台退款导出窗·计划态）；合成与真实双轨由 schema 钉死互斥（refund_simulated/live/order_id 三面负例），合成行进不了真实统计口径。
+P2: 同窗 census 当场抓出 mock-order 三行四个未声明键（amount_mtok/cost_rate_cny_per_mtok/cost_simulated/denominator_simulated·写入脚本未入库）——已声明并如实标注写入者来源，census RED→GREEN；main open 4→3（M114 done·新立 M115），<10 仍缺，待 M98 补点。

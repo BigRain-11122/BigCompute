@@ -45,19 +45,24 @@ ROOT = Path(__file__).resolve().parents[1]
 
 RAIL_PATHS = {
     "mock_order": ROOT / "state" / "mock-order-ledger.jsonl",
+    "aftersale": ROOT / "state" / "aftersale-ledger.jsonl",
+    "aftersale_mock": ROOT / "state" / "mock-aftersale-ledger.jsonl",
     "batch_card": ROOT / "docs" / "ops" / "batch-pool-stock-v1.jsonl",
     "distr": ROOT / "state" / "distr-ledger.jsonl",
     "delivery": ROOT / "state" / "delivery-ledger.jsonl",
 }
 
 # Idempotency keys: repeats bypass dedup and corrupt reconciliation.
+# An order may legitimately carry several refund rows, so aftersale dedups on
+# the refund event id, not on order_id.
 UNIQUE_KEYS = {
     "mock_order": "order_id", "batch_card": "batch_id", "distr": "tx_id",
-    "delivery": "event_id",
+    "delivery": "event_id", "aftersale": "aftersale_id",
+    "aftersale_mock": "aftersale_id",
 }
 
 # Absent-by-design rails (J4 planned state) are not violations.
-OPTIONAL_RAILS = {"distr", "delivery"}
+OPTIONAL_RAILS = {"distr", "delivery", "aftersale"}
 
 SCHEMAS = {
     # MOCK rail: every row must be visibly mock (mock=true, MOCK- order id) and
@@ -95,6 +100,63 @@ SCHEMAS = {
             "route_group": {
                 "enum": ["resident-qa-8792", "batch-pool", "direct-outbox"],
             },
+            # 成本演练标记（M114 普查新抓）：state/mock-order-ledger.jsonl 里有三行
+            # 带这四个键，写入脚本未入库，additionalProperties 一直静默放行。
+            # 这四个键的语义是「这张单的成本数是编的」，属诚实标记而非业务数据，
+            # 因此声明保留而不是抹掉——写入者来源记在 PRODUCERS 里如实可见。
+            "amount_mtok": {"type": "number", "minimum": 0},
+            "cost_rate_cny_per_mtok": {"type": "number", "minimum": 0},
+            "cost_simulated": {"type": "boolean"},
+            "denominator_simulated": {"type": "boolean"},
+        },
+        "additionalProperties": True,
+    },
+    # After-sale / refund rails (M114). Two separate rails so a drill row can
+    # never be mistaken for a real refund:
+    #   aftersale       real refunds     (refund_simulated=false, live=true)
+    #   aftersale_mock  synthetic drills (refund_simulated=true, live=false)
+    # refund_amount is the money actually returned; the calibration drill
+    # (Tools/refund_rate_calibration.py) sums it per order and compares against
+    # price*refund_rate. Without this pair of rails it can only answer
+    # REFUND-CANNOT-JUDGE ("refunds not recorded" vs "no refunds").
+    "aftersale": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "required": [
+            "aftersale_id", "order_id", "date", "refund_amount",
+            "refund_reason", "refund_simulated", "live", "caliber_note",
+        ],
+        "properties": {
+            "aftersale_id": {"type": "string", "pattern": "^AF-[0-9]{8}-[0-9]+$"},
+            # a real refund never points at a MOCK- order
+            "order_id": {"type": "string", "pattern": "^(?!MOCK-).+"},
+            "date": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},
+            "refund_amount": {"type": "number", "exclusiveMinimum": 0},
+            "refund_reason": {"type": "string", "minLength": 3},
+            "refund_simulated": {"const": False},
+            "live": {"const": True},
+            "caliber_note": {"type": "string", "minLength": 2},
+        },
+        "additionalProperties": True,
+    },
+    "aftersale_mock": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "required": [
+            "aftersale_id", "order_id", "date", "refund_amount",
+            "refund_reason", "refund_simulated", "live", "mock",
+            "caliber_note",
+        ],
+        "properties": {
+            "aftersale_id": {"type": "string", "pattern": "^MOCK-AF-"},
+            "order_id": {"type": "string", "pattern": "^MOCK-"},
+            "date": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"},
+            "refund_amount": {"type": "number", "exclusiveMinimum": 0},
+            "refund_reason": {"type": "string", "minLength": 3},
+            "refund_simulated": {"const": True},
+            "live": {"const": False},
+            "mock": {"const": True},
+            "caliber_note": {"type": "string", "minLength": 2},
         },
         "additionalProperties": True,
     },
@@ -211,6 +273,33 @@ PRODUCERS = {
         "tokens_api": "deal_flow_mock.ledger_write",
         "api_reason": "deal_flow_mock.ledger_write",
         "route_group": "deal_flow_mock.ledger_write",
+        # 写入脚本未入库（T135 普查漏网·M114 复查抓出）。如实标注来源，
+        # 不假称是 deal_flow_mock 写的。
+        "amount_mtok": "manual:state/mock-order-ledger.jsonl (untracked cost drill)",
+        "cost_rate_cny_per_mtok": "manual:state/mock-order-ledger.jsonl (untracked cost drill)",
+        "cost_simulated": "manual:state/mock-order-ledger.jsonl (untracked cost drill)",
+        "denominator_simulated": "manual:state/mock-order-ledger.jsonl (untracked cost drill)",
+    },
+    "aftersale": {
+        "aftersale_id": "manual:平台后台退款流水导出（计划态未接·M114 schema 先行）",
+        "order_id": "manual:平台后台退款流水导出（计划态未接·M114 schema 先行）",
+        "date": "manual:平台后台退款流水导出（计划态未接·M114 schema 先行）",
+        "refund_amount": "manual:平台后台退款流水导出（计划态未接·M114 schema 先行）",
+        "refund_reason": "manual:平台后台退款流水导出（计划态未接·M114 schema 先行）",
+        "refund_simulated": "manual:平台后台退款流水导出（计划态未接·M114 schema 先行）",
+        "live": "manual:平台后台退款流水导出（计划态未接·M114 schema 先行）",
+        "caliber_note": "manual:平台后台退款流水导出（计划态未接·M114 schema 先行）",
+    },
+    "aftersale_mock": {
+        "aftersale_id": "state/mock-aftersale-ledger.jsonl (M114 drill rows)",
+        "order_id": "state/mock-aftersale-ledger.jsonl (M114 drill rows)",
+        "date": "state/mock-aftersale-ledger.jsonl (M114 drill rows)",
+        "refund_amount": "state/mock-aftersale-ledger.jsonl (M114 drill rows)",
+        "refund_reason": "state/mock-aftersale-ledger.jsonl (M114 drill rows)",
+        "refund_simulated": "state/mock-aftersale-ledger.jsonl (M114 drill rows)",
+        "live": "state/mock-aftersale-ledger.jsonl (M114 drill rows)",
+        "mock": "state/mock-aftersale-ledger.jsonl (M114 drill rows)",
+        "caliber_note": "state/mock-aftersale-ledger.jsonl (M114 drill rows)",
     },
     "batch_card": {
         "batch_id": "manual:docs/ops/batch-pool-stock-v1.jsonl",
@@ -583,6 +672,40 @@ def cmd_selftest() -> int:
                        validate_rows("mock_order", [dict(good_mock, fund_3090=0.1)]))))
     checks.append(("dup order_id caught",
                    len(find_duplicate_keys("mock_order", [good_mock, good_mock])) == 1))
+    # M114: the aftersale pair must keep drill money and real money apart.
+    good_aftersale_mock = {
+        "aftersale_id": "MOCK-AF-20261019-1", "order_id": "MOCK-20261019-R1",
+        "date": "2026-10-19", "refund_amount": 4.0,
+        "refund_reason": "selftest drill", "refund_simulated": True,
+        "live": False, "mock": True,
+        "caliber_note": "synthetic aftersale drill row, not a real refund",
+    }
+    checks.append(("good aftersale_mock row accepted",
+                   validate_rows("aftersale_mock", [good_aftersale_mock]) == []))
+    checks.append(("aftersale_mock rejects real order id",
+                   validate_rows("aftersale_mock",
+                                 [dict(good_aftersale_mock, order_id="R-1")]) != []))
+    checks.append(("aftersale_mock rejects live=true",
+                   validate_rows("aftersale_mock",
+                                 [dict(good_aftersale_mock, live=True)]) != []))
+    good_aftersale = {
+        "aftersale_id": "AF-20261019-1", "order_id": "R-20261019-9",
+        "date": "2026-10-19", "refund_amount": 12.5,
+        "refund_reason": "user request", "refund_simulated": False,
+        "live": True, "caliber_note": "real refund rail row",
+    }
+    checks.append(("good aftersale row accepted",
+                   validate_rows("aftersale", [good_aftersale]) == []))
+    checks.append(("aftersale rejects MOCK order id",
+                   any("order_id" in str(e) for e in validate_rows(
+                       "aftersale", [dict(good_aftersale, order_id="MOCK-X")]))))
+    checks.append(("dup aftersale_id caught",
+                   len(find_duplicate_keys(
+                       "aftersale_mock",
+                       [good_aftersale_mock, good_aftersale_mock])) == 1))
+    checks.append(("census green on aftersale fixtures",
+                   census("aftersale", [good_aftersale]) == []
+                   and census("aftersale_mock", [good_aftersale_mock]) == []))
     good_distr = {
         "tx_id": "D-20261020-1", "ts": "2026-10-20T06:10:00+08:00",
         "consumer": "bigstream", "lane": "bilibili",

@@ -6,6 +6,10 @@ state/*
 !state/queue/
 state/queue/*
 !state/queue/*.md
+# MOCK 演练轨夹具随仓分发（M114）：rails_schema_check check 对 mock_order /
+# aftersale_mock 两轨做存在性判定，不入库则新克隆必然 RAILS-SCHEMA-RED
+!state/mock-order-ledger.jsonl
+!state/mock-aftersale-ledger.jsonl
 logs/
 .codely-cli/
 .playwright-mcp/
