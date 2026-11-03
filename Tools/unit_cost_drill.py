@@ -174,6 +174,10 @@ def aggregate(rows, month=None, mock_only=False):
             entry["unit_cost_reason"] = (
                 "-" if entry["unit_cost_state"] == "UNIT-COST-CALCULATED"
                 else "partial: some rows unmeasurable")
+            if b["cost_cny"] == 0:
+                entry["unit_cost_note"] = (
+                    "cost side is zero on this rail, so 0.0 is the cost input "
+                    "and not a measured unit cost")
         else:
             entry["unit_cost_cny_per_mtok"] = None
             entry["unit_cost_reason"] = ("denominator=0 (no measurable "
@@ -211,6 +215,13 @@ def run_drill(revenue_path=REVENUE_RAIL, mock_path=MOCK_RAIL,
     self_use_cost = round(sum(float(r.get("cost_b_cny", 0.0) or 0.0)
                               for r in l1_rows), 8)
 
+    def _simulated(rows):
+        return sum(1 for r in rows
+                   if r.get("denominator_simulated") or r.get("cost_simulated"))
+
+    simulated = {"mock": _simulated(mock_rows),
+                 "real": _simulated(revenue_rows)}
+
     total_orders = sum(v["orders"] for v in real_face.values())
     blocked = [m for m, v in real_face.items()
                if v["unit_cost_state"] == UNIT_COST_BLOCKED]
@@ -232,6 +243,7 @@ def run_drill(revenue_path=REVENUE_RAIL, mock_path=MOCK_RAIL,
         "mock_revenue_face": mock_face,
         "real_orders": total_orders,
         "unit_cost_blocked_months": blocked,
+        "simulated_rows": simulated,
         "self_use_l1": {
             "advisory_only": True,
             "tokens_local": self_use_tokens,
@@ -267,6 +279,8 @@ def render(report):
                         v["unit_cost_state"]))
         for why in v["denominator_block_reasons"]:
             lines.append("    blocked: " + why)
+        if v.get("unit_cost_note"):
+            lines.append("    note: " + v["unit_cost_note"])
     lines.append("mock rail face (drill data, excluded from settlement):")
     for mon, v in sorted(report["mock_revenue_face"].items()):
         lines.append("  %s orders=%d price=%.4f net=%.4f refund_prov=%.4f "
@@ -281,9 +295,15 @@ def render(report):
                         v["unit_cost_state"]))
         for why in v["denominator_block_reasons"]:
             lines.append("    blocked: " + why)
+        if v.get("unit_cost_note"):
+            lines.append("    note: " + v["unit_cost_note"])
     su = report["self_use_l1"]
     lines.append("self-use l1 (advisory, not settlement): tokens=%d cost_b=%.8f"
                  % (su["tokens_local"], su["cost_b_cny"]))
+    sim = report.get("simulated_rows", {})
+    lines.append("simulated denominator rows: mock=%d real=%d "
+                 "(design values, not measurements)"
+                 % (sim.get("mock", 0), sim.get("real", 0)))
     if report["violations"]:
         lines.append("violations (%d):" % len(report["violations"]))
         for v in report["violations"]:
@@ -374,6 +394,15 @@ def _selftest():
         and abs(m2["denominator_mtok"] - 0.75) < 1e-9
         and m2["unit_cost_state"] == "UNIT-COST-CALCULATED",
         str(m2["denominator_mtok"]))
+    zero_cost = aggregate([{"order_id": "Z1", "date": "2026-10-22",
+                            "price": 1.0, "refund_rate": 0.0,
+                            "fee_rate": 0.0, "net_price": 1.0,
+                            "amount": 0.0, "fund_3090": 0.0,
+                            "lane": "gacha", "sku": "d",
+                            "tokens_local": 1000, "tokens_api": 0}])[0]["2026-10"]
+    chk("S17 zero cost side is labelled, not read as a measured unit cost",
+        zero_cost["unit_cost_cny_per_mtok"] == 0.0
+        and "unit_cost_note" in zero_cost, str(zero_cost.get("unit_cost_note")))
 
     dup_rows = [dict(rows[0]), dict(rows[0])]
     _, dviol = aggregate(dup_rows, month=None, mock_only=False)

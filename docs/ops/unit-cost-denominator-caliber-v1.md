@@ -57,14 +57,28 @@ selftest: unit_cost_caliber 13/13 PASS · unit_cost_drill 16/16 PASS
 | ② 确有第三套写法 → 单源函数被消费方 import | ✓ `unit_cost_caliber` 已被 drill import；另两面落指针（不改数） |
 | ③ 三处实为同义则落指针 + selftest 断言 | 🟡 部分适用：quota/l1 两面各自成立，指针注记落地；未改成 import 是**有意**的（改 `month_end_collect` 计算面会动 N1 结算链，收益低于风险，E11 同律） |
 
-## 五、剩余缺口（不在本轮自裁范围内）
+## 五、M106 补字段后的复跑（2026-11-03 22:5x·同日续作）
 
-1. MOCK 演练行补 `amount_mtok`（配额型）与履约 tokens（生成型）才能出**非阻塞**的单位成本真数——属 M99 数据面扩写，已入 M106。
+MOCK 三行补分母字段（**合成值·逐行标 `denominator_simulated: true`**）：
+
+| 行 | 类型 | 补的分母 | 依据 |
+|---|---|---|---|
+| MOCK-20261019-R1 | quota（subscription） | `amount_mtok=0.42` | M12 配额设计带 0.42-0.85 Mtok/月 的下沿，取设计值 |
+| MOCK-20261019-R2 | generation（gacha） | `tokens_local=1200` | 单张卡面生成的合成量级 |
+| MOCK-20261020-R3 | generation（b2b_direct） | `tokens_local=180000` | 年度数据报告合成的量级 |
+
+复跑结果：`denom_mtok=0.601200`（quota 0.420000 + gen 0.181200）、`quota_blocked=0`、`unit_cost=UNIT-COST-CALCULATED`、`simulated denominator rows: mock=3 real=0`。
+
+**但单位成本读数是 0.0，且这是真的**：三行 MOCK 单的 `amount`（COGS）恒为 0，工具如实打 `note: cost side is zero on this rail, so 0.0 is the cost input and not a measured unit cost`。也就是说——分母面现在通了，**成本面还完全没被演练过**（派生 BC-P-186）。
+
+## 六、剩余缺口（不在本轮自裁范围内）
+
+1. MOCK 成交环不记 COGS（`amount` 恒 0），单位经济演练只走得到收入侧；补合成成本须先立标注律（BC-P-186）。
 2. `cost-ledger.jsonl` 真轨 0 行是物理件未通的直接结果，单位成本 v1 落值仍 BLOCKED（N3 门：凭证 ⬜ + 商业 tokens=0），与本口径无关。
 3. `l1-settle` 的单位价与 quota 面的口径换算（自用→商业）没有桥接件；若将来把自用算力外售，需要先立换算律再动账。
 
-## 六、验证声明
+## 七、验证声明
 
 - 实读源码：`cost_ledger.py`（l1_summary/quota_summary 函数体）、`month_end_collect.py`（assemble 商业面赋值行）、`store-ledger-wiring-predesign-v1.md` §二 字段 10。
-- 改动面：新增 1 模块、drill 重构分母、两处指针注记；**未改任何结算数值、未改 BLUEPRINT 冻结节、零真实交易、零定价动作**。
-- 回归：`cost_ledger selftest` PASS、`month_end_collect selftest 42/42 PASS`、`unit_cost_caliber 13/13`、`unit_cost_drill 16/16`。
+- 改动面：新增 1 模块、drill 重构分母、两处指针注记、MOCK 三行补分母字段（合成值已标注）；**未改任何结算数值、未改 BLUEPRINT 冻结节、零真实交易、零定价动作**。
+- 回归：`cost_ledger selftest` PASS、`month_end_collect selftest 42/42 PASS`、`unit_cost_caliber 13/13`、`unit_cost_drill 17/17`。

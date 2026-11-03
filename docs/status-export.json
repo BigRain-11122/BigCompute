@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
  "updated_at": "2026-11-03 23:0x",
- "current_activity": "2026-11-03 23:0x 夜班轮：单位成本分母口径单源化（main M105 / T-20261103-65 / BC-P-184）——三处都叫 tokens 但不同轴（配额权利面/l1 自用计量/收入行单笔实耗），各自算都对、合起来互相打架；现由 Tools/unit_cost_caliber.py 一处判 [via BigCompute-OSLoop]",
- "latest_artifact": "Tools/unit_cost_caliber.py（classify_row/row_denominator/aggregate_denominator/unit_cost_state·缺字段=BLOCKED 不是 0·selftest 13/13）｜Tools/unit_cost_drill.py（改 import 单源·修掉配额型 SKU 按实耗算的真错·selftest 16/16）｜docs/ops/unit-cost-denominator-caliber-v1.md（三面差异表+判据对照）｜state/unit-cost-drill-20261103-2253.txt（三行 MOCK 逐条点名阻塞）｜qa/smoke-20261103-2255.log/.png（24/25 PASS·唯一红=no.22 M96 既有面）",
- "next_milestone": "①M106 MOCK 演练行补 amount_mtok/履约 tokens 以出非阻塞单位成本真数（≤11-04）；②M100 SKU 十类×账本 join 复演出缺列清单（≤11-05）；③no.22 残红待写侧 sha256 要求落地（@HQ·BC-P-175）"
+ "current_activity": "2026-11-03 23:0x 夜班轮：单位成本分母口径单源化（M105）+ MOCK 演练行补分母（M106）——三处 tokens 不同轴已收口到 Tools/unit_cost_caliber.py，drill 复跑得 denom_mtok=0.601200、UNIT-COST-CALCULATED [via BigCompute-OSLoop]",
+ "latest_artifact": "Tools/unit_cost_caliber.py（单源分类律·缺字段=BLOCKED·selftest 13/13）｜Tools/unit_cost_drill.py（import 单源·simulated_rows 计数·零成本注记·selftest 17/17）｜state/unit-cost-drill-20261103-2258.txt/.json（denom_mtok=0.601200 quota=0.42 gen=0.1812 quota_blocked=0 unit_cost=UNIT-COST-CALCULATED·simulated mock=3）｜docs/ops/unit-cost-denominator-caliber-v1.md（三面差异表+M106 复跑节）｜qa/smoke-20261103-2259.log/.png（24/25 PASS·唯一红=no.22 M96 既有面）",
+ "next_milestone": "①M107 给 MOCK 成交环补合成 COGS，让单位经济演练走到成本侧（BC-P-186·≤11-04）；②M100 SKU 十类×账本 join 复演出缺列清单（≤11-05）；③no.22 残红待写侧 sha256 要求落地（@HQ·BC-P-175）"
 }

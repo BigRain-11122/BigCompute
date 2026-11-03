@@ -575,3 +575,4 @@ P2: 单位成本「谁算商业产出」三处各写一套（cost_ledger.l1-summ
 2026-11-03 23:0x 日清: 实物=单位成本分母口径单源化（M105）——`Tools/unit_cost_caliber.py`（三面＝quota 权利/l1 自用/收入行实耗·缺字段=BLOCKED 不是 0·selftest 13/13），drill 改 import 并修掉「配额型 SKU 按实耗算」的真错（selftest 16/16）；两面只落指针不改数（cost_ledger PASS、month_end_collect 42/42）。差异表 `docs/ops/unit-cost-denominator-caliber-v1.md`。
 P2: MOCK 三行缺 `amount_mtok`/履约 tokens，整月单位成本仍 BLOCKED——M106 补字段；不改 `month_end_collect` 计算面是有意选择（动 N1 结算链风险高于收益，E11 同律，已写进件）。
 23:0x 日清小结: 口径统一不是为了好看，是为了让「算不出来」也能被追到具体哪一行缺哪个字段。
+2026-11-03 23:0x 补: M106 补完 MOCK 三行分母（R1 amount_mtok=0.42 / R2 1200 tok / R3 180000 tok·均标 denominator_simulated），drill 复跑 denom_mtok=0.601200、quota_blocked=0、unit_cost=UNIT-COST-CALCULATED；**但单位成本读 0.0 是真的**——三行 MOCK 单 COGS 恒 0，工具已如实打「cost side is zero」注记，等于说明成本面从未被演练过（提案 BC-P-186 / M107 承接）。
