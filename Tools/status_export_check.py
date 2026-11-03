@@ -543,7 +543,8 @@ def selftest():
     with tempfile.TemporaryDirectory() as td:
         os.makedirs(os.path.join(td, "state", "__pycache__"))
         for rel in ("state/a.txt", "state/__pycache__/x.pyc"):
-            with open(os.path.join(td, *rel.split("/")), "w") as f:
+            with open(os.path.join(td, *rel.split("/")), "w",
+                      encoding="utf-8") as f:
                 f.write("")
         got = sorted(r for r, _ in collect_files(td))
     cache_ok = got == ["state/a.txt"]

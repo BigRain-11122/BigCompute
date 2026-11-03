@@ -81,7 +81,7 @@ def _selftest():
 
     with tempfile.TemporaryDirectory() as td:
         lock = os.path.join(td, "round.lock")
-        with open(lock, "w") as f:
+        with open(lock, "w", encoding="utf-8") as f:
             f.write("12345")
         # S2 新轮端到端：age≈0 → OK 无预警
         os.utime(lock, (time.time(), time.time()))

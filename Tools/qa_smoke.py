@@ -1322,7 +1322,19 @@ def probe_ledger_tails(root=None):
         raw_lines = raw.split(b"\n")
         if tail_nl:
             raw_lines = raw_lines[:-1]
-        empt = [i for i, ln in enumerate(raw_lines[-12:]) if not ln.strip()]
+        # T193 (2026-11-03): one blank line directly above a section heading
+        # ("## ...") is canonical markdown spacing, not write residue.  The
+        # T95 rule targets appends that emit "\n"+entry; without this
+        # whitelist every day-close section separator is a false red.
+        window_start = max(0, len(raw_lines) - 12)
+        empt = []
+        for i in range(window_start, len(raw_lines)):
+            if raw_lines[i].strip():
+                continue
+            nxt = raw_lines[i + 1] if i + 1 < len(raw_lines) else b""
+            if nxt.startswith(b"## "):
+                continue
+            empt.append(i)
         if empt:
             fails.append("%s: %d empty line(s) in tail-12 "
                          "(non-canonical write residue?)" % (rel, len(empt)))
@@ -1440,6 +1452,20 @@ def selftest_tails():
               "2026-10-31 14:11:01 P2 hq_feedback: MISSED "
               "2026-10-31 12:43:09 P2 hq_feedback: MISSED\n"),
              False, "2 markers in last line")
+    # J = T193: one blank line above a "## " section heading is canonical
+    #     spacing and must not be read as write residue; K keeps the true
+    #     residue class (blank that is NOT a separator) red.
+    scenario("J blank above section heading -> PASS (canonical spacing)",
+             ("HQ-FEEDBACK.md",
+              "## \u65e5\u6e05\uff1a\u65e0\u5f85\u62a5\n"
+              "\n"
+              "## 2026-11-03 19:0x \u65e5\u6e05\uff08"
+              "\u65b0\u8282\uff09\n"),
+             True, None)
+    scenario("K stray blank without heading -> FAIL empty-line",
+             ("state/heartbeat.txt",
+              "19:00 round heartbeat ok\n\n19:01 second row\n"),
+             False, "empty line(s) in tail-12")
     print("selftest verdict: %d/%d PASS"
           % (len([r for r in results if r]), len(results)))
     return 0 if all(results) else 1
