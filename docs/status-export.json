@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-11-04 00:1x",
- "current_activity": "2026-11-04 00:1x 夜班轮：M101 盲盒月消费上限拦截联调——§7.2 从文字规格落成可跑闸 Tools/gacha_cap_gate.py（21/21 PASS·合成 16 步序列出 allow=8/拦=4/批准=1/未落值=1/幂等=1/坏价=1）；任务板 T-20261104-73 双载体 [via BigCompute-OSLoop]",
- "latest_artifact": "Tools/gacha_cap_gate.py（§7.2 月上限执法点·整数分比较·cap 未落值 fail-closed 且批准通道不可绕过·draw_id 幂等·selftest 21/21）｜state/gacha-cap-drill-20261104.txt / .json（16 步合成序列：anon-a 2026-11 spent=240.00 含 1 笔批准越限 40.00；anon-c 恰好 200.00 到顶后 0.01 即拦）｜state/text-integrity-20261104.json（CLEAN cats=7/7）｜qa/smoke-20261104-0008.log/.png（24/25 PASS·唯一红=no.22 M96 既有面）",
- "next_milestone": "①M102 订阅续费提醒触发演练（§service-continuity 提醒窗口判定+漏触发断言·≤11-05）；②M103 退款率回溯校准（预提率 vs 实退率偏差 >2pp 出提案·≤11-05）；③M112 公示概率 vs 实际分布抽样偏差（§7.3① 另一半·≤11-06）；④cap/概率阈值数值待 CEO 定价确认批——批落即换真值并把 cap_source 改成带批文号"
+ "updated_at": "2026-11-04 00:2x",
+ "current_activity": "2026-11-04 00:2x 夜班轮（连作两段）：M101 盲盒月消费上限拦截落成可跑闸 → M102 订阅续费提醒触发演练落成可判件；两件均为条款件里的「应当」变机器判定，非文档产出 [via BigCompute-OSLoop]",
+ "latest_artifact": "Tools/renewal_reminder_drill.py（锚 1 续费前提醒判定·半开窗[续费日−N,续费日)·selftest 22/22·植入集 10 行声明值偏差 0）｜state/renewal-reminder-drill-20261104.txt/.json｜Tools/gacha_cap_gate.py（§7.2 月上限·21/21·合成 16 步 allow=8/拦=4/批准=1/未落值=1）｜state/gacha-cap-drill-20261104.txt/.json｜qa/smoke-20261104-0016.log/.png",
+ "next_milestone": "①M103 退款率回溯校准（预提率 vs 实退率偏差 >2pp 出提案·≤11-05）；②M104 配额发放→消费闭环演练（≤11-05）；③M113 首订「接受服务前」提示判定面 + 提醒流水轨字段缺口（本轮读条款当场发现·≤11-06）；④两件阈值（月上限 cap / 提醒提前 N 日）仍待 CEO 定价确认批，批落即换真值并改 cap_source/lead_source 为带批文号"
 }

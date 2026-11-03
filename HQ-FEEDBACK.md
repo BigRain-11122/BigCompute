@@ -582,7 +582,11 @@ P2: MOCK 三行缺 `amount_mtok`/履约 tokens，整月单位成本仍 BLOCKED�
 2026-11-03 23:0x 五补: M110 抓出一条真问题——我方预设计 §四 把对客退款写成「剩余配额×成本单价」的成本口径，实跑 49.9 元配额单应退 17.4450 而成本口径只退 0.1008（差 17.3442 元/单），**按成本口径退=系统性少退消费者**，与消费者权益保护法五十三条（预付款未按约定提供应按原价退）冲突。已就地勘正预设计 §四 为原价基准并新增 `Tools/quota_prepaid_liability.py`（selftest 9/9·逐单点名 UNDERPAYS），提案 BC-P-187 要求把「退款基准」列进合规硬门机检。
 2026-11-03 23:1x 六补: M100 十类 SKU×账本 join 机检（selftest 9/9）——10 类里 **6 类根本没有账本行**、3 类有行但缺字段（共 15 个）：配额两行缺 `tx_id/consumer/unit_cost_b_cny/month/settlement_caliber`（权利轨字段一次都没被演练过）、B 端单缺合同五件；只有摆件生成类 6/6 齐。verdict=SKU-LEDGER-JOIN-GAPS（如实非绿），M111 承接补试。
 2026-11-03 23:1x 七补: M111 走通配额权利轨（合成消费者 0.42 Mtok 发放 + 消费 0.1，余额 0.32/口径 B），两类转 EVIDENCED 6/6；同时**自我更正 M100 读数**——原报「缺字段 15」是语义错读（字段属于轨而非类），现口径 total_missing=0，真缺口是 **两条轨从未被写过**（履约轨文件不存在、合同轨无行）；join 语义已修（读声明轨整轨·selftest 10/10）。
-
 2026-11-04 00:1x 日清：无待报。M101 盲盒月上限拦截已从文字规格变成可跑闸（Tools/gacha_cap_gate.py·21/21·合成 16 步 allow=8/拦=4/批准=1/未落值=1/幂等=1/坏价=1）——两条闭门律是重点：cap 未落值（含 0/非数）一律拒售且 --ceo-approved 不能凭空造 cap（§7.1 数值未落=SKU 禁售），恰好到顶那笔放行、下一笔拦。
 P2: 队列常备面 main open=6（M4/M25/M91 结构性 blocked，可执行仅 M102/M103/M104）——低于 ≥10 常备线，本轮净减 1（M101 收口）已补 M112（§7.3① 概率偏差测算）；不编造可执行行凑数。
 P2: cap 数值仍待 CEO 定价确认批；批落后把 drill 的 DESIGN_CAP_CNY 换成落值并复跑，同时 cap_source 应从 drill-design-value 改为带批文号的 ceo-pricing-confirmation（防真值藏在设计值后面）。
+2026-11-04 00:2x 日清：无待报。M102 订阅续费提醒从「应当显著提醒」变成可判件（Tools/renewal_reminder_drill.py·22/22·10 行植入集声明值偏差 0）——窗口半开 [续费日−N, 续费日)，续费日当天提醒判迟到；「窗口未开」和「手动续费/已取消」既不算完成也不算漏报；N 未落值判 CANNOT-JUDGE 不默认放行。
+P2: 两条如实缺口（本轮读条款件当场发现，非工具缺陷）：①锚 1 前半句「消费者接受服务前」的显著提示仍无判定面，只有后半句有闸；②§五 要求「续费提醒触发记录入流水轨」，但现役轨 schema 没有 reminder 字段（与 M100 查出的合同轨/履约轨从未被写过同族）——已立 M113。
+P2: 队列 main open=6（M4/M25/M91 结构性 blocked·可执行 M103/M104/M113），本轮净减 1（M102 收口）并补 M113。
+2026-11-04 00:2x 补报 P1：集团共享派工台账整表覆盖丢活行（本司探针首次抓到，只报警不修）。no.26 行丢失探针变红 → 手工复算确认 `cph4/fleet/PRODUCTION-QUEUE.jsonl` 丢 8 条 + `cph4/fleet/PRODUCTION-BACKLOG.jsonl` 丢 5 条（OPEN/RUNNING/READY 全为活行），全部落在同一提交对 `54293044 → fd35fd57` 之间且窗口内未回填（readded=False）——这是「整表重写」不是终态清理，与 T197 同族；两份文件同向丢失指向单一写入路径（假说：11-03 EVENTBUS-S1 影子期挂接的 merge_jsonl 重写路径，未验证）。丢的 id 例：asset-lib-char-dataset-2026-11-03(RUNNING)、asset-lib-env-check-2026-11-04(RUNNING)、bigstream-mv-gate-2026-11-04(RUNNING)、CANARY-20261103T234842(OPEN) 等。证据 state/row-loss-20261104-group.json；风险行 R-63 已立。建议 @HQ/dispatcher 域用同一探针复算并核对 merge_jsonl 写入口——本司按禁跨仓写不动他域台账。
+2026-11-04 00:2x 补报 P1（同轮第二件）：no.2/ollama 与 no.16/8792 同刻变红，原因写成的是 GPU-CONTENDED（util=100%、vram_free=576MiB）+ CPU 兜底 180s 超时——是本机 GPU 被共租重载占满导致探针超时，不是 serve 死亡（no.23 serve 生死判别同轮 PASS）。归因面留痕：判据不做串行推断，容量读数单独记。
