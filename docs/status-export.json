@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-11-04 00:5x",
- "current_activity": "2026-11-04 00:5x 夜班轮：M113 首订「接受服务前」判定面落成可跑演练 + 提醒字段跨轨 schema 缺口扫描落成可判件——778 号令第十条第二款两个半句至此都有机器判定（后半句=M102 续费前提醒，前半句=本件） [via BigCompute-OSLoop]",
- "latest_artifact": "Tools/first_order_consent_drill.py（前半句 7 态判定·prompted_at 严格早于 accepted_at·显著位/通道/三要点·selftest 30/30·植入集 11 行声明值偏差 0）｜state/first-order-consent-drill.txt/.json｜Tools/rails_schema_check.py reminder-gap（跨 9 rail 扫 reminder 族字段·实跑 9/9 MISSING-IN-SCHEMA 如实点名）｜state/reminder-schema-gap-20261104-0050.txt/.json｜qa/smoke-20261104-0046.log/.png",
- "next_milestone": "①M103 退款率回溯校准（预提率 vs 实退率偏差 >2pp 出提案·≤11-05）；②M104 配额发放→消费闭环演练（≤11-05）；③M112 公示概率 vs 实际分布偏差测算（阈值未落值 fail-closed·≤11-06）；④订阅流水轨 reminder 字段正式入 SCHEMAS（依赖 M113 缺口结论·随 CEO 定价批同窗）；⑤阈值（月上限 cap / 提醒提前 N 日）仍待 CEO 定价确认批，批落即换真值"
+ "updated_at": "2026-11-04 00:58",
+ "current_activity": "2026-11-04 00:58 夜班轮：M103 退款率回溯校准器落成——预设计 §四「实退率偏差 >2pp 出调率提案」从此有机器判据；真轨与 MOCK 轨首跑均如实拒判（九条 rail 里没有售后/退款轨），缺口转实证 [via BigCompute-OSLoop]",
+ "latest_artifact": "Tools/refund_rate_calibration.py（提 vs 实退偏差·手续费/退款全走整数分·selftest 29/29·drill 植入集 5 月份声明值偏差 0·恰好 +2.00pp 边界不误报·阈值未落值/售后行全缺一律拒判·越阈只出提案不回写费率）｜state/refund-calibration-drill-20261104.txt/.json｜state/refund-calibration-mock-20261104.txt/.json（3 单预提 32.15=8.00%·售后 0 行→REFUND-CANNOT-JUDGE）｜qa/smoke-20261104-0058.log/.png",
+ "next_milestone": "①M114 售后台账轨 schema + MOCK 合成售后行（让校准器从「拒判」变「可算」·≤11-05）；②M104 配额发放→消费闭环演练（≤11-05）；③M112 公示概率 vs 实际分布偏差测算（阈值未落值 fail-closed·≤11-06）；④订阅流水轨 reminder 字段 + aftersale 轨正式入 SCHEMAS（随 CEO 定价批同窗）；⑤阈值（月上限 cap / 提醒提前 N 日 / 退款偏差 2pp）仍待 CEO 定价确认批，批落即换真值"
 }

@@ -591,3 +591,6 @@ P2: 两条如实缺口（本轮读条款件当场发现，非工具缺陷）：�
 P2: 队列 main open=6（M4/M25/M91 结构性 blocked·可执行 M103/M104/M113），本轮净减 1（M102 收口）并补 M113。
 2026-11-04 00:2x 补报 P1：集团共享派工台账整表覆盖丢活行（本司探针首次抓到，只报警不修）。no.26 行丢失探针变红 → 手工复算确认 `cph4/fleet/PRODUCTION-QUEUE.jsonl` 丢 8 条 + `cph4/fleet/PRODUCTION-BACKLOG.jsonl` 丢 5 条（OPEN/RUNNING/READY 全为活行），全部落在同一提交对 `54293044 → fd35fd57` 之间且窗口内未回填（readded=False）——这是「整表重写」不是终态清理，与 T197 同族；两份文件同向丢失指向单一写入路径（假说：11-03 EVENTBUS-S1 影子期挂接的 merge_jsonl 重写路径，未验证）。丢的 id 例：asset-lib-char-dataset-2026-11-03(RUNNING)、asset-lib-env-check-2026-11-04(RUNNING)、bigstream-mv-gate-2026-11-04(RUNNING)、CANARY-20261103T234842(OPEN) 等。证据 state/row-loss-20261104-group.json；风险行 R-63 已立。建议 @HQ/dispatcher 域用同一探针复算并核对 merge_jsonl 写入口——本司按禁跨仓写不动他域台账。
 2026-11-04 00:2x 补报 P1（同轮第二件）：no.2/ollama 与 no.16/8792 同刻变红，原因写成的是 GPU-CONTENDED（util=100%、vram_free=576MiB）+ CPU 兜底 180s 超时——是本机 GPU 被共租重载占满导致探针超时，不是 serve 死亡（no.23 serve 生死判别同轮 PASS）。归因面留痕：判据不做串行推断，容量读数单独记。
+2026-11-04 00:58 补记：M103 退款率回溯校准落地（selftest 29/29·drill 植入集 5 月份声明值 0 偏差·恰好 +2.00pp 边界不误报）——预设计 §四「>2pp 出调率提案」终于有机器判据；三条闭门律=阈值未落值拒判／售后行全缺拒判／越阈只出提案文本绝不回写费率。
+P2: 真轨与 MOCK 轨首跑都是 `REFUND-NO-DATA` / `REFUND-CANNOT-JUDGE`——九条 rail 里没有售后/退款轨，这条判据眼下只能在植入集自证；补轨演练挂 M114、提案 BC-P-188。
+P2: 队列 main open 4→3（M103 done·M91 转 @HQ 域）并新增 M114；三队列 3/7/1 仍低于常备 ≥10，缺口如实不造活，随开店物理件到件与 M98 面补足。
