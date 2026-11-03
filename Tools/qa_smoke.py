@@ -2510,40 +2510,42 @@ def selftest_write_encoding():
 
 
 ROW_LOSS_PROBE_WINDOW = 4
-ROW_LOSS_NA_WHY = "no-comparable-pairs"
 
 
 def row_loss_judge(payload):
-    """Judge a row_loss_census payload (no.26 / T198).
+    """Judge a row_loss_census payload (no.26 / T198, source verdicts since T199).
 
     Shared jsonl ledgers are rewritten whole, so a row can vanish between two
     commits and come back minutes later.  A permanent loss is a defect and
     names the ids; a transient hole passes but is printed, because a
     concurrent reader did see the hole and silence would teach us it was fine.
-    A target with fewer than two comparable commits is N/A -- neither a defect
-    nor health, and never counted as scanned (T-50: no green by absence).
+
+    The census owns the split between "unreadable" and "no second commit yet"
+    (ROW-LOSS-NA), so this judge reads `scanned` / `unreadable` / `na_total`
+    instead of re-deriving them from a free-text reason.  A target with fewer
+    than two comparable commits is N/A -- neither a defect nor health, and never
+    counted as scanned (T-50: no green by absence).
     """
     if not isinstance(payload, dict):
         return False, "UNVERIFIED: no census payload"
+    if "scanned" not in payload or "na_total" not in payload:
+        return False, "UNVERIFIED: census payload lacks scanned/n-a fields"
     verdict = payload.get("verdict")
     window = payload.get("window", 0)
-    targets = payload.get("targets") or []
     permanent = payload.get("lost_permanent_total", 0)
     transient = payload.get("lost_transient_total", 0)
-    unverified = [t for t in targets if t.get("verdict") == "UNVERIFIED"]
-    gaps = [t for t in unverified if t.get("why") != ROW_LOSS_NA_WHY]
-    na = [t for t in unverified if t.get("why") == ROW_LOSS_NA_WHY]
-    scanned = len(targets) - len(unverified)
-    if gaps:
-        rows = ["%s(%s)" % (t.get("target"), t.get("why")) for t in gaps[:4]]
+    unreadable = payload.get("unreadable") or []
+    na_total = payload.get("na_total", 0)
+    scanned = payload.get("scanned", 0)
+    if unreadable:
         return False, ("verdict=%s window=%d unreadable=%d %s"
-                       % (verdict, window, len(gaps), " ".join(rows)))
+                       % (verdict, window, len(unreadable), " ".join(unreadable[:4])))
     if not scanned:
         return False, ("verdict=%s window=%d scanned=0 n/a=%d -- no target "
                        "had comparable commits, absence is not health"
-                       % (verdict, window, len(na)))
+                       % (verdict, window, na_total))
     ids = []
-    for t in targets:
+    for t in (payload.get("targets") or []):
         for item in (t.get("lost_alive_ids") or [])[:4]:
             ids.append("%s id=%s %s->%s" % (
                 "TRANSIENT" if item.get("readded") else "PERMANENT",
@@ -2555,9 +2557,9 @@ def row_loss_judge(payload):
                        % (verdict, window, permanent, transient, tail))
     if transient:
         return True, ("verdict=%s window=%d permanent=0 transient=%d n/a=%d%s"
-                      % (verdict, window, transient, len(na), tail))
+                      % (verdict, window, transient, na_total, tail))
     return True, ("verdict=%s window=%d permanent=0 transient=0 scanned=%d "
-                  "n/a=%d" % (verdict, window, scanned, len(na)))
+                  "n/a=%d" % (verdict, window, scanned, na_total))
 
 
 def probe_row_loss():
@@ -2590,58 +2592,71 @@ def selftest_row_loss():
         return {"target": path, "verdict": verdict, "why": why or "",
                 "lost_alive_ids": lost or []}
 
-    free = {"verdict": "ROW-LOSS-FREE", "window": 4,
-            "targets": [tgt("q.jsonl", "ROW-LOSS-FREE")],
-            "lost_permanent_total": 0, "lost_transient_total": 0}
+    def payload(verdict, targets, scanned, na_total, unreadable=None,
+                permanent=0, transient=0):
+        return {"verdict": verdict, "window": 4, "targets": targets,
+                "scanned": scanned, "na_total": na_total,
+                "unreadable": unreadable or [], "na": [],
+                "lost_permanent_total": permanent,
+                "lost_transient_total": transient}
+
+    free = payload("ROW-LOSS-FREE", [tgt("q.jsonl", "ROW-LOSS-FREE")], 1, 0)
     ok, det = row_loss_judge(free)
     check("S1 FREE -> PASS and reports window/scope",
           ok and "window=4" in det and "scanned=1" in det)
 
-    trans = {"verdict": "ROW-LOSS-TRANSIENT", "window": 4,
-             "targets": [tgt("q.jsonl", "ROW-LOSS-TRANSIENT", lost=[
-                 {"id": "MV-1", "readded": True,
-                  "older_commit": "aaaaaaa", "newer_commit": "bbbbbbb"}])],
-             "lost_permanent_total": 0, "lost_transient_total": 1}
+    trans = payload("ROW-LOSS-TRANSIENT",
+                    [tgt("q.jsonl", "ROW-LOSS-TRANSIENT", lost=[
+                        {"id": "MV-1", "readded": True,
+                         "older_commit": "aaaaaaa", "newer_commit": "bbbbbbb"}])],
+                    1, 0, transient=1)
     ok, det = row_loss_judge(trans)
     check("S2 TRANSIENT -> PASS but names the hole (never silent)",
           ok and "transient=1" in det and "MV-1" in det and "aaaaaaa" in det)
 
-    found = {"verdict": "ROW-LOSS-FOUND", "window": 4,
-             "targets": [tgt("q.jsonl", "ROW-LOSS-FOUND", lost=[
-                 {"id": "MV-2", "readded": False,
-                  "older_commit": "ccccccc", "newer_commit": "ddddddd"}])],
-             "lost_permanent_total": 1, "lost_transient_total": 0}
+    found = payload("ROW-LOSS-FOUND",
+                    [tgt("q.jsonl", "ROW-LOSS-FOUND", lost=[
+                        {"id": "MV-2", "readded": False,
+                         "older_commit": "ccccccc", "newer_commit": "ddddddd"}])],
+                    1, 0, permanent=1)
     ok, det = row_loss_judge(found)
     check("S3 FOUND -> FAIL and names PERMANENT id",
           (not ok) and "permanent=1" in det and "MV-2" in det)
 
-    gap = {"verdict": "PARTIAL", "window": 4,
-           "targets": [tgt("q.jsonl", "ROW-LOSS-FREE"),
-                       tgt("b.jsonl", "UNVERIFIED", why="git-show-rc=128")],
-           "lost_permanent_total": 0, "lost_transient_total": 0}
+    gap = payload("PARTIAL",
+                  [tgt("q.jsonl", "ROW-LOSS-FREE"),
+                   tgt("b.jsonl", "UNVERIFIED", why="git-show-rc=128")],
+                  1, 0, unreadable=["b.jsonl"])
     ok, det = row_loss_judge(gap)
-    check("S4 unreadable target -> FAIL names target and why",
-          (not ok) and "b.jsonl" in det and "git-show-rc=128" in det)
+    check("S4 unreadable target -> FAIL names target",
+          (not ok) and "b.jsonl" in det and "unreadable=1" in det)
 
-    na_only = {"verdict": "PARTIAL", "window": 4,
-               "targets": [tgt("q.jsonl", "ROW-LOSS-FREE"),
-                           tgt("lane.jsonl", "UNVERIFIED",
-                               why=ROW_LOSS_NA_WHY)],
-               "lost_permanent_total": 0, "lost_transient_total": 0}
-    ok, det = row_loss_judge(na_only)
+    # T199: the census itself labels short history ROW-LOSS-NA / PARTIAL-NA.
+    na_partial = payload("ROW-LOSS-PARTIAL-NA",
+                         [tgt("q.jsonl", "ROW-LOSS-FREE"),
+                          tgt("lane.jsonl", "ROW-LOSS-NA",
+                              why="no-comparable-pairs")],
+                         1, 1)
+    ok, det = row_loss_judge(na_partial)
     check("S5 short-history target -> PASS as n/a, not counted scanned",
           ok and "n/a=1" in det and "scanned=1" in det)
 
-    all_na = {"verdict": "UNVERIFIED", "window": 4,
-              "targets": [tgt("lane.jsonl", "UNVERIFIED",
-                              why=ROW_LOSS_NA_WHY)],
-              "lost_permanent_total": 0, "lost_transient_total": 0}
+    all_na = payload("ROW-LOSS-NA-ONLY",
+                     [tgt("lane.jsonl", "ROW-LOSS-NA",
+                          why="no-comparable-pairs")], 0, 1)
     ok, det = row_loss_judge(all_na)
     check("S6 nothing comparable -> FAIL, absence is not health",
-          (not ok) and "scanned=0" in det)
+          (not ok) and "scanned=0" in det and "n/a=1" in det)
+
+    legacy = {"verdict": "PARTIAL", "window": 4,
+              "targets": [tgt("q.jsonl", "ROW-LOSS-FREE")],
+              "lost_permanent_total": 0, "lost_transient_total": 0}
+    ok, det = row_loss_judge(legacy)
+    check("S7 payload without scanned -> UNVERIFIED, never guessed",
+          (not ok) and "UNVERIFIED" in det)
 
     ok, det = row_loss_judge(None)
-    check("S7 no payload -> UNVERIFIED FAIL", (not ok) and "UNVERIFIED" in det)
+    check("S8 no payload -> UNVERIFIED FAIL", (not ok) and "UNVERIFIED" in det)
 
     print("selftest row-loss verdict: %d/%d PASS"
           % (len([r for r in results if r]), len(results)))

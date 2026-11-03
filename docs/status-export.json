@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-11-03 21:2x",
- "current_activity": "2026-11-03 21:2x 夜班令牌轮：行丢失普查接成 QA 常驻探针 no.26（tech T198 收口）——整表覆盖写的共享 jsonl 台账，永久丢失当轮红并点名 id 与两 commit，瞬态洞可见但不红，历史不足记 N/A 不计扫描面 [via BigCompute-OSLoop]",
- "latest_artifact": "Tools/qa_smoke.py no.26（selftest 7/7 PASS、PROBE-REGISTRY-CLEAN probes=25 problems=0）｜qa/smoke-20261103-2121.log/.png（24/25 PASS·唯一红=no.22 M96 既有面·no.26 live=verdict=PARTIAL window=4 permanent=0 transient=0 scanned=2 n/a=1 targets=3）｜docs/qa-smoke-test-charter.md §三 第 26 条｜state/text-integrity-20261103-2125.json（CLEAN cats=7/7 conflict_blocks=0）",
- "next_milestone": "①M98 P1 主队列复原 10 条可本地执行行（main open=0 当场立行·下轮·≤11-05）；②BC-P-181 row_loss_census 源侧增 N/A 第四态（消掉「历史不足算 PARTIAL」的下游自拆·≤11-05）；③T196 集团 orders.md 冲突块：21:25 第 1 次 CLEAN，需 ≥30min 后第 2 次 CLEAN 才销行（≤11-05）；④no.22 残红随 7 日窗滚出（写侧 sha256 归 @HQ·BC-P-175）"
+ "updated_at": "2026-11-03 21:5x",
+ "current_activity": "2026-11-03 21:5x 令牌轮：「历史不足」上收源侧（tech T199 / BC-P-181 收口）——row_loss_census 自己出 ROW-LOSS-NA / ROW-LOSS-PARTIAL-NA（n/a= 计数），探针判断层删掉按 why 字符串自拆的副本逻辑，单一真源 [via BigCompute-OSLoop]",
+ "latest_artifact": "Tools/row_loss_census.py（selftest 22/22 PASS·聚合三态 + scanned/unreadable/na_total 三列）｜Tools/qa_smoke.py no.26（row-loss 夹具 8/8 PASS·只读源侧三列）｜state/row-loss-20261103-na.json（集团根实跑 VERDICT=ROW-LOSS-PARTIAL-NA scanned=2 n/a=1 exit 0）｜qa/smoke-20261103-2137.log/.png（23/25 PASS·no.26 live PASS·红=no.16 GPU-CONTENDED + no.22 M96 既有面）",
+ "next_milestone": "①M98 P1 主队列复原 10 条可本地执行行（main open=0·下轮首对象·≤11-05）；②T200 / BC-P-182 charter 条款正文去双份（19/22/23/26 各两份且措辞已漂移·普查器增同号断言·≤11-05）；③T196 集团 orders.md 冲突块第二次 CLEAN 才销行（≤11-05）；④no.22 残红随 7 日窗滚出（写侧 sha256 归 @HQ·BC-P-175）"
 }

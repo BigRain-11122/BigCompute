@@ -20,6 +20,19 @@ Usage:
   python Tools/row_loss_census.py run [--repo PATH] [--target REL]... [--window N]
                                       [--json-out PATH]
   python Tools/row_loss_census.py selftest
+Aggregate verdicts (single source -- callers read these, not per-target reasons):
+  ROW-LOSS-FOUND       a live row was lost for good            (exit 2)
+  ROW-LOSS-TRANSIENT   a live row vanished and came back        (exit 0, must be printed)
+  ROW-LOSS-FREE        nothing lost                             (exit 0)
+  ROW-LOSS-PARTIAL-NA  some targets have no second commit yet   (exit 0, n/a printed)
+  ROW-LOSS-NA-ONLY     nothing comparable at all                (exit 3: absence is not health)
+  UNVERIFIED           every target unreadable                  (exit 3)
+  PARTIAL              readable targets plus unreadable ones    (exit 3)
+
+"no second commit yet" is N/A, not unreadable: nothing failed, there is simply
+no pair to compare. Keeping it a first-class verdict stops every caller from
+re-deriving that split from a free-text reason string.
+
 Exit: 0 ROW-LOSS-FREE / 2 ROW-LOSS-FOUND / 3 UNVERIFIED (no git, untracked, unreadable)
 """
 import argparse
@@ -118,6 +131,7 @@ def census_target(repo, path, window):
         "lost_alive_ids": [],
         "bad_lines": 0,
         "verdict": "UNVERIFIED",
+        "na": False,
         "why": "",
     }
     rc, _ = _git(repo, "ls-files", "--error-unmatch", path)
@@ -162,7 +176,12 @@ def census_target(repo, path, window):
                 result["lost_alive_ids"].append(item)
 
     if result["transitions"] == 0 and not result["unreadable"]:
+        # Short history is not "unreadable": nothing failed, there is simply no
+        # second commit to compare against. Keep it out of UNVERIFIED so the
+        # reader never has to re-derive that distinction from a free-text reason.
         result["why"] = "no-comparable-pairs"
+        result["verdict"] = "ROW-LOSS-NA"
+        result["na"] = True
         return result
     if result["unreadable"] and result["transitions"] == 0:
         result["why"] = "all-pairs-unreadable"
@@ -191,23 +210,34 @@ def census(repo, targets, window):
     agg_permanent = sum(r["lost_permanent"] for r in per)
     agg_transient = sum(r["lost_transient"] for r in per)
     agg_lost = sum(r["lost_alive"] for r in per)
-    scanned = [r["target"] for r in per if r["verdict"] != "UNVERIFIED"]
-    unverified = [r["target"] for r in per if r["verdict"] == "UNVERIFIED"]
+    scanned = [r["target"] for r in per
+               if r["verdict"] not in ("UNVERIFIED", "ROW-LOSS-NA")]
+    unreadable = [r["target"] for r in per if r["verdict"] == "UNVERIFIED"]
+    na = [r["target"] for r in per if r["verdict"] == "ROW-LOSS-NA"]
     if agg_permanent:
         verdict = "ROW-LOSS-FOUND"
     elif agg_transient:
         verdict = "ROW-LOSS-TRANSIENT"
-    elif unverified and not scanned:
+    elif unreadable and not scanned:
         verdict = "UNVERIFIED"
-    elif unverified:
+    elif unreadable:
         verdict = "PARTIAL"
+    elif na and not scanned:
+        verdict = "ROW-LOSS-NA-ONLY"
+    elif na:
+        verdict = "ROW-LOSS-PARTIAL-NA"
     else:
         verdict = "ROW-LOSS-FREE"
     return {
         "verdict": verdict,
         "window": window,
         "repo": repo,
-        "domain": "targets=%d scanned=%d unverified=%d" % (len(per), len(scanned), len(unverified)),
+        "domain": "targets=%d scanned=%d unreadable=%d n/a=%d"
+                  % (len(per), len(scanned), len(unreadable), len(na)),
+        "scanned": len(scanned),
+        "unreadable": unreadable,
+        "na": na,
+        "na_total": len(na),
         "not_scanned": "commits older than window=%d are outside this judgement" % window,
         "scope_note": "row loss = id present in older commit, absent from newer commit; terminal-state removal is counted separately; a row that returns in the newest scanned commit is LOST-TRANSIENT (hole visible to concurrent readers), otherwise LOST-PERMANENT",
         "lost_alive_total": agg_lost,
@@ -220,6 +250,8 @@ def census(repo, targets, window):
 def render(report, limit=12):
     lines = []
     lines.append("VERDICT=%s window=%d %s" % (report["verdict"], report["window"], report["domain"]))
+    lines.append("n/a=%d %s" % (report.get("na_total", 0),
+                                ",".join(report.get("na") or []) or "-"))
     lines.append("not_scanned=%s" % report["not_scanned"])
     for r in report["targets"]:
         lines.append("[%s] %s commits=%d transitions=%d removed_terminal=%d lost_alive=%d (permanent=%d transient=%d) bad_lines=%d %s" % (
@@ -302,9 +334,13 @@ def cmd_selftest():
         ok("S3 terminal", t["removed_terminal"] == 1, str(t["removed_terminal"]))
         ok("S3 pairs", t["transitions"] == 2, str(t["transitions"]))
 
-        # S4: window=1 has no comparable pair -> UNVERIFIED, not a clean pass
+        # S4: window=1 has no comparable pair -> NA-ONLY, not a clean pass and not "unreadable"
         rep1 = census(repo, [target], 1)
-        ok("S4 window1", rep1["verdict"] == "UNVERIFIED", rep1["verdict"])
+        ok("S4 window1", rep1["verdict"] == "ROW-LOSS-NA-ONLY", rep1["verdict"])
+        ok("S4 na-not-scanned",
+           rep1["targets"][0]["verdict"] == "ROW-LOSS-NA" and rep1["scanned"] == 0
+           and rep1["na_total"] == 1,
+           str((rep1["targets"][0]["verdict"], rep1["scanned"], rep1["na_total"])))
 
         # S5: window truncation is declared, not silent
         ok("S5 not_scanned", rep["targets"][0]["not_scanned_older"] == 0,
@@ -323,6 +359,33 @@ def cmd_selftest():
         # S7: mixed domain reports PARTIAL, not a full green
         rm = census(repo, [target, "ghost.jsonl"], 10)
         ok("S7 partial", rm["verdict"] == "ROW-LOSS-FOUND", rm["verdict"])
+
+        # S7b: unreadable target stays UNVERIFIED and is not filed under n/a
+        ok("S7b unreadable-not-na",
+           rm["unreadable"] == ["ghost.jsonl"] and rm["na"] == [],
+           str((rm["unreadable"], rm["na"])))
+
+        # S7c: short history counts as n/a while the real target still counts as scanned
+        base4 = os.path.join(tmp, "r4")
+        os.makedirs(base4)
+        _gitw(base4, "init", "-q")
+        _gitw(base4, "config", "user.name", "selftest")
+        _gitw(base4, "config", "user.email", "selftest@local")
+        for state in ("RUNNING", "DONE"):
+            with open(os.path.join(base4, "ok.jsonl"), "w", encoding="utf-8", newline="\n") as f:
+                f.write(json.dumps({"id": "A", "state": state}) + "\n")
+            _gitw(base4, "add", "ok.jsonl")
+            _gitw(base4, "commit", "-q", "-m", state)
+        with open(os.path.join(base4, "once.jsonl"), "w", encoding="utf-8") as f:
+            f.write('{"id":"O","state":"RUNNING"}\n')
+        _gitw(base4, "add", "once.jsonl")
+        _gitw(base4, "commit", "-q", "-m", "once")
+        rn = census(base4, ["ok.jsonl", "once.jsonl"], 10)
+        ok("S7c partial-na", rn["verdict"] == "ROW-LOSS-PARTIAL-NA", rn["verdict"])
+        ok("S7c scanned-excludes-na",
+           rn["scanned"] == 1 and rn["na_total"] == 1 and rn["unreadable"] == [],
+           str((rn["scanned"], rn["na_total"], rn["unreadable"])))
+        ok("S7c render n/a", "n/a=1" in render(rn), render(rn).splitlines()[1])
 
         # S8: non-terminal state change (RUNNING -> DONE) is not a loss
         base = os.path.join(tmp, "r2")
@@ -406,7 +469,7 @@ def main():
         print("JSON out: %s" % args.json_out)
     if report["verdict"] == "ROW-LOSS-FOUND":
         return 2
-    if report["verdict"] in ("UNVERIFIED", "PARTIAL"):
+    if report["verdict"] in ("UNVERIFIED", "PARTIAL", "ROW-LOSS-NA-ONLY"):
         return 3
     return 0
 

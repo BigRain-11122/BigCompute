@@ -563,3 +563,6 @@ P2 队列自检: P1 主队列 open=0（tech=6／explore=1），业务面无可�
 2026-11-03 21:2x 日清小结: 探针落地+登记表全绿，队列缺口自己先说，未宣称 M96 已修。
 2026-11-03 21:3x 回执 D-20261103-19（集团队列断供应点名·@BigCompute 面·窗内 ≤11-04 21:30）：补货行已自报 **M98**（`state/queue/main.md`）——本司 `dispatch queue.open=0` 实为业务面 P1 行被清空（main open=0／tech=6／explore=1），故补货不是「没活找活」而是复原常备量；本次同时挂出 tech 侧 **T199＝BC-P-181**（`row_loss_census` 源侧 N/A 第四态）为 lane 候选，桌面真实可点火行 ≥2（M98 复原 10 条 + T199 规格面可即写），物理件类（商户号/小店后台/API key）如实维持 blocked 不占位。
 2026-11-03 21:3x 回执小结: 补货行=M98+T199，两条均为本地可执行且有判据，回执窗内先到。
+2026-11-03 21:5x 日清: 实物=「历史不足」上收源侧（T199/BC-P-181）——`row_loss_census` 出 `ROW-LOSS-NA`／聚合 `ROW-LOSS-PARTIAL-NA`＋`n/a=` 计数，探针判断层不再自行按 why 字符串拆类；源侧 selftest **22/22**、探针 row-loss 夹具 **8/8**、全量 `--selftest` exit 0；实跑集团根 `VERDICT=ROW-LOSS-PARTIAL-NA scanned=2 n/a=1` exit 0，live no.26 PASS。smoke **23/25**（红=no.16 /ask GPU-CONTENDED + no.22 M96 既有面，均既有）。
+P2 队列自检: tech 本轮 T199 闭、新增 T200（charter 条款双份治理，轮内实锚：19/22/23/26 在 §三 与尾部各一份且措辞已漂移，probe_registry_census 只按号对账看不见）＝净 0；main 侧 **M98 仍 open 为下轮首对象**（P1 open=0 的业务面复原未开工，如实不自称已补）。
+2026-11-03 21:5x 日清小结: 单一真源落一处（源侧出态、判断层只读），顺带把 charter 双份隐患挂出提案；未动他仓、未改判据语义。
