@@ -577,3 +577,4 @@ P2: MOCK 三行缺 `amount_mtok`/履约 tokens，整月单位成本仍 BLOCKED�
 23:0x 日清小结: 口径统一不是为了好看，是为了让「算不出来」也能被追到具体哪一行缺哪个字段。
 2026-11-03 23:0x 补: M106 补完 MOCK 三行分母（R1 amount_mtok=0.42 / R2 1200 tok / R3 180000 tok·均标 denominator_simulated），drill 复跑 denom_mtok=0.601200、quota_blocked=0、unit_cost=UNIT-COST-CALCULATED；**但单位成本读 0.0 是真的**——三行 MOCK 单 COGS 恒 0，工具已如实打「cost side is zero」注记，等于说明成本面从未被演练过（提案 BC-P-186 / M107 承接）。
 2026-11-03 23:0x 再补: M107 已补合成 COGS（0.60 CNY/Mtok 设计单价·三行标 cost_simulated），复跑 cost=0.3607 gross=350.8999 unit_cost=0.6000 COST-FACE-EXERCISED；**循环性已入件**——0.6000 等于输入单价，只证明算术链闭合，不证明经济性；全零 COGS 的月份从此必打 COST-FACE-UNEXERCISED（selftest S18/S19）。
+2026-11-03 23:0x 三补: M108 类分面毛利出来了——generation 2 单 margin=99.96%、quota 1 单 margin=99.42%（selftest 20/20）。**这两行数字不能对外讲单位经济**：它们说明在 0.60/Mtok 设计成本下 COGS 根本不是约束（单笔 3 元抽卡成本 0.0007 元），真正约束是销量；已写进件并接 M109 敏感性扫描找毛利率跌破 90/80/70% 的成本倍数。

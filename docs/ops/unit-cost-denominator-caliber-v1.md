@@ -87,6 +87,17 @@ M106 暴露「成本侧恒 0」后补合成成本，换算单价取 **0.60 CNY/M
 
 负向断言（selftest S18/S19）：全零 COGS 的月份必须打 `COST-FACE-UNEXERCISED`，非零才 `COST-FACE-EXERCISED`——防止将来账本又回到「静默 CALCULATED」的老路。
 
+## 五之三、按 SKU 类分面毛利（M108·同日续作）
+
+整月合计会把两种完全不同的生意混成一行，故 drill 现按 caliber 分类出分面：
+
+```
+class generation orders=2 net=307.6480 cost=0.1087 gross=307.5393 margin=99.96%
+class quota      orders=1 net=43.6126  cost=0.2520 gross=43.3606  margin=99.42%
+```
+
+**读法与诚实边界**：两行毛利率都逼近 100%，不是「生意很好」，而是说明在 0.60 CNY/Mtok 这个设计成本下，**COGS 根本构不成约束**——单笔 3 元的卡面抽卡成本只有 0.0007 元。也就是说这批 MOCK 价格点与设计成本之间的关系尚未被校准过（价格高、成本假设低），真正决定毛利的是台数与销量，不是单位成本。这个结论直接喂 M2 定价确认包与 M109 敏感性扫描（找毛利率跌破 90/80/70% 所需的成本倍数），并提醒：**别拿 99% 毛利率去对外讲单位经济**。
+
 ## 六、剩余缺口（不在本轮自裁范围内）
 
 1. **已由 M107 处理**：MOCK 成交环补合成 COGS（0.60 CNY/Mtok 设计单价·逐行标 `cost_simulated`），成本面演练走通；真实单位成本仍待凭证（N3 门）。
@@ -97,4 +108,4 @@ M106 暴露「成本侧恒 0」后补合成成本，换算单价取 **0.60 CNY/M
 
 - 实读源码：`cost_ledger.py`（l1_summary/quota_summary 函数体）、`month_end_collect.py`（assemble 商业面赋值行）、`store-ledger-wiring-predesign-v1.md` §二 字段 10。
 - 改动面：新增 1 模块、drill 重构分母、两处指针注记、MOCK 三行补分母与合成 COGS（均已标注）；**未改任何结算数值、未改 BLUEPRINT 冻结节、零真实交易、零定价动作**。
-- 回归：`cost_ledger selftest` PASS、`month_end_collect selftest 42/42 PASS`、`unit_cost_caliber 13/13`、`unit_cost_drill 19/19`、`rails_schema_check` RAILS-SCHEMA-GREEN rows=13。
+- 回归：`cost_ledger selftest` PASS、`month_end_collect selftest 42/42 PASS`、`unit_cost_caliber 13/13`、`unit_cost_drill 20/20`、`rails_schema_check` RAILS-SCHEMA-GREEN rows=13。

@@ -104,6 +104,7 @@ def aggregate(rows, month=None, mock_only=False):
     seen = {}
     buckets = {}
     bucket_rows = {}
+    per_class = {}
     for idx, row in enumerate(rows):
         if mock_only and not is_mock_row(row):
             continue
@@ -139,6 +140,12 @@ def aggregate(rows, month=None, mock_only=False):
         b["fund_3090_cny"] += float(row.get("fund_3090", 0.0) or 0.0)
         b["tokens_local"] += int(row.get("tokens_local", 0) or 0)
         b["tokens_api"] += int(row.get("tokens_api", 0) or 0)
+        cls = caliber.classify_row(row)
+        c = per_class.setdefault((mon, cls), {"orders": 0, "net_cny": 0.0,
+                                             "cost_cny": 0.0})
+        c["orders"] += 1
+        c["net_cny"] += stored_net
+        c["cost_cny"] += float(row.get("amount", 0.0) or 0.0)
 
     face = {}
     for mon, b in sorted(buckets.items()):
@@ -170,7 +177,22 @@ def aggregate(rows, month=None, mock_only=False):
             "cost_face": ("COST-FACE-UNEXERCISED"
                           if (b["cost_cny"] == 0 and b["orders"] > 0)
                           else "COST-FACE-EXERCISED"),
+            "by_class": {},
         }
+        for (mon_key, cls), c in sorted(per_class.items()):
+            if mon_key != mon:
+                continue
+            net_c = round(c["net_cny"], 4)
+            cost_c = round(c["cost_cny"], 4)
+            gross_c = round(net_c - cost_c, 4)
+            entry["by_class"][cls] = {
+                "orders": c["orders"],
+                "net_cny": net_c,
+                "cost_cny": cost_c,
+                "gross_cny": gross_c,
+                "gross_margin_pct": (round(100.0 * gross_c / net_c, 2)
+                                     if net_c else None),
+            }
         if entry["denominator_mtok"] > 0:
             entry["unit_cost_cny_per_mtok"] = round(
                 b["cost_cny"] / entry["denominator_mtok"], 4)
@@ -292,6 +314,13 @@ def render(report):
             lines.append("    blocked: " + why)
         if v.get("unit_cost_note"):
             lines.append("    note: " + v["unit_cost_note"])
+        for cls, c in sorted(v.get("by_class", {}).items()):
+            lines.append("    class %-10s orders=%d net=%.4f cost=%.4f "
+                         "gross=%.4f margin=%s%%"
+                         % (cls, c["orders"], c["net_cny"], c["cost_cny"],
+                            c["gross_cny"],
+                            "-" if c["gross_margin_pct"] is None
+                            else c["gross_margin_pct"]))
     lines.append("mock rail face (drill data, excluded from settlement):")
     for mon, v in sorted(report["mock_revenue_face"].items()):
         lines.append("  %s orders=%d price=%.4f net=%.4f refund_prov=%.4f "
@@ -310,6 +339,13 @@ def render(report):
             lines.append("    blocked: " + why)
         if v.get("unit_cost_note"):
             lines.append("    note: " + v["unit_cost_note"])
+        for cls, c in sorted(v.get("by_class", {}).items()):
+            lines.append("    class %-10s orders=%d net=%.4f cost=%.4f "
+                         "gross=%.4f margin=%s%%"
+                         % (cls, c["orders"], c["net_cny"], c["cost_cny"],
+                            c["gross_cny"],
+                            "-" if c["gross_margin_pct"] is None
+                            else c["gross_margin_pct"]))
     su = report["self_use_l1"]
     lines.append("self-use l1 (advisory, not settlement): tokens=%d cost_b=%.8f"
                  % (su["tokens_local"], su["cost_b_cny"]))
@@ -433,6 +469,20 @@ def _selftest():
         priced["cost_face"] == "COST-FACE-EXERCISED"
         and abs(priced["unit_cost_cny_per_mtok"] - 0.6) < 1e-6,
         "%s %s" % (priced["cost_face"], priced["unit_cost_cny_per_mtok"]))
+    mix = aggregate([
+        {"order_id": "CQ", "date": "2026-10-23", "price": 100.0,
+         "refund_rate": 0.0, "fee_rate": 0.0, "net_price": 100.0,
+         "amount": 10.0, "fund_3090": 0.0, "lane": "subscription",
+         "sku": "seat.quota", "amount_mtok": 1.0},
+        {"order_id": "CG", "date": "2026-10-23", "price": 50.0,
+         "refund_rate": 0.0, "fee_rate": 0.0, "net_price": 50.0,
+         "amount": 25.0, "fund_3090": 0.0, "lane": "gacha",
+         "sku": "card", "tokens_local": 1000},
+    ])[0]["2026-10"]
+    chk("S20 per-class split isolates quota vs generation economics",
+        abs(mix["by_class"]["quota"]["gross_margin_pct"] - 90.0) < 0.01
+        and abs(mix["by_class"]["generation"]["gross_margin_pct"] - 50.0) < 0.01,
+        str(mix["by_class"]))
 
     dup_rows = [dict(rows[0]), dict(rows[0])]
     _, dviol = aggregate(dup_rows, month=None, mock_only=False)
