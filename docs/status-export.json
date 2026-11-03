@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-11-03 19:26",
- "current_activity": "2026-11-03 19:2x 令牌轮：写侧编码声明静态普查（T188）—— Tools/write_encoding_census.py 扫 py 文本写（open/io.open/write_text）必带 encoding=、ps1 写 cmdlet 必带 -Encoding；非字面量写模式判 UNJUDGED 不冒充干净、二进制跳过、扫描器自排除，并打印 domain/not_scanned/unreadable 三行域证据；selftest 11/11 PASS，实扫 124 件首跑抓出 2 处真实缺口并同轮修毕，复跑 WRITE-ENCODING-CLEAN risk=0 [via BigCompute-OSLoop]",
- "latest_artifact": "Tools/write_encoding_census.py（写侧编码普查·selftest 11/11·live CLEAN risk=0 coverage=100%）｜state/write-encoding-census-20261103.json｜QA qa/smoke-20261103-1908.log/.png（21/23 PASS；no.22 回执产物律历史红、no.8 末行行头与多行日清节冲突=新立 T194 如实）｜C1C4-GREEN 4/4 state/c1c4-20261103-190457.json",
- "next_milestone": "①把写侧普查接成 qa 常驻探针（BC-P-176 / tech T193），≤11-06；②T194 判定 no.8「末行必是行头」与多行日清节的正解（A 格式约定 / B 探针改看尾部窗口），下轮落地；③no.22 残红随 7 日窗滚出（BC-P-168 待批）；④M25/T26 室内烘焙样板间实弹仍等净窗一命令"
+ "updated_at": "2026-11-03 20:12",
+ "current_activity": "2026-11-03 20:0x 令牌轮：写侧编码普查接成常驻探针（T193）—— qa_smoke 增 no.25（judge 纯函数 + 4 夹具 selftest），charter §三 第 25 条与 PROBE_REGISTRY 单源表同步；缺陷从「人手跑才看见」变成「每轮必检、RISK 逐条点名 file:line、UNVERIFIED 不假绿」 [via BigCompute-OSLoop]",
+ "latest_artifact": "qa_smoke.py no.25（selftest 4/4·live PASS risk=0 scanned=124）｜docs/qa-smoke-test-charter.md §三.25｜state/queue/tech.md T193 done ｜QA qa/smoke-20261103-2009.log/.png（22/24 PASS；两红为既有 no.8 T194 / no.22 M96）｜PROBE-REGISTRY-CLEAN(no.25 registered)",
+ "next_milestone": "①T194 判定 no.8「末行必是行头」与多行日清节正解（A 格式约定 / B 探针看尾部窗口），下轮落地；②T195/BC-P-177 读侧冲突标记探测（集团 orders.md L304-310 已实证半合并态），≤11-06；③no.22 残红随 7 日窗滚出（BC-P-168 待批）；④M25/T26 室内烘焙样板间实弹仍等净窗一命令"
 }

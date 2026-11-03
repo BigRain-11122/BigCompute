@@ -46,6 +46,8 @@
 - 23. serve 瞬态判别（T188·11-03 立）：跑 `serve_health` 的 settle 窗口三态——UP（tags 200 + ≥1 模型）绿；DEGRADED（能答干不了活：零模型／缺指定模型／生成失败）与 DOWN（窗口耗尽才判死）均红并点名 attempts 与理由；载荷读不到=UNVERIFIED 不假绿。单次抖动不得当死亡（10-14 更新器 22s 自愈判例）。判据=selftest 五夹具（`settle_s=20` 只调预算不改判据）。
 - 24. 探针登记表三方对账（T190／BC-P-169·11-03 立）：`qa_smoke.PROBE_REGISTRY` 是探针编号唯一声明位——跑 `probe_registry_census.census()` 对三面〔registry 编号／函数定义／charter 条款号〕，重号、编号空档、有探针无条款、有条款无探针一律 FAIL；verdict 必须 `PROBE-REGISTRY-CLEAN`。本条的立行缘由=编号被复用两次（no.20 双占、no.22 双族）且 10-15/19/22/23 长期无条款而每轮照跑。判据=`probe_registry_census.py selftest` 八夹具。
 
+- 25. 写侧编码声明普查（T193·11-03 立）：缺陷要拦在出生地，而写侧此前全靠习惯——`text_integrity_census`／no.19 都是事后读回，`round_append` 的 J8/J10 只护 python 追加这一条路，11-01 那批权威行就是别的写手写坏的。本条跑 `write_encoding_census.census()` 静态走写面：.py 文本写模式（w/a/x/r+）必须显式 `encoding=`，.ps1 的 Set-Content/Add-Content/Out-File/Export-Csv/Export-Clixml 必须带 `-Encoding`；`WRITE-ENCODING-CLEAN` 绿（并报扫描域 scanned/unjudged），`WRITE-ENCODING-RISK` 红并逐条点名 file:line，`WRITE-ENCODING-UNVERIFIED`（不可读／零扫描）一律红——「没读到」不是绿。判据=selftest 四夹具（S1 CLEAN 且报域／S2 RISK 点名 file:line／S3 UNVERIFIED 不假绿／S4 无载荷 FAIL）。
+
 ## 四、执行律
 
 - 执行位=每轮收尾步 QA 自验先行（mandate §每轮固定步 8）；实装=Tools/qa_smoke.py（tech T11 一键化：探针→log+png 产出+自判行）；exit 0=全过/1=有缺。

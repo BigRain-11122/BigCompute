@@ -2430,6 +2430,85 @@ def selftest_serve_health():
     return 0 if all(results) else 1
 
 
+def write_encoding_judge(payload):
+    """Judge a write_encoding_census payload (no.25 / T193).
+
+    CLEAN passes and reports scope; RISK fails and names every file:line so
+    the defect is visible in the round log; UNVERIFIED must not turn green
+    just because nothing could be read (T-50 invalid-green lesson).
+    """
+    if not isinstance(payload, dict):
+        return False, "UNVERIFIED: no census payload"
+    verdict = payload.get("verdict")
+    scanned = payload.get("scanned", 0)
+    risk = payload.get("risk") or []
+    unjudged = payload.get("unjudged") or []
+    unreadable = payload.get("unreadable") or []
+    if verdict == "WRITE-ENCODING-CLEAN":
+        return True, ("verdict=%s scanned=%d risk=0 unjudged=%d"
+                      % (verdict, scanned, len(unjudged)))
+    if verdict == "WRITE-ENCODING-RISK":
+        rows = ["%s:%s" % (h.get("file"), h.get("line")) for h in risk[:8]]
+        return False, ("verdict=%s scanned=%d risk=%d unjudged=%d %s"
+                       % (verdict, scanned, len(risk), len(unjudged),
+                          " ".join(rows)))
+    return False, ("verdict=%s scanned=%d unreadable=%d"
+                   % (verdict, scanned, len(unreadable)))
+
+
+def probe_write_encoding():
+    """Probe no.25 (T193): static write-side encoding declaration census."""
+    if HERE not in sys.path:
+        sys.path.insert(0, HERE)
+    try:
+        import write_encoding_census as wec
+    except Exception as e:  # noqa: BLE001 - probe must report, not crash
+        return False, "write_encoding_census import raised: %r" % e
+    try:
+        payload = wec.census()
+    except Exception as e:  # noqa: BLE001
+        return False, "write_encoding_census.census raised: %r" % e
+    return write_encoding_judge(payload)
+
+
+def selftest_write_encoding():
+    """T193 fixtures: clean / risk names file:line / unverified / no payload."""
+    results = []
+
+    def check(name, cond):
+        results.append(bool(cond))
+        print(("PASS " if cond else "FAIL ") + name)
+
+    clean = {"verdict": "WRITE-ENCODING-CLEAN", "scanned": 11,
+             "risk": [], "unjudged": [{"file": "a.py", "line": 3}],
+             "unreadable": []}
+    ok, det = write_encoding_judge(clean)
+    check("S1 CLEAN -> PASS and reports scanned scope",
+          ok and "scanned=11" in det and "unjudged=1" in det)
+
+    risk = {"verdict": "WRITE-ENCODING-RISK", "scanned": 5,
+            "risk": [{"file": "Tools/x.py", "line": 42,
+                      "detail": "write mode without encoding"}],
+            "unjudged": [], "unreadable": []}
+    ok, det = write_encoding_judge(risk)
+    check("S2 RISK -> FAIL and names file:line",
+          (not ok) and "risk=1" in det and "Tools/x.py:42" in det)
+
+    unv = {"verdict": "WRITE-ENCODING-UNVERIFIED", "scanned": 0,
+           "risk": [], "unjudged": [],
+           "unreadable": ["bad.py (UnicodeDecodeError)"]}
+    ok, det = write_encoding_judge(unv)
+    check("S3 UNVERIFIED -> FAIL, never a green by absence",
+          (not ok) and "unreadable=1" in det)
+
+    ok, det = write_encoding_judge(None)
+    check("S4 no payload -> UNVERIFIED FAIL", (not ok) and "UNVERIFIED" in det)
+
+    print("selftest write-encoding verdict: %d/%d PASS"
+          % (len([r for r in results if r]), len(results)))
+    return 0 if all(results) else 1
+
+
 def probe_probe_registry():
     """Probe no.24 (T190 / BC-P-169): probe numbering single-source census.
 
@@ -2476,6 +2555,7 @@ PROBE_REGISTRY = [
     (22, "receipt product law (M96/BC-P-166)", probe_receipt_product_law),
     (23, "ollama serve death vs transient (T188)", probe_serve_health),
     (24, "probe registry census (T190/BC-P-169)", probe_probe_registry),
+    (25, "write-side encoding declarations (T193)", probe_write_encoding),
 ]
 
 
@@ -2487,7 +2567,8 @@ def main():
                 | selftest_scan_roots() | selftest_heartbeat_tokens()
                 | selftest_gpu_contention() | selftest_ledger_parallel()
                 | selftest_qa_version() | selftest_text_integrity()
-                | selftest_receipt_product_law() | selftest_serve_health())
+                | selftest_receipt_product_law() | selftest_serve_health()
+                | selftest_write_encoding())
     os.makedirs(QA_DIR, exist_ok=True)
     ts = datetime.datetime.now().strftime("%Y%m%d-%H%M")
     log_path = os.path.join(QA_DIR, "smoke-%s.log" % ts)

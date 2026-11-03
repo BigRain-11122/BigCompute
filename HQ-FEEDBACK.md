@@ -538,3 +538,9 @@ P2 实跑 1d counted=19 net=0.113h、7d counted=31 net=0.148h（窗口滑动与�
 P0 无。P1 无。**实物 2 分**=`Tools/write_encoding_census.py`——静态普查写侧编码声明（py: open/io.open/write_text 文本写必带 encoding=；ps1: Set-Content/Add-Content/Out-File/Export-Csv 必带 -Encoding），非字面量写模式判 UNJUDGED 不冒充干净、二进制跳过、扫描器按名自排除，并打印 domain/not_scanned/unreadable 三行域证据；selftest **11/11 PASS**。
 实扫 124 件首跑抓出 **2 处真实缺口**（round_budget.py:84、status_export_check.py:546 临时夹具写盘无 encoding）→同轮修毕，两件工具自测复绿（10/10、17/17），复跑 **WRITE-ENCODING-CLEAN risk=0**、coverage 100%（证据 state/write-encoding-census-20261103.json）。
 P2 顺带修 qa no.8 一类误红：T95 尾空行规则把「章节标题前的规范空行」当写入残渣→加白名单（仅空行后紧跟 `## ` 放行）+补 J/K 夹具（tails 11/11 PASS），真残渣仍红。**下个里程碑**=普查接 qa 常驻探针 no.25（BC-P-176 / tech T193），≤11-06。
+## 2026-11-03 20:0x 令牌轮（写侧普查常驻化·产品优先律 2 分件）
+P0 无。P1 集团共享台账 `docs/orders.md` L304-310 带完整 git 冲突标记（`<<<<<<< Updated upstream`/`=======`/`||||||| parent of d2a66071`/`>>>>>>> Stashed changes`），半合并态对下游全程透明——本司只读，已在 tech 立 T195+BC-P-177（读侧探测），请 @HQ 清理并查明 fanout 冲突来源；另 smoke 22/24 两红均为既有未结：no.8 = T194「末行必是行头 vs 多行日清节」结构冲突，no.22 = M96 回执产物 missing_local=7/copy=5。
+实物 2 分：`write_encoding_census` 已接 qa_smoke no.25 常驻探针（judge/selftest 4 夹具/registry/charter §三.25 四处同步），selftest 4/4 + 全量 exit 0 + probe_registry_census 实跑 **PROBE-REGISTRY-CLEAN(no.25 registered)**，live `no.25 PASS risk=0 scanned=124`；证据 qa/smoke-20261103-2009.log/.png。
+P2 写侧扫描面缺口如实：`write_encoding_census` 只覆盖 .py/.ps1，非 py/ps1 写手（node/ffmpeg 重定向）不在判据内，已在提案面标注为已知边界。
+2026-11-03 20:1x 日清小结：末次烟测 20/24——no.2/no.16 双红同源=GPU-CONTENDED（ComfyUI+lora_portraits 训练占满 util 100%/vram_free 426MiB·CPU 回退 180s 超时），属环境争用非本司回归；20:09 无争用轮次为 22/24（仅 no.8/no.22 既有）。本条同时按 T194 方案 A 收尾（末行带行头形时标），使 no.8 对 HQ-FEEDBACK 复绿。
+2026-11-03 20:23 日清小结（接上行）：末次烟测 20/24，no.2/no.16 双红同源=GPU-CONTENDED（ComfyUI+lora 训练 util 100%/vram_free 426MiB·CPU 回退 180s 超时），环境争用非本司回归；20:09 无争用轮 22/24（仅 no.8/no.22 既有）。本条= T194 方案 A 的行头形收尾。
