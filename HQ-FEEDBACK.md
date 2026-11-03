@@ -576,3 +576,4 @@ P2: 单位成本「谁算商业产出」三处各写一套（cost_ledger.l1-summ
 P2: MOCK 三行缺 `amount_mtok`/履约 tokens，整月单位成本仍 BLOCKED——M106 补字段；不改 `month_end_collect` 计算面是有意选择（动 N1 结算链风险高于收益，E11 同律，已写进件）。
 23:0x 日清小结: 口径统一不是为了好看，是为了让「算不出来」也能被追到具体哪一行缺哪个字段。
 2026-11-03 23:0x 补: M106 补完 MOCK 三行分母（R1 amount_mtok=0.42 / R2 1200 tok / R3 180000 tok·均标 denominator_simulated），drill 复跑 denom_mtok=0.601200、quota_blocked=0、unit_cost=UNIT-COST-CALCULATED；**但单位成本读 0.0 是真的**——三行 MOCK 单 COGS 恒 0，工具已如实打「cost side is zero」注记，等于说明成本面从未被演练过（提案 BC-P-186 / M107 承接）。
+2026-11-03 23:0x 再补: M107 已补合成 COGS（0.60 CNY/Mtok 设计单价·三行标 cost_simulated），复跑 cost=0.3607 gross=350.8999 unit_cost=0.6000 COST-FACE-EXERCISED；**循环性已入件**——0.6000 等于输入单价，只证明算术链闭合，不证明经济性；全零 COGS 的月份从此必打 COST-FACE-UNEXERCISED（selftest S18/S19）。

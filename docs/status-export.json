@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
  "updated_at": "2026-11-03 23:0x",
- "current_activity": "2026-11-03 23:0x 夜班轮：单位成本分母口径单源化（M105）+ MOCK 演练行补分母（M106）——三处 tokens 不同轴已收口到 Tools/unit_cost_caliber.py，drill 复跑得 denom_mtok=0.601200、UNIT-COST-CALCULATED [via BigCompute-OSLoop]",
- "latest_artifact": "Tools/unit_cost_caliber.py（单源分类律·缺字段=BLOCKED·selftest 13/13）｜Tools/unit_cost_drill.py（import 单源·simulated_rows 计数·零成本注记·selftest 17/17）｜state/unit-cost-drill-20261103-2258.txt/.json（denom_mtok=0.601200 quota=0.42 gen=0.1812 quota_blocked=0 unit_cost=UNIT-COST-CALCULATED·simulated mock=3）｜docs/ops/unit-cost-denominator-caliber-v1.md（三面差异表+M106 复跑节）｜qa/smoke-20261103-2259.log/.png（24/25 PASS·唯一红=no.22 M96 既有面）",
- "next_milestone": "①M107 给 MOCK 成交环补合成 COGS，让单位经济演练走到成本侧（BC-P-186·≤11-04）；②M100 SKU 十类×账本 join 复演出缺列清单（≤11-05）；③no.22 残红待写侧 sha256 要求落地（@HQ·BC-P-175）"
+ "current_activity": "2026-11-03 23:0x 夜班轮：单位成本分母口径单源化（M105）→ MOCK 补分母（M106）→ 补合成 COGS（M107），单位经济演练首次走通成本侧（unit_cost=0.6000 CNY/Mtok·COST-FACE-EXERCISED）[via BigCompute-OSLoop]",
+ "latest_artifact": "Tools/unit_cost_caliber.py（分母单源·selftest 13/13）｜Tools/unit_cost_drill.py（分母 import 单源+simulated_rows+cost_face 逐月标记·selftest 19/19）｜state/unit-cost-drill-20261103-2301.txt/.json（cost=0.3607 gross=350.8999 denom_mtok=0.601200 unit_cost=0.6000 CALCULATED·EXERCISED）｜docs/ops/unit-cost-denominator-caliber-v1.md（三面差异表+M106/M107 复跑节+循环性声明）｜qa/smoke-20261103-2301.log/.png（24/25 PASS·唯一红=no.22 M96 既有面）",
+ "next_milestone": "①M108 按 SKU 类（配额型/生成型）分面毛利对照（≤11-04）；②M109 单位成本 0.40-0.80 CNY/Mtok 敏感性扫描出毛利率越零点（供 M2 定价包压测·≤11-05）；③no.22 残红待写侧 sha256 要求落地（@HQ·BC-P-175）"
 }

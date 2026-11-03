@@ -71,14 +71,30 @@ MOCK 三行补分母字段（**合成值·逐行标 `denominator_simulated: true
 
 **但单位成本读数是 0.0，且这是真的**：三行 MOCK 单的 `amount`（COGS）恒为 0，工具如实打 `note: cost side is zero on this rail, so 0.0 is the cost input and not a measured unit cost`。也就是说——分母面现在通了，**成本面还完全没被演练过**（派生 BC-P-186）。
 
+## 五之二、M107 补合成 COGS（同日续作）
+
+M106 暴露「成本侧恒 0」后补合成成本，换算单价取 **0.60 CNY/Mtok（设计值·非测量）**，逐行标 `cost_simulated: true` 与 `cost_rate_cny_per_mtok: 0.6`：
+
+| 行 | 分母 | 合成 COGS | 换算 |
+|---|---|---|---|
+| R1（quota 0.42 Mtok） | 0.42 | 0.2520 | 0.42×0.6 |
+| R2（1200 tok=0.0012 Mtok） | 0.0012 | 0.0007 | 0.0012×0.6（4 位取整） |
+| R3（180000 tok=0.18 Mtok） | 0.18 | 0.1080 | 0.18×0.6 |
+
+复跑：`cost=0.3607 gross=350.8999 denom_mtok=0.601200 unit_cost=UNIT-COST-CALCULATED value=0.6000`，`COST-FACE-UNEXERCISED` 行消失（转为 `COST-FACE-EXERCISED`）。
+
+**循环性必须写明**：单位成本读出 0.6000 等于输入设计单价，这是**自证**——它证明的是「分母×单价→成本→毛利→单位成本」这条算术链闭合、毛利率公式可跑，**不证明经济性**。真实单位成本仍卡在 N3 门（凭证 ⬜ + 商业 tokens=0），与本次演练无关。
+
+负向断言（selftest S18/S19）：全零 COGS 的月份必须打 `COST-FACE-UNEXERCISED`，非零才 `COST-FACE-EXERCISED`——防止将来账本又回到「静默 CALCULATED」的老路。
+
 ## 六、剩余缺口（不在本轮自裁范围内）
 
-1. MOCK 成交环不记 COGS（`amount` 恒 0），单位经济演练只走得到收入侧；补合成成本须先立标注律（BC-P-186）。
+1. **已由 M107 处理**：MOCK 成交环补合成 COGS（0.60 CNY/Mtok 设计单价·逐行标 `cost_simulated`），成本面演练走通；真实单位成本仍待凭证（N3 门）。
 2. `cost-ledger.jsonl` 真轨 0 行是物理件未通的直接结果，单位成本 v1 落值仍 BLOCKED（N3 门：凭证 ⬜ + 商业 tokens=0），与本口径无关。
 3. `l1-settle` 的单位价与 quota 面的口径换算（自用→商业）没有桥接件；若将来把自用算力外售，需要先立换算律再动账。
 
 ## 七、验证声明
 
 - 实读源码：`cost_ledger.py`（l1_summary/quota_summary 函数体）、`month_end_collect.py`（assemble 商业面赋值行）、`store-ledger-wiring-predesign-v1.md` §二 字段 10。
-- 改动面：新增 1 模块、drill 重构分母、两处指针注记、MOCK 三行补分母字段（合成值已标注）；**未改任何结算数值、未改 BLUEPRINT 冻结节、零真实交易、零定价动作**。
-- 回归：`cost_ledger selftest` PASS、`month_end_collect selftest 42/42 PASS`、`unit_cost_caliber 13/13`、`unit_cost_drill 17/17`。
+- 改动面：新增 1 模块、drill 重构分母、两处指针注记、MOCK 三行补分母与合成 COGS（均已标注）；**未改任何结算数值、未改 BLUEPRINT 冻结节、零真实交易、零定价动作**。
+- 回归：`cost_ledger selftest` PASS、`month_end_collect selftest 42/42 PASS`、`unit_cost_caliber 13/13`、`unit_cost_drill 19/19`、`rails_schema_check` RAILS-SCHEMA-GREEN rows=13。

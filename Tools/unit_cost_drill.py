@@ -167,6 +167,9 @@ def aggregate(rows, month=None, mock_only=False):
             "denominator_block_reasons": denom["block_reasons"],
             "unit_cost_state": caliber.unit_cost_state(denom),
             "caliber_source": "unit_cost_caliber (BC-P-184)",
+            "cost_face": ("COST-FACE-UNEXERCISED"
+                          if (b["cost_cny"] == 0 and b["orders"] > 0)
+                          else "COST-FACE-EXERCISED"),
         }
         if entry["denominator_mtok"] > 0:
             entry["unit_cost_cny_per_mtok"] = round(
@@ -243,6 +246,12 @@ def run_drill(revenue_path=REVENUE_RAIL, mock_path=MOCK_RAIL,
         "mock_revenue_face": mock_face,
         "real_orders": total_orders,
         "unit_cost_blocked_months": blocked,
+        "cost_face_unexercised": {
+            "real": [m for m, v in real_face.items()
+                     if v["cost_face"] == "COST-FACE-UNEXERCISED"],
+            "mock": [m for m, v in mock_face.items()
+                     if v["cost_face"] == "COST-FACE-UNEXERCISED"],
+        },
         "simulated_rows": simulated,
         "self_use_l1": {
             "advisory_only": True,
@@ -270,13 +279,15 @@ def render(report):
         lines.append("  %s orders=%d price=%.4f net=%.4f refund_prov=%.4f "
                      "fee=%.4f cost=%.4f gross=%.4f tokens=%d "
                      "denom_mtok=%.6f quota_mtok=%.6f gen_mtok=%.6f "
-                     "quota_blocked=%d unit_cost=%s"
+                     "quota_blocked=%d unit_cost=%s value=%s"
                      % (mon, v["orders"], v["price_cny"], v["net_cny"],
                         v["refund_provision_cny"], v["platform_fee_cny"],
                         v["cost_cny"], v["gross_cny"], v["denominator_tokens"],
                         v["denominator_mtok"], v["quota_mtok"],
                         v["generation_mtok"], v["quota_blocked_rows"],
-                        v["unit_cost_state"]))
+                        v["unit_cost_state"],
+                        ("%.4f" % v["unit_cost_cny_per_mtok"]
+                         if v["unit_cost_cny_per_mtok"] is not None else "n/a")))
         for why in v["denominator_block_reasons"]:
             lines.append("    blocked: " + why)
         if v.get("unit_cost_note"):
@@ -286,13 +297,15 @@ def render(report):
         lines.append("  %s orders=%d price=%.4f net=%.4f refund_prov=%.4f "
                      "fee=%.4f cost=%.4f gross=%.4f tokens=%d "
                      "denom_mtok=%.6f quota_mtok=%.6f gen_mtok=%.6f "
-                     "quota_blocked=%d unit_cost=%s"
+                     "quota_blocked=%d unit_cost=%s value=%s"
                      % (mon, v["orders"], v["price_cny"], v["net_cny"],
                         v["refund_provision_cny"], v["platform_fee_cny"],
                         v["cost_cny"], v["gross_cny"], v["denominator_tokens"],
                         v["denominator_mtok"], v["quota_mtok"],
                         v["generation_mtok"], v["quota_blocked_rows"],
-                        v["unit_cost_state"]))
+                        v["unit_cost_state"],
+                        ("%.4f" % v["unit_cost_cny_per_mtok"]
+                         if v["unit_cost_cny_per_mtok"] is not None else "n/a")))
         for why in v["denominator_block_reasons"]:
             lines.append("    blocked: " + why)
         if v.get("unit_cost_note"):
@@ -304,6 +317,11 @@ def render(report):
     lines.append("simulated denominator rows: mock=%d real=%d "
                  "(design values, not measurements)"
                  % (sim.get("mock", 0), sim.get("real", 0)))
+    unex = report.get("cost_face_unexercised", {})
+    if unex.get("real") or unex.get("mock"):
+        lines.append("COST-FACE-UNEXERCISED months: real=%s mock=%s "
+                     "(zero COGS on every row -- unit cost 0.0 means nothing)"
+                     % (unex.get("real"), unex.get("mock")))
     if report["violations"]:
         lines.append("violations (%d):" % len(report["violations"]))
         for v in report["violations"]:
@@ -403,6 +421,18 @@ def _selftest():
     chk("S17 zero cost side is labelled, not read as a measured unit cost",
         zero_cost["unit_cost_cny_per_mtok"] == 0.0
         and "unit_cost_note" in zero_cost, str(zero_cost.get("unit_cost_note")))
+    chk("S18 all-zero COGS month is marked COST-FACE-UNEXERCISED",
+        zero_cost["cost_face"] == "COST-FACE-UNEXERCISED",
+        zero_cost["cost_face"])
+    priced = aggregate([{"order_id": "Z2", "date": "2026-10-22",
+                         "price": 1.0, "refund_rate": 0.0, "fee_rate": 0.0,
+                         "net_price": 1.0, "amount": 0.3, "fund_3090": 0.0,
+                         "lane": "gacha", "sku": "d",
+                         "tokens_local": 500000, "tokens_api": 0}])[0]["2026-10"]
+    chk("S19 priced month is COST-FACE-EXERCISED with a real unit cost",
+        priced["cost_face"] == "COST-FACE-EXERCISED"
+        and abs(priced["unit_cost_cny_per_mtok"] - 0.6) < 1e-6,
+        "%s %s" % (priced["cost_face"], priced["unit_cost_cny_per_mtok"]))
 
     dup_rows = [dict(rows[0]), dict(rows[0])]
     _, dviol = aggregate(dup_rows, month=None, mock_only=False)
