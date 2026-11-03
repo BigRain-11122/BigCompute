@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-11-03 21:5x",
- "current_activity": "2026-11-03 21:5x 令牌轮：「历史不足」上收源侧（tech T199 / BC-P-181 收口）——row_loss_census 自己出 ROW-LOSS-NA / ROW-LOSS-PARTIAL-NA（n/a= 计数），探针判断层删掉按 why 字符串自拆的副本逻辑，单一真源 [via BigCompute-OSLoop]",
- "latest_artifact": "Tools/row_loss_census.py（selftest 22/22 PASS·聚合三态 + scanned/unreadable/na_total 三列）｜Tools/qa_smoke.py no.26（row-loss 夹具 8/8 PASS·只读源侧三列）｜state/row-loss-20261103-na.json（集团根实跑 VERDICT=ROW-LOSS-PARTIAL-NA scanned=2 n/a=1 exit 0）｜qa/smoke-20261103-2137.log/.png（23/25 PASS·no.26 live PASS·红=no.16 GPU-CONTENDED + no.22 M96 既有面）",
- "next_milestone": "①M98 P1 主队列复原 10 条可本地执行行（main open=0·下轮首对象·≤11-05）；②T200 / BC-P-182 charter 条款正文去双份（19/22/23/26 各两份且措辞已漂移·普查器增同号断言·≤11-05）；③T196 集团 orders.md 冲突块第二次 CLEAN 才销行（≤11-05）；④no.22 残红随 7 日窗滚出（写侧 sha256 归 @HQ·BC-P-175）"
+ "updated_at": "2026-11-03 22:5x",
+ "current_activity": "2026-11-03 22:5x 夜班轮：charter 条款去双份（tech T200 / BC-P-182 收口）——charter 19/22/23/26 四条曾各存两份且措辞漂移，普查器只按编号对账看不见；现增全文计号 + DUPLICATE-CLAUSE 断言，追加区改单源指针 [via BigCompute-OSLoop]",
+ "latest_artifact": "Tools/probe_registry_census.py（selftest 9/9 PASS·新增 DUPLICATE-CLAUSE 断言与 summary dup= 列）｜docs/qa-smoke-test-charter.md（§五追加区四份复制条款删除·改指针）｜state/probe-registry-20261103-2245.json（实跑 PROBE-REGISTRY-CLEAN dup=0 problems=0）｜qa/smoke-20261103-2216.log/.png（24/25 PASS·唯一红=no.22 M96 既有面）",
+ "next_milestone": "①tech T201 条款号覆盖面改用全文扫描（只写在 §五 的条款当前可整条隐身·≤11-05）；②M99-M102 P1 四行可本地执行件（口径 B 月归集/SKU×账本 join/盲盒上限拦截/续费提醒演练·≤11-06）；③no.22 残红待写侧 sha256 要求落地（@HQ·BC-P-175）"
 }

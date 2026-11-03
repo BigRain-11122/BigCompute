@@ -77,6 +77,23 @@ def charter_numbers(text):
     return numbers, reserved, base
 
 
+def clause_occurrences(text):
+    """Return {no: [lineno, ...]} for every numbered clause in the whole file.
+
+    charter_numbers() only reads section 3, so a clause that was copied into a
+    later section (the "追加区" after section 5) kept its number and drifted
+    out of sight: the same probe read as documented while two different
+    versions of its rule coexisted.  Counting the whole document makes the
+    copy visible.
+    """
+    counts = {}
+    for lineno, line in enumerate(text.splitlines(), 1):
+        m = re.match(r"^\s*-\s*(\d+)\.", line)
+        if m:
+            counts.setdefault(int(m.group(1)), []).append(lineno)
+    return counts
+
+
 def registry_records(source):
     """Return [(no, fn_name)] from the module-level PROBE_REGISTRY literal."""
     tree = ast.parse(source)
@@ -168,14 +185,25 @@ def census(smoke_path=None, charter_path=None):
             report["problems"].append("charter clause no.%d has no probe"
                                       % no)
 
+    occurrences = clause_occurrences(text)
+    report["duplicate_clauses"] = []
+    for no in sorted(occurrences):
+        lines = occurrences[no]
+        if len(lines) > 1:
+            report["duplicate_clauses"].append(no)
+            report["problems"].append(
+                "DUPLICATE-CLAUSE no.%d at %s"
+                % (no, ",".join("L%d" % n for n in lines)))
+
     if report["problems"]:
         report["verdict"] = "PROBE-REGISTRY-GAPS"
     else:
         report["verdict"] = "PROBE-REGISTRY-CLEAN"
     report["summary"] = (
-        "%s probes=%d base=%d charter_ext=%d reserved=%s problems=%d"
+        "%s probes=%d base=%d charter_ext=%d reserved=%s dup=%d problems=%d"
         % (report["verdict"], len(reg_nos), len(base), len(numbers),
-           report["reserved"] or "none", len(report["problems"])))
+           report["reserved"] or "none", len(report["duplicate_clauses"]),
+           len(report["problems"])))
     return report
 
 
@@ -284,6 +312,16 @@ def selftest():
               rep["verdict"] == "PROBE-REGISTRY-GAPS"
               and any("gap: no.2" in p for p in rep["problems"])
               and any("gap: no.3" in p for p in rep["problems"]),
+              str(rep["problems"]))
+
+        # same clause copied into a second section: two rules, one number
+        _write(charter, _charter_with(["- 2. second probe, older copy.\n"]))
+        rep = census(smoke, charter)
+        check("duplicate clause -> GAPS+DUPLICATE-CLAUSE",
+              rep["verdict"] == "PROBE-REGISTRY-GAPS"
+              and rep["duplicate_clauses"] == [2]
+              and any("DUPLICATE-CLAUSE no.2" in p
+                      for p in rep["problems"]),
               str(rep["problems"]))
 
         # unreadable input must not read as clean
