@@ -475,6 +475,8 @@ def schema_key_gap(rail, schema=None):
 
 def assemble(month, s1, s2, s3, s4, s5, now_iso, s6=None, s4b=None, s7=None, s8=None, s9=None):
     commercial_mtok = s1["consumed_mtok"]  # 商业面=S1 配额轨 consumed（计划态=0·如实禁估充）
+    # 分母口径单源=Tools/unit_cost_caliber.py（BC-P-184）：quota 面只认已发放且已消费的配额，
+    # 自用 L1 计量不得混入商业分母；改口径先改该模块再回来。
     three_elements = {k: None for k in COST_ELEMENTS}  # 恒 ⬜·Q3 铁律
     n3_credential = all(v is not None for v in three_elements.values())
     n3_commercial = commercial_mtok > 0

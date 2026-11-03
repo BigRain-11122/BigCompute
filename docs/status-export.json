@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-11-03 22:5x",
- "current_activity": "2026-11-03 22:5x 夜班排程轮：口径 B 单位成本月归集演练（main M99 / T-20261103-64）——此前单位成本只有预设计散文，无任何可跑读数；现 Tools/unit_cost_drill.py 只读两轨出月面数，分母为 0 时如实 UNIT-COST-BLOCKED 不造 0.0 [via BigCompute-OSLoop]",
- "latest_artifact": "Tools/unit_cost_drill.py（run/selftest 13/13 PASS·真轨与 MOCK 轨分面·自用 L1 分母排他·两轨 sha 前后一致＝零重记）｜state/unit-cost-drill-20261103-2246.txt/.json（2026-10 实跑：真收入轨 0 行·MOCK 3 单 net=351.2606/退款预提=32.152/平台费=18.4874/分母 tokens=0→UNIT-COST-BLOCKED·verdict=UNIT-COST-DRILL-GREEN）｜qa/smoke-20261103-2248.log/.png（24/25 PASS·唯一红=no.22 M96 既有面）",
- "next_milestone": "①M105 单位成本分母口径三处比对（cost_ledger.l1-summary / month_end_collect S1 / 演练器各写一套·BC-P-184·≤11-05）；②M100 SKU 十类×账本 join 复演出缺列清单（≤11-06）；③no.22 残红待写侧 sha256 要求落地（@HQ·BC-P-175）"
+ "updated_at": "2026-11-03 23:0x",
+ "current_activity": "2026-11-03 23:0x 夜班轮：单位成本分母口径单源化（main M105 / T-20261103-65 / BC-P-184）——三处都叫 tokens 但不同轴（配额权利面/l1 自用计量/收入行单笔实耗），各自算都对、合起来互相打架；现由 Tools/unit_cost_caliber.py 一处判 [via BigCompute-OSLoop]",
+ "latest_artifact": "Tools/unit_cost_caliber.py（classify_row/row_denominator/aggregate_denominator/unit_cost_state·缺字段=BLOCKED 不是 0·selftest 13/13）｜Tools/unit_cost_drill.py（改 import 单源·修掉配额型 SKU 按实耗算的真错·selftest 16/16）｜docs/ops/unit-cost-denominator-caliber-v1.md（三面差异表+判据对照）｜state/unit-cost-drill-20261103-2253.txt（三行 MOCK 逐条点名阻塞）｜qa/smoke-20261103-2255.log/.png（24/25 PASS·唯一红=no.22 M96 既有面）",
+ "next_milestone": "①M106 MOCK 演练行补 amount_mtok/履约 tokens 以出非阻塞单位成本真数（≤11-04）；②M100 SKU 十类×账本 join 复演出缺列清单（≤11-05）；③no.22 残红待写侧 sha256 要求落地（@HQ·BC-P-175）"
 }

@@ -31,6 +31,8 @@ import shutil
 import sys
 import tempfile
 
+import unit_cost_caliber as caliber
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 STATE = os.path.join(HERE, "..", "state")
 REVENUE_RAIL = os.path.join(STATE, "cost-ledger.jsonl")
@@ -91,10 +93,17 @@ def _row_math(row):
 
 
 def aggregate(rows, month=None, mock_only=False):
-    """Aggregate revenue rows into a month face. Pure function, no IO."""
+    """Aggregate revenue rows into a month face. Pure function, no IO.
+
+    Denominator comes from unit_cost_caliber (single source, BC-P-184): a
+    quota-type row is measured by the allowance it granted, a generation-type
+    row by the usage it consumed, and a row that cannot be classified or lacks
+    its field is BLOCKED, never silently zero.
+    """
     violations = []
     seen = {}
     buckets = {}
+    bucket_rows = {}
     for idx, row in enumerate(rows):
         if mock_only and not is_mock_row(row):
             continue
@@ -114,6 +123,7 @@ def aggregate(rows, month=None, mock_only=False):
             "cost_cny": 0.0, "fund_3090_cny": 0.0,
             "tokens_local": 0, "tokens_api": 0,
         })
+        bucket_rows.setdefault(mon, []).append(row)
         net, refund, fee = _row_math(row)
         stored_net = round(float(row.get("net_price", 0.0) or 0.0), 4)
         if abs(net - stored_net) > 1e-6:
@@ -134,7 +144,7 @@ def aggregate(rows, month=None, mock_only=False):
     for mon, b in sorted(buckets.items()):
         if month and mon != month:
             continue
-        denom = b["tokens_local"] + b["tokens_api"]
+        denom = caliber.aggregate_denominator(bucket_rows[mon])
         entry = {
             "month": mon,
             "orders": b["orders"],
@@ -147,17 +157,27 @@ def aggregate(rows, month=None, mock_only=False):
             "fund_3090_cny": round(b["fund_3090_cny"], 4),
             "tokens_local": b["tokens_local"],
             "tokens_api": b["tokens_api"],
-            "denominator_tokens": denom,
+            "denominator_tokens": b["tokens_local"] + b["tokens_api"],
+            "quota_mtok": denom["quota_mtok"],
+            "generation_mtok": denom["generation_mtok"],
+            "denominator_mtok": denom["denominator_mtok"],
+            "quota_blocked_rows": denom["quota_blocked_rows"],
+            "generation_blocked_rows": denom["generation_blocked_rows"],
+            "unknown_sku_class_rows": denom["unknown_rows"],
+            "denominator_block_reasons": denom["block_reasons"],
+            "unit_cost_state": caliber.unit_cost_state(denom),
+            "caliber_source": "unit_cost_caliber (BC-P-184)",
         }
-        if denom <= 0:
-            entry["unit_cost_state"] = UNIT_COST_BLOCKED
-            entry["unit_cost_cny_per_mtok"] = None
-            entry["unit_cost_reason"] = "denominator=0 (no commercial output tokens)"
-        else:
-            entry["unit_cost_state"] = UNIT_COST_OK
+        if entry["denominator_mtok"] > 0:
             entry["unit_cost_cny_per_mtok"] = round(
-                b["cost_cny"] / (denom / 1000000.0), 4)
-            entry["unit_cost_reason"] = "-"
+                b["cost_cny"] / entry["denominator_mtok"], 4)
+            entry["unit_cost_reason"] = (
+                "-" if entry["unit_cost_state"] == "UNIT-COST-CALCULATED"
+                else "partial: some rows unmeasurable")
+        else:
+            entry["unit_cost_cny_per_mtok"] = None
+            entry["unit_cost_reason"] = ("denominator=0 (no measurable "
+                                         "commercial output tokens)")
         face[mon] = entry
     return face, violations
 
@@ -236,19 +256,31 @@ def render(report):
         lines.append("  (no rows -- planned-state, nothing booked yet)")
     for mon, v in sorted(report["real_revenue_face"].items()):
         lines.append("  %s orders=%d price=%.4f net=%.4f refund_prov=%.4f "
-                     "fee=%.4f cost=%.4f gross=%.4f tokens=%d unit_cost=%s"
+                     "fee=%.4f cost=%.4f gross=%.4f tokens=%d "
+                     "denom_mtok=%.6f quota_mtok=%.6f gen_mtok=%.6f "
+                     "quota_blocked=%d unit_cost=%s"
                      % (mon, v["orders"], v["price_cny"], v["net_cny"],
                         v["refund_provision_cny"], v["platform_fee_cny"],
                         v["cost_cny"], v["gross_cny"], v["denominator_tokens"],
+                        v["denominator_mtok"], v["quota_mtok"],
+                        v["generation_mtok"], v["quota_blocked_rows"],
                         v["unit_cost_state"]))
+        for why in v["denominator_block_reasons"]:
+            lines.append("    blocked: " + why)
     lines.append("mock rail face (drill data, excluded from settlement):")
     for mon, v in sorted(report["mock_revenue_face"].items()):
         lines.append("  %s orders=%d price=%.4f net=%.4f refund_prov=%.4f "
-                     "fee=%.4f cost=%.4f gross=%.4f tokens=%d unit_cost=%s"
+                     "fee=%.4f cost=%.4f gross=%.4f tokens=%d "
+                     "denom_mtok=%.6f quota_mtok=%.6f gen_mtok=%.6f "
+                     "quota_blocked=%d unit_cost=%s"
                      % (mon, v["orders"], v["price_cny"], v["net_cny"],
                         v["refund_provision_cny"], v["platform_fee_cny"],
                         v["cost_cny"], v["gross_cny"], v["denominator_tokens"],
+                        v["denominator_mtok"], v["quota_mtok"],
+                        v["generation_mtok"], v["quota_blocked_rows"],
                         v["unit_cost_state"]))
+        for why in v["denominator_block_reasons"]:
+            lines.append("    blocked: " + why)
     su = report["self_use_l1"]
     lines.append("self-use l1 (advisory, not settlement): tokens=%d cost_b=%.8f"
                  % (su["tokens_local"], su["cost_b_cny"]))
@@ -295,16 +327,53 @@ def _selftest():
         "refund=%.4f fee=%.4f" % (oct_face["refund_provision_cny"],
                                   oct_face["platform_fee_cny"]))
     chk("S4 denominator counted", oct_face["denominator_tokens"] == 200000)
+    measured = [dict(rows[1]), dict(rows[1])]
+    measured[1]["order_id"] = "MOCK-C"
+    measured[0]["tokens_local"] = 100000
+    measured[1]["tokens_local"] = 100000
+    measured[0]["amount"] = 0.5
+    measured[1]["amount"] = 0.5
+    mface0, _ = aggregate(measured, month=None, mock_only=False)
+    mo = mface0["2026-10"]
     chk("S5 unit cost computed when denominator>0",
-        oct_face["unit_cost_state"] == UNIT_COST_OK
-        and abs(oct_face["unit_cost_cny_per_mtok"] - 5.0) < 1e-6,
-        "unit=%s" % oct_face["unit_cost_cny_per_mtok"])
+        mo["unit_cost_state"] == UNIT_COST_OK
+        and abs(mo["unit_cost_cny_per_mtok"] - 5.0) < 1e-6,
+        "state=%s unit=%s" % (mo["unit_cost_state"],
+                              mo["unit_cost_cny_per_mtok"]))
 
     zero_rows = [dict(rows[0])]
     zface, _ = aggregate(zero_rows, month=None, mock_only=False)
     z = zface["2026-10"]
     chk("S6 denominator zero -> BLOCKED (no ZeroDivisionError)",
         z["unit_cost_state"] == UNIT_COST_BLOCKED and z["unit_cost_cny_per_mtok"] is None)
+
+    mixed = [
+        {"order_id": "MIX-Q", "date": "2026-10-21", "price": 9.9,
+         "refund_rate": 0.08, "fee_rate": 0.05, "net_price": 8.6526,
+         "amount": 0.5, "fund_3090": 0.0, "lane": "subscription",
+         "sku": "seat.quota.month", "tokens_local": 0, "tokens_api": 0},
+        {"order_id": "MIX-G", "date": "2026-10-21", "price": 3.0,
+         "refund_rate": 0.08, "fee_rate": 0.05, "net_price": 2.622,
+         "amount": 0.5, "fund_3090": 0.0, "lane": "gacha",
+         "sku": "card.draw", "tokens_local": 500000, "tokens_api": 0},
+    ]
+    mface, _ = aggregate(mixed, month=None, mock_only=False)
+    m = mface["2026-10"]
+    chk("S14 quota row without amount_mtok makes the month PARTIAL",
+        m["unit_cost_state"] == "UNIT-COST-PARTIAL"
+        and m["quota_blocked_rows"] == 1, str(m["unit_cost_state"]))
+    chk("S15 generation-only denominator still prices the month",
+        abs(m["denominator_mtok"] - 0.5) < 1e-9
+        and abs(m["unit_cost_cny_per_mtok"] - 2.0) < 1e-6,
+        "denom=%s unit=%s" % (m["denominator_mtok"],
+                              m["unit_cost_cny_per_mtok"]))
+    mixed[0]["amount_mtok"] = 0.25
+    m2 = aggregate(mixed, month=None, mock_only=False)[0]["2026-10"]
+    chk("S16 quota allowance joins the denominator once granted",
+        abs(m2["quota_mtok"] - 0.25) < 1e-9
+        and abs(m2["denominator_mtok"] - 0.75) < 1e-9
+        and m2["unit_cost_state"] == "UNIT-COST-CALCULATED",
+        str(m2["denominator_mtok"]))
 
     dup_rows = [dict(rows[0]), dict(rows[0])]
     _, dviol = aggregate(dup_rows, month=None, mock_only=False)

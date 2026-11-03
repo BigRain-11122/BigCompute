@@ -790,6 +790,8 @@ def l1_summary(args, ledger=L1LEDGER, budget=L1BUDGET):
     if args.month:
         rows = [r for r in rows if r.get("month") == args.month]
     per = {}
+    # 分母口径单源=Tools/unit_cost_caliber.py（BC-P-184）：本面=l1 自用计量，
+    # 只作顾问读数，永不进商业分母（month_end_collect S1 同律）。
     for r in rows:
         if r.get("type") != "l1":
             continue

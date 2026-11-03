@@ -572,3 +572,6 @@ P2 队列自检: tech 补货 T201（条款号覆盖面只认 §三——只写�
 2026-11-03 22:4x 日清: 实物=口径 B 单位成本月归集演练（M99）落地为可跑件 `Tools/unit_cost_drill.py`（selftest 13/13），2026-10 实跑出真数：真收入轨 0 行（计划态未入账）、MOCK 3 单 net=351.2606/退款预提=32.1520/平台费=18.4874、分母 tokens=0 故单位成本如实 `UNIT-COST-BLOCKED`（不造 0.0），两轨 sha 前后一致＝零重记。
 P2: 单位成本「谁算商业产出」三处各写一套（cost_ledger.l1-summary / month_end_collect S1 / 本演练器）——提案 BC-P-184 已立，M105 承接比对；缺口如实=P1 可执行 open=8 未达 ≥10（不凑数）。
 22:4x 日清小结: 会算账要先有一条口径，今天把「算不出来」也做成了可验证的结论。
+2026-11-03 23:0x 日清: 实物=单位成本分母口径单源化（M105）——`Tools/unit_cost_caliber.py`（三面＝quota 权利/l1 自用/收入行实耗·缺字段=BLOCKED 不是 0·selftest 13/13），drill 改 import 并修掉「配额型 SKU 按实耗算」的真错（selftest 16/16）；两面只落指针不改数（cost_ledger PASS、month_end_collect 42/42）。差异表 `docs/ops/unit-cost-denominator-caliber-v1.md`。
+P2: MOCK 三行缺 `amount_mtok`/履约 tokens，整月单位成本仍 BLOCKED——M106 补字段；不改 `month_end_collect` 计算面是有意选择（动 N1 结算链风险高于收益，E11 同律，已写进件）。
+23:0x 日清小结: 口径统一不是为了好看，是为了让「算不出来」也能被追到具体哪一行缺哪个字段。
