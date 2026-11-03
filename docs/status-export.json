@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-11-03 21:0x",
- "current_activity": "2026-11-03 21:0x 夜班令牌轮：行丢失普查器（T-20261103-60/T197 根因测量面）——按 git 历史逐 commit 比对共享 jsonl 台账的 id 集合，把「整表覆盖丢活卡」从一次性观察变成可复跑读数，并区分终态清理／瞬态洞／永久丢失 [via BigCompute-OSLoop]",
- "latest_artifact": "Tools/row_loss_census.py（selftest 17/17 PASS）｜state/row-loss-20261103-2057.txt/.json（w60：ROW-LOSS-TRANSIENT，MV-NEWPROC-PACKET-20261103 在 13:10:44→13:10:53 消失后回填）｜state/row-loss-20261103-w300.txt/.json（w300：permanent=0 terminal_removed=0 bad_lines=72）｜qa/smoke-20261103-2104.log/.png（23/24 PASS·唯一红=no.22 M96 既有面）",
- "next_milestone": "①row_loss_census 接 qa_smoke no.26 常驻探针（瞬态可见/永久红门，tech T198·≤11-05）；②BC-P-180 写侧行级 append+写前锚交 @bm-m（≤11-06）；③T196 集团 orders.md 冲突块：本轮普查回 CLEAN 属第 1 次，需 ≥30min 后第 2 次 CLEAN 才销行（≤11-05）；④no.22 残红等 @HQ 写侧 sha256（BC-P-175）"
+ "updated_at": "2026-11-03 21:2x",
+ "current_activity": "2026-11-03 21:2x 夜班令牌轮：行丢失普查接成 QA 常驻探针 no.26（tech T198 收口）——整表覆盖写的共享 jsonl 台账，永久丢失当轮红并点名 id 与两 commit，瞬态洞可见但不红，历史不足记 N/A 不计扫描面 [via BigCompute-OSLoop]",
+ "latest_artifact": "Tools/qa_smoke.py no.26（selftest 7/7 PASS、PROBE-REGISTRY-CLEAN probes=25 problems=0）｜qa/smoke-20261103-2121.log/.png（24/25 PASS·唯一红=no.22 M96 既有面·no.26 live=verdict=PARTIAL window=4 permanent=0 transient=0 scanned=2 n/a=1 targets=3）｜docs/qa-smoke-test-charter.md §三 第 26 条｜state/text-integrity-20261103-2125.json（CLEAN cats=7/7 conflict_blocks=0）",
+ "next_milestone": "①M98 P1 主队列复原 10 条可本地执行行（main open=0 当场立行·下轮·≤11-05）；②BC-P-181 row_loss_census 源侧增 N/A 第四态（消掉「历史不足算 PARTIAL」的下游自拆·≤11-05）；③T196 集团 orders.md 冲突块：21:25 第 1 次 CLEAN，需 ≥30min 后第 2 次 CLEAN 才销行（≤11-05）；④no.22 残红随 7 日窗滚出（写侧 sha256 归 @HQ·BC-P-175）"
 }

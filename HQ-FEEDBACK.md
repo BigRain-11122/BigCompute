@@ -558,3 +558,8 @@ P2 四条缺口=NUM_PARALLEL=2、KEEP_ALIVE=5m、CONTEXT_LENGTH=16384、无 embe
 2026-11-03 20:5x 日清: 无待报阻塞（T196 仍在 @HQ 面：集团 orders.md 冲突块随主树 rebase/autostash 复发，本司只报警不改）。
 P1 证据: 共享台账整表覆盖会丢活卡——`row_loss_census` 实跑 w60/w300 抓到 `MV-NEWPROC-PACKET-20261103`（QUEUE RUNNING／BACKLOG READY）在 13:10:44→13:10:53 消失后回填=瞬态洞，permanent=0；证据 state/row-loss-20261103-2057.txt、state/row-loss-20261103-w300.txt。建议=写侧改行级 append+写前锚（BC-P-180，归 @bm-m）。
 2026-11-03 20:5x 日清小结: 本轮产物=行丢失普查器+两窗实跑读数，已入 TASKS T-60／tech T198，全程未改他仓。
+2026-11-03 21:2x 日清: 实物=行丢失普查接成常驻探针 no.26（永久丢失红／瞬态洞可见不红／历史不足 N/A 不计 scanned），live `verdict=PARTIAL window=4 permanent=0 transient=0 scanned=2 n/a=1`，smoke **24/25**（唯一红=no.22 M96 既有面）；charter §三 第 26 条+PROBE-REGISTRY-CLEAN 在案。
+P2 队列自检: P1 主队列 open=0（tech=6／explore=1），业务面无可点火行→立 M98 复原 10 条；本轮净额 tech −1／main +1 如实记（BC-P-181 派生「row_loss_census 源侧 N/A 第四态」）。
+2026-11-03 21:2x 日清小结: 探针落地+登记表全绿，队列缺口自己先说，未宣称 M96 已修。
+2026-11-03 21:3x 回执 D-20261103-19（集团队列断供应点名·@BigCompute 面·窗内 ≤11-04 21:30）：补货行已自报 **M98**（`state/queue/main.md`）——本司 `dispatch queue.open=0` 实为业务面 P1 行被清空（main open=0／tech=6／explore=1），故补货不是「没活找活」而是复原常备量；本次同时挂出 tech 侧 **T199＝BC-P-181**（`row_loss_census` 源侧 N/A 第四态）为 lane 候选，桌面真实可点火行 ≥2（M98 复原 10 条 + T199 规格面可即写），物理件类（商户号/小店后台/API key）如实维持 blocked 不占位。
+2026-11-03 21:3x 回执小结: 补货行=M98+T199，两条均为本地可执行且有判据，回执窗内先到。

@@ -2509,6 +2509,145 @@ def selftest_write_encoding():
     return 0 if all(results) else 1
 
 
+ROW_LOSS_PROBE_WINDOW = 4
+ROW_LOSS_NA_WHY = "no-comparable-pairs"
+
+
+def row_loss_judge(payload):
+    """Judge a row_loss_census payload (no.26 / T198).
+
+    Shared jsonl ledgers are rewritten whole, so a row can vanish between two
+    commits and come back minutes later.  A permanent loss is a defect and
+    names the ids; a transient hole passes but is printed, because a
+    concurrent reader did see the hole and silence would teach us it was fine.
+    A target with fewer than two comparable commits is N/A -- neither a defect
+    nor health, and never counted as scanned (T-50: no green by absence).
+    """
+    if not isinstance(payload, dict):
+        return False, "UNVERIFIED: no census payload"
+    verdict = payload.get("verdict")
+    window = payload.get("window", 0)
+    targets = payload.get("targets") or []
+    permanent = payload.get("lost_permanent_total", 0)
+    transient = payload.get("lost_transient_total", 0)
+    unverified = [t for t in targets if t.get("verdict") == "UNVERIFIED"]
+    gaps = [t for t in unverified if t.get("why") != ROW_LOSS_NA_WHY]
+    na = [t for t in unverified if t.get("why") == ROW_LOSS_NA_WHY]
+    scanned = len(targets) - len(unverified)
+    if gaps:
+        rows = ["%s(%s)" % (t.get("target"), t.get("why")) for t in gaps[:4]]
+        return False, ("verdict=%s window=%d unreadable=%d %s"
+                       % (verdict, window, len(gaps), " ".join(rows)))
+    if not scanned:
+        return False, ("verdict=%s window=%d scanned=0 n/a=%d -- no target "
+                       "had comparable commits, absence is not health"
+                       % (verdict, window, len(na)))
+    ids = []
+    for t in targets:
+        for item in (t.get("lost_alive_ids") or [])[:4]:
+            ids.append("%s id=%s %s->%s" % (
+                "TRANSIENT" if item.get("readded") else "PERMANENT",
+                item.get("id"), item.get("older_commit"),
+                item.get("newer_commit")))
+    tail = (" " + " ".join(ids)) if ids else ""
+    if permanent:
+        return False, ("verdict=%s window=%d permanent=%d transient=%d%s"
+                       % (verdict, window, permanent, transient, tail))
+    if transient:
+        return True, ("verdict=%s window=%d permanent=0 transient=%d n/a=%d%s"
+                      % (verdict, window, transient, len(na), tail))
+    return True, ("verdict=%s window=%d permanent=0 transient=0 scanned=%d "
+                  "n/a=%d" % (verdict, window, scanned, len(na)))
+
+
+def probe_row_loss():
+    """Probe no.26 (T198): row-loss census over the last few group commits."""
+    if HERE not in sys.path:
+        sys.path.insert(0, HERE)
+    try:
+        import row_loss_census as rlc
+    except Exception as e:  # noqa: BLE001 - probe must report, not crash
+        return False, "row_loss_census import raised: %r" % e
+    group = (os.environ.get("FLUXGROUP_ROOT")
+             or os.path.normpath(os.path.join(ROOT, os.pardir, os.pardir)))
+    try:
+        payload = rlc.census(group, rlc.DEFAULT_TARGETS, ROW_LOSS_PROBE_WINDOW)
+    except Exception as e:  # noqa: BLE001
+        return False, "row_loss_census.census raised: %r" % e
+    ok, detail = row_loss_judge(payload)
+    return ok, detail + " targets=%d" % len(payload.get("targets") or [])
+
+
+def selftest_row_loss():
+    """T198 fixtures: free / transient / permanent / unreadable / n-a / empty."""
+    results = []
+
+    def check(name, cond):
+        results.append(bool(cond))
+        print(("PASS " if cond else "FAIL ") + name)
+
+    def tgt(path, verdict, why=None, lost=None):
+        return {"target": path, "verdict": verdict, "why": why or "",
+                "lost_alive_ids": lost or []}
+
+    free = {"verdict": "ROW-LOSS-FREE", "window": 4,
+            "targets": [tgt("q.jsonl", "ROW-LOSS-FREE")],
+            "lost_permanent_total": 0, "lost_transient_total": 0}
+    ok, det = row_loss_judge(free)
+    check("S1 FREE -> PASS and reports window/scope",
+          ok and "window=4" in det and "scanned=1" in det)
+
+    trans = {"verdict": "ROW-LOSS-TRANSIENT", "window": 4,
+             "targets": [tgt("q.jsonl", "ROW-LOSS-TRANSIENT", lost=[
+                 {"id": "MV-1", "readded": True,
+                  "older_commit": "aaaaaaa", "newer_commit": "bbbbbbb"}])],
+             "lost_permanent_total": 0, "lost_transient_total": 1}
+    ok, det = row_loss_judge(trans)
+    check("S2 TRANSIENT -> PASS but names the hole (never silent)",
+          ok and "transient=1" in det and "MV-1" in det and "aaaaaaa" in det)
+
+    found = {"verdict": "ROW-LOSS-FOUND", "window": 4,
+             "targets": [tgt("q.jsonl", "ROW-LOSS-FOUND", lost=[
+                 {"id": "MV-2", "readded": False,
+                  "older_commit": "ccccccc", "newer_commit": "ddddddd"}])],
+             "lost_permanent_total": 1, "lost_transient_total": 0}
+    ok, det = row_loss_judge(found)
+    check("S3 FOUND -> FAIL and names PERMANENT id",
+          (not ok) and "permanent=1" in det and "MV-2" in det)
+
+    gap = {"verdict": "PARTIAL", "window": 4,
+           "targets": [tgt("q.jsonl", "ROW-LOSS-FREE"),
+                       tgt("b.jsonl", "UNVERIFIED", why="git-show-rc=128")],
+           "lost_permanent_total": 0, "lost_transient_total": 0}
+    ok, det = row_loss_judge(gap)
+    check("S4 unreadable target -> FAIL names target and why",
+          (not ok) and "b.jsonl" in det and "git-show-rc=128" in det)
+
+    na_only = {"verdict": "PARTIAL", "window": 4,
+               "targets": [tgt("q.jsonl", "ROW-LOSS-FREE"),
+                           tgt("lane.jsonl", "UNVERIFIED",
+                               why=ROW_LOSS_NA_WHY)],
+               "lost_permanent_total": 0, "lost_transient_total": 0}
+    ok, det = row_loss_judge(na_only)
+    check("S5 short-history target -> PASS as n/a, not counted scanned",
+          ok and "n/a=1" in det and "scanned=1" in det)
+
+    all_na = {"verdict": "UNVERIFIED", "window": 4,
+              "targets": [tgt("lane.jsonl", "UNVERIFIED",
+                              why=ROW_LOSS_NA_WHY)],
+              "lost_permanent_total": 0, "lost_transient_total": 0}
+    ok, det = row_loss_judge(all_na)
+    check("S6 nothing comparable -> FAIL, absence is not health",
+          (not ok) and "scanned=0" in det)
+
+    ok, det = row_loss_judge(None)
+    check("S7 no payload -> UNVERIFIED FAIL", (not ok) and "UNVERIFIED" in det)
+
+    print("selftest row-loss verdict: %d/%d PASS"
+          % (len([r for r in results if r]), len(results)))
+    return 0 if all(results) else 1
+
+
 def probe_probe_registry():
     """Probe no.24 (T190 / BC-P-169): probe numbering single-source census.
 
@@ -2556,6 +2695,7 @@ PROBE_REGISTRY = [
     (23, "ollama serve death vs transient (T188)", probe_serve_health),
     (24, "probe registry census (T190/BC-P-169)", probe_probe_registry),
     (25, "write-side encoding declarations (T193)", probe_write_encoding),
+    (26, "shared jsonl row-loss census (T198)", probe_row_loss),
 ]
 
 
@@ -2568,7 +2708,7 @@ def main():
                 | selftest_gpu_contention() | selftest_ledger_parallel()
                 | selftest_qa_version() | selftest_text_integrity()
                 | selftest_receipt_product_law() | selftest_serve_health()
-                | selftest_write_encoding())
+                | selftest_write_encoding() | selftest_row_loss())
     os.makedirs(QA_DIR, exist_ok=True)
     ts = datetime.datetime.now().strftime("%Y%m%d-%H%M")
     log_path = os.path.join(QA_DIR, "smoke-%s.log" % ts)
