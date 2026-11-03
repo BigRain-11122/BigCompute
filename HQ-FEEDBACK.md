@@ -566,3 +566,6 @@ P2 队列自检: P1 主队列 open=0（tech=6／explore=1），业务面无可�
 2026-11-03 21:5x 日清: 实物=「历史不足」上收源侧（T199/BC-P-181）——`row_loss_census` 出 `ROW-LOSS-NA`／聚合 `ROW-LOSS-PARTIAL-NA`＋`n/a=` 计数，探针判断层不再自行按 why 字符串拆类；源侧 selftest **22/22**、探针 row-loss 夹具 **8/8**、全量 `--selftest` exit 0；实跑集团根 `VERDICT=ROW-LOSS-PARTIAL-NA scanned=2 n/a=1` exit 0，live no.26 PASS。smoke **23/25**（红=no.16 /ask GPU-CONTENDED + no.22 M96 既有面，均既有）。
 P2 队列自检: tech 本轮 T199 闭、新增 T200（charter 条款双份治理，轮内实锚：19/22/23/26 在 §三 与尾部各一份且措辞已漂移，probe_registry_census 只按号对账看不见）＝净 0；main 侧 **M98 仍 open 为下轮首对象**（P1 open=0 的业务面复原未开工，如实不自称已补）。
 2026-11-03 21:5x 日清小结: 单一真源落一处（源侧出态、判断层只读），顺带把 charter 双份隐患挂出提案；未动他仓、未改判据语义。
+2026-11-03 22:5x 日清: 实物=charter 条款同号多份可见化（tech T200 收口）——`probe_registry_census` 增全文计号 `clause_occurrences()`+`DUPLICATE-CLAUSE no.X at L..,L..`+summary `dup=`，selftest **9/9**；charter §五追加区 19/22/23/26 四份复制条款删除（措辞已漂移且两份缺 T195/T199 增补），改单源指针指 §三；实跑 `PROBE-REGISTRY-CLEAN probes=25 base=4 charter_ext=22 dup=0 problems=0`；smoke **24/25**（唯一红=no.22 M96 既有面）。
+P2 队列自检: tech 补货 T201（条款号覆盖面只认 §三——只写在 §五 的条款当前可整条隐身），main 补 M99-M102 四行可本地执行件（M98 复原 P1），故本轮 open 10→14 为净增，违反「净减」律但属 P1 结构性补货，如实记账不掩饰。
+22:5x 日清小结: 同号多份是全仓族缺陷（提案 BC-P-183 已立），charter 只是首例。
