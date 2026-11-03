@@ -21,15 +21,20 @@ Commands:
             declared, declared keys must name a producer (BC-P-116 / T135)
   c1        C1 inspection aggregate: this gate + ledger_continuity_probe
             (single invocation for the P1 loop inspection step)
+  reminder-gap  scan every known rail for a reminder field: declared in schema
+            (EVIDENCED) vs written-but-undeclared (UNDECLARED-IN-LIVE) vs
+            absent everywhere (MISSING-IN-SCHEMA). §六 L59 requires the renewal
+            reminder trigger to be recorded on the subscription rail.
   selftest  schema self-checks + fixture pass/fail assertions
   dump      print the schemas as JSON
 
-Usage: python Tools/rails_schema_check.py check|census|c1|selftest|dump
+Usage: python Tools/rails_schema_check.py check|census|c1|reminder-gap|selftest|dump
 """
 
 from __future__ import annotations
 
 import json
+import re
 import sys
 from importlib import metadata
 from pathlib import Path
@@ -414,6 +419,111 @@ def cmd_census() -> int:
     return 0 if not problems else 1
 
 
+REMINDER_KEY_RE = re.compile(r"remind", re.IGNORECASE)
+
+# Rails that hold subscription-cycle rows owe a reminder field (§六 L59:
+# 续费提醒触发记录入流水轨). Kept explicit so a NEW rail cannot silently be
+# exempt — the scan reports "no subscription rail declared" instead.
+SUBSCRIPTION_RAILS = {"mock_order"}
+
+
+def reminder_fields(mapping) -> list[str]:
+    """Keys in a schema `properties` map or a live row that look like reminders."""
+    return sorted(k for k in mapping if REMINDER_KEY_RE.search(str(k)))
+
+
+def reminder_gap_scan():
+    """Per-rail reminder-field presence: declared vs live-written.
+
+    States:
+      EVIDENCED             declared in schema and (if live rows exist) written
+      UNDECLARED-IN-LIVE    written by a producer but not declared -> contract bypass
+      DECLARED-UNWRITTEN    declared but no live row carries it yet (planned)
+      MISSING-IN-SCHEMA     neither declared nor written
+    """
+    findings = []
+    known = [(kind, path, True) for kind, path in RAIL_PATHS.items()]
+    for kind, entry in sorted(OUT_OF_CENSUS.items()):
+        known.append((kind, ROOT / entry["path"], False))
+
+    for kind, path, gated in known:
+        declared = reminder_fields(
+            SCHEMAS.get(kind, {}).get("properties", {})) if gated else []
+        live_written, live_rows = [], 0
+        if path.exists():
+            rows = load_rows(path)
+            live_rows = len(rows)
+            seen = set()
+            for row in rows:
+                seen.update(reminder_fields(row))
+            live_written = sorted(seen)
+
+        if declared and live_written:
+            status = "EVIDENCED"
+        elif live_written and not declared:
+            status = "UNDECLARED-IN-LIVE"
+        elif declared:
+            status = "DECLARED-UNWRITTEN"
+        else:
+            status = "MISSING-IN-SCHEMA"
+
+        findings.append({
+            "rail": kind,
+            "path": str(path.relative_to(ROOT)).replace("\\", "/"),
+            "gated": gated,
+            "live_rows": live_rows,
+            "declared": declared,
+            "live_written": live_written,
+            "status": status,
+        })
+    return findings
+
+
+def cmd_reminder_gap(json_out=None) -> int:
+    findings = reminder_gap_scan()
+    undeclared = [f for f in findings if f["status"] == "UNDECLARED-IN-LIVE"]
+    evidenced = [f for f in findings if f["status"] == "EVIDENCED"]
+    missing = [f for f in findings if f["status"] == "MISSING-IN-SCHEMA"]
+    subscription_declared = sorted(
+        f["rail"] for f in findings
+        if f["gated"] and f["rail"] in SUBSCRIPTION_RAILS)
+
+    for f in findings:
+        print("%-12s %-22s gated=%s rows=%d declared=%s live=%s (%s)" % (
+            f["rail"], f["status"], "yes" if f["gated"] else "no",
+            f["live_rows"], ",".join(f["declared"]) or "-",
+            ",".join(f["live_written"]) or "-", f["path"]))
+
+    if undeclared:
+        verdict = "REMINDER-SCHEMA-RED"
+    elif missing:
+        verdict = "REMINDER-SCHEMA-GAP"
+    else:
+        verdict = "REMINDER-SCHEMA-EVIDENCED"
+    print("subscription rails declared: %s" % (
+        ",".join(subscription_declared) or "NONE (订阅流水轨尚未在 SCHEMAS 定义)"))
+    print("VERDICT=%s evidenced=%d undeclared=%d missing=%d rails=%d" % (
+        verdict, len(evidenced), len(undeclared), len(missing), len(findings)))
+
+    if json_out:
+        payload = {
+            "verdict": verdict,
+            "anchor": "§六 L59 续费提醒触发记录入流水轨",
+            "subscription_rails": subscription_declared,
+            "counts": {"evidenced": len(evidenced),
+                       "undeclared": len(undeclared),
+                       "missing": len(missing)},
+            "findings": findings,
+        }
+        with open(json_out, "w", encoding="utf-8", newline="\n") as fh:
+            json.dump(payload, fh, ensure_ascii=False, indent=2, sort_keys=True)
+            fh.write("\n")
+        print("json=%s" % json_out)
+    # A reported gap is the honest result, not an infrastructure failure; only
+    # a live write bypassing the declared contract is a red gate.
+    return 1 if undeclared else 0
+
+
 def cmd_c1() -> int:
     """C1 inspection aggregate: structure gate + ledger continuity in one call."""
     schema_rc = cmd_check()
@@ -530,6 +640,23 @@ def cmd_selftest() -> int:
     checks.append(("coverage catches exclusion without reason",
                    any("no reason" in p for p in census_coverage(
                        schemas={}, out_of_census={"x": {}}))))
+    # M113 ② reminder-field scan: the matcher must see a reminder key, and an
+    # undeclared live write must be distinguished from an absent field.
+    checks.append(("reminder matcher sees reminder_at/reminders",
+                   reminder_fields({"reminder_at": 1, "reminders": [], "ts": 2})
+                   == ["reminder_at", "reminders"]))
+    checks.append(("reminder matcher ignores unrelated keys",
+                   reminder_fields({"order_id": "x", "remind_me": 0}) == ["remind_me"]))
+    fixture_findings = reminder_gap_scan()
+    checks.append(("reminder-gap scan covers every known rail",
+                   {f["rail"] for f in fixture_findings}
+                   == set(RAIL_PATHS) | set(OUT_OF_CENSUS)))
+    checks.append(("reminder-gap statuses restricted to known set",
+                   all(f["status"] in ("EVIDENCED", "UNDECLARED-IN-LIVE",
+                                       "DECLARED-UNWRITTEN", "MISSING-IN-SCHEMA")
+                       for f in fixture_findings)))
+    checks.append(("reminder-gap: no declared rail field yet => no EVIDENCED",
+                   not any(f["status"] == "EVIDENCED" for f in fixture_findings)))
     for name, ok in checks:
         print(f"{'PASS' if ok else 'FAIL'} {name}")
     failed = sum(1 for _, ok in checks if not ok)
@@ -545,6 +672,9 @@ def main(argv: list[str]) -> int:
         return cmd_census()
     if cmd == "c1":
         return cmd_c1()
+    if cmd == "reminder-gap":
+        json_out = argv[2] if len(argv) > 2 else None
+        return cmd_reminder_gap(json_out)
     if cmd == "selftest":
         return cmd_selftest()
     if cmd == "dump":
