@@ -83,7 +83,53 @@ def _measure(path):
     return lines, len(data)
 
 
-def audit(repo, register=None, allowlist=None, declared_tools=DECLARED_TOOLS):
+MANIFEST_REL = os.path.join("Tools", "tool_manifest.txt")
+
+
+def _load_manifest(repo):
+    """Declared tool names. None when the manifest does not exist."""
+    path = os.path.join(repo, MANIFEST_REL)
+    if not os.path.isfile(path):
+        return None
+    names = set()
+    with open(path, "r", encoding="utf-8") as fh:
+        for line in fh:
+            line = line.strip()
+            if line and not line.startswith("#"):
+                names.add(line)
+    return names
+
+
+def _tools_drift(repo, actual_names, declared_tools=None):
+    """F3: every Tools/*.py must be declared, by name.
+
+    A magic count only ever produced "actual N vs declared N-1" and a manual
+    bump that nobody reads; the name diff names exactly which tool is
+    undeclared, so the gate can be acted on instead of incremented.
+    declared_tools keeps the old integer form for fixtures.
+    """
+    if declared_tools is not None:
+        actual = len(actual_names)
+        if actual == declared_tools:
+            return None
+        return {"actual": actual, "declared": declared_tools}
+
+    manifest = _load_manifest(repo)
+    if manifest is None:
+        actual = len(actual_names)
+        if actual == DECLARED_TOOLS:
+            return None
+        return {"actual": actual, "declared": DECLARED_TOOLS,
+                "note": "manifest missing; fell back to DECLARED_TOOLS"}
+    undeclared = sorted(actual_names - manifest)
+    stale = sorted(manifest - actual_names)
+    if not undeclared and not stale:
+        return None
+    return {"actual": len(actual_names), "declared": len(manifest),
+            "undeclared_tools": undeclared, "stale_entries": stale}
+
+
+def audit(repo, register=None, allowlist=None, declared_tools=None):
     register = REGISTER if register is None else register
     allowlist = ALLOWLIST_OVERSIZE if allowlist is None else allowlist
     f1_missing, f2_over, f2_pending, summary = [], [], [], {}
@@ -110,8 +156,10 @@ def audit(repo, register=None, allowlist=None, declared_tools=DECLARED_TOOLS):
                     (f2_pending if p in allowlist else f2_over).append(
                         {"path": p, "lines": lines, "bytes": nbytes})
         summary[level] = {"covered": lv_covered, "total": len(register[level])}
-    actual_tools = len(glob.glob(os.path.join(repo, "Tools", "*.py")))
-    f3_drift = None if actual_tools == declared_tools else {"actual": actual_tools, "declared": declared_tools}
+    actual_names = {os.path.basename(p)
+                    for p in glob.glob(os.path.join(repo, "Tools", "*.py"))}
+    actual_tools = len(actual_names)
+    f3_drift = _tools_drift(repo, actual_names, declared_tools)
     viol = len(f1_missing) + len(f2_over) + (1 if f3_drift else 0)
     # 判据分层（D-20261101-20/D-20261102-02）：注册面之外的一线文档不在本闸射程内，必须显式列出
     repo_md = sorted(
@@ -160,6 +208,10 @@ def cmd_check(args):
         print("  declared-pending-1007:", item["path"])
     if res["f3_tools_drift"]:
         print("  tools-drift:", res["f3_tools_drift"])
+        if res["f3_tools_drift"] and res["f3_tools_drift"].get("undeclared_tools"):
+            print("    undeclared:", ", ".join(res["f3_tools_drift"]["undeclared_tools"]))
+        if res["f3_tools_drift"] and res["f3_tools_drift"].get("stale_entries"):
+            print("    stale entries:", ", ".join(res["f3_tools_drift"]["stale_entries"]))
     print("evidence=%s" % out_path)
     return 0 if res["verdict"] == "SOP-COVERAGE-GREEN" else 1
 
@@ -211,8 +263,26 @@ def cmd_selftest(args):
         and res["verdict"] == "SOP-COVERAGE-GREEN")
     chk("S9 domain 自证三级注册面+工具计数",
         res["scope"]["domain"].startswith("register levels=3") and "Tools/*.py=1" in res["scope"]["domain"])
-    print("selftest %d/9 %s" % (ok[0], "PASS" if ok[0] == 9 else "FAIL"))
-    return 0 if ok[0] == 9 else 1
+    manifest = os.path.join(repo, "Tools", "tool_manifest.txt")
+    with open(manifest, "w", encoding="utf-8") as f:
+        f.write("# declared tools\nx.py\n")
+    res = audit(repo, register=reg, allowlist=["docs/ops/big.md"])
+    chk("S10 清单声明齐→GREEN", res["verdict"] == "SOP-COVERAGE-GREEN"
+        and res["f3_tools_drift"] is None)
+    with open(manifest, "w", encoding="utf-8") as f:
+        f.write("# declared tools\n")
+    res = audit(repo, register=reg, allowlist=["docs/ops/big.md"])
+    chk("S11 清单漏报→RED 且点名工具",
+        res["verdict"] == "SOP-COVERAGE-RED"
+        and res["f3_tools_drift"]["undeclared_tools"] == ["x.py"])
+    with open(manifest, "w", encoding="utf-8") as f:
+        f.write("x.py\ngone.py\n")
+    res = audit(repo, register=reg, allowlist=["docs/ops/big.md"])
+    chk("S12 清单残留已删工具→RED 且点名 stale",
+        res["verdict"] == "SOP-COVERAGE-RED"
+        and res["f3_tools_drift"]["stale_entries"] == ["gone.py"])
+    print("selftest %d/12 %s" % (ok[0], "PASS" if ok[0] == 12 else "FAIL"))
+    return 0 if ok[0] == 12 else 1
 
 
 def main():

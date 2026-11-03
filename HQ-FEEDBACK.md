@@ -597,3 +597,7 @@ P2: 队列 main open 4→3（M103 done·M91 转 @HQ 域）并新增 M114；三�
 2026-11-04 01:2x 日清：无待报。M114 售后台账轨 schema + MOCK 合成售后行落成——退款率校准器从「只能拒判」变「可算」（`REFUND-CALIBRATED` gross 401.90 / 预提 32.1500=8.00% / 实退 28.9900=7.2132% / dev=−0.7863pp < 2pp 阈），逐单面同时点名 R2 无售后行（dev=−8.00pp）。
 P2: 真实售后轨 state/aftersale-ledger.jsonl 仍 absent（随平台后台退款导出窗·计划态）；合成与真实双轨由 schema 钉死互斥（refund_simulated/live/order_id 三面负例），合成行进不了真实统计口径。
 P2: 同窗 census 当场抓出 mock-order 三行四个未声明键（amount_mtok/cost_rate_cny_per_mtok/cost_simulated/denominator_simulated·写入脚本未入库）——已声明并如实标注写入者来源，census RED→GREEN；main open 4→3（M114 done·新立 M115），<10 仍缺，待 M98 补点。
+
+2026-11-04 06:2x 结论：M112 公示概率偏差测算件落地（`Tools/gacha_probability_audit.py`·selftest 19/19·drill 6 植入全命中·1200 抽 `PROB-AUDIT-OK`·同集去阈值 `CANNOT-JUDGE` exit 3），§7.3 ① 从「一句话判据」变成有尺子；同轮把 F3 工具注册闸从魔数计数改成名单差集（`Tools/tool_manifest.txt` 91 行·selftest 12/12·`sop_coverage_check check` rc=0 由红转绿），止住第六次手工 bump。
+P2: 尺子有了但没有数据源——真实抽卡流水轨 0 行，§7.1 p_pct 与 §7.3 ① 阈值又都待 CEO 定价确认批，所以现状是「有数据也永远 CANNOT-JUDGE」；已立 M116（流水轨 schema + 阈值落值位）为下一步。
+P2: `qa_smoke` **24/25 PASS**（no.22 receipt product law 仍 FAIL=既有 7 日窗口交付物缺失面，非本轮引入）；main open=3（M104 结构 blocked/M115 open/M116 新立），本轮净减 0（M112 关+M116 立），如实记录。
