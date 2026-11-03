@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-11-03 23:0x",
- "current_activity": "2026-11-03 23:0x 夜班轮：单位成本分母口径单源化（M105）→ MOCK 补分母（M106）→ 补合成 COGS（M107），单位经济演练首次走通成本侧（unit_cost=0.6000 CNY/Mtok·COST-FACE-EXERCISED）[via BigCompute-OSLoop]",
- "latest_artifact": "Tools/unit_cost_caliber.py（分母单源·selftest 13/13）｜Tools/unit_cost_drill.py（分母 import 单源+simulated_rows+cost_face 逐月标记·selftest 19/19）｜state/unit-cost-drill-20261103-2301.txt/.json（cost=0.3607 gross=350.8999 denom_mtok=0.601200 unit_cost=0.6000 CALCULATED·EXERCISED）｜docs/ops/unit-cost-denominator-caliber-v1.md（三面差异表+M106/M107 复跑节+循环性声明）｜qa/smoke-20261103-2301.log/.png（24/25 PASS·唯一红=no.22 M96 既有面）",
- "next_milestone": "①M108 按 SKU 类（配额型/生成型）分面毛利对照（≤11-04）；②M109 单位成本 0.40-0.80 CNY/Mtok 敏感性扫描出毛利率越零点（供 M2 定价包压测·≤11-05）；③no.22 残红待写侧 sha256 要求落地（@HQ·BC-P-175）"
+ "updated_at": "2026-11-03 23:1x",
+ "current_activity": "2026-11-03 23:1x 夜班轮（连作 7 段）：单位成本分母口径单源化 → MOCK 补分母 → 补合成 COGS → 类分面毛利 → 敏感性扫描 → 配额预收负债 → SKU十类×账本 join → 配额权利轨实证；全部可跑件+真读数，最新提交 bfffd24 [via BigCompute-OSLoop]",
+ "latest_artifact": "Tools/unit_cost_caliber.py（分母单源·13/13）｜Tools/unit_cost_drill.py（分母+成本面+类分面+敏感性·23/23）｜Tools/quota_prepaid_liability.py（原价基准vs成本基准退款·9/9·实测差 17.3442 元/单）｜Tools/sku_ledger_join.py（十类×轨字段三态·10/10·quota 两类 EVIDENCED 6/6）｜docs/ops/unit-cost-denominator-caliber-v1.md（三面差异表+四段复跑）｜state/unit-cost-drill-20261103-2303.* / state/unit-cost-sensitivity-20261103-2305.* / state/quota-prepaid-20261103-2308.* / state/sku-ledger-join-20261103-2317.*｜qa/smoke-20261103-2317.log/.png（24/25 PASS·唯一红=no.22 M96 既有面）",
+ "next_milestone": "①M101 盲盒月消费上限拦截联调（设计值先跑通·≤11-04）；②M103 退款率回溯校准（预提率 vs 实退率偏差 >2pp 出提案·≤11-05）；③履约轨/合同轨从未被写过——补 join 负向面（@HQ 待物理件：真实单据）"
 }
