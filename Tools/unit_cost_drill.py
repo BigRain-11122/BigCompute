@@ -367,6 +367,79 @@ def render(report):
     return "\n".join(lines)
 
 
+# ------------------------------------------------------------- sensitivity
+
+SENSITIVITY_BLOCKED = "SENSITIVITY-BLOCKED"
+SENSITIVITY_OK = "SENSITIVITY-OK"
+MARGIN_LINES = (90.0, 80.0, 70.0)
+
+
+def sensitivity(face, net_cny, rates):
+    """How gross margin moves with the unit cost, holding prices fixed.
+
+    Returns the break-even rate (margin 0), the rate that still holds each
+    margin line, and one point per supplied rate. Prices and denominators come
+    from the month face; only the rate is varied.
+    """
+    denom = face["denominator_mtok"]
+    out = {"month": face["month"], "net_cny": net_cny,
+           "denom_mtok": denom, "points": []}
+    if denom <= 0 or net_cny <= 0:
+        out["state"] = SENSITIVITY_BLOCKED
+        out["reason"] = "denominator or net revenue is zero"
+        return out
+    out["state"] = SENSITIVITY_OK
+    out["breakeven_rate_cny_per_mtok"] = round(net_cny / denom, 4)
+    out["rate_at_margin_cny_per_mtok"] = {
+        str(int(m)): round(net_cny * (1.0 - m / 100.0) / denom, 4)
+        for m in MARGIN_LINES}
+    for rate in rates:
+        cost = round(denom * rate, 4)
+        out["points"].append({
+            "rate_cny_per_mtok": rate,
+            "cost_cny": cost,
+            "gross_cny": round(net_cny - cost, 4),
+            "margin_pct": round(100.0 * (net_cny - cost) / net_cny, 4),
+        })
+    return out
+
+
+def sensitivity_rails(revenue_rows, mock_rows, rates, month=None):
+    out = []
+    real_face, _ = aggregate(revenue_rows, month=month)
+    for mon, v in sorted(real_face.items()):
+        s = sensitivity(v, v["net_cny"], rates)
+        s["rail"] = "real"
+        out.append(s)
+    mock_face, _ = aggregate(mock_rows, month=month, mock_only=True)
+    for mon, v in sorted(mock_face.items()):
+        s = sensitivity(v, v["net_cny"], rates)
+        s["rail"] = "mock"
+        out.append(s)
+    return out
+
+
+def render_sensitivity(items):
+    lines = ["UNIT-COST SENSITIVITY (prices fixed, rate varied)"]
+    if not items:
+        lines.append("  (no month face with rows)")
+    for s in items:
+        lines.append("%s %s %s net=%.4f denom_mtok=%.6f"
+                     % (s["rail"], s["month"], s["state"],
+                        s["net_cny"], s["denom_mtok"]))
+        if s["state"] != SENSITIVITY_OK:
+            lines.append("  blocked: " + s.get("reason", "-"))
+            continue
+        lines.append("  breakeven_rate=%.4f  rate_at_margin=%s"
+                     % (s["breakeven_rate_cny_per_mtok"],
+                        s["rate_at_margin_cny_per_mtok"]))
+        for p in s["points"]:
+            lines.append("  rate=%.2f cost=%.4f gross=%.4f margin=%.4f%%"
+                         % (p["rate_cny_per_mtok"], p["cost_cny"],
+                            p["gross_cny"], p["margin_pct"]))
+    return "\n".join(lines)
+
+
 # ---------------------------------------------------------------- selftest
 
 def _fixture_rows():
@@ -483,6 +556,21 @@ def _selftest():
         abs(mix["by_class"]["quota"]["gross_margin_pct"] - 90.0) < 0.01
         and abs(mix["by_class"]["generation"]["gross_margin_pct"] - 50.0) < 0.01,
         str(mix["by_class"]))
+    sens = sensitivity({"month": "2026-10", "denominator_mtok": 1.0},
+                       100.0, [0.5, 10.0, 100.0])
+    chk("S21 sensitivity solves breakeven and margin lines",
+        sens["state"] == SENSITIVITY_OK
+        and abs(sens["breakeven_rate_cny_per_mtok"] - 100.0) < 1e-6
+        and abs(sens["rate_at_margin_cny_per_mtok"]["90"] - 10.0) < 1e-6,
+        str(sens["rate_at_margin_cny_per_mtok"]))
+    chk("S22 sensitivity points follow net minus denom times rate",
+        abs(sens["points"][0]["cost_cny"] - 0.5) < 1e-9
+        and abs(sens["points"][0]["margin_pct"] - 99.5) < 1e-6,
+        str(sens["points"][0]))
+    blocked_sens = sensitivity({"month": "2026-10", "denominator_mtok": 0.0},
+                               100.0, [0.5])
+    chk("S23 zero denominator blocks sensitivity instead of dividing",
+        blocked_sens["state"] == SENSITIVITY_BLOCKED)
 
     dup_rows = [dict(rows[0]), dict(rows[0])]
     _, dviol = aggregate(dup_rows, month=None, mock_only=False)
@@ -557,9 +645,39 @@ def main(argv=None):
 
     sub.add_parser("selftest", help="in-memory fixtures, no live file writes")
 
+    sens = sub.add_parser("sensitivity",
+                          help="gross margin versus unit cost, prices fixed")
+    sens.add_argument("--rates", default="0.4,0.5,0.6,0.8",
+                      help="comma separated CNY per Mtok")
+    sens.add_argument("--month", default=None)
+    sens.add_argument("--revenue", default=REVENUE_RAIL)
+    sens.add_argument("--mock", default=MOCK_RAIL)
+    sens.add_argument("--json-out", default=None)
+    sens.add_argument("--text-out", default=None)
+
     args = parser.parse_args(argv)
     if args.cmd == "selftest":
         return _selftest()
+    if args.cmd == "sensitivity":
+        try:
+            rates = [float(x) for x in str(args.rates).split(",") if x.strip()]
+        except ValueError:
+            print("rates must be comma separated numbers")
+            return 2
+        items = sensitivity_rails(_load_rows(args.revenue),
+                                  _load_rows(args.mock), rates,
+                                  month=args.month)
+        text = render_sensitivity(items)
+        if args.json_out:
+            with open(args.json_out, "w", encoding="utf-8") as fh:
+                json.dump({"rates": rates, "items": items}, fh, sort_keys=True,
+                          indent=2, ensure_ascii=True)
+                fh.write("\n")
+        if args.text_out:
+            with open(args.text_out, "w", encoding="utf-8") as fh:
+                fh.write(text + "\n")
+        print(text)
+        return 0
     if args.cmd != "run":
         parser.print_help()
         return 2

@@ -98,6 +98,20 @@ class quota      orders=1 net=43.6126  cost=0.2520 gross=43.3606  margin=99.42%
 
 **读法与诚实边界**：两行毛利率都逼近 100%，不是「生意很好」，而是说明在 0.60 CNY/Mtok 这个设计成本下，**COGS 根本构不成约束**——单笔 3 元的卡面抽卡成本只有 0.0007 元。也就是说这批 MOCK 价格点与设计成本之间的关系尚未被校准过（价格高、成本假设低），真正决定毛利的是台数与销量，不是单位成本。这个结论直接喂 M2 定价确认包与 M109 敏感性扫描（找毛利率跌破 90/80/70% 所需的成本倍数），并提醒：**别拿 99% 毛利率去对外讲单位经济**。
 
+## 五之四、单位成本敏感性（M109·同日续作）
+
+价格固定、只动单价（CNY/Mtok）扫一遍 MOCK 2026-10（net=351.2606、denom=0.601200 Mtok）：
+
+```
+breakeven_rate = 584.2658            # 毛利率归零的单价
+rate_at_margin 90% = 58.4266         # 仍能守住 90% 毛利的最高单价
+rate_at_margin 80% = 116.8532
+rate_at_margin 70% = 175.2797
+rate 0.40/0.50/0.60/0.80 → margin 99.93/99.91/99.90/99.86%
+```
+
+**判断**：在这批 MOCK 价格点上，单位成本要涨到设计值（0.60）的 **约 97 倍**（58.43）才开始咬掉 10 个点毛利，涨到 584 才归零——所以当前这批 SKU 的毛利对成本**几乎不敏感**，敏感的是销量与收入。反过来也说明：**这批价格点定得远高于成本带**（真实成本尚未测量，0.60 仍为设计假设）；若真实单位成本落在 50-100 CNY/Mtok 区间，当前定价才会开始有压力。真轨 0 行故只扫 MOCK 面，如实标注。
+
 ## 六、剩余缺口（不在本轮自裁范围内）
 
 1. **已由 M107 处理**：MOCK 成交环补合成 COGS（0.60 CNY/Mtok 设计单价·逐行标 `cost_simulated`），成本面演练走通；真实单位成本仍待凭证（N3 门）。
@@ -108,4 +122,4 @@ class quota      orders=1 net=43.6126  cost=0.2520 gross=43.3606  margin=99.42%
 
 - 实读源码：`cost_ledger.py`（l1_summary/quota_summary 函数体）、`month_end_collect.py`（assemble 商业面赋值行）、`store-ledger-wiring-predesign-v1.md` §二 字段 10。
 - 改动面：新增 1 模块、drill 重构分母、两处指针注记、MOCK 三行补分母与合成 COGS（均已标注）；**未改任何结算数值、未改 BLUEPRINT 冻结节、零真实交易、零定价动作**。
-- 回归：`cost_ledger selftest` PASS、`month_end_collect selftest 42/42 PASS`、`unit_cost_caliber 13/13`、`unit_cost_drill 20/20`、`rails_schema_check` RAILS-SCHEMA-GREEN rows=13。
+- 回归：`cost_ledger selftest` PASS、`month_end_collect selftest 42/42 PASS`、`unit_cost_caliber 13/13`、`unit_cost_drill 23/23`（含 sensitivity 三夹具）、`rails_schema_check` RAILS-SCHEMA-GREEN rows=13。
