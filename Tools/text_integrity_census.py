@@ -40,6 +40,21 @@ ledgers this repo only reads. Two consequences are encoded here:
     NOT repairable from here (cross-repo write is forbidden), so it never
     silently counts as green either.
 
+Half-merged ledgers (T195, 2026-11-03 live evidence): the group `docs/orders.md`
+tail carried a complete git conflict block (L304-310) and all three encoding
+signatures stayed silent -- encoding damage and merge damage are different
+faults. So a second file-level signature is checked here:
+
+  - a conflict block is claimed only when an opener `<<<<<<<` AND a closer
+    `>>>>>>>` both sit at column 0 of the SAME file, so a lone `=======` (a
+    legitimate setext underline) never reds;
+  - markers inside a fenced code block are recorded as quoted, not damage --
+    documentation that shows the marker shapes is not a half-merged ledger;
+  - an unpaired marker is reported as an orphan (visible advisory), because
+    "half a block" is neither proved damage nor proved clean.
+
+Cross-repo targets stay read-only: this tool only reports, never rewrites.
+
 --rounds-line emits the one-line summary the night round appends (D-03 ③).
 
 Commands:
@@ -119,6 +134,61 @@ QMARK = "QMARK-DAMAGE"
 FFFD = "FFFD-DAMAGE"
 DOUBLE = "DOUBLE-DAMAGE"
 NOT_UTF8 = "NOT-UTF8"
+CONFLICT = "CONFLICT-MARKER"
+
+CM_OPEN = "<<<<<<<"
+CM_CLOSE = ">>>>>>>"
+CM_SEP = "======="
+CM_BASE = "|||||||"
+CM_MARKERS = (CM_OPEN, CM_CLOSE, CM_SEP, CM_BASE)
+FENCE_RE = re.compile(r"^\s{0,3}(```|~~~)")
+
+
+def _fence_mask(lines):
+    """True for every line inside (or delimiting) a fenced code block."""
+    mask = []
+    inside = False
+    for line in lines:
+        if FENCE_RE.match(line):
+            mask.append(True)
+            inside = not inside
+            continue
+        mask.append(inside)
+    return mask
+
+
+def conflict_blocks(lines, fenced=None):
+    """-> (blocks, orphans, quoted); blocks carry their marker line numbers.
+
+    Only an opener/closer PAIR at column 0 of the same file is damage. One
+    `=======` alone is a setext heading underline, and a marker quoted inside a
+    fence is documentation -- both must stay clean or the census becomes noise.
+    """
+    if fenced is None:
+        fenced = _fence_mask(lines)
+    blocks, orphans, quoted = [], 0, 0
+    stack = []
+    for i, line in enumerate(lines, 1):
+        if not any(line.startswith(m) for m in CM_MARKERS):
+            continue
+        if fenced[i - 1]:
+            quoted += 1
+            continue
+        if line.startswith(CM_OPEN):
+            stack.append(i)
+        elif line.startswith(CM_CLOSE):
+            if stack:
+                start = stack.pop()
+                markers = [n for n in range(start, i + 1)
+                           if any(lines[n - 1].startswith(m) for m in CM_MARKERS)]
+                blocks.append({"start": start, "end": i, "marker_lines": markers})
+            else:
+                orphans += 1
+    # An opener with no closer (including every still-open nested one) is
+    # neither proved damage nor proved clean -> counted as an orphan.
+    orphans += len(stack)
+    blocks.sort(key=lambda b: (b["start"], b["end"]))
+    return blocks, orphans, quoted
 
 
 def _print_safe(text):
@@ -177,17 +247,33 @@ def census(paths):
                          "error": "%s at byte %d" % (e.reason, e.start)})
             continue
         lines = text.splitlines()
-        damaged = []
+        fenced = _fence_mask(lines)
+        damaged_map = {}
         for i, line in enumerate(lines, 1):
             hits = classify_line(line)
             if hits:
-                damaged.append({"line": i, "classes": hits,
-                                "qmark_runs": len(QMARK_RUN_RE.findall(line)),
-                                "preview": line.strip()[:110]})
+                damaged_map[i] = {"line": i, "classes": list(hits),
+                                  "qmark_runs": len(QMARK_RUN_RE.findall(line)),
+                                  "preview": line.strip()[:110]}
+        blocks, orphans, quoted = conflict_blocks(lines, fenced)
+        for b in blocks:
+            for n in b["marker_lines"]:
+                if n in damaged_map:
+                    if CONFLICT not in damaged_map[n]["classes"]:
+                        damaged_map[n]["classes"].append(CONFLICT)
+                else:
+                    damaged_map[n] = {"line": n, "classes": [CONFLICT],
+                                      "qmark_runs": 0,
+                                      "preview": lines[n - 1].strip()[:110]}
+        damaged = [damaged_map[k] for k in sorted(damaged_map)]
         rows.append({
             "path": p, "external": ext,
             "status": "DAMAGED" if damaged else "CLEAN",
             "bytes": len(raw), "lines": len(lines), "damaged_lines": damaged,
+            "conflict_blocks": len(blocks),
+            "conflict_marker_lines": len({n for b in blocks for n in b["marker_lines"]}),
+            "conflict_orphans": orphans,
+            "conflict_quoted": quoted,
         })
     return rows
 
@@ -213,6 +299,7 @@ def summarize(rows):
     scanned_paths = {os.path.abspath(r["path"]) for r in readable}
     covered = [c for c, p in REQUIRED_TARGETS
                if os.path.abspath(p) in scanned_paths]
+    conflict_files = [r for r in readable if r.get("conflict_blocks")]
     return {
         "verdict": verdict,
         "files_scanned": len(readable),
@@ -220,6 +307,11 @@ def summarize(rows):
         "damaged_lines": sum(len(r["damaged_lines"]) for r in bad_local),
         "external_files_damaged": len(bad_ext),
         "external_damaged_lines": sum(len(r["damaged_lines"]) for r in bad_ext),
+        "files_with_conflict_blocks": len(conflict_files),
+        "conflict_blocks": sum(r.get("conflict_blocks", 0) for r in readable),
+        "conflict_marker_lines": sum(r.get("conflict_marker_lines", 0) for r in readable),
+        "conflict_orphans": sum(r.get("conflict_orphans", 0) for r in readable),
+        "conflict_quoted": sum(r.get("conflict_quoted", 0) for r in readable),
         "files_unreadable": len(unreadable_local),
         "external_unreadable": len(unreadable_ext),
         "absent_external": [r["path"] for r in absent_ext],
@@ -323,6 +415,82 @@ def _selftest():
         s["verdict"] == "TEXT-INTEGRITY-CLEAN" and len(s["absent_external"]) == 1,
         s["verdict"])
 
+    # C1 (T195) a real half-merged ledger -- opener + closer at column 0 with a
+    # diff3 base marker in between -- is damage, and every marker line is named.
+    body = ("# 台账\n"
+            "| 行 | 内容 |\n"
+            "<<<<<<< Updated upstream\n"
+            "| 新 | 上游版本 |\n"
+            "||||||| parent of d2a66071\n"
+            "=======\n"
+            "| 旧 | 本地版本 |\n"
+            ">>>>>>> Stashed changes\n")
+    fd, tmp = tempfile.mkstemp(suffix=".md")
+    os.write(fd, body.encode("utf-8"))
+    os.close(fd)
+    rows = census([tmp])
+    os.unlink(tmp)
+    r = rows[0]
+    marks = [d["line"] for d in r["damaged_lines"] if CONFLICT in d["classes"]]
+    run("C1 conflict-block-damage",
+        r["status"] == "DAMAGED" and r.get("conflict_blocks") == 1
+        and marks == [3, 5, 6, 8] and r.get("conflict_orphans") == 0,
+        "blocks=%s marks=%s orphans=%s" % (r.get("conflict_blocks"), marks, r.get("conflict_orphans")))
+    s = summarize(rows)
+    run("C1b conflict-reds-verdict",
+        s["verdict"] == "TEXT-INTEGRITY-NEEDS-FIX" and s["conflict_blocks"] == 1,
+        s["verdict"])
+
+    # C2 a lone '=======' is a setext heading underline, not a conflict
+    fd, tmp = tempfile.mkstemp(suffix=".md")
+    os.write(fd, "标题\n=======\n正文\n".encode("utf-8"))
+    os.close(fd)
+    r = census([tmp])[0]
+    os.unlink(tmp)
+    run("C2 lone-separator-clean",
+        r["status"] == "CLEAN" and r.get("conflict_blocks") == 0
+        and r.get("conflict_orphans") == 0,
+        "status=%s orphans=%s" % (r["status"], r.get("conflict_orphans")))
+
+    # C3 markers quoted inside a fenced block are documentation -> quoted only
+    fd, tmp = tempfile.mkstemp(suffix=".md")
+    os.write(fd, ("冲突标记形如：\n```\n<<<<<<< HEAD\n=======\n>>>>>>> other\n```\n").encode("utf-8"))
+    os.close(fd)
+    r = census([tmp])[0]
+    os.unlink(tmp)
+    run("C3 fenced-quote-clean",
+        r["status"] == "CLEAN" and r.get("conflict_blocks") == 0
+        and r.get("conflict_quoted") == 3,
+        "status=%s quoted=%s" % (r["status"], r.get("conflict_quoted")))
+
+    # C4 an unpaired opener is neither proved damage nor proved clean
+    fd, tmp = tempfile.mkstemp(suffix=".md")
+    os.write(fd, "正文\n<<<<<<< HEAD\n未合完\n".encode("utf-8"))
+    os.close(fd)
+    r = census([tmp])[0]
+    os.unlink(tmp)
+    run("C4 orphan-visible-not-damage",
+        r["status"] == "CLEAN" and r.get("conflict_blocks") == 0
+        and r.get("conflict_orphans") == 1,
+        "status=%s orphans=%s" % (r["status"], r.get("conflict_orphans")))
+
+    # C5 nested blocks (the live 2026-11-03 shape: a stash block wrapping a
+    # HEAD block) pair by stack, so the nesting is not misread as two orphans
+    fd, tmp = tempfile.mkstemp(suffix=".md")
+    os.write(fd, ("<<<<<<< Updated upstream\n"
+                  "a\n"
+                  "<<<<<<< HEAD\n"
+                  "b\n"
+                  ">>>>>>> d2a66071\n"
+                  ">>>>>>> Stashed changes\n").encode("utf-8"))
+    os.close(fd)
+    r = census([tmp])[0]
+    os.unlink(tmp)
+    run("C5 nested-blocks-pair",
+        r.get("conflict_blocks") == 2 and r.get("conflict_orphans") == 0
+        and r["status"] == "DAMAGED",
+        "blocks=%s orphans=%s" % (r.get("conflict_blocks"), r.get("conflict_orphans")))
+
     passed = sum(1 for _, ok, _ in checks if ok)
     for name, ok, detail in checks:
         _print_safe("  [%s] %s%s" % ("PASS" if ok else "FAIL", name, ("  " + detail) if detail else ""))
@@ -333,14 +501,15 @@ def _selftest():
 def rounds_line(s):
     """One line for state/rounds.log (D-20261102-03 ③). Deterministic."""
     return ("textintegrity:%s cats=%d/%d files=%d damaged_files=%d damaged_lines=%d"
-            " ext_damaged=%d ext_absent=%d unreadable=%d"
+            " ext_damaged=%d ext_absent=%d unreadable=%d conflict_blocks=%d conflict_orphans=%d"
             % ("CLEAN" if s["verdict"] == "TEXT-INTEGRITY-CLEAN" else
                ("EXTERNAL-DAMAGED" if s["verdict"] == "TEXT-INTEGRITY-EXTERNAL-DAMAGED"
                 else "NEEDS-FIX"),
                s["categories_covered_n"], s["categories_required_n"],
                s["files_scanned"], s["files_damaged"], s["damaged_lines"],
                s["external_files_damaged"], len(s["absent_external"]),
-               s["files_unreadable"]))
+               s["files_unreadable"], s.get("conflict_blocks", 0),
+               s.get("conflict_orphans", 0)))
 
 
 def main(argv=None):
@@ -371,6 +540,10 @@ def main(argv=None):
         _print_safe("%-5s %-32s lines=%-5d damaged=%d%s"
                     % (r["status"], os.path.basename(r["path"]), r["lines"],
                        len(r["damaged_lines"]), "  [external/read-only]" if r.get("external") else ""))
+        if r.get("conflict_blocks") or r.get("conflict_orphans") or r.get("conflict_quoted"):
+            _print_safe("        conflict: blocks=%d markers=%d orphans=%d quoted=%d"
+                        % (r.get("conflict_blocks", 0), r.get("conflict_marker_lines", 0),
+                           r.get("conflict_orphans", 0), r.get("conflict_quoted", 0)))
         for d in r["damaged_lines"][:6]:
             _print_safe("        L%-5d %-22s q=%-3d %s"
                         % (d["line"], ",".join(d["classes"]), d["qmark_runs"], d["preview"]))
@@ -382,6 +555,10 @@ def main(argv=None):
                    s["damaged_lines"], s["external_files_damaged"],
                    len(s["absent_external"]), s["files_unreadable"],
                    s["categories_covered_n"], s["categories_required_n"]))
+    _print_safe("CONFLICT files=%d blocks=%d markers=%d orphans=%d quoted=%d"
+                % (s["files_with_conflict_blocks"], s["conflict_blocks"],
+                   s["conflict_marker_lines"], s["conflict_orphans"],
+                   s["conflict_quoted"]))
     if args.rounds_line:
         _print_safe("ROUNDS-LINE " + rounds_line(s))
     if args.json_out:

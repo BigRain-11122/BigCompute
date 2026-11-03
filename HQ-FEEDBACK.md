@@ -544,3 +544,9 @@ P0 无。P1 集团共享台账 `docs/orders.md` L304-310 带完整 git 冲突标
 P2 写侧扫描面缺口如实：`write_encoding_census` 只覆盖 .py/.ps1，非 py/ps1 写手（node/ffmpeg 重定向）不在判据内，已在提案面标注为已知边界。
 2026-11-03 20:1x 日清小结：末次烟测 20/24——no.2/no.16 双红同源=GPU-CONTENDED（ComfyUI+lora_portraits 训练占满 util 100%/vram_free 426MiB·CPU 回退 180s 超时），属环境争用非本司回归；20:09 无争用轮次为 22/24（仅 no.8/no.22 既有）。本条同时按 T194 方案 A 收尾（末行带行头形时标），使 no.8 对 HQ-FEEDBACK 复绿。
 2026-11-03 20:23 日清小结（接上行）：末次烟测 20/24，no.2/no.16 双红同源=GPU-CONTENDED（ComfyUI+lora 训练 util 100%/vram_free 426MiB·CPU 回退 180s 超时），环境争用非本司回归；20:09 无争用轮 22/24（仅 no.8/no.22 既有）。本条= T194 方案 A 的行头形收尾。
+
+## 2026-11-03 20:4x 令牌轮（冲突标记读侧探测·产品优先律 2 分件）
+P0 无。P1 **集团 `docs/orders.md` 尾部半合并块现已机器可评**（`conflict_blocks=2`/`markers=7`/`orphans=0`，外层 stash 块包 HEAD 块）——此前三件编码闸全绿、no.19 只报编码，下游按行解析 orders 会读到互相矛盾的两份「新令」；@HQ 清理后本司复跑普查应回 `TEXT-INTEGRITY-CLEAN`，此刻才销 tech T196。整改前 orders 读取以冲突块之外的行为准并注明依据。
+实物 2 分：`Tools/text_integrity_census.py` 增文件级冲突签名——列首成对才判红（单独 `=======` 属 setext 下划线不红）、栈式配对嵌套块、围栏内 marker 只记 quoted、未配对 marker 记 orphan（既不证损坏也不证干净）；selftest 14→**20/20 PASS**，实跑 VERDICT=EXTERNAL-DAMAGED cats=7/7，`--rounds-line` 增 conflict 两字段；charter §三 第 19 条（两族损坏）与第 8 条（尾部卫生定 A 方案，七台账复点本仓 4/4 清、集团 reflection-journal 尾空行为外部只读面不改）两条增补在件。
+P2 真发现：本司 `state/queue/tech.md` 的 T195 行出生即被冲突基线标记（七竖线字面）撑破成 20 个表格单元，三类闸（编码/半合并/尾部）全绿看不见 → 提案 **BC-P-178**（`TABLE-BREAK` 第三族：表格行列数与表头不一致即点名），已按文字改写修复本行。
+2026-11-03 20:4x 日清小结：末轮烟测 **23/24**（唯一红=no.22 M96 回执产物律·等 @HQ 写侧），冲突块由「不可见」变「可评」，三队列 open=9（较轮首净减 1），T195/T194 同轮收口。

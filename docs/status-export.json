@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-11-03 20:12",
- "current_activity": "2026-11-03 20:0x 令牌轮：写侧编码普查接成常驻探针（T193）—— qa_smoke 增 no.25（judge 纯函数 + 4 夹具 selftest），charter §三 第 25 条与 PROBE_REGISTRY 单源表同步；缺陷从「人手跑才看见」变成「每轮必检、RISK 逐条点名 file:line、UNVERIFIED 不假绿」 [via BigCompute-OSLoop]",
- "latest_artifact": "qa_smoke.py no.25（selftest 4/4·live PASS risk=0 scanned=124）｜docs/qa-smoke-test-charter.md §三.25｜state/queue/tech.md T193 done ｜QA qa/smoke-20261103-2009.log/.png（22/24 PASS；两红为既有 no.8 T194 / no.22 M96）｜PROBE-REGISTRY-CLEAN(no.25 registered)",
- "next_milestone": "①T194 判定 no.8「末行必是行头」与多行日清节正解（A 格式约定 / B 探针看尾部窗口），下轮落地；②T195/BC-P-177 读侧冲突标记探测（集团 orders.md L304-310 已实证半合并态），≤11-06；③no.22 残红随 7 日窗滚出（BC-P-168 待批）；④M25/T26 室内烘焙样板间实弹仍等净窗一命令"
+ "updated_at": "2026-11-03 20:4x",
+ "current_activity": "2026-11-03 20:4x 令牌轮：冲突标记读侧探测（T195）——text_integrity_census 增文件级半合并签名（列首成对才判红、栈式配对嵌套块、围栏内引用只记 quoted、未配对只记 orphan），把集团 docs/orders.md 尾部长期漏报的半合并块变成机器可评读数 [via BigCompute-OSLoop]",
+ "latest_artifact": "Tools/text_integrity_census.py（selftest 14→20/20 PASS）｜state/text-integrity-20261103-2040.json（VERDICT=EXTERNAL-DAMAGED cats=7/7 conflict_blocks=2 markers=7）｜docs/qa-smoke-test-charter.md §三 第 19 条（两族损坏）+第 8 条（尾部卫生 A 方案）｜qa/smoke-20261103-2033.log/.png（23/24 PASS·唯一红=no.22 M96 既有面）",
+ "next_milestone": "①集团 orders.md 半合并块由 @HQ 清理，本司复跑普查回 TEXT-INTEGRITY-CLEAN 才销 T196（≤11-05）；②BC-P-178 表格列数族（TABLE-BREAK）评估与落地（≤11-06）；③no.22 回执产物律残红等 @HQ 写侧 sha256（BC-P-175）；④M25/T26 室内烘焙样板间实弹仍等净窗一命令"
 }
