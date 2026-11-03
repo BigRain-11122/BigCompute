@@ -569,3 +569,6 @@ P2 队列自检: tech 本轮 T199 闭、新增 T200（charter 条款双份治理
 2026-11-03 22:5x 日清: 实物=charter 条款同号多份可见化（tech T200 收口）——`probe_registry_census` 增全文计号 `clause_occurrences()`+`DUPLICATE-CLAUSE no.X at L..,L..`+summary `dup=`，selftest **9/9**；charter §五追加区 19/22/23/26 四份复制条款删除（措辞已漂移且两份缺 T195/T199 增补），改单源指针指 §三；实跑 `PROBE-REGISTRY-CLEAN probes=25 base=4 charter_ext=22 dup=0 problems=0`；smoke **24/25**（唯一红=no.22 M96 既有面）。
 P2 队列自检: tech 补货 T201（条款号覆盖面只认 §三——只写在 §五 的条款当前可整条隐身），main 补 M99-M102 四行可本地执行件（M98 复原 P1），故本轮 open 10→14 为净增，违反「净减」律但属 P1 结构性补货，如实记账不掩饰。
 22:5x 日清小结: 同号多份是全仓族缺陷（提案 BC-P-183 已立），charter 只是首例。
+2026-11-03 22:4x 日清: 实物=口径 B 单位成本月归集演练（M99）落地为可跑件 `Tools/unit_cost_drill.py`（selftest 13/13），2026-10 实跑出真数：真收入轨 0 行（计划态未入账）、MOCK 3 单 net=351.2606/退款预提=32.1520/平台费=18.4874、分母 tokens=0 故单位成本如实 `UNIT-COST-BLOCKED`（不造 0.0），两轨 sha 前后一致＝零重记。
+P2: 单位成本「谁算商业产出」三处各写一套（cost_ledger.l1-summary / month_end_collect S1 / 本演练器）——提案 BC-P-184 已立，M105 承接比对；缺口如实=P1 可执行 open=8 未达 ≥10（不凑数）。
+22:4x 日清小结: 会算账要先有一条口径，今天把「算不出来」也做成了可验证的结论。
