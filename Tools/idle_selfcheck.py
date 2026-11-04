@@ -74,6 +74,42 @@ import urllib.request
 
 PROJECT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 HEARTBEAT = os.path.join(PROJECT, "state", "heartbeat.txt")
+
+# T207 (BC-P-199): the single declared token list of the round heartbeat row
+# built in run(). qa_smoke no.18 reads this constant via AST and rejects any
+# token here that is neither guarded (HEARTBEAT_GUARDED_TOKENS) nor explicitly
+# declared unguarded. Adding a token to the format string below without adding
+# it here means the guard cannot see it; adding it here without a guard entry
+# turns the probe red on purpose.
+HEARTBEAT_WRITER_TOKENS = (
+    "verdict",
+    "ram_free_pct",
+    "vram_free_mb",
+    "py_cpu",
+    "py_cpu_psutil",
+    "cpu_lane_idle",
+    "pool_rows_candidate",
+    "pool_effective",
+    "queue_open",
+    "consecutive_idle",
+    "idle_rounds",
+    "agenda_starved",
+    "serve_alive",
+    "serve_detail",
+    "task_face",
+    "model_drift",
+    "cpu_load_line",
+    "pool_ignitable",
+    "pool_foreign_silent",
+    "pool_owner_unknown",
+    "pool_fresh",
+    "pool_self_stale",
+    "pool_lane_mm",
+    "breach_eff",
+    "lane8090",
+    "c1c4_line",
+    "hq_line",
+)
 STATE_FILE = os.path.join(PROJECT, "state", "idle_selfcheck.json")
 LATCH_FILE = os.path.join(PROJECT, "state", "sentinel-taskface.latch")
 NIGHT_LOG = os.path.join(PROJECT, "state", "sentinel-nightwatch.log")

@@ -676,7 +676,28 @@ HEARTBEAT_GUARDED_TOKENS = (
     ("lane8090", "lane"),
     ("c1c4_line", "state:rounds_ago"),
     ("hq_line", "state:age_h"),
+    # T207 (BC-P-199): the 70% load line moved to a single channel in T203,
+    # and the row grew a cpu_load_line token that no probe watched. A writer
+    # rename or a new spelling (e.g. "N/A" without the channel word) would
+    # leave every reader comparing against nothing while the row still reads
+    # healthy. Domain is the three-state label the writer can emit.
+    ("cpu_load_line", "cpu_load_line"),
 )
+
+# T207: tokens the heartbeat writer emits that are deliberately NOT guarded.
+# Each needs a reason here, otherwise heartbeat_token_crosscheck() reports it
+# as unguarded - an undeclared token is exactly the silent-drift hole this
+# guard exists to close. Adding a writer token means touching this table (or
+# HEARTBEAT_GUARDED_TOKENS) in the same commit.
+HEARTBEAT_UNGUARDED_DECLARED = {
+    "verdict": "free-form status word (busy/ready/idle); not a threshold input",
+    "serve_detail": "free-form diagnostic (http200 / DOWN[:reason])",
+    "pool_foreign_silent": "count; no reader compares it to a threshold yet",
+    "pool_owner_unknown": "count; no reader compares it to a threshold yet",
+    "pool_fresh": "count; no reader compares it to a threshold yet",
+    "pool_self_stale": "count; no reader compares it to a threshold yet",
+    "pool_lane_mm": "count; no reader compares it to a threshold yet",
+}
 
 TASK_FACE_LITERALS = ("ok", "pause-exempt", "probe-error")
 MODEL_DRIFT_LITERALS = ("GREEN", "UNVERIFIED")
@@ -689,6 +710,15 @@ MODEL_DRIFT_LITERALS = ("GREEN", "UNVERIFIED")
 MODEL_DRIFT_PARAM_RE = re.compile(r"^(?:GREEN|DRIFT|UNVERIFIED)\(m=\d+,a=\d+\)$")
 MODEL_DRIFT_ERR_RE = re.compile(r"^UNVERIFIED\(err\)$")
 STATE_LINE_RE = re.compile(r"^([A-Z][A-Z0-9-]*)\((.*)\)$")
+# T207: the three labels idle_selfcheck.evaluate_cpu_load_line can emit.
+# PASS/BREACH carry "<cmp><pct>" and a ref which may be n/a when the shell
+# channel failed; N/A-CHANNEL carries ref+line and no psutil reading at all
+# (that is the point of the state - never substitute the other ruler).
+CPU_LOAD_LINE_RE = re.compile(
+    r"^(?:PASS|BREACH)\(psutil=-?\d+(?:\.\d+)?(?:<|>=)\d+(?:\.\d+)?,"
+    r"ref=(?:n/a|-?\d+(?:\.\d+)?)\)$"
+    r"|^N/A-CHANNEL\(ref=(?:n/a|-?\d+(?:\.\d+)?),line=\d+(?:\.\d+)?\)$"
+)
 
 
 def heartbeat_fields(line):
@@ -717,6 +747,8 @@ def heartbeat_enum_ok(kind, raw):
     if kind.startswith("state:"):
         m = STATE_LINE_RE.match(raw)
         return bool(m) and ("%s=" % kind.split(":", 1)[1]) in m.group(2)
+    if kind == "cpu_load_line":
+        return bool(CPU_LOAD_LINE_RE.match(raw))
     return False
 
 
@@ -752,6 +784,73 @@ def heartbeat_token_guard(line):
     return True, "guarded=%d %s" % (len(seen), " ".join(seen))
 
 
+def writer_heartbeat_tokens(root=None):
+    """T207: read the writer-side token list declared in idle_selfcheck.py.
+
+    Parsed with AST rather than import: importing the module would run its
+    module-level probe setup, and this guard must stay a pure read. A missing
+    or unparsable list is a probe failure, not a pass - otherwise deleting the
+    declaration would silently disable the crosscheck.
+    """
+    import ast
+    root = root or ROOT
+    path = os.path.join(root, "Tools", "idle_selfcheck.py")
+    if not os.path.exists(path):
+        return [], "Tools/idle_selfcheck.py missing"
+    try:
+        # utf-8-sig: our own writers emit a BOM (D-20261102-03), and a BOM
+        # reaches ast.parse as U+FEFF, which it rejects as a syntax error.
+        with open(path, "r", encoding="utf-8-sig", errors="replace") as f:
+            tree = ast.parse(f.read())
+    except SyntaxError as e:
+        return [], "idle_selfcheck.py unparsable: %s" % e
+    for node in tree.body:
+        if not isinstance(node, ast.Assign):
+            continue
+        for tgt in node.targets:
+            if isinstance(tgt, ast.Name) and tgt.id == "HEARTBEAT_WRITER_TOKENS":
+                try:
+                    val = ast.literal_eval(node.value)
+                except (ValueError, SyntaxError):
+                    return [], "HEARTBEAT_WRITER_TOKENS is not a literal"
+                return [str(t) for t in val], ""
+    return [], "HEARTBEAT_WRITER_TOKENS not declared in idle_selfcheck.py"
+
+
+def heartbeat_token_crosscheck(writer_tokens, live_fields=None):
+    """T207 pure judge: writer list, guard table and live row must agree.
+
+    Three diffs, each its own failure mode:
+    - writer-only: a token nobody guards or declares = silent-drift hole
+    - declared-only: a stale exemption still claiming to cover a dead token
+    - guarded-only: the guard is watching a token the writer no longer emits
+    Live fields add a fourth: a token actually on disk that neither table
+    knows about. That is the form a live check can catch even after the
+    declared list has drifted.
+    """
+    problems = []
+    writer = list(dict.fromkeys(writer_tokens))
+    guarded = [n for n, _ in HEARTBEAT_GUARDED_TOKENS]
+    declared = HEARTBEAT_UNGUARDED_DECLARED
+    for name in writer:
+        if name not in guarded and name not in declared:
+            problems.append("writer token not guarded or declared: %s" % name)
+    for name in declared:
+        if name not in writer:
+            problems.append("declared-unguarded token no longer written: %s"
+                            % name)
+    for name in guarded:
+        if name not in writer:
+            problems.append("guarded token missing from writer list: %s" % name)
+    for name in (live_fields or {}):
+        if name not in guarded and name not in declared:
+            problems.append("live token undeclared: %s" % name)
+    if problems:
+        return False, "; ".join(problems)
+    return True, ("crosscheck-ok writer=%d guarded=%d declared=%d"
+                  % (len(writer), len(guarded), len(declared)))
+
+
 def probe_heartbeat_tokens(root=None):
     """Probe no.18 (T168): guarded numeric heartbeat tokens each round.
 
@@ -770,7 +869,14 @@ def probe_heartbeat_tokens(root=None):
     hits = [ln for ln in lines if SUPPLY_MARK_RE.search(ln)]
     if not hits:
         return False, "no idle_selfcheck line in heartbeat"
-    return heartbeat_token_guard(hits[-1])
+    ok, msg = heartbeat_token_guard(hits[-1])
+    if not ok:
+        return False, msg
+    tokens, err = writer_heartbeat_tokens(root)
+    if err:
+        return False, err
+    xok, xmsg = heartbeat_token_crosscheck(tokens, heartbeat_fields(hits[-1]))
+    return (ok and xok), msg + " | " + xmsg
 
 
 CONTRACT_VERDICT_OK = "COST-CONTRACT-GREEN"
@@ -1900,12 +2006,13 @@ def selftest_heartbeat_tokens():
             "queue_open=57 consecutive_idle=0 idle_rounds=0 "
             "agenda_starved=false serve_alive=true task_face=ok "
             "model_drift=DRIFT(m=2,a=0) breach_eff=true "
+            "cpu_load_line=PASS(psutil=20.6<70.0,ref=53.0) "
             "pool_ignitable=3 lane8090=DARK[DOWN] "
             "c1c4_line=FRESH(rounds_ago=0,verdict=C1C4-GREEN) "
             "hq_line=FRESH(age_h=0.4,date=2026-10-29)")
 
     r1 = heartbeat_token_guard(good)
-    check("S1 healthy row -> PASS", r1[0] and "guarded=19" in r1[1])
+    check("S1 healthy row -> PASS", r1[0] and "guarded=20" in r1[1])
 
     r2 = heartbeat_token_guard(good.replace("ram_free_pct=", "ram_pct="))
     check("S2 renamed token -> FAIL naming it",
@@ -2004,6 +2111,60 @@ def selftest_heartbeat_tokens():
         good.replace("py_cpu_psutil=20.6", "py_cpu_psutil=120.0"))
     check("S22 py_cpu_psutil out of range -> FAIL",
           (not r22[0]) and "py_cpu_psutil out of range" in r22[1])
+
+    # T207: cpu_load_line guards the 70% line's single channel. The three
+    # writer states pass; a dropped token, a wrong state word, and a
+    # N/A-CHANNEL that quietly keeps a psutil number are all caught.
+    ok_cl, msg_cl = heartbeat_token_guard(good)
+    check("S23 cpu_load_line=PASS accepted", ok_cl and "cpu_load_line=PASS" in msg_cl)
+
+    r24 = heartbeat_token_guard(
+        good.replace("cpu_load_line=PASS(psutil=20.6<70.0,ref=53.0) ", ""))
+    check("S24 cpu_load_line dropped -> FAIL naming it",
+          (not r24[0]) and "cpu_load_line missing" in r24[1])
+
+    r25 = heartbeat_token_guard(good.replace(
+        "cpu_load_line=PASS(psutil=20.6<70.0,ref=53.0)",
+        "cpu_load_line=OK(psutil=20.6<70.0,ref=53.0)"))
+    check("S25 unknown cpu_load_line state word -> FAIL",
+          (not r25[0]) and "cpu_load_line outside" in r25[1])
+
+    r26 = heartbeat_token_guard(good.replace(
+        "cpu_load_line=PASS(psutil=20.6<70.0,ref=53.0)",
+        "cpu_load_line=N/A-CHANNEL(ref=53.0,line=70.0)"))
+    check("S26 N/A-CHANNEL form accepted", r26[0])
+
+    r27 = heartbeat_token_guard(good.replace(
+        "cpu_load_line=PASS(psutil=20.6<70.0,ref=53.0)",
+        "cpu_load_line=N/A-CHANNEL(psutil=20.6,ref=53.0)"))
+    check("S27 N/A-CHANNEL carrying psutil -> FAIL",
+          (not r27[0]) and "cpu_load_line outside" in r27[1])
+
+    # T207 crosscheck: writer list / guard table / live row must agree.
+    writer = writer_heartbeat_tokens()
+    check("S28 writer token list readable", bool(writer[0]) and not writer[1])
+
+    c28 = heartbeat_token_crosscheck(writer[0])
+    check("S29 clean writer list vs tables -> OK", c28[0])
+
+    c29 = heartbeat_token_crosscheck(list(writer[0]) + ["brand_new_token"])
+    check("S30 writer token with no guard/declaration -> FAIL",
+          (not c29[0]) and "brand_new_token" in c29[1])
+
+    c30 = heartbeat_token_crosscheck(
+        [t for t in writer[0] if t != "pool_lane_mm"])
+    check("S31 declared-unguarded token no longer written -> FAIL",
+          (not c30[0]) and "pool_lane_mm" in c30[1])
+
+    c31 = heartbeat_token_crosscheck(
+        [t for t in writer[0] if t != "cpu_load_line"])
+    check("S32 guarded token missing from writer list -> FAIL",
+          (not c31[0]) and "cpu_load_line" in c31[1])
+
+    c32 = heartbeat_token_crosscheck(
+        writer[0], heartbeat_fields(good + " stray_token=1"))
+    check("S33 live token nobody declared -> FAIL",
+          (not c32[0]) and "stray_token" in c32[1])
 
     print("selftest heartbeat-token verdict: %d/%d PASS"
           % (len([r for r in results if r]), len(results)))
