@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-11-04 21:43",
- "current_activity": "2026-11-04 21:4x 令牌轮：M119 植入集完整性普查（drill 靠「植入缺陷→检出」自证，植入集被改小或改净时 drill 仍打印 OK，此前无仪器可查） [via BigCompute-OSLoop]",
- "latest_artifact": "Tools/drill_set_census.py（selftest 12/12 PASS；实跑 DRILL-SET-CLEAN drills=6：renewal 10/10·缺陷5｜first_order 11/11·8｜refund 5/5·2｜cap_gate 16/16·7｜prob_audit 6/6·5｜unit_cost 显式 N/A）；负控 --bump-defects 1 → DRILL-SET-DEGRADED rc=2；证据 state/drill-set-census-20261104.txt/.json",
- "next_milestone": "①T205 把 drill_set_census 接成 qa_smoke no.28 常驻探针（11-05）②T202 真轨诚实标记 guard 普查（BC-P-193 自查真发现：additionalProperties 放行 mock:true）③T201 条款号覆盖面只认 §三（P2 顶）④M104 配额发放→消费闭环演练（main 唯一 open 可执行）⑤M118 余项=净窗复跑（T204）+ 阈值调用点改线（T203）；真抽卡流水轨仍待平台后台导出，§7.1/§7.3① 数值仍待 CEO 定价确认批"
+ "updated_at": "2026-11-04 22:0x",
+ "current_activity": "2026-11-04 21:5x 令牌轮：M104 配额发放→消费闭环演练——temp 账本跑完预算闸/批准通道/跨月分桶/扣减/拒付/幂等七面，并当场抓出「负额与零额被放行（consume -0.5 把余额 0.5 抬到 1.0＝凭空印配额）」真缺陷，已在 cost_ledger 两处加 invalid_amount 守卫 [via BigCompute-OSLoop]",
+ "latest_artifact": "Tools/quota_cycle_drill.py（selftest 10/10 PASS·实跑 VERDICT=QUOTA-CYCLE-GREEN failed=0/12·temp 账本零污染+真轨 sha 断言）+ Tools/cost_ledger.py 非正额守卫（既有 selftest 仍 PASS）；证据 state/quota-cycle-drill-20261104.txt/.json",
+ "next_milestone": "①BC-P-195 其余四条金额命令（add/cloud-entry/borrow-entry/fund）同构 >0 守卫 + qa_smoke 金额面普查（11-05）②T205 drill_set_census 接 qa_smoke no.28 常驻探针（11-05）③T202 真轨诚实标记 guard 普查 ④T201 条款号覆盖面只认 §三；真抽卡流水轨与配额落值仍待 CEO 定价确认批/平台后台导出，本司零自决"
 }

@@ -1,0 +1,306 @@
+{
+  "verdict": "QUOTA-CYCLE-GREEN",
+  "checks": [
+    {
+      "id": "A1.issue_fitting",
+      "ok": true,
+      "detail": "fitting1=ok fitting2=ok"
+    },
+    {
+      "id": "A1.over_budget_blocked",
+      "ok": true,
+      "detail": "status=blocked_over_budget issued_mtd=0.9"
+    },
+    {
+      "id": "A1.month_bucketing",
+      "ok": true,
+      "detail": "next_month=ok caps={'2026-11': 1.0}"
+    },
+    {
+      "id": "A2.approved_over_cap",
+      "ok": true,
+      "detail": "status=ok_ceo_approved_over_cap ceo_approved=True"
+    },
+    {
+      "id": "A3.consume_decrement",
+      "ok": true,
+      "detail": "balance=0.5"
+    },
+    {
+      "id": "A3.insufficient_blocked",
+      "ok": true,
+      "detail": "status=insufficient_balance balance=0.5"
+    },
+    {
+      "id": "A4.issue_idempotent",
+      "ok": true,
+      "detail": "status=duplicate"
+    },
+    {
+      "id": "A4.consume_idempotent",
+      "ok": true,
+      "detail": "status=duplicate"
+    },
+    {
+      "id": "A4.row_conservation",
+      "ok": true,
+      "detail": "rows=5 expected=5"
+    },
+    {
+      "id": "A3.no_negative_balance",
+      "ok": true,
+      "detail": "negative=none"
+    },
+    {
+      "id": "N1.negative_issue_rejected",
+      "ok": true,
+      "detail": "status=invalid_amount"
+    },
+    {
+      "id": "N1.negative_consume_rejected",
+      "ok": true,
+      "detail": "status=invalid_amount"
+    }
+  ],
+  "payload": {
+    "events": [
+      {
+        "step": "budget",
+        "status": "ok",
+        "month": "2026-11",
+        "cap_mtok": 1.0,
+        "prev_cap_mtok": null
+      },
+      {
+        "step": "issue.fitting.1",
+        "status": "ok",
+        "row": {
+          "tx_id": "Q-DRILL-1",
+          "date": "2026-11-01",
+          "month": "2026-11",
+          "type": "issue",
+          "consumer": "anon-drill-a",
+          "amount_mtok": 0.4,
+          "unit_cost_b_cny": 0.6,
+          "cost_b_cny": 0.24,
+          "settlement_caliber": "B",
+          "reason": "drill",
+          "ref": "-",
+          "ceo_approved": false,
+          "tokens_local": 0,
+          "tokens_api": 0,
+          "api_reason": "-"
+        },
+        "issued_mtok": 0.4,
+        "consumed_mtok": 0.0,
+        "cost_issued_b_cny": 0.24,
+        "cost_consumed_b_cny": 0.0,
+        "balance_mtok": 0.4
+      },
+      {
+        "step": "issue.fitting.2",
+        "status": "ok",
+        "row": {
+          "tx_id": "Q-DRILL-2",
+          "date": "2026-11-02",
+          "month": "2026-11",
+          "type": "issue",
+          "consumer": "anon-drill-b",
+          "amount_mtok": 0.5,
+          "unit_cost_b_cny": 0.6,
+          "cost_b_cny": 0.3,
+          "settlement_caliber": "B",
+          "reason": "drill",
+          "ref": "-",
+          "ceo_approved": false,
+          "tokens_local": 0,
+          "tokens_api": 0,
+          "api_reason": "-"
+        },
+        "issued_mtok": 0.5,
+        "consumed_mtok": 0.0,
+        "cost_issued_b_cny": 0.3,
+        "cost_consumed_b_cny": 0.0,
+        "balance_mtok": 0.5
+      },
+      {
+        "step": "issue.over_budget",
+        "status": "blocked_over_budget",
+        "month": "2026-11",
+        "cap_mtok": 1.0,
+        "issued_mtd_mtok": 0.9,
+        "attempt_mtok": 0.2,
+        "note": "monthly budget gate: over-cap issuance needs --ceo-approved (BC-F-20260925-01)"
+      },
+      {
+        "step": "issue.over_budget.approved",
+        "status": "ok_ceo_approved_over_cap",
+        "row": {
+          "tx_id": "Q-DRILL-3A",
+          "date": "2026-11-03",
+          "month": "2026-11",
+          "type": "issue",
+          "consumer": "anon-drill-a",
+          "amount_mtok": 0.2,
+          "unit_cost_b_cny": 0.6,
+          "cost_b_cny": 0.12,
+          "settlement_caliber": "B",
+          "reason": "drill",
+          "ref": "-",
+          "ceo_approved": true,
+          "tokens_local": 0,
+          "tokens_api": 0,
+          "api_reason": "-"
+        },
+        "issued_mtok": 0.6,
+        "consumed_mtok": 0.0,
+        "cost_issued_b_cny": 0.36,
+        "cost_consumed_b_cny": 0.0,
+        "balance_mtok": 0.6
+      },
+      {
+        "step": "issue.next_month",
+        "status": "ok",
+        "row": {
+          "tx_id": "Q-DRILL-4",
+          "date": "2026-12-01",
+          "month": "2026-12",
+          "type": "issue",
+          "consumer": "anon-drill-c",
+          "amount_mtok": 0.9,
+          "unit_cost_b_cny": 0.6,
+          "cost_b_cny": 0.54,
+          "settlement_caliber": "B",
+          "reason": "drill",
+          "ref": "-",
+          "ceo_approved": false,
+          "tokens_local": 0,
+          "tokens_api": 0,
+          "api_reason": "-"
+        },
+        "issued_mtok": 0.9,
+        "consumed_mtok": 0.0,
+        "cost_issued_b_cny": 0.54,
+        "cost_consumed_b_cny": 0.0,
+        "balance_mtok": 0.9
+      },
+      {
+        "step": "consume.ok",
+        "status": "ok",
+        "row": {
+          "tx_id": "Q-DRILL-5",
+          "date": "2026-11-05",
+          "month": "2026-11",
+          "type": "consume",
+          "consumer": "anon-drill-a",
+          "amount_mtok": 0.1,
+          "unit_cost_b_cny": 0.6,
+          "cost_b_cny": 0.06,
+          "settlement_caliber": "B",
+          "reason": "drill",
+          "ref": "-",
+          "ceo_approved": false,
+          "tokens_local": 1000,
+          "tokens_api": 0,
+          "api_reason": "-"
+        },
+        "balance_mtok": 0.5
+      },
+      {
+        "step": "consume.insufficient",
+        "status": "insufficient_balance",
+        "consumer": "anon-drill-a",
+        "balance_mtok": 0.5,
+        "attempt_mtok": 99.0
+      },
+      {
+        "step": "issue.replay",
+        "status": "duplicate",
+        "tx_id": "Q-DRILL-1",
+        "row": {
+          "amount_mtok": 0.4,
+          "api_reason": "-",
+          "ceo_approved": false,
+          "consumer": "anon-drill-a",
+          "cost_b_cny": 0.24,
+          "date": "2026-11-01",
+          "month": "2026-11",
+          "reason": "drill",
+          "ref": "-",
+          "settlement_caliber": "B",
+          "tokens_api": 0,
+          "tokens_local": 0,
+          "tx_id": "Q-DRILL-1",
+          "type": "issue",
+          "unit_cost_b_cny": 0.6
+        }
+      },
+      {
+        "step": "consume.replay",
+        "status": "duplicate",
+        "tx_id": "Q-DRILL-5",
+        "row": {
+          "amount_mtok": 0.1,
+          "api_reason": "-",
+          "ceo_approved": false,
+          "consumer": "anon-drill-a",
+          "cost_b_cny": 0.06,
+          "date": "2026-11-05",
+          "month": "2026-11",
+          "reason": "drill",
+          "ref": "-",
+          "settlement_caliber": "B",
+          "tokens_api": 0,
+          "tokens_local": 1000,
+          "tx_id": "Q-DRILL-5",
+          "type": "consume",
+          "unit_cost_b_cny": 0.6
+        }
+      },
+      {
+        "step": "issue.negative",
+        "status": "invalid_amount",
+        "attempt_mtok": -0.5,
+        "note": "quota amount must be > 0"
+      },
+      {
+        "step": "consume.negative",
+        "status": "invalid_amount",
+        "attempt_mtok": -0.5,
+        "note": "quota consume amount must be > 0"
+      }
+    ],
+    "rows": 5,
+    "per_consumer": {
+      "anon-drill-a": {
+        "issued_mtok": 0.6,
+        "consumed_mtok": 0.1,
+        "cost_issued_b_cny": 0.36,
+        "cost_consumed_b_cny": 0.06,
+        "balance_mtok": 0.5
+      },
+      "anon-drill-b": {
+        "issued_mtok": 0.5,
+        "consumed_mtok": 0.0,
+        "cost_issued_b_cny": 0.3,
+        "cost_consumed_b_cny": 0.0,
+        "balance_mtok": 0.5
+      },
+      "anon-drill-c": {
+        "issued_mtok": 0.9,
+        "consumed_mtok": 0.0,
+        "cost_issued_b_cny": 0.54,
+        "cost_consumed_b_cny": 0.0,
+        "balance_mtok": 0.9
+      }
+    },
+    "month_caps": {
+      "2026-11": 1.0
+    }
+  },
+  "design_values": {
+    "cap_mtok": 1.0,
+    "unit_cost_b_cny": 0.6,
+    "marked": "drill-design-value"
+  }
+}

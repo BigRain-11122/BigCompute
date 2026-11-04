@@ -613,3 +613,6 @@ P2: 如实边界=真抽卡轨（`gacha_draw`）仍空，本行不得据此宣称
 2026-11-04 21:4x 令牌轮：M119 植入集完整性普查落地（T-20261104-85）——`Tools/drill_set_census.py` 读六个 drill 的真实植入集并与钉死清单比对，selftest 12/12，实跑 `DRILL-SET-CLEAN drills=6`，负控 `--bump-defects 1` → `DRILL-SET-DEGRADED rc=2`。
 P2: 本轮抓到的是「自证链无守卫」而不是某个 drill 坏了——当前六件植入集齐备（缺陷数 5/8/2/7/5，unit_cost 显式 N/A），但读它仍需手动；已立 tech T205（接 no.28 常驻探针）+ 提案 BC-P-194。
 P2: 已知红不在本轮范围=no.22 M96 回执缺失（7 日历史窗口）+ 集团 orders.md 尾部半合并块（外部面，只报警不改）+ lane artifact 面；main open 5→4（M104 仍在）。
+2026-11-04 21:5x 令牌轮：M104 配额闭环演练收口（T-20261104-86）——Tools/quota_cycle_drill.py selftest 10/10、实跑 QUOTA-CYCLE-GREEN failed=0/12（预算闸/批准通道/跨月分桶/扣减/拒付/幂等/余额非负七面）；**当场抓到并修掉真缺陷**：quota-issue/quota-consume 对负额与零额一律放行（consume -0.5 把余额从 0.5 抬到 1.0＝凭空印配额）→ cost_ledger 两处加 invalid_amount 守卫，既有 selftest 仍 PASS。
+P2: 守卫只补了 quota 两条命令，add / cloud-entry / borrow-entry / fund 的金额面仍是裸的（同族风险未清）→ 提案 BC-P-195 要求四条命令同构守卫 + qa_smoke 金额面普查。
+P2: smoke 24/26（两红同源已知＝no.16 :8792 /ask 超时 GPU 争用 vram_free 440MiB + no.22 M96 回执产物历史缺失面）；C1C4-GREEN、TEXT-INTEGRITY-CLEAN cats=7/7；main open 4→3、tech 侧余量照常。

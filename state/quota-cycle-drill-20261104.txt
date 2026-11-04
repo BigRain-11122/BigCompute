@@ -1,0 +1,34 @@
+QUOTA CYCLE DRILL  month=2026-11 cap=1.0 Mtok unit_cost_b=0.6 CNY/Mtok
+values marked: drill-design-value (NOT a CEO pricing approval)
+------------------------------------------------------------------------
+  budget                     -> ok
+  issue.fitting.1            -> ok balance=0.4
+  issue.fitting.2            -> ok balance=0.5
+  issue.over_budget          -> blocked_over_budget issued_mtd=0.9
+  issue.over_budget.approved -> ok_ceo_approved_over_cap balance=0.6
+  issue.next_month           -> ok balance=0.9
+  consume.ok                 -> ok balance=0.5
+  consume.insufficient       -> insufficient_balance balance=0.5
+  issue.replay               -> duplicate
+  consume.replay             -> duplicate
+  issue.negative             -> invalid_amount
+  consume.negative           -> invalid_amount
+------------------------------------------------------------------------
+  [PASS] A1.issue_fitting           fitting1=ok fitting2=ok
+  [PASS] A1.over_budget_blocked     status=blocked_over_budget issued_mtd=0.9
+  [PASS] A1.month_bucketing         next_month=ok caps={'2026-11': 1.0}
+  [PASS] A2.approved_over_cap       status=ok_ceo_approved_over_cap ceo_approved=True
+  [PASS] A3.consume_decrement       balance=0.5
+  [PASS] A3.insufficient_blocked    status=insufficient_balance balance=0.5
+  [PASS] A4.issue_idempotent        status=duplicate
+  [PASS] A4.consume_idempotent      status=duplicate
+  [PASS] A4.row_conservation        rows=5 expected=5
+  [PASS] A3.no_negative_balance     negative=none
+  [PASS] N1.negative_issue_rejected status=invalid_amount
+  [PASS] N1.negative_consume_rejected status=invalid_amount
+------------------------------------------------------------------------
+rows=5
+  anon-drill-a   issued=0.6 consumed=0.1 balance=0.5
+  anon-drill-b   issued=0.5 consumed=0.0 balance=0.5
+  anon-drill-c   issued=0.9 consumed=0.0 balance=0.9
+VERDICT=QUOTA-CYCLE-GREEN failed=0/12

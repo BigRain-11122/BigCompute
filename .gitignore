@@ -10,6 +10,9 @@ state/queue/*
 # aftersale_mock 两轨做存在性判定，不入库则新克隆必然 RAILS-SCHEMA-RED
 !state/mock-order-ledger.jsonl
 !state/mock-aftersale-ledger.jsonl
+# M104 闭环演练证据（产品件·status-export 直引；不含真实账本数据）
+!state/quota-cycle-drill-*.txt
+!state/quota-cycle-drill-*.json
 logs/
 .codely-cli/
 .playwright-mcp/

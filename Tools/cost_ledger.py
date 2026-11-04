@@ -293,6 +293,10 @@ def quota_issue(args, ledger=QLEDGER, budget=QBUDGET):
     for r in rows:
         if r.get("tx_id") == args.tx_id:
             return {"status": "duplicate", "tx_id": args.tx_id, "row": r}
+    # 非正额会把「发放」变成凭空印配额（负额抬高余额、零额污染行数）
+    if args.amount_mtok is None or args.amount_mtok <= 0:
+        return {"status": "invalid_amount", "attempt_mtok": args.amount_mtok,
+                "note": "quota amount must be > 0"}
     date_str = _resolve_date(args.date)
     month = _month_of(date_str)
     issued_mtd = round(sum(r.get("amount_mtok", 0.0) for r in rows
@@ -335,6 +339,10 @@ def quota_consume(args, ledger=QLEDGER):
     for r in rows:
         if r.get("tx_id") == args.tx_id:
             return {"status": "duplicate", "tx_id": args.tx_id, "row": r}
+    # 非正额消费会把「扣减」变成凭空加余额
+    if args.amount_mtok is None or args.amount_mtok <= 0:
+        return {"status": "invalid_amount", "attempt_mtok": args.amount_mtok,
+                "note": "quota consume amount must be > 0"}
     state = _quota_state(rows).get(args.consumer, {})
     bal = state.get("balance_mtok", 0.0)
     if args.amount_mtok > bal:
