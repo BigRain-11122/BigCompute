@@ -105,7 +105,7 @@ REGISTRY = [
         "id": "SOP-COVERAGE",
         "probe": "sop_coverage_check.py F3 tools drift",
         "file": "Tools/sop_coverage_check.py",
-        "scan_literal": 'actual_tools = len(glob.glob(os.path.join(repo, "Tools", "*.py")))',
+        "scan_literal": 'actual_names = {os.path.basename(p)',
         "root_class": SUBJECT,
         "guard": "",
         "note": "every Tools/*.py must be declared; the probe is a legitimate "

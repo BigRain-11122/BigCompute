@@ -14,6 +14,7 @@ compliance_gate_check.py
 cost_contract_census.py
 cost_ledger.py
 cpu_effective_hours.py
+cpu_read_ab_probe.py
 deal_flow_mock.py
 delivery_dispatch_mock.py
 dispatch_precheck.py
