@@ -3235,8 +3235,77 @@ PROBE_REGISTRY = [
 ]
 
 
+USAGE = (
+    "usage: python Tools/qa_smoke.py [--selftest]\n"
+    "  (no argument)         run the live smoke round, write qa/smoke-*.log\n"
+    "  --selftest|selftest   run fixtures only: no probes, no evidence file\n")
+
+
+def argv_mode(argv):
+    """Return 'live' | 'selftest' | 'usage' for the CLI arguments (T208).
+
+    A misspelled subcommand used to fall through to a full live round: the
+    tool neither complained nor self-tested -- it ran every probe, wrote an
+    evidence file and exited 1 on the two known reds.  To a reader that looks
+    like "my test failed" when a smoke round was actually performed.
+    """
+    args = list(argv)
+    if not args:
+        return "live"
+    if args in (["--selftest"], ["selftest"]):
+        return "selftest"
+    return "usage"
+
+
+def selftest_argv():
+    """Fixtures: live / both self-test spellings / unknown word rejected."""
+    results = []
+
+    def check(name, ok, detail=""):
+        results.append(ok)
+        print("[%s] S%s %s%s" % ("PASS" if ok else "FAIL", len(results), name,
+                                 "" if ok else " :: " + detail))
+
+    check("no args -> live", argv_mode([]) == "live", argv_mode([]))
+    check("--selftest -> selftest",
+          argv_mode(["--selftest"]) == "selftest", "")
+    check("bare selftest -> selftest (alias)",
+          argv_mode(["selftest"]) == "selftest", "")
+    for bad in (["--selftes"], ["selftest", "--json"], ["live"], [""]):
+        check("unknown %r -> usage" % (bad,),
+              argv_mode(bad) == "usage", argv_mode(bad))
+
+    # real process: an unknown word must exit 2 without writing evidence.
+    qa_dir = QA_DIR
+    before = set(os.listdir(qa_dir)) if os.path.isdir(qa_dir) else set()
+    proc = subprocess.run(
+        [sys.executable, os.path.join(ROOT, "Tools", "qa_smoke.py"), "selftes"],
+        capture_output=True, text=True, encoding="utf-8", errors="replace")
+    after = set(os.listdir(qa_dir)) if os.path.isdir(qa_dir) else set()
+    check("process: unknown word -> exit 2 + usage on stderr",
+          proc.returncode == 2 and "usage:" in (proc.stderr or ""),
+          "rc=%r stderr=%r" % (proc.returncode, (proc.stderr or "")[:80]))
+    check("process: unknown word writes no evidence",
+          after == before, str(sorted(after - before)))
+    proc = subprocess.run(
+        [sys.executable, os.path.join(ROOT, "Tools", "qa_smoke.py"),
+         "--bad-flag"], capture_output=True, text=True, encoding="utf-8",
+        errors="replace")
+    check("process: unknown flag -> exit 2, zero probes",
+          proc.returncode == 2 and "smoke verdict" not in (proc.stdout or ""),
+          "rc=%r" % (proc.returncode,))
+
+    print("selftest argv verdict: %d/%d PASS"
+          % (len([r for r in results if r]), len(results)))
+    return 0 if all(results) else 1
+
+
 def main():
-    if len(sys.argv) > 1 and sys.argv[1] == "--selftest":
+    mode = argv_mode(sys.argv[1:])
+    if mode == "usage":
+        sys.stderr.write(USAGE)
+        return 2
+    if mode == "selftest":
         return (selftest_tails() | selftest_coder_class()
                 | selftest_supply_fields() | selftest_cost_contract()
                 | selftest_serve_artifacts() | selftest_qa_functional()
@@ -3245,7 +3314,8 @@ def main():
                 | selftest_qa_version() | selftest_text_integrity()
                 | selftest_receipt_product_law() | selftest_serve_health()
                 | selftest_write_encoding() | selftest_row_loss()
-                | selftest_aftersale_rails() | selftest_drill_sets())
+                | selftest_aftersale_rails() | selftest_drill_sets()
+                | selftest_argv())
     os.makedirs(QA_DIR, exist_ok=True)
     ts = datetime.datetime.now().strftime("%Y%m%d-%H%M")
     log_path = os.path.join(QA_DIR, "smoke-%s.log" % ts)

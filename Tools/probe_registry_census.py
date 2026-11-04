@@ -45,6 +45,21 @@ BASE_END = "## \u4e8c\u3001"             # "## 2." heading
 BULLET_RE = re.compile(r"^\s*-\s*(\d+)\.", re.MULTILINE)
 REGISTRY_NAME = "PROBE_REGISTRY"
 
+# T206: a clause keeps its number but may be rewritten in another shape.  The
+# dash bullet was the only shape recognised, so a clause copied back as a
+# table row, "N、", "N)" or "* N." stayed invisible -- the very duplicate
+# T200 exists to catch, just in a different shell.  The table variant only
+# counts outside section 1, whose numbered table is the frozen base list
+# (parsed separately by charter_numbers) and would otherwise be counted twice.
+CLAUSE_VARIANTS = (
+    ("dash", re.compile(r"^\s*-\s*(\d+)\.")),
+    ("star", re.compile(r"^\s*\*\s*(\d+)\.")),
+    ("ideographic", re.compile(r"^\s*(\d+)\u3001")),
+    ("paren", re.compile(r"^\s*(\d+)\)")),
+    ("table", re.compile(r"^\|\s*(\d+)\s*\|")),
+)
+BASE_TABLE_VARIANT = "table"
+
 
 def charter_numbers(text):
     """Return (extension, reserved, base) parsed from the charter.
@@ -79,6 +94,49 @@ def charter_numbers(text):
     return numbers, reserved, base
 
 
+def _base_line_range(text):
+    """Return (first, last) 0-based line indexes of the section-1 base block.
+
+    Table rows there are the frozen four probes, not extension clauses.  A
+    missing block returns None, which only means "no base table to exclude"
+    -- the caller still scans every line.
+    """
+    lines = text.splitlines()
+    start = end = None
+    for i, line in enumerate(lines):
+        if line.startswith(BASE_START):
+            start = i
+        elif start is not None and line.startswith(BASE_END):
+            end = i
+            break
+    if start is None:
+        return None
+    return (start, end if end is not None else len(lines))
+
+
+def clause_scan(text):
+    """Return [(no, lineno, kind)] for every numbered clause, any shape.
+
+    One line yields at most one clause (first variant that matches).  Table
+    rows inside section 1 are skipped: that table is the base list and
+    counting it here would both double-count and invent "clauses" for the
+    frozen four.
+    """
+    base = _base_line_range(text)
+    found = []
+    for lineno, line in enumerate(text.splitlines(), 1):
+        for kind, rx in CLAUSE_VARIANTS:
+            m = rx.match(line)
+            if not m:
+                continue
+            if (kind == BASE_TABLE_VARIANT and base is not None
+                    and base[0] + 1 <= lineno <= base[1]):
+                break
+            found.append((int(m.group(1)), lineno, kind))
+            break
+    return found
+
+
 def clause_occurrences(text):
     """Return {no: [lineno, ...]} for every numbered clause in the whole file.
 
@@ -89,10 +147,8 @@ def clause_occurrences(text):
     copy visible.
     """
     counts = {}
-    for lineno, line in enumerate(text.splitlines(), 1):
-        m = re.match(r"^\s*-\s*(\d+)\.", line)
-        if m:
-            counts.setdefault(int(m.group(1)), []).append(lineno)
+    for no, lineno, _kind in clause_scan(text):
+        counts.setdefault(no, []).append(lineno)
     return counts
 
 
@@ -183,6 +239,10 @@ def census(smoke_path=None, charter_path=None):
     occurrences = clause_occurrences(text)
     clause_set = set(occurrences)
     base_set = set(base)
+    variants = {}
+    for _no, _lineno, kind in clause_scan(text):
+        variants[kind] = variants.get(kind, 0) + 1
+    report["clause_variants"] = variants
     report["clause_numbers"] = sorted(clause_set)
     for no in reg_nos:
         if no not in clause_set and no not in base_set:
@@ -365,6 +425,37 @@ def selftest():
               and 3 in rep["registry"] and 3 in rep.get("clause_numbers", []),
               rep.get("summary", "") + " " + str(rep["problems"]))
 
+        # T206: the same clause re-written in another shape must still be
+        # seen.  Four shapes, each standing alone as "clause without probe".
+        _write(smoke, SMOKE_FIXTURE)
+        for label, clause in (
+                ("table row", "| 99 | drifted table clause |"),
+                ("ideographic", "99\u3001drifted ideographic clause"),
+                ("paren", "99) drifted paren clause"),
+                ("star bullet", "* 99. drifted star clause")):
+            _write(charter, CHARTER_FIXTURE.replace(DRIFT_ANCHOR, clause))
+            rep = census(smoke, charter)
+            check("%s clause -> GAPS" % label,
+                  rep["verdict"] == "PROBE-REGISTRY-GAPS"
+                  and 99 in rep.get("clause_numbers", [])
+                  and any("no.99 has no probe" in p
+                          for p in rep["problems"]),
+                  str(rep["problems"]))
+
+        # T206: the section-1 numbered table is the frozen base list, not
+        # extension clauses -- a base row number must not become a phantom
+        # "clause without probe".
+        _write(smoke, SMOKE_FIXTURE)
+        _write(charter, CHARTER_FIXTURE.replace(
+            "| 1 | first base probe |",
+            "| 1 | first base probe |\n| 7 | frozen base row |"))
+        rep = census(smoke, charter)
+        check("base table row not counted as clause",
+              rep["verdict"] == "PROBE-REGISTRY-CLEAN"
+              and 7 not in rep.get("clause_numbers", [])
+              and not any("no.7" in p for p in rep["problems"]),
+              rep.get("summary", "") + " " + str(rep["problems"]))
+
     # live pair: real repo files must parse (CLEAN or GAPS both parse)
     live = census()
     check("live repo parses",
@@ -391,6 +482,9 @@ def main():
 
     rep = census(args.smoke, args.charter)
     print("probe registry census: %s" % rep["summary"])
+    shapes = rep.get("clause_variants") or {}
+    print("  shapes: %s" % (" ".join("%s=%d" % (k, shapes[k])
+                                     for k in sorted(shapes)) or "none"))
     for no in rep["registry"]:
         print("  no.%-2d registered" % no)
     for p in rep["problems"]:
