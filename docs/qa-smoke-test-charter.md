@@ -51,6 +51,8 @@
 
 - 27. 售后轨可判性（M115／T-20261104-73 派生·11-04 立）：M114 让 `refund_rate_calibration` 能算出 `REFUND-CALIBRATED`，但整套判据只活在那一轮的输出里——合成轨被改坏、`state/mock-aftersale-ledger.jsonl` 消失、或 mock/real 两条轨的隔离被打破，下一轮没有任何东西会发现。本条每轮实跑三面：①`aftersale`（真退）与 `aftersale_mock`（演练）两轨按 `rails_schema_check` 的 schema 校验，`aftersale_mock` 缺失即 FAIL（演练证据消失），`aftersale` 缺失只打印不判红（平台后台导出=计划态物理件）；②**隔离负例自证**——把 MOCK 形态行喂进真轨 schema、把真退形态行喂进演练 schema，两者必须都被拒绝，否则 FAIL（演练钱可能被当真实退款、或真实钱被合成轨掩盖）；③`refund_rate_calibration.plan()` 对合成双轨实跑，verdict 必须落在六态词汇内，抛错或未知 verdict 即 FAIL；且合成对是构造性净数据，只有 `REFUND-CALIBRATED/UNDER/OVER` 算通过——`CANNOT-JUDGE`/`NO-DATA`/`ROWS-INCONSISTENT` 一律 FAIL（演练面退化了，不是「没有退款」）。判据=selftest 十夹具（S1 演练轨净且真轨缺→PASS 并同时打印两轨／S2 双轨净→PASS／S3 演练轨消失→FAIL 点名／S4 schema 违规→FAIL 点名 rail+row／S5 演练行被真轨接受→FAIL／S6 真行被演练 schema 接受→FAIL／S7 校准抛错→FAIL／S8 未知 verdict→FAIL／S8b 合成对退化为 CANNOT-JUDGE→FAIL／S9 实跑 schema 真拒两种混合形态）+ live 出 `rails … exclusion … cal=` 一行。
 
+- 28. 植入集完整性普查（T205／BC-P-194·11-04 立）：五个 drill 都靠「植入集含缺陷→检测器点名」自证，但没有任何东西能回答「植入集还在吗」——把某个缺陷用例删掉或改成合格值，drill 依旧打印 OK／零偏差（M119 的 `--bump-defects 1` 只证检测器有牙，证不了植入面没退化）。本条每轮跑 `drill_set_census.scan()`，按行判〔不信单行 banner〕：`DRILL-SET-SHRUNK`（案例数掉到钉死下限以下）／`DRILL-SET-DEGRADED`（计数对但缺陷位被改成合格值、或植入用例无期望）／`DRILL-SET-UNREADABLE`（读不到植入集）一律 FAIL 并**点名 drill 与 cases/defects 读数**；`N/A-NO-PLANTED-SET` 属显式声明的「本 drill 无植入集」，只打印不红门；但**全部行皆 N/A 时 FAIL**（一条也没测=没量）。未知 verdict 一律 FAIL 不臆测为健康。判据=selftest 九夹具（S1 全净 PASS 且报 drills/clean／S2 缩小 FAIL 点名／S3 零缺陷 FAIL 带 defects 计数／S4 不可读 FAIL 带错误／S5 单行 N/A 打印不红／S6 全 N/A FAIL／S7 无行 UNVERIFIED／S8 未知 verdict FAIL／S9 确定性）+ live `drills=… clean=…` 一行。
+
 ## 四、执行律
 
 - 执行位=每轮收尾步 QA 自验先行（mandate §每轮固定步 8）；实装=Tools/qa_smoke.py（tech T11 一键化：探针→log+png 产出+自判行）；exit 0=全过/1=有缺。

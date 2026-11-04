@@ -2896,6 +2896,131 @@ def selftest_aftersale_rails():
     return 0 if all(results) else 1
 
 
+DRILL_SET_SHRUNK = "DRILL-SET-SHRUNK"
+DRILL_SET_DEGRADED = "DRILL-SET-DEGRADED"
+DRILL_SET_UNREADABLE = "DRILL-SET-UNREADABLE"
+DRILL_SET_NA = "N/A-NO-PLANTED-SET"
+
+
+def drill_set_judge(rows):
+    """Judge drill_set_census rows (no.28 / T205).
+
+    Five drills prove themselves by "planted defect -> detector names it", but
+    nothing checked that the planted sets still exist: delete a defect case and
+    the drill keeps printing OK / zero deviation.  Shrunk, degraded (counts
+    match yet nothing is planted) and unreadable rows all red and name the
+    drill.  A declared N/A is printed only -- an explicitly declared absent
+    planted set is honest -- but a census where every drill is N/A measured
+    nothing, so that fails (absence is not health).
+    """
+    if not isinstance(rows, list) or not rows:
+        return False, "UNVERIFIED: no drill census rows"
+    clean, na, bad, unknown = [], [], [], []
+    for row in rows:
+        if not isinstance(row, dict):
+            unknown.append("?:not-a-row")
+            continue
+        name = row.get("drill") or "?"
+        verdict = row.get("verdict")
+        if verdict == "DRILL-SET-CLEAN":
+            clean.append(name)
+        elif verdict == DRILL_SET_NA:
+            na.append(name)
+        elif verdict in (DRILL_SET_SHRUNK, DRILL_SET_DEGRADED,
+                         DRILL_SET_UNREADABLE):
+            actual = row.get("actual") or {}
+            bad.append("%s:%s cases=%s/%s defects=%s%s" % (
+                name, verdict,
+                actual.get("cases", "?"), row.get("min_cases", "-"),
+                actual.get("defects", "?"),
+                (" err=%s" % row["error"]) if row.get("error") else ""))
+        else:
+            unknown.append("%s:%s" % (name, verdict))
+    counts = "drills=%d clean=%d n/a=%d" % (len(rows), len(clean), len(na))
+    tail = (" n/a-name=" + ",".join(na)) if na else ""
+    if unknown:
+        return False, ("%s unknown=%s -- a verdict this judge does not name "
+                       "cannot be called healthy" % (counts, " ".join(unknown)))
+    if bad:
+        return False, ("%s shrunk/degraded=%s" % (counts, " ".join(bad)))
+    if not clean:
+        return False, ("%s -- every drill is N/A, nothing was measured"
+                       % counts)
+    return True, counts + tail
+
+
+def probe_drill_sets():
+    """Probe no.28 (T205): the planted sets behind every drill still exist."""
+    if HERE not in sys.path:
+        sys.path.insert(0, HERE)
+    try:
+        import drill_set_census as dsc
+    except Exception as e:  # noqa: BLE001 - probe must report, not crash
+        return False, "drill_set_census import raised: %r" % e
+    try:
+        rows = dsc.scan()
+    except Exception as e:  # noqa: BLE001
+        return False, "drill_set_census.scan raised: %r" % e
+    return drill_set_judge(rows)
+
+
+def selftest_drill_sets():
+    """T205 fixtures: clean / shrunk / degraded / unreadable / n-a / empty."""
+    results = []
+
+    def check(name, cond):
+        results.append(bool(cond))
+        print(("PASS " if cond else "FAIL ") + name)
+
+    def row(drill, verdict, cases=None, defects=None, min_cases=None,
+            error=None):
+        return {"drill": drill, "verdict": verdict, "min_cases": min_cases,
+                "actual": {"cases": cases, "defects": defects},
+                "error": error}
+
+    ok, det = drill_set_judge([row("a_drill", "DRILL-SET-CLEAN", 10, 5, 10),
+                               row("b_drill", "DRILL-SET-CLEAN", 5, 2, 5)])
+    check("S1 all clean -> PASS and reports drills/clean",
+          ok and "drills=2" in det and "clean=2" in det)
+
+    ok, det = drill_set_judge([row("a_drill", "DRILL-SET-SHRUNK", 9, 5, 10)])
+    check("S2 shrunk -> FAIL and names the drill",
+          (not ok) and "a_drill" in det and "cases=9/10" in det)
+
+    ok, det = drill_set_judge([row("b_drill", "DRILL-SET-DEGRADED", 10, 0, 10)])
+    check("S3 degraded -> FAIL and names the drill with defect count",
+          (not ok) and "b_drill" in det and "defects=0" in det)
+
+    ok, det = drill_set_judge([row("c_drill", "DRILL-SET-UNREADABLE",
+                                   error="ImportError: boom")])
+    check("S4 unreadable -> FAIL and carries the error",
+          (not ok) and "c_drill" in det and "ImportError" in det)
+
+    ok, det = drill_set_judge([row("a_drill", "DRILL-SET-CLEAN", 10, 5, 10),
+                               row("n_drill", "N/A-NO-PLANTED-SET")])
+    check("S5 declared N/A -> PASS but printed with its name",
+          ok and "n/a=1" in det and "n_drill" in det)
+
+    ok, det = drill_set_judge([row("n_drill", "N/A-NO-PLANTED-SET")])
+    check("S6 every drill N/A -> FAIL (nothing measured)",
+          (not ok) and "nothing was measured" in det)
+
+    ok, det = drill_set_judge(None)
+    check("S7 no rows -> UNVERIFIED FAIL", (not ok) and "UNVERIFIED" in det)
+
+    ok, det = drill_set_judge([row("x_drill", "SOMETHING-NEW")])
+    check("S8 unknown verdict -> FAIL, never assumed healthy",
+          (not ok) and "unknown" in det and "x_drill" in det)
+
+    first = drill_set_judge([row("a_drill", "DRILL-SET-CLEAN", 10, 5, 10)])
+    second = drill_set_judge([row("a_drill", "DRILL-SET-CLEAN", 10, 5, 10)])
+    check("S9 deterministic on the same input", first == second)
+
+    print("selftest drill-set verdict: %d/%d PASS"
+          % (sum(results), len(results)))
+    return 0 if all(results) else 1
+
+
 def probe_probe_registry():
     """Probe no.24 (T190 / BC-P-169): probe numbering single-source census.
 
@@ -2945,6 +3070,7 @@ PROBE_REGISTRY = [
     (25, "write-side encoding declarations (T193)", probe_write_encoding),
     (26, "shared jsonl row-loss census (T198)", probe_row_loss),
     (27, "aftersale rails judgeable (M115)", probe_aftersale_rails),
+    (28, "drill planted-set census (T205)", probe_drill_sets),
 ]
 
 
@@ -2958,7 +3084,7 @@ def main():
                 | selftest_qa_version() | selftest_text_integrity()
                 | selftest_receipt_product_law() | selftest_serve_health()
                 | selftest_write_encoding() | selftest_row_loss()
-                | selftest_aftersale_rails())
+                | selftest_aftersale_rails() | selftest_drill_sets())
     os.makedirs(QA_DIR, exist_ok=True)
     ts = datetime.datetime.now().strftime("%Y%m%d-%H%M")
     log_path = os.path.join(QA_DIR, "smoke-%s.log" % ts)

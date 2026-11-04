@@ -616,3 +616,6 @@ P2: 已知红不在本轮范围=no.22 M96 回执缺失（7 日历史窗口）+ �
 2026-11-04 21:5x 令牌轮：M104 配额闭环演练收口（T-20261104-86）——Tools/quota_cycle_drill.py selftest 10/10、实跑 QUOTA-CYCLE-GREEN failed=0/12（预算闸/批准通道/跨月分桶/扣减/拒付/幂等/余额非负七面）；**当场抓到并修掉真缺陷**：quota-issue/quota-consume 对负额与零额一律放行（consume -0.5 把余额从 0.5 抬到 1.0＝凭空印配额）→ cost_ledger 两处加 invalid_amount 守卫，既有 selftest 仍 PASS。
 P2: 守卫只补了 quota 两条命令，add / cloud-entry / borrow-entry / fund 的金额面仍是裸的（同族风险未清）→ 提案 BC-P-195 要求四条命令同构守卫 + qa_smoke 金额面普查。
 P2: smoke 24/26（两红同源已知＝no.16 :8792 /ask 超时 GPU 争用 vram_free 440MiB + no.22 M96 回执产物历史缺失面）；C1C4-GREEN、TEXT-INTEGRITY-CLEAN cats=7/7；main open 4→3、tech 侧余量照常。
+2026-11-04 22:1x 令牌轮：M120 植入集普查接常驻探针 no.28 收口（T-20261104-87）——`qa_smoke` 增 `drill_set_judge`/`probe_drill_sets`：SHRUNK/DEGRADED/UNREADABLE 红并点名 drill 与 cases/defects 读数，`N/A-NO-PLANTED-SET` 显式声明只打印不红，**全 N/A 判红**（一条没测＝没量），未知 verdict 不臆测为健康；selftest 9/9、live `no.28 PASS drills=6 clean=5 n/a=1`，charter §三 第 28 条在件，PROBE-REGISTRY-CLEAN probes=27 dup=0。
+P1: 集团侧真缺陷（本司只报警不改集团树）＝no.26 新命中**永久丢行** `R-TRIAGE-BIGSTREAMMV-BMA-20261104`（`81be0279→28802dab` 消失且最新 commit 未回填，targets=3）；同族 text_integrity 报 `docs/orders.md` 尾部 1 个半合并块（markers=3）——请 @HQ 按 T196/T195 处置。
+P2: 植入集的钉子（`drill_set_census.MANIFEST` 的 min_cases/min_defects）无标定记录、真缩与真松两个方向都无人守 → 提案 BC-P-196；本司 smoke 24/27（余两红＝no.16 /ask 超时与 no.22 既有面）。

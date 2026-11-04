@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-11-04 22:0x",
- "current_activity": "2026-11-04 21:5x 令牌轮：M104 配额发放→消费闭环演练——temp 账本跑完预算闸/批准通道/跨月分桶/扣减/拒付/幂等七面，并当场抓出「负额与零额被放行（consume -0.5 把余额 0.5 抬到 1.0＝凭空印配额）」真缺陷，已在 cost_ledger 两处加 invalid_amount 守卫 [via BigCompute-OSLoop]",
- "latest_artifact": "Tools/quota_cycle_drill.py（selftest 10/10 PASS·实跑 VERDICT=QUOTA-CYCLE-GREEN failed=0/12·temp 账本零污染+真轨 sha 断言）+ Tools/cost_ledger.py 非正额守卫（既有 selftest 仍 PASS）；证据 state/quota-cycle-drill-20261104.txt/.json",
- "next_milestone": "①BC-P-195 其余四条金额命令（add/cloud-entry/borrow-entry/fund）同构 >0 守卫 + qa_smoke 金额面普查（11-05）②T205 drill_set_census 接 qa_smoke no.28 常驻探针（11-05）③T202 真轨诚实标记 guard 普查 ④T201 条款号覆盖面只认 §三；真抽卡流水轨与配额落值仍待 CEO 定价确认批/平台后台导出，本司零自决"
+ "updated_at": "2026-11-04 22:16",
+ "current_activity": "2026-11-04 21:00 轮：T-20261104-86+M104 配额发放→消费闭环演练（Tools/quota_cycle_drill.py selftest 10/10·实跑 QUOTA-CYCLE-GREEN failed=0/12：预算内发放/越预算 blocked_over_budget/CEO 批准通道 ok_ceo_approved_over_cap/跨月不串账/扣减余额 0.5/余额不足拒付/issue+consume 重放 duplicate/行 ｜ 2026-11-03 03:2x 夜班轮：serve 瞬态判别常驻化 —— qa_smoke 新增 no.23（settle 窗口三态：UP 绿／DEGRADED 与 DOWN 红并点名 attempts／读不到 UNVERIFIED 不假绿），selftest 5/5 PASS、live no.23 PASS；同日结案上轮两 P1（orders.md 冲突块 0 命中、no.22 历史红留档）[via BigCompute-OSLoop]",
+ "latest_artifact": "state/c1c4-20261104-221512.json（mtime 2026-11-04 22:15） ｜ qa/smoke-20261103-0317.log/.png（21/22 PASS，新探针 no.23 绿）｜Tools/qa_smoke.py（+serve_health_judge/probe/selftest，SERVE_SETTLE_S=20）｜docs/qa-smoke-test-charter.md §三 第 23 条",
+ "next_milestone": "M4 接产对齐矩阵 blocked 项随开店/平台后台逐项销 ⬜（T-27 余项）（队列状态=**blocked 如实**（10-28 23:2x 令牌轮队列卫生）：销 ⬜ ） ｜ ①no.22 残红自然滚出 7 日窗（BC-P-168 提案待批，真实产出落受管目录）②tech T189 v718 质检链三步重跑（约 73s CPU，产物落 repo 受管目录）③M25/T26 室内烘焙样板间实弹（净窗一命令，BLOCKED 计数在册）"
 }
