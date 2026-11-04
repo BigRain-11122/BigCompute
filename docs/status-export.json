@@ -1,7 +1,8 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-11-05 00:47",
- "current_activity": "2026-11-05 00:4x 夜班轮：承接 CEO 00:36 令（OB-20261105-003656-879「只要真实产出·停建机制」）——本轮零新增工具/闸/规则/巡检卡，只用现有仪器出「集团算力服务结单」真数件 [via BigCompute-OSLoop]",
- "latest_artifact": "state/compute-service-statement-20261105.txt（人读）+ .json（机读）：GPU 7d n=1227 avg=41.1%／CPU 7d 计入 61 条·有效 0.241h／L1 实耗 0.000021 Mtok／收入 0 单（时间 2026-11-05 00:44）",
- "next_milestone": "按 00:36 令改为「只出产线下一步实物」：下一轮用同一结单面滚出 11-05 日结与周结对比（不需新机制）；原 T209 巡检卡常驻化已撤下。窗 ≤48h（2026-11-07 00:00）"
+ "updated_at": "2026-11-05 06:10",
+ "current_activity": "2026-11-05 06:0x 令牌轮：承办 D-20261105-11 加挂验收腿——供给倒挂两池源对账（M124 收口），只读两侧现役账出真数，零新增工具零改判据；no.16 按 D-20261105-10 销账为已知环境约束 [via BigCompute-OSLoop]",
+ "latest_artifact": "state/pool-source-reconcile-20261105.txt + .json（池源对账：机队池 ready_total=4/ready_ignitable=2/effective=0 floor=3 vs 本仓 6 卡 STOCKED；结论=两处非同一对象、不矛盾，机队池为准，本司卡在账不可调度），时间戳 2026-11-05 06:07",
+ "next_milestone": "把 6 张 STOCKED 卡的登记请求以对账件形式交集团侧（本司禁跨仓写），并在下一轮复核机队池是否出现本司卡；窗 ≤48h（2026-11-07 06:00）",
+ "previous_updated_at": "2026-11-05 00:47"
 }

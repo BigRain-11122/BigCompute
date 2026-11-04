@@ -641,3 +641,5 @@ P1: D-20261105-05 取证完（06:00 裁定用）=state/d05-no16-gpu-contention-2
 P2: 本轮探针自造 403（我用 {question} 试 /ask，契约是 {id,q}）已入证据件留痕，提醒后续探针必须按契约发载荷。
 03:0x 日清：无待报。实物=线级体检件 cph4/fleet/queue-receipts/triage-bigcompute-20261105.md（compute-deal 证据 2/2·FRESH），清掉本线一个 no-lane 阻塞。
 P2: 供给倒挂读数=本仓批池 validate POOL_GREEN 6 卡/4 lane 全 STOCKED，心跳同时刻却 pool_effective=0 / pool_self_stale=2 / pool_ignitable=2——两套池源不同（本仓 docs/ops/batch-pool-stock-v1.jsonl vs 机队 pool 源），备货卡「在账不可调度」；已转 M124 只读对账，不跨仓改判据。
+06:0x 日清：无待报 | 实物=M124 池源对账 state/pool-source-reconcile-20261105.txt/.json —— 结论=不矛盾：心跳池读 quant/BigMoney/fleet/backlog.md（4 可领行→effective_ignitable=0，2 行本机 10-07 陈旧 claim、2 行 bm-b 静默 8244 分钟），本仓 6 卡 STOCKED 备货从未进入该池；以机队调度池为准，本司 6 卡为「在账不可调度」；登记请求归集团侧（本司禁跨仓写）
+P3: D-20261105-10 已销账——no.16 :8792 不再计入本司缺陷待办、不再逐轮重报；改记「已知环境约束（GPU 争用）」，唯一指针 state/d05-no16-gpu-contention-20261105.txt
