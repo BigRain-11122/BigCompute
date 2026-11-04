@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-11-04 20:55",
- "current_activity": "2026-11-04 20:5x 令牌轮：M115 售后轨判据常驻化——把 M114 只活在单轮输出里的退款校准判据接成 qa_smoke 常驻探针 no.27（两轨 schema + mock/real 互喂负例 + 合成双轨实跑），「演练面退化」不再能冒充「没有退款」 [via BigCompute-OSLoop]",
- "latest_artifact": "Tools/qa_smoke.py（新探针 no.27 aftersale rails judgeable·selftest 10/10 PASS·全套 --selftest exit 0）｜docs/qa-smoke-test-charter.md §三 第 27 条｜qa/smoke-20261104-2052.log/.png（live no.27 PASS：rails aftersale=ABSENT/aftersale_mock=3 rows exclusion REJECTED/REJECTED cal=REFUND-CALIBRATED；smoke 24/26）",
- "next_milestone": "①M119 植入集完整性普查（drill-set 被改小/改净即判 DRILL-SET-DEGRADED·≤11-06）；②M118 py 阈值标定件（双通道 n≥30 采样+映射二分+隔离实验·≤11-06）；③既有未闭：no.16 需 GPU 空闲窗复验、no.22 随 7 日窗滚出、真轨 aftersale-ledger 随平台后台导出窗、月上限/提醒 N 日/退款偏差三阈值仍待 CEO 定价确认批"
+ "updated_at": "2026-11-04 21:12",
+ "current_activity": "2026-11-04 21:1x 夜班轮：M116 把抽卡概率审计的数据面立起来——rails_schema_check 增 gacha_draw（真·计划态缺位）/gacha_draw_mock（演练·缺失即红）两轨，user 用 ^anon- 结构性禁 PII；gacha_probability_audit.py rails-drill 一命令写 1200 行→过 schema+census→阈值未落仍 CANNOT-JUDGE [via BigCompute-OSLoop]",
+ "latest_artifact": "Tools/rails_schema_check.py（+2 轨 schema·selftest 39/39 PASS·实跑 RAILS-SCHEMA-GREEN rows=1216）｜Tools/gacha_probability_audit.py rails-drill（5 断言 PASS·无阈值 exit 3 / 3.00pp PROB-AUDIT-OK exit 0）｜state/mock-gacha-draw-ledger.jsonl（1200 行合成轨）｜state/gacha-prob-audit-20261104-rail.{txt,json}｜evidence qa/smoke-20261104-2107.log/.png（smoke 25/26，唯一红=no.22 M96 既有面）",
+ "next_milestone": "①T202 真轨诚实标记 guard 普查（本轮自查真发现：真轨 additionalProperties 会放行 mock:true·aftersale 仍未锁 mock·≤11-06）；②M119 植入集完整性普查（drill-set 被改小/改净即 DRILL-SET-DEGRADED·≤11-06）；③M118 py 阈值标定件（双通道 n≥30 采样+映射二分+隔离实验）；④既有未闭：真抽卡轨 gacha_draw 随平台后台导出窗、no.22 随 7 日窗滚出、月上限/提醒 N 日/退款偏差/概率偏差四阈值仍待 CEO 定价确认批"
 }

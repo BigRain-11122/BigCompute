@@ -50,6 +50,8 @@ RAIL_PATHS = {
     "batch_card": ROOT / "docs" / "ops" / "batch-pool-stock-v1.jsonl",
     "distr": ROOT / "state" / "distr-ledger.jsonl",
     "delivery": ROOT / "state" / "delivery-ledger.jsonl",
+    "gacha_draw": ROOT / "state" / "gacha-draw-ledger.jsonl",
+    "gacha_draw_mock": ROOT / "state" / "mock-gacha-draw-ledger.jsonl",
 }
 
 # Idempotency keys: repeats bypass dedup and corrupt reconciliation.
@@ -59,10 +61,13 @@ UNIQUE_KEYS = {
     "mock_order": "order_id", "batch_card": "batch_id", "distr": "tx_id",
     "delivery": "event_id", "aftersale": "aftersale_id",
     "aftersale_mock": "aftersale_id",
+    "gacha_draw": "draw_id", "gacha_draw_mock": "draw_id",
 }
 
 # Absent-by-design rails (J4 planned state) are not violations.
-OPTIONAL_RAILS = {"distr", "delivery", "aftersale"}
+# gacha_draw (real) is absent until the blind-box SKU is live; the drill rail
+# is not optional — a missing drill rail means the audit has no data surface.
+OPTIONAL_RAILS = {"distr", "delivery", "aftersale", "gacha_draw"}
 
 SCHEMAS = {
     # MOCK rail: every row must be visibly mock (mock=true, MOCK- order id) and
@@ -245,6 +250,59 @@ SCHEMAS = {
         },
         "additionalProperties": True,
     },
+    # Gacha draw rails (M116). §7.3 (1) "monthly sampled deviation" had a
+    # detector but no data surface: gacha_probability_audit could only ever
+    # answer PROB-AUDIT-CANNOT-JUDGE because no draw log existed. Two rails
+    # again, so a drill row can never be counted as a real draw:
+    #   gacha_draw       real draws     (draw_simulated=false, live=true)
+    #   gacha_draw_mock  synthetic rows (draw_simulated=true, live=false)
+    # `user` is structurally anonymized (pattern ^anon-): a raw account id
+    # cannot be written here at all, so the draw rail never becomes a PII rail.
+    "gacha_draw": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "required": [
+            "draw_id", "user", "sku_id", "rarity", "price", "month",
+            "draw_simulated", "live", "caliber_note",
+        ],
+        "properties": {
+            "draw_id": {"type": "string", "pattern": "^GD-[0-9]{8}-[0-9]+$"},
+            "user": {"type": "string", "pattern": "^anon-"},
+            "sku_id": {"type": "string", "minLength": 3},
+            "rarity": {"type": "string", "minLength": 2},
+            # money per draw in CNY; 0 is not allowed (a free draw is not a sale)
+            "price": {"type": "number", "exclusiveMinimum": 0},
+            "month": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}$"},
+            "draw_simulated": {"const": False},
+            "live": {"const": True},
+            # drill rows carry mock=true; the real rail must refuse them even
+            # though additionalProperties would otherwise let the key through
+            "mock": {"const": False},
+            "caliber_note": {"type": "string", "minLength": 2},
+        },
+        "additionalProperties": True,
+    },
+    "gacha_draw_mock": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "required": [
+            "draw_id", "user", "sku_id", "rarity", "price", "month",
+            "draw_simulated", "live", "mock", "caliber_note",
+        ],
+        "properties": {
+            "draw_id": {"type": "string", "pattern": "^MOCK-GD-"},
+            "user": {"type": "string", "pattern": "^anon-"},
+            "sku_id": {"type": "string", "minLength": 3},
+            "rarity": {"type": "string", "minLength": 2},
+            "price": {"type": "number", "exclusiveMinimum": 0},
+            "month": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}$"},
+            "draw_simulated": {"const": True},
+            "live": {"const": False},
+            "mock": {"const": True},
+            "caliber_note": {"type": "string", "minLength": 2},
+        },
+        "additionalProperties": True,
+    },
 }
 
 
@@ -344,6 +402,30 @@ PRODUCERS = {
         "mock": "delivery_dispatch_mock._event",
         "live": "delivery_dispatch_mock._event",
         "caliber_note": "delivery_dispatch_mock._event",
+    },
+    "gacha_draw": {
+        "draw_id": "manual:平台后台抽卡流水导出（计划态未接·M116 schema 先行）",
+        "user": "manual:平台后台抽卡流水导出（计划态未接·M116 schema 先行）",
+        "sku_id": "manual:平台后台抽卡流水导出（计划态未接·M116 schema 先行）",
+        "rarity": "manual:平台后台抽卡流水导出（计划态未接·M116 schema 先行）",
+        "price": "manual:平台后台抽卡流水导出（计划态未接·M116 schema 先行）",
+        "month": "manual:平台后台抽卡流水导出（计划态未接·M116 schema 先行）",
+        "draw_simulated": "manual:平台后台抽卡流水导出（计划态未接·M116 schema 先行）",
+        "live": "manual:平台后台抽卡流水导出（计划态未接·M116 schema 先行）",
+        "mock": "manual:平台后台抽卡流水导出（计划态未接·M116 schema 先行）",
+        "caliber_note": "manual:平台后台抽卡流水导出（计划态未接·M116 schema 先行）",
+    },
+    "gacha_draw_mock": {
+        "draw_id": "gacha_probability_audit.rails_drill",
+        "user": "gacha_probability_audit.rails_drill",
+        "sku_id": "gacha_probability_audit.rails_drill",
+        "rarity": "gacha_probability_audit.rails_drill",
+        "price": "gacha_probability_audit.rails_drill",
+        "month": "gacha_probability_audit.rails_drill",
+        "draw_simulated": "gacha_probability_audit.rails_drill",
+        "live": "gacha_probability_audit.rails_drill",
+        "mock": "gacha_probability_audit.rails_drill",
+        "caliber_note": "gacha_probability_audit.rails_drill",
     },
 }
 
@@ -738,6 +820,27 @@ def cmd_selftest() -> int:
                    validate_rows("delivery", [dict(good_delivery, status="shipped")]) != []))
     checks.append(("dup delivery event caught",
                    len(find_duplicate_keys("delivery", [good_delivery, good_delivery])) == 1))
+    # M116 gacha draw rails: a drill row must not satisfy the real rail, and a
+    # raw account id must be structurally impossible on either rail.
+    good_draw_mock = {
+        "draw_id": "MOCK-GD-20261104-1", "user": "anon-selftest",
+        "sku_id": "SKU-MOCK-CARD", "rarity": "common", "price": 2.0,
+        "month": "2026-11", "draw_simulated": True, "live": False,
+        "mock": True, "caliber_note": "synthetic draw drill row, not a sale",
+    }
+    checks.append(("good gacha_draw_mock row accepted",
+                   validate_rows("gacha_draw_mock", [good_draw_mock]) == []))
+    checks.append(("gacha_draw rejects MOCK draw id",
+                   validate_rows("gacha_draw", [dict(
+                       good_draw_mock, draw_id="GD-20261104-1",
+                       draw_simulated=False, live=True)]) != []))
+    checks.append(("gacha_draw rejects raw user id (PII guard)",
+                   validate_rows("gacha_draw", [dict(
+                       good_draw_mock, draw_id="GD-20261104-1", user="u_88231",
+                       draw_simulated=False, live=True)]) != []))
+    checks.append(("gacha_draw_mock rejects simulated=false",
+                   validate_rows("gacha_draw_mock",
+                                 [dict(good_draw_mock, draw_simulated=False)]) != []))
     # T135 write-side census: declared <-> produced must line up both ways.
     checks.append(("census green on fixture rows",
                    census("mock_order", [good_mock]) == []

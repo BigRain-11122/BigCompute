@@ -66,6 +66,7 @@
 - **7.2 月消费上限强制件数值接口（§三.4/§五 的参数承接）**：执法点=抽卡流水轨月度聚合 {user, month, sum_cny} ≥ monthly_cap_cny → 拦截拒付 blocked_over_cap+二次确认+转人工客服（禁绕过·豁免仅 --ceo-approved 通道·与配额月度预算闸同构=BC-F-20260925-01 ② 同律）；monthly_cap_cny ⬜ 待 CEO 定价确认批落；强制件代码位=quota-gate 同构扩展（tech 队列承接·随开店物理件）；成瘾提示阈值/冷静提示=同批落值。
 - **7.3 预注册判据**：①公示概率 vs 实际生成概率月度抽样偏差 ≤{阈值}%（阈值随定价批落）②月上限拦截=合成数据 dry-run 一次过（E11 开店记账轨预演件联动）③公示文案上线前=锚 1 原文级复验毕✅（2026-10-02 00:4x·核验批项十二·判据达成）·数值落值待 CEO 定价确认批维持。
   - ①测量件（2026-11-04 M112）：`Tools/gacha_probability_audit.py`（run/drill/selftest）——一命令吃抽取记录出各档实测占比/偏差 pp/越阈点名；**阈值未落=fail-closed 判 CANNOT-JUDGE（禁默认放行）**、样本不足判 INSUFFICIENT（禁小样本点名）、公示概率和≠100% 判 BAD-DECLARED（禁比无效基准）、出现未公示档位判 BAD-DATA；偏差走整数基点比较使阈值边界精确。②执法件（2026-11-04 M101）=`Tools/gacha_cap_gate.py`。
+  - ①数据面（2026-11-04 M116）：在此之前测量件只能答 CANNOT-JUDGE——**抽卡流水轨一行都不存在**。现两条轨入 `Tools/rails_schema_check.py`：`gacha_draw`（真：draw_simulated=false/live=true/draw_id=`GD-*`，计划态缺位=optional）与 `gacha_draw_mock`（演练：`MOCK-GD-*`/live=false/mock=true）。字段=draw_id/sku_id/rarity/price/month/`user`（**结构性匿名**：pattern `^anon-`，原始账号号写不进来）/+诚实标记。演练命令=`gacha_probability_audit.py rails-drill`（写 schema 形状合成轨→过 schema+census→**阈值未落仍判 CANNOT-JUDGE**→落 3.00pp 设计值才判 OK）；`price`/`sku_id` 为设计值非定价。真轨仍随平台后台导出窗（开店物理件），本行不得据此宣称「已有真实抽样」。
 
 ## 验证声明（2026-09-27）
 

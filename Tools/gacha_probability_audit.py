@@ -364,6 +364,95 @@ def drill():
     return 0 if failures == 0 else 1
 
 
+# ---------------------------------------------------------------- rails drill
+
+# M116: the detector existed but the draw rail did not, so every audit run was
+# CANNOT-JUDGE by construction. This drill writes schema-shaped mock rows and
+# proves the two things a data surface must prove: (1) rows satisfy the
+# declared contract, (2) the honest answer with no threshold is still
+# CANNOT-JUDGE — a full rail does not buy a free pass.
+MOCK_RAIL = os.path.join(STATE, "mock-gacha-draw-ledger.jsonl")
+DRILL_PRICE = 2.0            # design value, NOT a pricing decision
+DRILL_SKU = "SKU-MOCK-CARD"  # design value
+
+
+def build_mock_rows(n=1200, seed=77, month="2026-11"):
+    draws = _sample(DRILL_TIERS, n, seed)
+    rows = []
+    for i, rarity in enumerate(draws, 1):
+        rows.append({
+            "draw_id": "MOCK-GD-%s-%d" % (month.replace("-", ""), i),
+            "user": "anon-drill-%02d" % (i % 7 + 1),
+            "sku_id": DRILL_SKU,
+            "rarity": rarity,
+            "price": DRILL_PRICE,
+            "month": month,
+            "draw_simulated": True,
+            "live": False,
+            "mock": True,
+            "caliber_note": ("synthetic draw drill row (design price %.2f, "
+                             "not a sale)" % DRILL_PRICE),
+        })
+    return rows
+
+
+def _rail_errors(kind, rows):
+    if HERE not in sys.path:
+        sys.path.insert(0, HERE)
+    import rails_schema_check as rsc
+    errs = rsc.validate_rows(kind, rows)
+    errs += rsc.find_duplicate_keys(kind, rows)
+    errs += rsc.census(kind, rows)
+    return errs
+
+
+def rails_drill():
+    failures = 0
+
+    def check(name, cond, detail=""):
+        nonlocal failures
+        failures += 0 if cond else 1
+        print("%s %s%s" % ("PASS" if cond else "FAIL", name,
+                           (" :: " + detail) if (detail and not cond) else ""))
+
+    rows = build_mock_rows()
+    os.makedirs(STATE, exist_ok=True)
+    with open(MOCK_RAIL, "w", encoding="utf-8", newline="\n") as fh:
+        for row in rows:
+            fh.write(json.dumps(row, ensure_ascii=False) + "\n")
+    print("rail=%s rows=%d source=drill-synthetic price=design-value"
+          % (MOCK_RAIL, len(rows)))
+
+    errs = _rail_errors("gacha_draw_mock", rows)
+    for line in errs[:5]:
+        print("RAIL %s" % line)
+    check("mock rows satisfy gacha_draw_mock contract", not errs,
+          "%d problem(s)" % len(errs))
+
+    # A drill row must not be accepted by the real rail (money separation).
+    as_real = [dict(r, draw_id="GD-20261104-1", draw_simulated=False,
+                    live=True) for r in rows[:1]]
+    real_errs = _rail_errors("gacha_draw", as_real)
+    check("real gacha rail rejects a simulated row", bool(real_errs),
+          "real rail accepted a drill row")
+
+    draws, skipped = load_draws(MOCK_RAIL, month="2026-11")
+    check("rail parses as draws", len(draws) == len(rows) and skipped == 0,
+          "draws=%d skipped=%d" % (len(draws), skipped))
+
+    unset = audit(DRILL_TIERS, draws, None)
+    check("unset threshold still CANNOT-JUDGE on a full rail",
+          unset["verdict"] == V_CANNOT_JUDGE, unset["verdict"])
+
+    judged = audit(DRILL_TIERS, draws, 3.0)
+    check("design threshold 3.00pp judges the rail", judged["verdict"] == V_OK,
+          "%s %s" % (judged["verdict"], judged["reason"]))
+
+    print("rails-drill: %s" % ("OK" if failures == 0 else
+                               "%d FAILURE(S)" % failures))
+    return 0 if failures == 0 else 1
+
+
 # ---------------------------------------------------------------- selftest
 
 def selftest():
@@ -504,6 +593,8 @@ def main(argv=None):
                           "mangle non-ASCII otherwise)")
 
     sub.add_parser("drill", help="planted cases, detector must name them")
+    sub.add_parser("rails-drill",
+                   help="write schema-shaped mock draw rail and prove it judges")
     sub.add_parser("selftest", help="deterministic unit checks")
 
     fixture = sub.add_parser("fixture", help="write a synthetic draw file")
@@ -518,6 +609,8 @@ def main(argv=None):
         return selftest()
     if args.cmd == "drill":
         return drill()
+    if args.cmd == "rails-drill":
+        return rails_drill()
     if args.cmd == "fixture":
         draws = _sample(DRILL_TIERS, args.n, args.seed)
         os.makedirs(os.path.dirname(args.out) or ".", exist_ok=True)
