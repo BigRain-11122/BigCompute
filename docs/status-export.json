@@ -1,8 +1,8 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-11-05 06:53",
- "current_activity": "2026-11-05 06:4x 令牌轮：按 CEO 00:36「只要真实产出」令，用现役 Ollama 对三件本职材料（池源对账件／任务板尾部／心跳行）跑真实推理服务并落 L1 账本；零新增工具 [via BigCompute-OSLoop]",
- "latest_artifact": "state/service-ticket-20261105.txt + .json（本地推理服务工单：3/3 交付，observed 5 次调用 4506 tokens，L1 5 笔 0.004506 Mtok 结转 0.0028 CNY；真发现=qwen3.5:4b 默认 thinking 空交付，think=false 才可交付），时间戳 2026-11-05 06:52",
- "next_milestone": "M127：用 qwen3:8b 对同一任务板尾部复测结构化抽取（验证 4b 档「抽出已完成行」是否模型档位问题），对比件落 state/；窗 ≤48h（2026-11-07 06:00）",
- "previous_updated_at": "2026-11-05 06:10"
+ "updated_at": "2026-11-05 07:05",
+ "current_activity": "2026-11-05 06:5x 令牌轮：M127 抽取复测收口——4b 与 8b 同材料对照，两档均 FAIL，结论=卡在任务分工（done/open 机器可判却拿去问模型），并顺手修掉 L1 记账端点缺省写墓碑口 :8090 的真缺陷 [via BigCompute-OSLoop]",
+ "latest_artifact": "state/m127-extract-ab-20261105.txt + .json（4b 格式合规 100% 但真未完成 0/3；8b 格式 0% 且 0/3、慢 9×；三笔真实 L1 token=9331 = 0.009331 Mtok），时间戳 2026-11-05 07:00",
+ "next_milestone": "M128：抽取前置机械过滤（先用 **done 标记只喂未完成行，再交 4b 出「任务号：一句话动作」），判据=新鲜度 3/3 且格式 100%；窗 ≤24h（2026-11-06 07:00）",
+ "previous_updated_at": "2026-11-05 06:53"
 }

@@ -1,0 +1,109 @@
+{
+  "generated_at": "2026-11-05T06:59:03",
+  "endpoint": "http://127.0.0.1:11434/api/generate",
+  "material": {
+    "source": "tasks/TASKS.md",
+    "rows": 14,
+    "first": "| T-20261104-82 | **M115 售后轨判据常驻化件（产品优先律",
+    "last": "| T-20261105-97 | **本地推理真实服务工单（CEO 00:36"
+  },
+  "ground_truth": {
+    "T-20261104-82": "done",
+    "T-20261104-83": "done",
+    "T-20261104-84": "done",
+    "T-20261104-87": "done",
+    "T-20261104-86": "done",
+    "T-20261104-89": "done",
+    "T-20261104-90": "done",
+    "T-20261105-91": "done",
+    "T-20261105-92": "done",
+    "T-20261105-93": "done",
+    "T-20261105-94": "done",
+    "T-20261105-95": "done",
+    "T-20261105-96": "done",
+    "T-20261105-97": "done"
+  },
+  "prompt": "下面是从任务板尾部抽出的原始行，格式为「| 任务号 | 标题 | 判据 | 状态 |」。\n请只抽取其中【尚未完成】的行（状态字段不含 done），最多 3 条。\n严格按每行一条输出，格式固定为：任务号：一句话动作\n不要解释、不要 markdown 表格、不要复述原文、不要输出已完成的行。\n\n| T-20261104-82 | **M115 售后轨判据常驻化件（产品优先律 2 分件·11-04 20:5x 令牌轮）**：M114 的 `REFUND-CALIBRATED` 只活在那一轮输出里，合成轨被改坏或 mock 轨消失下一轮无人发现。本件把「售后轨可判」接成 `qa_smoke` 探针 no.27：两轨 schema 校验（演练轨缺失即红、真轨缺失只打印）+ mock/real 互喂负例自证 + `refund_rate_calibration.plan()` 对合成双轨实跑，**只有 CALIBRATED/UNDER/OVER 算过**，CANNOT-JUDGE/NO-DA\n| T-20261104-83 | **M116 抽卡流水轨 schema + schema 级演练（产品优先律 2 分件·11-04 21:1x 夜班轮）**：`gacha_probability_audit` 能判但**没有任何抽卡流水轨**，§7.1/§7.3① 因此永远 CANNOT-JUDGE。本件把数据面立起来：两轨入 `rails_schema_check`（真 `gacha_draw` 计划态缺位/演练 `gacha_draw_mock` 缺失即红），字段=draw_id/sku_id/rarity/price/month/user（`^anon-` 结构性禁 PII）/诚实标\n| T-20261104-84 | **M118 py 阈值标定件（BC-P-191 ②·产品优先律 2 分件）**：70% 线该挂哪把尺子此前不声明；产出标定件并实测三臂 | 判据=采样落 JSON + 映射/不可映射二分 + 隔离实验可复跑 + 阈值适用尺子写死 | **done（11-04 21:2x 夜班轮）**：`docs/ops/py-threshold-calibration-v1.md` 落盘——n=30 同帧 `shell 51.0 vs psutil 18.75 delta=32.25pp`；语义臂 2a（1 核 vs 静置）与 2b（k=4 vs k=16 运动量）皆 I\n| T-20261104-87 | **M120 植入集普查常驻化件（T205 / BC-P-194 收口件·产品优先律 2 分件·11-04 22:1x 令牌轮）**：把 `drill_set_census` 从「人手跑才存在」接成 `qa_smoke` 探针 no.28，并同步 charter §三 第 28 条与 PROBE_REGISTRY 单源表 | 判据=selftest 九夹具全绿 + live 出 `drills/clean/n-a` 一行 + PROBE-REGISTRY-CLEAN | **done（产品优先律 2 分件）**：`drill_set_judge`/`prob\n| T-20261104-86 | **M104 配额发放→消费闭环演练 + 非正额守卫（M98 派生·本地可执行）** 判据=一命令跑完四类账本不变量（预算闸/批准留痕/扣减拒付/幂等）+余额非负 + selftest 全绿 | **done（11-04 21:5x 令牌轮·产品优先律 2 分件）**：Tools/quota_cycle_drill.py（run/selftest·temp 账本零污染·真轨 sha 断言）selftest **10/10 PASS**、实跑 **QUOTA-CYCLE-GREEN failed=0/12**；**当场抓真缺陷并修**=quota-issue/\n| T-20261104-89 | **T202 真轨诚实标记 guard 普查（BC-P-193 承接件·产品优先律 2 分件）**：`rails_schema_check` 增 `guard-census`——每条轨必须声明类（real/drill/non-money·non-money 须写理由），real 轨三类守卫 `mock:false`/`live:true`/`<flag>:false` 逐条核 const；`aftersale` 真轨补 `mock` 守卫（此前 `additionalProperties` 会让演练行混进真轨）；每条真轨加「演练行混入必被拒」夹具 + 负控证\n| T-20261104-90 | **py 阈值调用点改线（M118 §四 执行面 · tech T203 收口）**：旧态=70% 满载线只写在 mandate/文档里，代码侧谁都能拿 shell `py_cpu` 去比；新态=`evaluate_cpu_load_line()` 单源判据只认 `py_cpu_psutil`，心跳行落 `cpu_load_line=` 三态 | 判据=selftest 夹具含「shell 高 psutil 缺 → 不得 BREACH」+ 心跳行读回 | **done（11-04 23:4x 夜班轮·产品优先律 2 分件）**：`Tools/idle_sel\n| T-20261105-91 | **条款号变体识别 + qa_smoke argv 守卫（tech T206/T208 收口件·11-05 00:2x 夜班轮·产品优先律 2 分件）**：①`probe_registry_census.clause_scan()` 从「只认 `- N.`」扩到五种写法（`- N.`／`* N.`／`N、`／`N)`／§一 之外的表格行 N 形），base 表行不计入以免双计与幻影条款——selftest 11→**16/16 PASS**、live `PROBE-REGISTRY-CLEAN probes=27 clauses=24 dup=0`（`sta\n| T-20261105-92 | **BC-P-195 承接件（钱面非正额守卫 + 写入器普查·本地可执行）**：T-20261104-86 抓到 `quota-issue -0.5` 凭空印配额后只修了两处；同一类洞在其余入口仍未守（`add` 无 price/amount 校验、`cloud-entry` 负额可降月用量绕过预算闸、`borrow-entry` 同理、`cloud-bill`/`l1-settle` 负单价可倒划成本、`deal_flow_mock --qty -3` 可写负价收入行）。步=①cost_ledger 五入口补同构守卫（错误码 `invalid_amount\n| T-20261105-93 | **CEO 00:36「只要真实产出」令承接件（OB-20261105-003656-879·停建机制）**：本轮不新增任何工具/闸/规则/巡检卡，只用现有仪器（gpu_idle_collector / cpu_effective_hours / cost_ledger 五本账）出「集团算力服务结单」真数件，供集团内部消费方直接阅读 | 判据=结单出真数（GPU/CPU/L1/配额/收入五项）+ 四条诚实边界 + 零新增工具文件 | **done（2026-11-05 00:4x 夜班轮·产品优先律 2 分件）**：`state/compute-servic\n| T-20261105-94 | **CPU 有效工时归因对账 + D-20261105-05 取证件（CEO 00:36「只要真实产出」令·产品优先律 2 分件）**：现有仪器口径下 7 日「有效 0.241h」无法回答「工时到底去哪了」；本件只读现役账本+磁盘出归因，并把 D-05 的 no.16 超时裁定所需证据取齐 | 判据=真数+逐桶去向+逐条定谳+零改动零新增工具 | **done（2026-11-05 00:5x 夜班轮）**：state/cpu-hours-attribution-20261105.txt/.json（声明 1.1608h vs 可证 0.241h=20.7%\n| T-20261105-95 | **线级体检件执行 + 供给倒挂取证（CEO 00:36「只要真实产出」令·03:0x 令牌轮）**：跑既有 `Tools/fleet/line_triage.py --line bigcompute` 出本线体检交付物（清掉本线一个 no-lane 阻塞），并对心跳供给读数做三源交叉核对；零新增工具、零新规则 | 判据=交付物落 cph4/fleet/queue-receipts/ + 三源读数并列 + 零新增 Tools 件 | **done**：`triage-bigcompute-20261105.md` 落盘（工段 compute-deal 证据 \n| T-20261105-96 | **D-20261105-11 加挂验收腿承办件（@BigCompute / 死线 11-05 12:00）：供给倒挂两池源对账出一行对帐结论（两池源差异卡数 + 哪一侧为准）** | 判据=对账件落盘（人读+机读）+ 两侧真数并列 + 明确「哪侧为准」+ 零跨仓写零改判据 | **done（11-05 06:0x 令牌轮·死线前 ≈6h·产品优先律 2 分件）**：`state/pool-source-reconcile-20261105.txt`（1619B UTF-8 无 BOM·ufffd=0）+`.json`（1211B）——A 侧=心跳/供给地板\n| T-20261105-97 | **本地推理真实服务工单（CEO 00:36「只要真实产出」令·11-05 06:4x 令牌轮·产品优先律 2 分件）**：用现役 Ollama 对三件本职材料（供给倒挂对账件／任务板尾部／心跳行）发真实推理请求，产出可读结单与真实 token 账 | 判据=3/3 交付 + token 与账本逐 token 对齐 + 零新增 Tools 件 | **done**：`state/service-ticket-20261105.txt/.json`；observed calls=**5** tokens=**4506**（含 1 次失败 619+160、1 次",
+  "results": [
+    {
+      "model": "qwen3:4b-instruct",
+      "ok": true,
+      "response": "T-20261104-89：为真轨增加诚实标记守卫，确保每条轨明确声明类型并核对mock/live状态，防止演练行混入真轨。\n\nT-20261105-92：在cost_ledger五入口补全非正额守卫，覆盖add、cloud-entry、borrow-entry、cloud-bill、l1-settle等路径，防止负额绕过预算闸。\n\nT-20261105-95：执行本线体检交付物并完成三源交叉核对，产出可读的线级体检报告，验证供给倒挂阻塞的清除效果。",
+      "prompt_tokens": 2790,
+      "completion_tokens": 149,
+      "total_duration_s": 8.387,
+      "load_duration_s": 3.321,
+      "eval_duration_s": 2.819,
+      "wall_s": 8.427,
+      "done_reason": "stop",
+      "judge": {
+        "lines": 3,
+        "lines_format_ok": 3,
+        "format_compliance_pct": 100.0,
+        "extracted_ids": [
+          "T-20261104-89",
+          "T-20261105-92",
+          "T-20261105-95"
+        ],
+        "extracted_status": [
+          "done",
+          "done",
+          "done"
+        ],
+        "fresh_open": 0,
+        "fresh_done": 3,
+        "unknown_ids": 0,
+        "freshness_ok": false,
+        "stray_ids": []
+      }
+    },
+    {
+      "model": "qwen3:8b",
+      "ok": true,
+      "response": "任务号：**M115 售后轨判据常驻化件（产品优先律 2 分件·11-04 20:5x 令牌轮）**：M114 的 `REFUND-CALIBRATED` 只活在那一轮输出里，合成轨被改坏或 mock 轨消失下一轮无人发现。本件把「售后轨可判」接成 `qa_smoke` 探针 no.27：两轨 schema 校验（演练轨缺失即红、真轨缺失只打印）+ mock/real 互喂负例自证 + `refund_rate_calibration.plan()` 对合成双轨实跑，**只有 CALIBRATED/UNDER/OVER 算过**，CANNOT-JUDGE/NO-DA\n任务号：**M116 抽卡流水轨 schema + schema 级演练（产品优先律 2 分件·11-04 21:1x 夜班轮）**：`gacha_probability_audit` 能判但**没有任何抽卡流水轨**，§7.1/§7.3① 因此永远 CANNOT-JUDGE。本件把数据面立起来：两轨入 `rails_schema_check`（真 `gacha_draw` 计划态缺位/演练 `gacha_draw_mock`",
+      "prompt_tokens": 2798,
+      "completion_tokens": 300,
+      "total_duration_s": 47.423,
+      "load_duration_s": 29.202,
+      "eval_duration_s": 13.257,
+      "wall_s": 47.452,
+      "done_reason": "length",
+      "judge": {
+        "lines": 2,
+        "lines_format_ok": 0,
+        "format_compliance_pct": 0.0,
+        "extracted_ids": [],
+        "extracted_status": [],
+        "fresh_open": 0,
+        "fresh_done": 0,
+        "unknown_ids": 0,
+        "freshness_ok": false,
+        "stray_ids": []
+      }
+    },
+    {
+      "model": "qwen3:8b",
+      "attempt": "budget-700",
+      "ok": true,
+      "response": "任务号：**M115 售后轨判据常驻化件（产品优先律 2 分件·11-04 20:5x 令牌轮）**：M114 的 `REFUND-CALIBRATED` 只活在那一轮输出里，合成轨被改坏或 mock 轨消失下一轮无人发现。本件把「售后轨可判」接成 `qa_smoke` 探针 no.27：两轨 schema 校验（演练轨缺失即红、真轨缺失只打印）+ mock/real 互喂负例自证 + `refund_rate_calibration.plan()` 对合成双轨实跑，**只有 CALIBRATED/UNDER/OVER 算过**，CANNOT-JUDGE/NO-DA\n任务号：**M116 抽卡流水轨 schema + schema 级演练（产品优先律 2 分件·11-04 21:1x 夜班轮）**：`gacha_probability_audit` 能判但**没有任何抽卡流水轨**，§7.1/§7.3① 因此永远 CANNOT-JUDGE。本件把数据面立起来：两轨入 `rails_schema_check`（真 `gacha_draw` 计划态缺位/演练 `gacha_draw_mock` 缺失即红），字段=draw_id/sku_id/rarity/price/month/user（`^anon-` 结构性禁 PII）/诚实标\n任务号：**T202 真轨诚实标记 guard 普查（BC-P-193 承接件·产品优先律 2 分件）**：`rails_schema_check` 增 `guard-census`——每条轨必须声明类（real/drill/non-money·non-money 须写理由），real 轨三类守卫 `mock:false`/`live:true`/`<flag>:false` 逐条核 const；`aftersale` 真轨补 `mock` 守卫（此前 `additionalProperties` 会让演练行混进真轨）；每条真轨加「演练行混入必被拒」夹具 + 负控证",
+      "prompt_tokens": 2798,
+      "completion_tokens": 496,
+      "total_duration_s": 76.159,
+      "load_duration_s": 48.242,
+      "eval_duration_s": 23.113,
+      "wall_s": 76.2,
+      "done_reason": "stop",
+      "judge": {
+        "lines": 3,
+        "lines_format_ok": 0,
+        "format_compliance_pct": 0.0,
+        "extracted_ids": [],
+        "extracted_status": [],
+        "fresh_open": 0,
+        "fresh_done": 0,
+        "unknown_ids": 0,
+        "freshness_ok": false
+      }
+    }
+  ]
+}

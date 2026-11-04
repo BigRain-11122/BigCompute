@@ -1,0 +1,41 @@
+# M127 4b → 8b 结构化抽取复测 · 2026-11-05
+
+同材料（tasks/TASKS.md 末 14 行）、同提示词、同参数（temperature=0.2 / num_predict=300 / num_ctx=8192 / think=false）。
+material_rows=14 ground_truth_open=0 ground_truth_done=14
+
+## qwen3:4b-instruct
+tokens: prompt=2790 completion=149 total=8.387s (load 3.321s / gen 2.819s) wall=8.427s done=stop
+judge: lines=3 format_ok=3 (100.0%) ids=['T-20261104-89', 'T-20261105-92', 'T-20261105-95'] status=['done', 'done', 'done'] fresh_open=0 fresh_done=3 unknown=0
+output:
+T-20261104-89：为真轨增加诚实标记守卫，确保每条轨明确声明类型并核对mock/live状态，防止演练行混入真轨。
+
+T-20261105-92：在cost_ledger五入口补全非正额守卫，覆盖add、cloud-entry、borrow-entry、cloud-bill、l1-settle等路径，防止负额绕过预算闸。
+
+T-20261105-95：执行本线体检交付物并完成三源交叉核对，产出可读的线级体检报告，验证供给倒挂阻塞的清除效果。
+
+## qwen3:8b
+tokens: prompt=2798 completion=300 total=47.423s (load 29.202s / gen 13.257s) wall=47.452s done=length
+judge: lines=2 format_ok=0 (0.0%) ids=[] status=[] fresh_open=0 fresh_done=0 unknown=0
+output:
+任务号：**M115 售后轨判据常驻化件（产品优先律 2 分件·11-04 20:5x 令牌轮）**：M114 的 `REFUND-CALIBRATED` 只活在那一轮输出里，合成轨被改坏或 mock 轨消失下一轮无人发现。本件把「售后轨可判」接成 `qa_smoke` 探针 no.27：两轨 schema 校验（演练轨缺失即红、真轨缺失只打印）+ mock/real 互喂负例自证 + `refund_rate_calibration.plan()` 对合成双轨实跑，**只有 CALIBRATED/UNDER/OVER 算过**，CANNOT-JUDGE/NO-DA
+任务号：**M116 抽卡流水轨 schema + schema 级演练（产品优先律 2 分件·11-04 21:1x 夜班轮）**：`gacha_probability_audit` 能判但**没有任何抽卡流水轨**，§7.1/§7.3① 因此永远 CANNOT-JUDGE。本件把数据面立起来：两轨入 `rails_schema_check`（真 `gacha_draw` 计划态缺位/演练 `gacha_draw_mock`
+
+## 判据对照
+判据=M126 立：3 条中 ≥2 条为真未完成行且格式合规。
+- qwen3:4b-instruct: FAIL（真未完成 0/3·格式合规 100.0%）
+- qwen3:8b: FAIL（真未完成 0/3·格式合规 0.0%）
+
+## qwen3:8b (attempt-2, num_predict=700)
+tokens: prompt=2798 completion=496 total=76.159s (load 48.242s / gen 23.113s) wall=76.2s done=stop
+judge: lines=3 format_ok=0 (0.0%) ids=[] status=[] fresh_open=0 fresh_done=0 unknown=0
+output:
+任务号：**M115 售后轨判据常驻化件（产品优先律 2 分件·11-04 20:5x 令牌轮）**：M114 的 `REFUND-CALIBRATED` 只活在那一轮输出里，合成轨被改坏或 mock 轨消失下一轮无人发现。本件把「售后轨可判」接成 `qa_smoke` 探针 no.27：两轨 schema 校验（演练轨缺失即红、真轨缺失只打印）+ mock/real 互喂负例自证 + `refund_rate_calibration.plan()` 对合成双轨实跑，**只有 CALIBRATED/UNDER/OVER 算过**，CANNOT-JUDGE/NO-DA
+任务号：**M116 抽卡流水轨 schema + schema 级演练（产品优先律 2 分件·11-04 21:1x 夜班轮）**：`gacha_probability_audit` 能判但**没有任何抽卡流水轨**，§7.1/§7.3① 因此永远 CANNOT-JUDGE。本件把数据面立起来：两轨入 `rails_schema_check`（真 `gacha_draw` 计划态缺位/演练 `gacha_draw_mock` 缺失即红），字段=draw_id/sku_id/rarity/price/month/user（`^anon-` 结构性禁 PII）/诚实标
+任务号：**T202 真轨诚实标记 guard 普查（BC-P-193 承接件·产品优先律 2 分件）**：`rails_schema_check` 增 `guard-census`——每条轨必须声明类（real/drill/non-money·non-money 须写理由），real 轨三类守卫 `mock:false`/`live:true`/`<flag>:false` 逐条核 const；`aftersale` 真轨补 `mock` 守卫（此前 `additionalProperties` 会让演练行混进真轨）；每条真轨加「演练行混入必被拒」夹具 + 负控证
+判据对照: FAIL（真未完成 0 · 格式合规 0.0%）
+
+## 本轮附带真缺陷（取证即改）
+记账三笔实测落盘后，回读账本行发现 `endpoint` 全部写成 `127.0.0.1:8090`——该端口自 D-20261029-11 起为墓碑（DOWN），本轮三次真实调用实走 `127.0.0.1:11434`。
+根因：`Tools/cost_ledger.py` 的 `l1-record` 子命令 `--endpoint` 缺省值仍硬编码 `127.0.0.1:8090`（L1603），而 runbook 的继任 KPI 已把 L1 默认端点迁到 `:11434`。
+处置：缺省值改 `127.0.0.1:11434`，同步两处 selftest 夹具；`cost_ledger.py selftest` 复跑 PASS。
+诚实边界：本轮已落的三行（M127-01 / M127-02 / M127-02b）端点字段仍是旧值——账本 append-only，不就地改写历史行；金额与 token 数无误，错只在 endpoint 标签。下一个写者起记录正确。

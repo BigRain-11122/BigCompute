@@ -1225,7 +1225,7 @@ def _selftest():
             qq.tx_id, qq.date = tx, "2026-09-28"
             qq.consumer, qq.model = "bigdomain", "qwen3.6-35b"
             qq.prompt_tokens, qq.completion_tokens = pt, ct_
-            qq.endpoint, qq.reason, qq.ceo_approved = "127.0.0.1:8090", "selftest", approved
+            qq.endpoint, qq.reason, qq.ceo_approved = "127.0.0.1:11434", "selftest", approved
             return l1_record(qq, ledger=l1tmp, budget=l1btmp)
 
         r1 = l1rec("L1", 300, 700)                # 1000 tok = 0.001 mtok -> ok
@@ -1376,7 +1376,7 @@ def _selftest():
         tl.tx_id, tl.date = "L1-T94", None
         tl.consumer, tl.model = "t94probe", "qwen3.6-35b"
         tl.prompt_tokens, tl.completion_tokens = 10, 10
-        tl.endpoint, tl.reason, tl.ceo_approved = "127.0.0.1:8090", "t94", False
+        tl.endpoint, tl.reason, tl.ceo_approved = "127.0.0.1:11434", "t94", False
         rl94 = l1_record(tl, ledger=l1tmp, budget=l1btmp)
         t94_rows = [r for r in (_load_rows(qtmp) + _load_rows(ctmp)
                                 + _load_rows(btmp) + _load_rows(l1tmp))
@@ -1600,7 +1600,7 @@ def main():
     l1r.add_argument("--model", required=True)
     l1r.add_argument("--prompt-tokens", dest="prompt_tokens", type=int, required=True)
     l1r.add_argument("--completion-tokens", dest="completion_tokens", type=int, required=True)
-    l1r.add_argument("--endpoint", default="127.0.0.1:8090")
+    l1r.add_argument("--endpoint", default="127.0.0.1:11434")
     l1r.add_argument("--reason", default="-")
     l1r.add_argument("--date", default=None)
     l1r.add_argument("--ceo-approved", dest="ceo_approved", action="store_true")

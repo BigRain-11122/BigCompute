@@ -19,6 +19,8 @@ state/queue/*
 # 产品件：工时归因对账 + D-05 取证件（真实出数报告，供集团消费方直读）
 !state/cpu-hours-attribution-*
 !state/d05-no16-*
+# M127 抽取 A/B 复测对比件（产品面实物：判定 + 真 token）
+!state/m127-extract-ab-*
 logs/
 .codely-cli/
 .playwright-mcp/

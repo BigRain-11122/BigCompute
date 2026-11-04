@@ -649,3 +649,6 @@ qa: 26/27 PASS（唯一 FAIL=no.22 M96 回执产物律既有面），textintegri
 06:4x 日清：无待报 | 实物=本地推理服务工单 `state/service-ticket-20261105.txt/.json`（3/3 交付，observed 5 次调用 4506 tokens，L1 5 笔 0.004506 Mtok → 结转 0.0028 CNY）
 P2: `qwen3.5:4b` 默认 thinking 在 `num_predict` 限额下交出**空响应**且照样计 token（实测 619+160 token 换零输出）；服务目录只写模型名不写交付参数 → 已提 BC-P-202，M127 用 8b 档复测抽取面
 qa: 26/27 PASS（唯一 FAIL=no.22 M96 既有面）；textintegrity 本司 12 文件 0 损（集团 orders 尾部 1 个半合并块属已知外部面，只报警不改）
+07:0x 日清：无待报 | 实物=抽取复测对比件 `state/m127-extract-ab-20261105.txt/.json`（4b 格式 100% 但真未完成 0/3；8b 格式 0% 且 0/3、47s/76s vs 8.4s，两档均 FAIL）
+P2: 真结论=「机器可判的完成态被拿去问模型」是分工错配，不是模型档位问题 → 提案 BC-P-203 + 队列 M128（前置机械过滤）；附带修掉 `l1-record --endpoint` 缺省写墓碑口 :8090 的缺陷（历史三行不改，已声明）
+qa: 26/27 PASS（唯一 FAIL=no.22 M96 回执产物律，已知）；textintegrity 本司 damaged=0、外部面 1 件受损（已知 D-20261105-08）；C1C4-GREEN 4/4
