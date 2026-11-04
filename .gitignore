@@ -13,6 +13,7 @@ state/queue/*
 # M104 闭环演练证据（产品件·status-export 直引；不含真实账本数据）
 !state/quota-cycle-drill-*.txt
 !state/quota-cycle-drill-*.json
+!state/compute-service-statement-*
 logs/
 .codely-cli/
 .playwright-mcp/

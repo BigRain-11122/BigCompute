@@ -1,0 +1,49 @@
+{
+  "company": "BigCompute",
+  "kind": "compute-service-statement",
+  "window": "2026-10-30..2026-11-05",
+  "generated_at": "2026-11-05 00:44:26",
+  "delivered_to": "FluxGroup internal consumers (bm-a/bm-b/bm-c/bm-m lanes)",
+  "gpu_service": {
+    "samples_7d": 1227,
+    "avg_util_pct_7d": 41.1,
+    "rolling_30min": {
+      "n": 6,
+      "avg_pct": 67.0,
+      "state": "busy"
+    },
+    "note": "bm-a 实测（nvidia-smi 采集器）；他机未采样"
+  },
+  "cpu_service": {
+    "counted_receipts_7d": 61,
+    "effective_hours_7d": 0.241,
+    "receipts_scanned_7d": 683,
+    "verdict": "ATTENTION",
+    "node_summary": {
+      "bm-a": {
+        "count": 61,
+        "seconds": 866.8
+      }
+    }
+  },
+  "inference_l1": {
+    "amount_mtok": 2.1e-05,
+    "converted_cost_b_cny": 0.0,
+    "pending_rows": 1
+  },
+  "quota": {
+    "issued_mtok": 0.42,
+    "consumed_mtok": 0.1,
+    "cost_issued_b_cny": 0.252
+  },
+  "revenue": {
+    "orders": 0,
+    "net_cny": 0
+  },
+  "honesty": [
+    "收入 0 单＝商业物理件未通，本结单不是营收证明",
+    "配额 0.42/0.1 Mtok 与 0.252/0.06 CNY 系演练轨设计值，非真实成交",
+    "L1 实耗 0.000021 Mtok 为唯一真实 token 读数（21 tok）",
+    "GPU/CPU 为服务量读数，非计费量；口径 B 结算唯一，口径 A 仅呈现"
+  ]
+}

@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-11-05 00:55",
- "current_activity": "2026-11-05 00:2x-00:5x 夜班轮：M121 钱面非正额守卫 + 写入器普查（BC-P-195）——cost_ledger 五处入口补同构守卫（add/cloud-entry/borrow-entry/cloud-bill/l1-settle/borrow-settle），负额不再落行而报 invalid_amount 点名字段；deal_flow_mock 补 qty<=0 出生地守卫；新件 Tools/money_entry_census.py 实跑 MONEY-GUARD-CLEAN scanned=95 writers=17 declared=10；cost_ledger selftest PASS（含 8 条负控）、census selftest 12/12 [via BigCompute-OSLoop]",
- "latest_artifact": "state/money-guard-drill-20261105.txt（负额全拒 + cap-dodge 闭环：+9 填月→-6 被拒→+2 仍 blocked_over_cloud_budget）｜state/money-guard-census-20261105.json（MONEY-GUARD-CLEAN）｜Tools/money_entry_census.py｜qa/smoke-20261105-0031.log/.png（25/27，两红=no.16 8792 /ask 与 no.22 回执产物律 既有面）",
- "next_milestone": "T209：把 money_entry_census 接成 qa_smoke 常驻探针（窗口 ≤48h，判据=census selftest 全绿 + live 出态 + PROBE-REGISTRY-CLEAN）｜ 同件步②：deal_flow_mock F10 长期红定谳（WRITER_KEYS 18 vs PRODUCERS.mock_order 22 两侧漂移，BC-P-200）"
+ "updated_at": "2026-11-05 00:47",
+ "current_activity": "2026-11-05 00:4x 夜班轮：承接 CEO 00:36 令（OB-20261105-003656-879「只要真实产出·停建机制」）——本轮零新增工具/闸/规则/巡检卡，只用现有仪器出「集团算力服务结单」真数件 [via BigCompute-OSLoop]",
+ "latest_artifact": "state/compute-service-statement-20261105.txt（人读）+ .json（机读）：GPU 7d n=1227 avg=41.1%／CPU 7d 计入 61 条·有效 0.241h／L1 实耗 0.000021 Mtok／收入 0 单（时间 2026-11-05 00:44）",
+ "next_milestone": "按 00:36 令改为「只出产线下一步实物」：下一轮用同一结单面滚出 11-05 日结与周结对比（不需新机制）；原 T209 巡检卡常驻化已撤下。窗 ≤48h（2026-11-07 00:00）"
 }
