@@ -13,7 +13,9 @@ qa_smoke.py) and checks three faces:
 
   1. registry  - numbers unique, no gaps outside the reserved slots
   2. functions - every registry entry points at a defined probe function
-  3. charter   - every registry number has a clause in section 3, and every
+  3. charter   - every registry number has a clause in section 3 (or in any
+                 later section: the clause set comes from one whole-file scan,
+                 so a clause drifted out of section 3 stays visible), and every
                  clause number is implemented or explicitly reserved
 
 Verdicts: PROBE-REGISTRY-CLEAN / PROBE-REGISTRY-GAPS / PROBE-REGISTRY-UNVERIFIED
@@ -175,17 +177,20 @@ def census(smoke_path=None, charter_path=None):
             report["problems"].append("gap: no.%d has no probe and is not "
                                       "reserved" % no)
 
-    charter_set = set(numbers)
+    # Clause coverage uses the whole-file scan, not just section 3 (T201):
+    # a clause that lives only in a later section must still be counted, or
+    # it silently makes its probe look undocumented.
+    occurrences = clause_occurrences(text)
+    clause_set = set(occurrences)
     base_set = set(base)
+    report["clause_numbers"] = sorted(clause_set)
     for no in reg_nos:
-        if no not in charter_set and no not in base_set:
+        if no not in clause_set and no not in base_set:
             report["problems"].append("no.%d has no charter clause" % no)
-    for no in numbers:
+    for no in sorted(clause_set):
         if no not in seen and no not in reserved:
             report["problems"].append("charter clause no.%d has no probe"
                                       % no)
-
-    occurrences = clause_occurrences(text)
     report["duplicate_clauses"] = []
     for no in sorted(occurrences):
         lines = occurrences[no]
@@ -200,10 +205,11 @@ def census(smoke_path=None, charter_path=None):
     else:
         report["verdict"] = "PROBE-REGISTRY-CLEAN"
     report["summary"] = (
-        "%s probes=%d base=%d charter_ext=%d reserved=%s dup=%d problems=%d"
+        "%s probes=%d base=%d charter_ext=%d clauses=%d reserved=%s "
+        "dup=%d problems=%d"
         % (report["verdict"], len(reg_nos), len(base), len(numbers),
-           report["reserved"] or "none", len(report["duplicate_clauses"]),
-           len(report["problems"])))
+           len(occurrences), report["reserved"] or "none",
+           len(report["duplicate_clauses"]), len(report["problems"])))
     return report
 
 
@@ -236,10 +242,11 @@ CHARTER_FIXTURE = """\
 ## \u4e09\u3001extension probes
 - 2. second probe.
 ## \u56db\u3001execution
-- 99. not a probe clause.
+Plain prose clause placeholder.
 """
 
 EXT_ANCHOR = "## \u56db\u3001"
+DRIFT_ANCHOR = "Plain prose clause placeholder."
 
 def _charter_with(extra_lines):
     """Insert extra bullet lines at the end of section 3."""
@@ -329,6 +336,34 @@ def selftest():
         check("missing file -> UNVERIFIED",
               rep["verdict"] == "PROBE-REGISTRY-UNVERIFIED",
               rep["verdict"])
+
+        # clause drifted out of section 3: must still be counted (T201)
+        _write(smoke, SMOKE_FIXTURE)
+        _write(charter, CHARTER_FIXTURE.replace(
+            DRIFT_ANCHOR, "- 99. drifted clause outside section 3."))
+        rep = census(smoke, charter)
+        check("clause only outside section 3 -> GAPS",
+              rep["verdict"] == "PROBE-REGISTRY-GAPS"
+              and 99 in rep.get("clause_numbers", [])
+              and any("no.99 has no probe" in p for p in rep["problems"]),
+              str(rep["problems"]))
+
+        # same drifted clause with an implementing probe -> CLEAN, and the
+        # probe itself must not be flagged "has no charter clause"
+        _write(charter, CHARTER_FIXTURE.replace(
+            DRIFT_ANCHOR, "- 3. clause living outside section 3."))
+        drifted_smoke = SMOKE_FIXTURE.replace(
+            "PROBE_REGISTRY = [",
+            "def probe_three():\n    return True, \"ok\"\n\n\nPROBE_REGISTRY = ["
+        ).replace(
+            '(2, "probe two", probe_two),',
+            '(2, "probe two", probe_two),\n    (3, "drifted", probe_three),')
+        _write(smoke, drifted_smoke)
+        rep = census(smoke, charter)
+        check("drifted clause with probe -> CLEAN",
+              rep["verdict"] == "PROBE-REGISTRY-CLEAN"
+              and 3 in rep["registry"] and 3 in rep.get("clause_numbers", []),
+              rep.get("summary", "") + " " + str(rep["problems"]))
 
     # live pair: real repo files must parse (CLEAN or GAPS both parse)
     live = census()

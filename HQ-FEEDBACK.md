@@ -619,3 +619,8 @@ P2: smoke 24/26（两红同源已知＝no.16 :8792 /ask 超时 GPU 争用 vram_f
 2026-11-04 22:1x 令牌轮：M120 植入集普查接常驻探针 no.28 收口（T-20261104-87）——`qa_smoke` 增 `drill_set_judge`/`probe_drill_sets`：SHRUNK/DEGRADED/UNREADABLE 红并点名 drill 与 cases/defects 读数，`N/A-NO-PLANTED-SET` 显式声明只打印不红，**全 N/A 判红**（一条没测＝没量），未知 verdict 不臆测为健康；selftest 9/9、live `no.28 PASS drills=6 clean=5 n/a=1`，charter §三 第 28 条在件，PROBE-REGISTRY-CLEAN probes=27 dup=0。
 P1: 集团侧真缺陷（本司只报警不改集团树）＝no.26 新命中**永久丢行** `R-TRIAGE-BIGSTREAMMV-BMA-20261104`（`81be0279→28802dab` 消失且最新 commit 未回填，targets=3）；同族 text_integrity 报 `docs/orders.md` 尾部 1 个半合并块（markers=3）——请 @HQ 按 T196/T195 处置。
 P2: 植入集的钉子（`drill_set_census.MANIFEST` 的 min_cases/min_defects）无标定记录、真缩与真松两个方向都无人守 → 提案 BC-P-196；本司 smoke 24/27（余两红＝no.16 /ask 超时与 no.22 既有面）。
+
+2026-11-04 22:3x 日清：
+P2: 三队列深度实测 main=1 / tech=9 / explore=1，低于 runbook「≥10 条」底线——本轮 T201 收口+补 T206 后 tech 仍 9（净零），但 main/explore 两端仍是 0-1，缺口在两端不在中段。
+P2: smoke 25/27（no.16 :8792 /ask 超时＝GPU 争用瞬态、no.22 M96 回执产物既有面）；C1C4-GREEN 4/4、TEXT-INTEGRITY-CLEAN cats=7/7、CONFLICT files=0（T196 半合并块本期未复现）。
+P3: 队列深度无单一真源（本轮 `[ ]` 匹配得 0 与真相不符，换 `**open` 才出真值）→ 提案 BC-P-197（queue_depth.py 词表 + 阈值差额一行）。
