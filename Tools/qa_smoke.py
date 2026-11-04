@@ -2689,6 +2689,213 @@ def selftest_row_loss():
     return 0 if all(results) else 1
 
 
+AFTERSALE_CAL_VERDICTS = {
+    "REFUND-CALIBRATED", "REFUND-UNDER-PROVISIONED",
+    "REFUND-OVER-PROVISIONED", "REFUND-NO-DATA",
+    "REFUND-CANNOT-JUDGE", "REFUND-ROWS-INCONSISTENT",
+}
+# The synthetic pair is known-good by construction, so only a judging verdict
+# proves the drill data face is intact; NO-DATA / CANNOT-JUDGE / bad rows mean
+# the rails degraded, not that "there was nothing to refund".
+AFTERSALE_CAL_JUDGING = {
+    "REFUND-CALIBRATED", "REFUND-UNDER-PROVISIONED",
+    "REFUND-OVER-PROVISIONED",
+}
+
+# Deliberately minimal rows: the point is the schema's own exclusion consts,
+# not the shape of real business data.
+MOCK_ROW_FIXTURE = {
+    "aftersale_id": "MOCK-AF-20260101-1", "order_id": "MOCK-FIX-1",
+    "date": "2026-01-01", "refund_amount": 1.0, "refund_reason": "fixture",
+    "refund_simulated": True, "live": False, "mock": True,
+    "caliber_note": "probe fixture",
+}
+REAL_ROW_FIXTURE = {
+    "aftersale_id": "AF-20260101-1", "order_id": "FIX-1",
+    "date": "2026-01-01", "refund_amount": 1.0, "refund_reason": "fixture",
+    "refund_simulated": False, "live": True,
+    "caliber_note": "probe fixture",
+}
+
+
+def aftersale_rails_judge(payload):
+    """Pure judge for probe no.27 (M115): are the aftersale rails judgeable?
+
+    Fails loudly instead of assuming green: a vanished drill rail, a schema
+    violation, a broken mock/real separation or an unknown calibration verdict
+    are all defects.  A missing *real* aftersale rail is not a defect (platform
+    export is still a physical item), but it is always printed.
+    """
+    rails = payload.get("rails") or {}
+    errors, shown = [], []
+    for name in ("aftersale", "aftersale_mock"):
+        info = rails.get(name) or {}
+        state = ("%d rows" % info.get("rows", 0)) if info.get("present") \
+            else "ABSENT"
+        shown.append("%s=%s" % (name, state))
+        if not info.get("present"):
+            if name == "aftersale_mock":
+                errors.append("aftersale_mock rail missing: the drill evidence "
+                              "is gone, refund calibration cannot be re-run")
+            continue
+        for err in info.get("errors") or []:
+            errors.append("%s schema: %s" % (name, err))
+    excl = payload.get("exclusion") or {}
+    if not excl.get("mock_in_real_rejected"):
+        errors.append("a MOCK drill row is accepted by the real aftersale "
+                      "schema: drill money could be counted as real refunds")
+    if not excl.get("real_in_mock_rejected"):
+        errors.append("a real refund row is accepted by the drill schema: "
+                      "synthetic rails could hide real money")
+    cal = payload.get("calibration") or {}
+    if cal.get("error"):
+        errors.append("refund calibration raised: %s" % cal["error"])
+    elif cal.get("verdict") not in AFTERSALE_CAL_VERDICTS:
+        errors.append("refund calibration verdict unknown: %r"
+                      % (cal.get("verdict"),))
+    elif cal.get("verdict") not in AFTERSALE_CAL_JUDGING:
+        errors.append("drill pair no longer judgeable: cal=%s (synthetic rails "
+                      "degraded, not 'nothing to refund')" % cal.get("verdict"))
+    detail = "rails %s exclusion mock->real=%s real->mock=%s cal=%s" % (
+        "/".join(shown),
+        "REJECTED" if excl.get("mock_in_real_rejected") else "ACCEPTED",
+        "REJECTED" if excl.get("real_in_mock_rejected") else "ACCEPTED",
+        cal.get("error") and "RAISED" or cal.get("verdict"))
+    if errors:
+        return False, detail + " | " + "; ".join(errors)
+    return True, detail
+
+
+def aftersale_exclusion_check(rsc):
+    """Feed each rail's opposite-shaped row in and require rejection."""
+    mock_into_real = bool(rsc.validate_rows("aftersale", [dict(MOCK_ROW_FIXTURE)]))
+    real_into_mock = bool(
+        rsc.validate_rows("aftersale_mock", [dict(REAL_ROW_FIXTURE)]))
+    return {"mock_in_real_rejected": mock_into_real,
+            "real_in_mock_rejected": real_into_mock}
+
+
+def aftersale_calibration_check(rrc):
+    """Run the calibration plan over the synthetic pair (no IO to real rails)."""
+    try:
+        rev = rrc._load_rows(os.path.join(ROOT, "state",
+                                          "mock-order-ledger.jsonl"))
+        aft = rrc._load_rows(os.path.join(ROOT, "state",
+                                          "mock-aftersale-ledger.jsonl"))
+        result = rrc.plan(rev, aft, month=None,
+                          threshold_pp=rrc.DEFAULT_THRESHOLD_PP)
+        return {"verdict": result.get("verdict"),
+                "orders": result.get("orders"),
+                "aftersale_rows": len(aft)}
+    except Exception as e:  # noqa: BLE001 - probe must report, not crash
+        return {"error": "%s: %s" % (type(e).__name__, e)}
+
+
+def probe_aftersale_rails():
+    """Probe no.27 (M115): the aftersale rails stay judgeable every round."""
+    if HERE not in sys.path:
+        sys.path.insert(0, HERE)
+    try:
+        import rails_schema_check as rsc
+        import refund_rate_calibration as rrc
+    except Exception as e:  # noqa: BLE001
+        return False, "import raised: %r" % (e,)
+    payload = {"rails": {}, "exclusion": {}, "calibration": {}}
+    for name in ("aftersale", "aftersale_mock"):
+        path = rsc.RAIL_PATHS[name]
+        info = {"path": os.path.basename(str(path)),
+                "present": os.path.exists(str(path)),
+                "rows": 0, "errors": []}
+        if info["present"]:
+            try:
+                rows = rsc.load_rows(path)
+                info["rows"] = len(rows)
+                info["errors"] = rsc.validate_rows(name, rows)
+            except Exception as e:  # noqa: BLE001
+                info["errors"] = ["unreadable: %r" % (e,)]
+        payload["rails"][name] = info
+    try:
+        payload["exclusion"] = aftersale_exclusion_check(rsc)
+    except Exception as e:  # noqa: BLE001
+        payload["exclusion"] = {"error": repr(e)}
+    payload["calibration"] = aftersale_calibration_check(rrc)
+    return aftersale_rails_judge(payload)
+
+
+def selftest_aftersale_rails():
+    """M115 fixtures: clean / real-absent / drill-missing / schema / mixing."""
+    results = []
+
+    def check(name, cond):
+        results.append(bool(cond))
+        print(("PASS " if cond else "FAIL ") + name)
+
+    def payload(mock_present=True, mock_rows=3, mock_errors=None,
+                real_present=False, real_errors=None,
+                mock_in_real=True, real_in_mock=True,
+                cal_verdict="REFUND-CALIBRATED", cal_error=None):
+        rails = {
+            "aftersale": {"present": real_present, "rows": 2,
+                          "errors": real_errors or []},
+            "aftersale_mock": {"present": mock_present, "rows": mock_rows,
+                               "errors": mock_errors or []},
+        }
+        cal = {"error": cal_error} if cal_error else {"verdict": cal_verdict}
+        return {"rails": rails,
+                "exclusion": {"mock_in_real_rejected": mock_in_real,
+                              "real_in_mock_rejected": real_in_mock},
+                "calibration": cal}
+
+    ok, det = aftersale_rails_judge(payload())
+    check("S1 drill rail clean, real rail absent -> PASS and prints both",
+          ok and "aftersale=ABSENT" in det and "aftersale_mock=3 rows" in det)
+
+    ok, det = aftersale_rails_judge(payload(real_present=True))
+    check("S2 both rails present and clean -> PASS", ok and "cal=" in det)
+
+    ok, det = aftersale_rails_judge(payload(mock_present=False))
+    check("S3 drill rail gone -> FAIL naming the lost evidence",
+          (not ok) and "drill evidence" in det)
+
+    ok, det = aftersale_rails_judge(
+        payload(mock_errors=["aftersale_mock[1] @refund_amount: bad"]))
+    check("S4 schema violation -> FAIL naming rail and row",
+          (not ok) and "aftersale_mock schema" in det and "[1]" in det)
+
+    ok, det = aftersale_rails_judge(payload(mock_in_real=False))
+    check("S5 drill row accepted by real schema -> FAIL",
+          (not ok) and "drill money" in det)
+
+    ok, det = aftersale_rails_judge(payload(real_in_mock=False))
+    check("S6 real row accepted by drill schema -> FAIL",
+          (not ok) and "hide real money" in det)
+
+    ok, det = aftersale_rails_judge(payload(cal_error="ValueError: boom"))
+    check("S7 calibration crash -> FAIL (not a silent skip)",
+          (not ok) and "raised" in det)
+
+    ok, det = aftersale_rails_judge(payload(cal_verdict="SOMETHING-NEW"))
+    check("S8 unknown calibration verdict -> FAIL", (not ok) and "unknown" in det)
+
+    ok, det = aftersale_rails_judge(
+        payload(cal_verdict="REFUND-CANNOT-JUDGE"))
+    check("S8b drill pair degraded to CANNOT-JUDGE -> FAIL (M115 criterion)",
+          (not ok) and "no longer judgeable" in det)
+
+    try:
+        import rails_schema_check as rsc
+        real = aftersale_exclusion_check(rsc)
+        check("S9 live schema really rejects both mixed shapes",
+              real["mock_in_real_rejected"] and real["real_in_mock_rejected"])
+    except Exception as e:  # noqa: BLE001
+        check("S9 live schema really rejects both mixed shapes: %r" % (e,),
+              False)
+
+    print("selftest aftersale verdict: %d/%d PASS"
+          % (sum(results), len(results)))
+    return 0 if all(results) else 1
+
+
 def probe_probe_registry():
     """Probe no.24 (T190 / BC-P-169): probe numbering single-source census.
 
@@ -2737,6 +2944,7 @@ PROBE_REGISTRY = [
     (24, "probe registry census (T190/BC-P-169)", probe_probe_registry),
     (25, "write-side encoding declarations (T193)", probe_write_encoding),
     (26, "shared jsonl row-loss census (T198)", probe_row_loss),
+    (27, "aftersale rails judgeable (M115)", probe_aftersale_rails),
 ]
 
 
@@ -2749,7 +2957,8 @@ def main():
                 | selftest_gpu_contention() | selftest_ledger_parallel()
                 | selftest_qa_version() | selftest_text_integrity()
                 | selftest_receipt_product_law() | selftest_serve_health()
-                | selftest_write_encoding() | selftest_row_loss())
+                | selftest_write_encoding() | selftest_row_loss()
+                | selftest_aftersale_rails())
     os.makedirs(QA_DIR, exist_ok=True)
     ts = datetime.datetime.now().strftime("%Y%m%d-%H%M")
     log_path = os.path.join(QA_DIR, "smoke-%s.log" % ts)

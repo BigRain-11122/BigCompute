@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-11-04 19:2x",
- "current_activity": "2026-11-04 19:1x 令牌轮：承接 D-20261104-06 开源收获轮派单（本司断供 15 天补件）——交 OH-20261104-bigcompute.md 四栏件，并把切片落成可跑 A/B 探针：同机 CPU 负载两通道差 43.4pp（PowerShell LoadPercentage 64.0% vs psutil 20.6%），而 py_cpu 正是 O-2215「py≥70%」哨兵数据源 [via BigCompute-OSLoop]",
- "latest_artifact": "cph4/oss-harvest/OH-20261104-bigcompute.md（四栏·3 查实搜·4 件判负带理由·边界三条如实）｜Tools/cpu_read_ab_probe.py（selftest 11/11 PASS·三闭门律=psutil 缺失不判负/子进程失败点名 rc/通道 None 禁填 0 比较）｜state/cpu-read-ab-20261104.json（5 轮原始读数：shell 64.0%/1.415s vs psutil 20.6%/1.001s·delta 43.4pp·DIVERGENT）｜qa/smoke-20261104-19*.log",
- "next_milestone": "①M117 py_cpu 双通道并排读数接线（心跳行两值同时可见·不许静默替换主判据·≤11-05）；②M118 py 阈值标定件（双通道 n≥30 采样+映射或不可映射二分+隔离实验证实/证伪 powershell 冷启自干扰·≤11-06）；③OH 派单已交，同批其余六实体 11-06 12:00 前各自一件由 @HQ 追踪；④既有未闭：qa_smoke no.16/no.22 历史红随 7 日窗滚出、真轨 aftersale-ledger 随平台后台导出窗、月上限/提醒 N 日/退款偏差三阈值仍待 CEO 定价确认批"
+ "updated_at": "2026-11-04 20:55",
+ "current_activity": "2026-11-04 20:5x 令牌轮：M115 售后轨判据常驻化——把 M114 只活在单轮输出里的退款校准判据接成 qa_smoke 常驻探针 no.27（两轨 schema + mock/real 互喂负例 + 合成双轨实跑），「演练面退化」不再能冒充「没有退款」 [via BigCompute-OSLoop]",
+ "latest_artifact": "Tools/qa_smoke.py（新探针 no.27 aftersale rails judgeable·selftest 10/10 PASS·全套 --selftest exit 0）｜docs/qa-smoke-test-charter.md §三 第 27 条｜qa/smoke-20261104-2052.log/.png（live no.27 PASS：rails aftersale=ABSENT/aftersale_mock=3 rows exclusion REJECTED/REJECTED cal=REFUND-CALIBRATED；smoke 24/26）",
+ "next_milestone": "①M119 植入集完整性普查（drill-set 被改小/改净即判 DRILL-SET-DEGRADED·≤11-06）；②M118 py 阈值标定件（双通道 n≥30 采样+映射二分+隔离实验·≤11-06）；③既有未闭：no.16 需 GPU 空闲窗复验、no.22 随 7 日窗滚出、真轨 aftersale-ledger 随平台后台导出窗、月上限/提醒 N 日/退款偏差三阈值仍待 CEO 定价确认批"
 }

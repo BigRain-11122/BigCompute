@@ -604,3 +604,6 @@ P2: `qa_smoke` **24/25 PASS**（no.22 receipt product law 仍 FAIL=既有 7 日�
 2026-11-04 19:4x 日清：M117 py_cpu 双通道并排接线完成（T-20261104-81）——心跳行现为 `py_cpu=<shell 瞬时> py_cpu_psutil=<psutil 区间均值>`，缺值走 n/a、不填 0，主判据仍走 py_cpu；qa_smoke 守卫表同步 `pct_or_na` 域（19→22 条夹具全过），读侧实测 guarded=19 PASS。实跑 py_cpu=63.0 / py_cpu_psutil=44.7（delta 18.3pp，机器忙碌面读数，不当作空闲面结论）。
 P1: 19:42-19:45 Ollama API 不可达（进程 PID 78104 在、11434 listen、/api/tags 不答），server.log 显示 19:44:56 服务重新初始化后恢复；期间 smoke 22/25，恢复后重跑 24/25。诱因未证（内存余量 6.9% 仅作候选，不推断），非本司代码面。
 P2: 唯一常红仍是 no.22 receipt product law（7 日窗历史缺产物）；main open 由 6 降 5（M117 关），三线缺口仍在（M98 补足面）。
+2026-11-04 20:5x 日清：M115 售后轨判据常驻化完毕（T-20261104-82）——`qa_smoke` 新增探针 **no.27 aftersale rails judgeable**：两轨 schema 校验 + mock/real 互喂负例自证 + 合成双轨实跑校准；`aftersale_mock` 缺失即红、真轨缺失只打印；**只有 CALIBRATED/UNDER/OVER 算过**，CANNOT-JUDGE/NO-DATA/INCONSISTENT 判红（演练面退化≠「没有退款」）。selftest 10/10、live `no.27 PASS`、charter §三 第 27 条在件、登记普查 probes=26 dup=0。
+P2: smoke **24/26** ——no.16 :8792 /ask 超时（GPU 争用 vram_free 440MiB·本轮环境面非功能退化）、no.22 M96 回执面既有红（7 日窗历史缺产物），两条都非本轮引入，如实记录不掩饰。
+P2: 本轮净减 1（M115 关）并新立 M119（植入集完整性普查：drill 靠「植入集含缺陷」自证，植入集被改小/改净即可能假绿）；main open 6→6（关 1 立 1），三线队列缺口仍在（M98 补足面随开店物理件）。
