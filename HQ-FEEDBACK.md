@@ -639,3 +639,5 @@ P2: 原列「下个里程碑 T209 = 把 money_entry_census 接成 qa_smoke 常�
 00:5x 日清：无待报 | 实物=CPU 有效工时归因对账 state/cpu-hours-attribution-20261105.txt/.json（声明 1.1608h vs 可证 0.241h=20.7%，逐桶去向+11 条缺产物定谳：3 条 v718 文件其实在 D:/FleetWorker/out/v718-rebuild-20261103）
 P1: D-20261105-05 取证完（06:00 裁定用）=state/d05-no16-gpu-contention-20261105.txt——health 200 + 正确载荷 {id,q} 90s 无响应 + nvidia-smi free 165MiB/util 100%/11 个 Tuanjie 实例共租；结论=红是真红、根因是算力争用不是服务故障；建议 no.16 加第三态 GPU-CONTENDED（仍红但归因分离），本轮零改动未落闸。
 P2: 本轮探针自造 403（我用 {question} 试 /ask，契约是 {id,q}）已入证据件留痕，提醒后续探针必须按契约发载荷。
+03:0x 日清：无待报。实物=线级体检件 cph4/fleet/queue-receipts/triage-bigcompute-20261105.md（compute-deal 证据 2/2·FRESH），清掉本线一个 no-lane 阻塞。
+P2: 供给倒挂读数=本仓批池 validate POOL_GREEN 6 卡/4 lane 全 STOCKED，心跳同时刻却 pool_effective=0 / pool_self_stale=2 / pool_ignitable=2——两套池源不同（本仓 docs/ops/batch-pool-stock-v1.jsonl vs 机队 pool 源），备货卡「在账不可调度」；已转 M124 只读对账，不跨仓改判据。
