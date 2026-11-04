@@ -646,3 +646,6 @@ P3: D-20261105-10 已销账——no.16 :8792 不再计入本司缺陷待办、�
 06:2x 日清：无待报 | 实物=批池登记请求件 state/batch-pool-registration-20261105.txt（4 卡按集团池语法可粘贴、2 卡无指名消费方如实不发）+ 新鲜读数 state/batch-pool-review-20261105-062001.json；D-20261105-10 承接落地=qa_smoke no.16 增 KEPT-OPEN-KNOWN-ENV 重分类（Q15-Q18 夹具钉死边界：仅 GPU 争用态 ASK-ERROR 豁免，服务死/无后端/HTTP 错/非争用超时照旧 FAIL），本轮回合实际是 ASK-OK 走 :11434 回退道，该豁免路径本轮未被真实触发，仅夹具验证。
 P2: 登记≠可点火——同轮 review 实跑 dry_run_end=2026-10-05（超期 31 天）j5_blocks_activation=True，6 卡状态结构性锁死，解阻需 (a) 集团池收池 + (b) BC-P-146 J5 改版两件齐，禁以静默改状态绕过。
 qa: 26/27 PASS（唯一 FAIL=no.22 M96 回执产物律既有面），textintegrity CLEAN cats=7/7 conflict_blocks=0。
+06:4x 日清：无待报 | 实物=本地推理服务工单 `state/service-ticket-20261105.txt/.json`（3/3 交付，observed 5 次调用 4506 tokens，L1 5 笔 0.004506 Mtok → 结转 0.0028 CNY）
+P2: `qwen3.5:4b` 默认 thinking 在 `num_predict` 限额下交出**空响应**且照样计 token（实测 619+160 token 换零输出）；服务目录只写模型名不写交付参数 → 已提 BC-P-202，M127 用 8b 档复测抽取面
+qa: 26/27 PASS（唯一 FAIL=no.22 M96 既有面）；textintegrity 本司 12 文件 0 损（集团 orders 尾部 1 个半合并块属已知外部面，只报警不改）

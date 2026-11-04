@@ -1,0 +1,85 @@
+{
+  "generated_at": "2026-11-05T06:44:34",
+  "endpoint": "http://127.0.0.1:11434/api/generate",
+  "tasks": [
+    {
+      "id": "ST-20261105-01",
+      "model": "qwen3.5:4b",
+      "consumer": "bigcompute-ops",
+      "goal": "把供给倒挂对账件压成一行动作结论",
+      "ok": true,
+      "response": "A 侧读到有效点火数为 0，B 侧备货卡为 6 张且状态合格。\n以机队调度池（A 侧）为准，因 B 侧库存尚未登记入池不可调度。\n下一步需向集团侧提交登记请求，将 B 侧卡片纳入 A 侧供给池。",
+      "prompt_tokens": 603,
+      "completion_tokens": 73,
+      "total_duration_s": 0.852,
+      "load_duration_s": 47.979,
+      "eval_duration_s": 0.616,
+      "wall_s": 0.902,
+      "done_reason": "stop",
+      "attempts": [
+        {
+          "attempt": "first-default",
+          "ok": false,
+          "prompt_tokens": 619,
+          "completion_tokens": 160,
+          "wall_s": 52.584,
+          "done_reason": "length",
+          "note": "response empty: thinking consumed the num_predict budget (done_reason=length)"
+        },
+        {
+          "attempt": "retry-think-false",
+          "ok": true,
+          "response": "A 侧读到有效点火数为 0，B 侧备货卡为 6 张且状态合格。\n以机队调度池（A 侧）为准，因 B 侧库存尚未登记入池不可调度。\n下一步需向集团侧提交登记请求，将 B 侧卡片纳入 A 侧供给池。",
+          "prompt_tokens": 603,
+          "completion_tokens": 73,
+          "total_duration_s": 0.852,
+          "eval_duration_s": 0.616,
+          "wall_s": 0.902,
+          "done_reason": "stop"
+        }
+      ],
+      "delivery_finding": "qwen3.5:4b requires think=false; default thinking yields an empty response"
+    },
+    {
+      "id": "ST-20261105-02",
+      "model": "qwen3:4b-instruct",
+      "consumer": "bigcompute-queue",
+      "goal": "从任务板尾部抽取 3 条可执行待办",
+      "ok": true,
+      "response": "3: 合成集团算力服务结单脚本并落盘至 `.codely-cli/tmp/`  \n95: 交叉核对本仓批池与心跳供给读数，记录“在账不可调度”结论并转队列 M123 对账  \n96: 输出两池源对账件（人读+机读）并明确“机队调度池为准”结论，禁跨仓写入",
+      "prompt_tokens": 1699,
+      "completion_tokens": 96,
+      "total_duration_s": 29.582,
+      "load_duration_s": 27.035,
+      "eval_duration_s": 2.291,
+      "wall_s": 29.589,
+      "done_reason": "stop"
+    },
+    {
+      "id": "ST-20261105-03",
+      "model": "qwen3:4b-instruct",
+      "consumer": "bigcompute-ops",
+      "goal": "判读心跳行里的风险信号",
+      "ok": true,
+      "response": "- model_drift=DRIFT(m=2,a=3)  \n- lane8090=DARK[DOWN]  \n- ram_free_pct=21.7  \n\n风险信号：模型漂移、关键链路服务中断、内存资源严重不足。",
+      "prompt_tokens": 534,
+      "completion_tokens": 56,
+      "total_duration_s": 0.529,
+      "load_duration_s": 0.006,
+      "eval_duration_s": 0.394,
+      "wall_s": 0.552,
+      "done_reason": "stop"
+    }
+  ],
+  "totals": {
+    "ok": 3,
+    "delivered_prompt_tokens": 2836,
+    "delivered_completion_tokens": 225,
+    "delivered_wall_s": 31.043,
+    "observed_calls": 5,
+    "observed_prompt_tokens": 4058,
+    "observed_completion_tokens": 448,
+    "observed_total_tokens": 4506
+  },
+  "note": "delivered_* counts the three persisted deliveries. observed_* counts every inference call actually issued this round, including the failed default-thinking attempt (619+160) and one retry whose result was lost when the merge script raised before writing (603+63). Tokens are real Ollama eval counts, not estimates."
+}

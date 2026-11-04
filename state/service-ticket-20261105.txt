@@ -1,0 +1,47 @@
+# 本地推理服务工单 · 2026-11-05
+
+endpoint=http://127.0.0.1:11434/api/generate  generated_at=2026-11-05T06:44:34
+delivered: ok=3/3 prompt=2836 completion=225 wall=31.043s
+observed: calls=5 prompt=4058 completion=448 total=4506 tokens（含失败尝试与一次未落单重试）
+
+## ST-20261105-01  [qwen3.5:4b]
+goal: 把供给倒挂对账件压成一行动作结论
+delivery_finding: qwen3.5:4b requires think=false; default thinking yields an empty response
+tokens: prompt=603 completion=73  total=0.852s (gen 0.616s)  wall=0.902s  done=stop
+output:
+A 侧读到有效点火数为 0，B 侧备货卡为 6 张且状态合格。
+以机队调度池（A 侧）为准，因 B 侧库存尚未登记入池不可调度。
+下一步需向集团侧提交登记请求，将 B 侧卡片纳入 A 侧供给池。
+  attempt[first-default]: ok=False pt=619 ct=160 wall=52.584s done=length note=response empty: thinking consumed the num_predict budget (done_reason=length)
+  attempt[retry-think-false]: ok=True pt=603 ct=73 wall=0.902s done=stop
+
+## ST-20261105-02  [qwen3:4b-instruct]
+goal: 从任务板尾部抽取 3 条可执行待办
+tokens: prompt=1699 completion=96  total=29.582s (gen 2.291s)  wall=29.589s  done=stop
+output:
+3: 合成集团算力服务结单脚本并落盘至 `.codely-cli/tmp/`  
+95: 交叉核对本仓批池与心跳供给读数，记录“在账不可调度”结论并转队列 M123 对账  
+96: 输出两池源对账件（人读+机读）并明确“机队调度池为准”结论，禁跨仓写入
+
+## ST-20261105-03  [qwen3:4b-instruct]
+goal: 判读心跳行里的风险信号
+tokens: prompt=534 completion=56  total=0.529s (gen 0.394s)  wall=0.552s  done=stop
+output:
+- model_drift=DRIFT(m=2,a=3)  
+- lane8090=DARK[DOWN]  
+- ram_free_pct=21.7  
+
+风险信号：模型漂移、关键链路服务中断、内存资源严重不足。
+
+## 结论（人读）
+1) 本地服务可交付，但思考模型必须显式 think=false：默认 thinking 吃满 num_predict，交付空响应且照样计 token（实测 619+160 token 换零输出）。
+2) 4b 档对结构化抽取（任务板待办）不可靠：抽出的三行是已完成条目，且未按「任务号：动作」格式输出。
+3) 4b 档对心跳风险判读可用：正确点名 model_drift / lane8090 / ram_free_pct 三项。
+4) 全部 token 为真实 eval_count，按笔落 L1 账本（usage receipt = 唯一合法 token 源）。
+5) 诚实边界：本轮共发出 5 次推理，其中 1 次失败、1 次重试因记录脚本报错未落单；observed_* 已全量计入。
+
+## 账本落地（L1 轨 2026-11）
+- 5 笔已记账：ST-20261105-01a / 01b / 01c / 02 / 03
+- 合计 amount=0.004506 Mtok（=4506 tokens，与 observed_total_tokens 逐 token 一致）
+- 已按设计单价 0.60 CNY/Mtok 结转：cost_b=0.0028 CNY（口径 B 内部成本，非对外报价）
+- pending_conversion_rows=0

@@ -1,8 +1,8 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-11-05 06:10",
- "current_activity": "2026-11-05 06:0x 令牌轮：承办 D-20261105-11 加挂验收腿——供给倒挂两池源对账（M124 收口），只读两侧现役账出真数，零新增工具零改判据；no.16 按 D-20261105-10 销账为已知环境约束 [via BigCompute-OSLoop]",
- "latest_artifact": "state/pool-source-reconcile-20261105.txt + .json（池源对账：机队池 ready_total=4/ready_ignitable=2/effective=0 floor=3 vs 本仓 6 卡 STOCKED；结论=两处非同一对象、不矛盾，机队池为准，本司卡在账不可调度），时间戳 2026-11-05 06:07",
- "next_milestone": "把 6 张 STOCKED 卡的登记请求以对账件形式交集团侧（本司禁跨仓写），并在下一轮复核机队池是否出现本司卡；窗 ≤48h（2026-11-07 06:00）",
- "previous_updated_at": "2026-11-05 00:47"
+ "updated_at": "2026-11-05 06:53",
+ "current_activity": "2026-11-05 06:4x 令牌轮：按 CEO 00:36「只要真实产出」令，用现役 Ollama 对三件本职材料（池源对账件／任务板尾部／心跳行）跑真实推理服务并落 L1 账本；零新增工具 [via BigCompute-OSLoop]",
+ "latest_artifact": "state/service-ticket-20261105.txt + .json（本地推理服务工单：3/3 交付，observed 5 次调用 4506 tokens，L1 5 笔 0.004506 Mtok 结转 0.0028 CNY；真发现=qwen3.5:4b 默认 thinking 空交付，think=false 才可交付），时间戳 2026-11-05 06:52",
+ "next_milestone": "M127：用 qwen3:8b 对同一任务板尾部复测结构化抽取（验证 4b 档「抽出已完成行」是否模型档位问题），对比件落 state/；窗 ≤48h（2026-11-07 06:00）",
+ "previous_updated_at": "2026-11-05 06:10"
 }
