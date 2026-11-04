@@ -651,6 +651,11 @@ HEARTBEAT_GUARDED_TOKENS = (
     ("ram_free_pct", "pct"),
     ("vram_free_mb", "count"),
     ("py_cpu", "pct"),
+    # M117 (BC-P-191): second read of the same physical quantity, side by side
+    # with py_cpu. Domain accepts an explicit "n/a" - the probe reports a
+    # missing channel that way on purpose; 0.0 is a legal reading, absence is
+    # not, so neither may stand in for the other.
+    ("py_cpu_psutil", "pct_or_na"),
     ("queue_open", "count"),
     ("consecutive_idle", "count"),
     ("idle_rounds", "count"),
@@ -725,12 +730,15 @@ def heartbeat_token_guard(line):
         raw = fields.get(name)
         if raw is None:
             return False, "%s missing (writer renamed or dropped it)" % name
-        if kind in ("pct", "count"):
+        if kind in ("pct", "count", "pct_or_na"):
+            if kind == "pct_or_na" and raw == "n/a":
+                seen.append("%s=%s" % (name, raw))
+                continue
             try:
                 val = float(raw)
             except (TypeError, ValueError):
                 return False, "%s not numeric: %r" % (name, raw)
-            if kind == "pct":
+            if kind in ("pct", "pct_or_na"):
                 if not (0.0 <= val <= 100.0):
                     return False, "%s out of range: %r" % (name, raw)
             else:
@@ -1887,6 +1895,7 @@ def selftest_heartbeat_tokens():
 
     good = ("2026-10-29 22:43:09 idle_selfcheck: verdict=busy "
             "ram_free_pct=46.7 vram_free_mb=1906 py_cpu=53.0 "
+            "py_cpu_psutil=20.6 "
             "cpu_lane_idle=true pool_rows_candidate=1 pool_effective=0 "
             "queue_open=57 consecutive_idle=0 idle_rounds=0 "
             "agenda_starved=false serve_alive=true task_face=ok "
@@ -1896,7 +1905,7 @@ def selftest_heartbeat_tokens():
             "hq_line=FRESH(age_h=0.4,date=2026-10-29)")
 
     r1 = heartbeat_token_guard(good)
-    check("S1 healthy row -> PASS", r1[0] and "guarded=18" in r1[1])
+    check("S1 healthy row -> PASS", r1[0] and "guarded=19" in r1[1])
 
     r2 = heartbeat_token_guard(good.replace("ram_free_pct=", "ram_pct="))
     check("S2 renamed token -> FAIL naming it",
@@ -1978,6 +1987,23 @@ def selftest_heartbeat_tokens():
         "hq_line=FRESH(age_h=0.4,date=2026-10-29)", "hq_line=FRESH"))
     check("S15 hq_line without parenthesised payload -> FAIL",
           (not r15[0]) and "hq_line outside" in r15[1])
+
+    # M117: the second CPU read is allowed to be absent (writer says "n/a"),
+    # but it is never allowed to be unreadable junk or out of range.
+    r20 = heartbeat_token_guard(
+        good.replace("py_cpu_psutil=20.6", "py_cpu_psutil=n/a"))
+    check("S20 py_cpu_psutil=n/a accepted (missing channel is not 0)",
+          r20[0] and "py_cpu_psutil=n/a" in r20[1])
+
+    r21 = heartbeat_token_guard(
+        good.replace("py_cpu_psutil=20.6", "py_cpu_psutil=na"))
+    check("S21 py_cpu_psutil=na (no slash) -> FAIL not numeric",
+          (not r21[0]) and "py_cpu_psutil not numeric" in r21[1])
+
+    r22 = heartbeat_token_guard(
+        good.replace("py_cpu_psutil=20.6", "py_cpu_psutil=120.0"))
+    check("S22 py_cpu_psutil out of range -> FAIL",
+          (not r22[0]) and "py_cpu_psutil out of range" in r22[1])
 
     print("selftest heartbeat-token verdict: %d/%d PASS"
           % (len([r for r in results if r]), len(results)))

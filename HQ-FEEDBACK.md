@@ -601,3 +601,6 @@ P2: 同窗 census 当场抓出 mock-order 三行四个未声明键（amount_mtok
 2026-11-04 06:2x 结论：M112 公示概率偏差测算件落地（`Tools/gacha_probability_audit.py`·selftest 19/19·drill 6 植入全命中·1200 抽 `PROB-AUDIT-OK`·同集去阈值 `CANNOT-JUDGE` exit 3），§7.3 ① 从「一句话判据」变成有尺子；同轮把 F3 工具注册闸从魔数计数改成名单差集（`Tools/tool_manifest.txt` 91 行·selftest 12/12·`sop_coverage_check check` rc=0 由红转绿），止住第六次手工 bump。
 P2: 尺子有了但没有数据源——真实抽卡流水轨 0 行，§7.1 p_pct 与 §7.3 ① 阈值又都待 CEO 定价确认批，所以现状是「有数据也永远 CANNOT-JUDGE」；已立 M116（流水轨 schema + 阈值落值位）为下一步。
 P2: `qa_smoke` **24/25 PASS**（no.22 receipt product law 仍 FAIL=既有 7 日窗口交付物缺失面，非本轮引入）；main open=3（M104 结构 blocked/M115 open/M116 新立），本轮净减 0（M112 关+M116 立），如实记录。
+2026-11-04 19:4x 日清：M117 py_cpu 双通道并排接线完成（T-20261104-81）——心跳行现为 `py_cpu=<shell 瞬时> py_cpu_psutil=<psutil 区间均值>`，缺值走 n/a、不填 0，主判据仍走 py_cpu；qa_smoke 守卫表同步 `pct_or_na` 域（19→22 条夹具全过），读侧实测 guarded=19 PASS。实跑 py_cpu=63.0 / py_cpu_psutil=44.7（delta 18.3pp，机器忙碌面读数，不当作空闲面结论）。
+P1: 19:42-19:45 Ollama API 不可达（进程 PID 78104 在、11434 listen、/api/tags 不答），server.log 显示 19:44:56 服务重新初始化后恢复；期间 smoke 22/25，恢复后重跑 24/25。诱因未证（内存余量 6.9% 仅作候选，不推断），非本司代码面。
+P2: 唯一常红仍是 no.22 receipt product law（7 日窗历史缺产物）；main open 由 6 降 5（M117 关），三线缺口仍在（M98 补足面）。

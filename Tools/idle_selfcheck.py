@@ -200,6 +200,38 @@ def probe_py_cpu():
         return -1.0
 
 
+def probe_py_cpu_psutil(interval=1.0):
+    """M117（BC-P-191 实装位）：psutil 区间均值通道，与 py_cpu 并排。
+
+    11-04 OH 实测同机两通道 delta=43.4pp（shell 瞬时 64.0% vs psutil
+    区间均值 20.6%），差异必须每轮可见，而不是靠一次性探针。主判据仍走
+    py_cpu（阈值未标定前不许静默替换）。通道缺失/失败返回 (None, 原因)，
+    渲染成 n/a——禁填 0，0 是合法读数、缺失不是。
+    """
+    try:
+        import cpu_read_ab_probe as ab
+    except Exception:
+        try:
+            sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+            import cpu_read_ab_probe as ab
+        except Exception as e:
+            return None, type(e).__name__
+    val, _elapsed, err = ab.read_psutil_cpu(interval=interval)
+    if err or val is None:
+        return None, err or "no-value"
+    return round(float(val), 1), None
+
+
+def py_cpu_pair_label(shell_val, ps_val):
+    """J17（M117）：两通道并排字段串。缺值=n/a，禁填 0。"""
+    def _one(v):
+        if isinstance(v, bool) or not isinstance(v, (int, float)):
+            return "n/a"
+        return "%.1f" % float(v)
+
+    return "py_cpu=%s py_cpu_psutil=%s" % (_one(shell_val), _one(ps_val))
+
+
 def probe_serve_liveness(url=OLLAMA_TAGS_URL, timeout=2):
     """J5（BC-P-55）：serve 探活——/api/tags 只读 GET·2s 超时。
 
@@ -906,6 +938,7 @@ def check():
     ram_pct = probe_ram_free_pct()
     vram_mb = probe_vram_free_mb()
     py_cpu = probe_py_cpu()
+    py_cpu_ps, py_cpu_ps_err = probe_py_cpu_psutil()
     green_idle = (ram_pct >= RAM_FREE_PCT_MIN and vram_mb >= VRAM_FREE_MB_MIN)
     cpu_idle = classify_cpu_lane_idle(ram_pct)
     pool = count_pool_claimable()
@@ -958,6 +991,9 @@ def check():
     st["last_check"] = time.strftime("%Y-%m-%d %H:%M:%S")
     st["last_read"] = {"ram_free_pct": ram_pct, "vram_free_mb": vram_mb,
                        "py_cpu": py_cpu, "cpu_lane_idle": cpu_idle,
+                       # M117：并排第二通道（诊断面·主判据仍 py_cpu）
+                       "py_cpu_psutil": py_cpu_ps,
+                       "py_cpu_psutil_error": py_cpu_ps_err,
                        "pool_claimable": pool,  # 旧名（T166 弃用·仅状态件兼容）
                        "pool_rows_candidate": pool,
                        "queue_open": q_open,
@@ -978,7 +1014,7 @@ def check():
     save_state(st)
 
     line = ("%s idle_selfcheck: verdict=%s ram_free_pct=%s vram_free_mb=%s "
-            "py_cpu=%s cpu_lane_idle=%s "
+            "%s cpu_lane_idle=%s "
             "%s queue_open=%d consecutive_idle=%d "
             "idle_rounds=%d agenda_starved=%s serve_alive=%s serve_detail=%s"
             " task_face=%s model_drift=%s"
@@ -987,7 +1023,8 @@ def check():
             " pool_fresh=%d pool_self_stale=%d pool_lane_mm=%d"
             " breach_eff=%s lane8090=%s c1c4_line=%s hq_line=%s"
             % (time.strftime("%Y-%m-%d %H:%M:%S"), verdict, ram_pct,
-               vram_mb, py_cpu, str(cpu_idle).lower(),
+               vram_mb, py_cpu_pair_label(py_cpu, py_cpu_ps),
+               str(cpu_idle).lower(),
                supply_label(pool, pool_ign), q_open,
                st["consecutive_idle"], st["idle_rounds"], str(starved).lower(),
                str(serve_alive).lower(), serve_detail, task_face,
@@ -1405,6 +1442,22 @@ def selftest():
     ok &= len(set(tokens)) == len(tokens)          # 无重复 token
     ok &= POOL_LEGACY_TOKEN not in tokens          # 旧名只在状态件兼容
     ok &= "candidate" in POOL_RAW_TOKEN            # 名称自描述（非「可领」）
+    # J17 双通道并排（M117·BC-P-191）：同一物理量两把尺子的读数必须每轮
+    # 并排可见；缺值 n/a 不得冒充 0（0 是「CPU 全闲」这个合法读数）。
+    pair = py_cpu_pair_label(64.0, 20.6)
+    pair_gap = py_cpu_pair_label(64.0, None)
+    pair_both = py_cpu_pair_label(None, None)
+    pair_zero = py_cpu_pair_label(0.0, 0.0)
+    print("J17 py-cpu pair: both=%r gap=%r none=%r zero=%r"
+          % (pair, pair_gap, pair_both, pair_zero))
+    ok &= pair == "py_cpu=64.0 py_cpu_psutil=20.6"
+    ok &= pair_gap == "py_cpu=64.0 py_cpu_psutil=n/a"
+    ok &= pair_both == "py_cpu=n/a py_cpu_psutil=n/a"
+    ok &= pair_zero == "py_cpu=0.0 py_cpu_psutil=0.0"   # 0 不等于缺失
+    # 主判据不动：车道闲判只看 RAM 口径，不接受第二通道输入。
+    ok &= classify_cpu_lane_idle(RAM_FREE_PCT_MIN) is True
+    ok &= (RAM_FREE_PCT_MIN - 0.1) >= 0 and not classify_cpu_lane_idle(
+        RAM_FREE_PCT_MIN - 0.1)
     print("SELFTEST %s" % ("PASS" if ok else "FAIL"))
     return 0 if ok else 1
 
