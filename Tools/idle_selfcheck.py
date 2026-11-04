@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """idle_selfcheck.py — §9.6 闲置硬触发闭环·每轮自检步（O-20261007-2315 承接·BC-P-54 批活）
 + serve_liveness 探活扩展（BC-P-55·M57④ 10-08 serve 无声死亡 ~20min 事故实证派生——
@@ -230,6 +230,35 @@ def py_cpu_pair_label(shell_val, ps_val):
         return "%.1f" % float(v)
 
     return "py_cpu=%s py_cpu_psutil=%s" % (_one(shell_val), _one(ps_val))
+
+
+# T203（M118 标定件 §四执行面）：70% 满载线只点名 py_cpu_psutil。
+CPU_LOAD_LINE_PCT = 70.0
+
+
+def evaluate_cpu_load_line(shell_val, ps_val, pct=CPU_LOAD_LINE_PCT):
+    """T203：把满载线钉到它被标定的那把尺子上（py_cpu_psutil）。
+
+    M118 标定件 §四：70% 线只对 psutil 全核平均（1s 区间）生效；py_cpu
+    （shell/WMI 瞬时）只作参考读数，禁与阈值比较。故 psutil 缺值时返回
+    N/A-CHANNEL，而不是拿 shell 顶上——「换把尺子凑出判决」正是本行要
+    消灭的假绿面。返回 (state, label)，label 无空格（心跳行按空白切 token）。
+    """
+    def _one(v):
+        if isinstance(v, bool) or not isinstance(v, (int, float)):
+            return "n/a"
+        return "%.1f" % float(v)
+
+    if (isinstance(ps_val, bool) or not isinstance(ps_val, (int, float))
+            or float(ps_val) < 0.0):
+        return ("N/A-CHANNEL",
+                "cpu_load_line=N/A-CHANNEL(ref=%s,line=%.1f)"
+                % (_one(shell_val), pct))
+    breach = float(ps_val) >= pct
+    return ("BREACH" if breach else "PASS",
+            "cpu_load_line=%s(psutil=%s%s%.1f,ref=%s)"
+            % ("BREACH" if breach else "PASS", _one(ps_val),
+               ">=" if breach else "<", pct, _one(shell_val)))
 
 
 def probe_serve_liveness(url=OLLAMA_TAGS_URL, timeout=2):
@@ -939,6 +968,8 @@ def check():
     vram_mb = probe_vram_free_mb()
     py_cpu = probe_py_cpu()
     py_cpu_ps, py_cpu_ps_err = probe_py_cpu_psutil()
+    # T203：满载线判决只走 psutil 通道（M118 §四），shell 恒为参考值。
+    cpu_line_state, load_label = evaluate_cpu_load_line(py_cpu, py_cpu_ps)
     green_idle = (ram_pct >= RAM_FREE_PCT_MIN and vram_mb >= VRAM_FREE_MB_MIN)
     cpu_idle = classify_cpu_lane_idle(ram_pct)
     pool = count_pool_claimable()
@@ -994,6 +1025,9 @@ def check():
                        # M117：并排第二通道（诊断面·主判据仍 py_cpu）
                        "py_cpu_psutil": py_cpu_ps,
                        "py_cpu_psutil_error": py_cpu_ps_err,
+                       # T203：满载线判决（只认 psutil 通道，shell 不入判）
+                       "cpu_load_line_state": cpu_line_state,
+                       "cpu_load_line_pct": CPU_LOAD_LINE_PCT,
                        "pool_claimable": pool,  # 旧名（T166 弃用·仅状态件兼容）
                        "pool_rows_candidate": pool,
                        "queue_open": q_open,
@@ -1014,7 +1048,7 @@ def check():
     save_state(st)
 
     line = ("%s idle_selfcheck: verdict=%s ram_free_pct=%s vram_free_mb=%s "
-            "%s cpu_lane_idle=%s "
+            "%s cpu_lane_idle=%s %s "
             "%s queue_open=%d consecutive_idle=%d "
             "idle_rounds=%d agenda_starved=%s serve_alive=%s serve_detail=%s"
             " task_face=%s model_drift=%s"
@@ -1024,7 +1058,7 @@ def check():
             " breach_eff=%s lane8090=%s c1c4_line=%s hq_line=%s"
             % (time.strftime("%Y-%m-%d %H:%M:%S"), verdict, ram_pct,
                vram_mb, py_cpu_pair_label(py_cpu, py_cpu_ps),
-               str(cpu_idle).lower(),
+               str(cpu_idle).lower(), load_label,
                supply_label(pool, pool_ign), q_open,
                st["consecutive_idle"], st["idle_rounds"], str(starved).lower(),
                str(serve_alive).lower(), serve_detail, task_face,
@@ -1454,6 +1488,22 @@ def selftest():
     ok &= pair_gap == "py_cpu=64.0 py_cpu_psutil=n/a"
     ok &= pair_both == "py_cpu=n/a py_cpu_psutil=n/a"
     ok &= pair_zero == "py_cpu=0.0 py_cpu_psutil=0.0"   # 0 不等于缺失
+    # J18 满载线通道归属（T203）：70% 只对 psutil 生效，shell 只作参考。
+    # 关键夹具=psutil 缺值而 shell 高：必须 N/A-CHANNEL 且不得出现 BREACH
+    # （换把尺子凑判决=假绿面）。
+    l_breach = evaluate_cpu_load_line(64.0, 80.0)
+    l_pass = evaluate_cpu_load_line(90.0, 20.6)
+    l_edge = evaluate_cpu_load_line(10.0, CPU_LOAD_LINE_PCT)
+    l_gap = evaluate_cpu_load_line(95.0, None)
+    print("J18 cpu load line: breach=%r pass=%r edge=%r gap=%r"
+          % (l_breach, l_pass, l_edge, l_gap))
+    ok &= l_breach[0] == "BREACH" and "psutil=80.0>=70.0" in l_breach[1]
+    ok &= l_pass[0] == "PASS" and "psutil=20.6<70.0" in l_pass[1]
+    ok &= l_edge[0] == "BREACH"                       # 边界含等号
+    ok &= l_gap[0] == "N/A-CHANNEL" and "BREACH" not in l_gap[1]
+    ok &= "ref=95.0" in l_gap[1]                      # shell 仅以参考出现在括号里
+    ok &= all(" " not in lab[1] for lab in (l_breach, l_pass, l_gap))  # 无空格=不切 token
+    ok &= evaluate_cpu_load_line(64.0, -1.0)[0] == "N/A-CHANNEL"  # 探针失败值不判闲
     # 主判据不动：车道闲判只看 RAM 口径，不接受第二通道输入。
     ok &= classify_cpu_lane_idle(RAM_FREE_PCT_MIN) is True
     ok &= (RAM_FREE_PCT_MIN - 0.1) >= 0 and not classify_cpu_lane_idle(

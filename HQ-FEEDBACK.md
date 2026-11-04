@@ -626,3 +626,7 @@ P3: 队列深度无单一真源（本轮 `[ ]` 匹配得 0 与真相不符，换
 2026-11-04 22:4x 夜班轮：T202 收口（rails 诚实标记普查 guard-census 实装，BC-P-193）——`rails_schema_check.py` 新增 `guard-census`：每条轨必须声明类（real/drill/non-money），real 轨必须钉死 `mock:false`/`live:true`/`<flag>:false`，缺一条即 `GUARD-MISSING` 点名；`aftersale` 真轨此前缺 `mock` 守卫（`additionalProperties` 会静默放行演练行），本轮补 const 声明。selftest 39→45/45 PASS；实跑 `GUARD-CENSUS-GREEN rails=8 guarded=2 problems=0`（aftersale/gacha_draw GUARDED，四条演练轨 DRILL-MOCK，batch_card/distr NON-MONEY 带理由）；负控=把 `aftersale.mock` 摘掉后普查立刻报 `GUARD-MISSING rail 'aftersale' field mock (no const)`。
 P2: 普查只到「声明层」——真轨当前 0 行（计划态），所以「写入侧实际会写 mock=false」仍未经实测；随平台后台导出窗第一次落真行时须复跑，不得提前宣称混轨风险已消除。
 22:4x 日清小结：产品增量＝rails_schema_check guard-census（一命令逐轨点出缺守卫的真轨）+ aftersale 守卫补齐，selftest 45/45、负控可复跑；连带清掉 HQ-FEEDBACK 尾部空行（no.8 回绿）。
+2026-11-04 23:4x 夜班轮：T203 收口（py 满载线钉到它被标定的那把尺子上）
+P2: 旧态=70% 线只活在 mandate/文档里，代码侧谁都能拿 shell py_cpu 去比；新态=evaluate_cpu_load_line() 单源判据只认 py_cpu_psutil，心跳行落 cpu_load_line=PASS/BREACH/N/A-CHANNEL(psutil=..,ref=..)，psutil 缺值或探针失败一律 N/A-CHANNEL、绝不回落 shell。selftest J18 7 断言 PASS，live 读回 PASS(psutil=41.6<70.0,ref=49.0)，smoke 25/27（FAIL 仅 no.22 既有面）。
+P2: 新 token 目前不在 no.18 守卫域内——探针绿是「它不看新字段」而非「新字段已受守」，已立提案 BC-P-199 + 队列 T207（写侧 token 名单与守卫表交叉对账）。
+23:4x 日清小结：产品增量=满载线通道归属从「文档自律」变成「代码单源判决 + 每轮心跳可见」，一命令可复现。

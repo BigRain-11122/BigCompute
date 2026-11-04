@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-11-04 22:55",
- "current_activity": "2026-11-04 22:4x 夜班轮：T202 收口——rails_schema_check 新增 guard-census，每条轨必须声明 real/drill/non-money 类，real 轨钉死 mock:false/live:true/<flag>:false，缺一即 GUARD-MISSING 点名；aftersale 真轨补 mock 守卫（此前 additionalProperties 会静默放行演练行）。selftest 39→45/45 PASS，实跑 GUARD-CENSUS-GREEN rails=8 guarded=2 problems=0，负控摘掉守卫后立刻点名。",
- "latest_artifact": "state/guard-census-20261104.json（22:47·GUARD-CENSUS-GREEN rails=8 guarded=2 problems=0） ＋ Tools/rails_schema_check.py（guard_census/guard_status/cmd_guard_census + aftersale mock 守卫） ＋ qa/smoke-20261104-2252.log/.png（25/27 PASS）",
- "next_milestone": "T203 py 阈值调用点改线（M118 标定结论：70% 只对 py_cpu_psutil 生效，idle_selfcheck J8 仍读 shell → 切到 psutil 通道并留并列诊断字段·须夹具改+心跳读回）→ 11-05 午班；同批 BC-P-198 guard-census 接 no.29 常驻探针。"
+ "updated_at": "2026-11-04 23:48",
+ "current_activity": "2026-11-04 23:4x 夜班轮：T203 收口——70% 满载线从「文档自律」变成代码单源判决：idle_selfcheck 新增 evaluate_cpu_load_line()，只认 py_cpu_psutil，心跳行落 cpu_load_line=PASS/BREACH/N/A-CHANNEL(psutil=..,ref=..)，psutil 缺值或探针失败一律 N/A-CHANNEL、绝不回落 shell。selftest J18 7 断言 PASS，live 读回 cpu_load_line=PASS(psutil=41.6<70.0,ref=49.0)。",
+ "latest_artifact": "Tools/idle_selfcheck.py（CPU_LOAD_LINE_PCT=70.0 + evaluate_cpu_load_line + J18 夹具 + 心跳新 token cpu_load_line）＋ state/heartbeat.txt 实跑行（23:42·cpu_load_line=PASS(psutil=41.6<70.0,ref=49.0)）＋ qa/smoke-20261104-2344.log/.png（25/27 PASS·FAIL 仅 no.22 既有面）",
+ "next_milestone": "T207／BC-P-199 把新 token 纳入 no.18 守卫域并做「写侧 token 名单 × 守卫表」交叉对账（差集非空即红）→ 11-05 午班；同批 T204 净窗复跑 psutil 通道「谁在说谎」追因。"
 }
