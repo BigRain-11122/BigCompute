@@ -24,11 +24,15 @@ Commands:
   reminder-gap  scan every known rail for a reminder field: declared in schema
             (EVIDENCED) vs written-but-undeclared (UNDECLARED-IN-LIVE) vs
             absent everywhere (MISSING-IN-SCHEMA). §六 L59 requires the renewal
-            reminder trigger to be recorded on the subscription rail.
+            reminder to be recorded on the subscription rail.
+  guard-census  every rail must carry a class (real / drill / non-money) and
+            every real rail must pin mock=false, live=true and <flag>=false;
+            a missing guard is named here rather than surfacing later as a
+            contaminated reading (T202 / BC-P-193).
   selftest  schema self-checks + fixture pass/fail assertions
   dump      print the schemas as JSON
 
-Usage: python Tools/rails_schema_check.py check|census|c1|reminder-gap|selftest|dump
+Usage: python Tools/rails_schema_check.py check|census|c1|reminder-gap|guard-census|selftest|dump
 """
 
 from __future__ import annotations
@@ -140,6 +144,10 @@ SCHEMAS = {
             "refund_reason": {"type": "string", "minLength": 3},
             "refund_simulated": {"const": False},
             "live": {"const": True},
+            # T202：additionalProperties 会静默放行 `mock: true`（演练行混进真轨），
+            # 真轨因此欠一条诚实闸。不设 required（平台导出未必带这列），
+            # 但只要出现就必须是 false——钱与演练的分界不能靠写入侧自觉。
+            "mock": {"const": False},
             "caliber_note": {"type": "string", "minLength": 2},
         },
         "additionalProperties": True,
@@ -346,6 +354,7 @@ PRODUCERS = {
         "refund_reason": "manual:平台后台退款流水导出（计划态未接·M114 schema 先行）",
         "refund_simulated": "manual:平台后台退款流水导出（计划态未接·M114 schema 先行）",
         "live": "manual:平台后台退款流水导出（计划态未接·M114 schema 先行）",
+        "mock": "manual:平台后台退款流水导出（计划态未接·M114 schema 先行）",
         "caliber_note": "manual:平台后台退款流水导出（计划态未接·M114 schema 先行）",
     },
     "aftersale_mock": {
@@ -476,6 +485,75 @@ def census_coverage(schemas=None, out_of_census=None) -> list[str]:
     return problems
 
 
+# T202 (BC-P-193) honesty-guard census. `additionalProperties: true` keeps
+# schema evolution cheap, but it also lets a drill row walk into a real rail
+# unless the row's own honesty flags are pinned by `const`. Every schema must
+# therefore declare a class here:
+#   real      — holds real money; owes three guards (mock:false, live:true,
+#               <flag>:false). Absent with no other class = red gate.
+#   drill     — a MOCK rail by construction, guards pinned the other way.
+#   non-money — carries no cash column; the reason must be written down.
+# A rail with no class is reported, not silently passed: the whole point is
+# that "no guard" must never look like "not applicable".
+REAL_RAIL_GUARDS = {
+    "aftersale": {"flag": "refund_simulated", "mock": False, "live": True},
+    "gacha_draw": {"flag": "draw_simulated", "mock": False, "live": True},
+}
+
+DRILL_RAILS = {"mock_order", "aftersale_mock", "gacha_draw_mock", "delivery"}
+
+NON_MONEY_RAILS = {
+    "batch_card": "batch pool work card: no price/refund/token column at all",
+    "distr": "attribution rail: `live` is a planned-state marker, not a cash guard",
+}
+
+
+def guard_status(kind: str, schemas=None) -> list[str]:
+    """Return the missing/wrong guards for one real rail (empty = guarded)."""
+    schemas = SCHEMAS if schemas is None else schemas
+    spec = REAL_RAIL_GUARDS.get(kind)
+    if spec is None:
+        return []
+    props = schemas.get(kind, {}).get("properties", {})
+    expected = {"mock": spec["mock"], "live": spec["live"], spec["flag"]: False}
+    gaps = []
+    for field, value in expected.items():
+        rule = props.get(field)
+        if not isinstance(rule, dict) or "const" not in rule:
+            gaps.append(f"{field} (no const)")
+        elif rule["const"] is not value:
+            gaps.append(f"{field} (const={rule['const']!r}, expected {value!r})")
+    return gaps
+
+
+def guard_census(schemas=None, real=None, drills=None, non_money=None) -> list[str]:
+    """Every declared rail must carry exactly one class, and real rails must
+    own all three honesty guards. Missing guard = GUARD-MISSING, named."""
+    schemas = SCHEMAS if schemas is None else schemas
+    real = REAL_RAIL_GUARDS if real is None else real
+    drills = DRILL_RAILS if drills is None else drills
+    non_money = NON_MONEY_RAILS if non_money is None else non_money
+    problems: list[str] = []
+    classes = (("real", real), ("drill", drills), ("non-money", non_money))
+    for kind in sorted(schemas):
+        hits = [name for name, members in classes if kind in members]
+        if not hits:
+            problems.append(
+                f"GUARD-UNCLASSIFIED rail '{kind}' has no class "
+                "(real/drill/non-money) — unguarded is not the same as exempt")
+        elif len(hits) > 1:
+            problems.append(f"rail '{kind}' is classified twice: {hits}")
+        elif kind in real:
+            for gap in guard_status(kind, schemas):
+                problems.append(f"GUARD-MISSING rail '{kind}' field {gap}")
+    for kind in sorted((set(real) | set(drills) | set(non_money)) - set(schemas)):
+        problems.append(f"rail '{kind}' is classified but not declared in SCHEMAS")
+    for kind, reason in sorted(non_money.items()):
+        if not reason:
+            problems.append(f"non-money rail '{kind}' has no reason")
+    return problems
+
+
 def census(kind: str, rows: list[dict]) -> list[str]:
     """Two-way write-side census for one rail.
 
@@ -591,6 +669,61 @@ def cmd_census() -> int:
 
 
 REMINDER_KEY_RE = re.compile(r"remind", re.IGNORECASE)
+
+
+def _rail_relpath(kind: str) -> str:
+    path = RAIL_PATHS.get(kind)
+    if path is None:
+        return "-"
+    try:
+        return path.relative_to(ROOT).as_posix()
+    except ValueError:  # pragma: no cover - ROOT is the parent of every rail
+        return path.as_posix()
+
+
+def cmd_guard_census(json_out=None) -> int:
+    """T202: assert every rail is classified and every real rail owns its three
+    honesty guards — before a drill row has a chance to pollute a real reel."""
+    problems = guard_census()
+    findings = []
+    for kind in sorted(SCHEMAS):
+        if kind in REAL_RAIL_GUARDS:
+            gaps = guard_status(kind)
+            status = "GUARD-MISSING" if gaps else "GUARDED"
+            spec = REAL_RAIL_GUARDS[kind]
+            detail = ", ".join(gaps) or (
+                f"mock=false, live=true, {spec['flag']}=false")
+        elif kind in DRILL_RAILS:
+            status, detail = "DRILL-MOCK", "drill rail: mock/simulated consts by construction"
+        elif kind in NON_MONEY_RAILS:
+            status, detail = "NON-MONEY", NON_MONEY_RAILS[kind]
+        else:
+            status, detail = "UNCLASSIFIED", "no class declared in guard census"
+        findings.append({"rail": kind, "status": status, "detail": detail,
+                         "path": _rail_relpath(kind)})
+        print("%-16s %-15s %s" % (kind, status, detail))
+    for line in problems:
+        print("GUARD {}".format(line))
+    verdict = "GUARD-CENSUS-GREEN" if not problems else "GUARD-CENSUS-GAPS"
+    guarded = sum(1 for f in findings if f["status"] == "GUARDED")
+    print("VERDICT=%s rails=%d guarded=%d problems=%d" % (
+        verdict, len(findings), guarded, len(problems)))
+    if json_out:
+        payload = {
+            "verdict": verdict,
+            "counts": {"rails": len(findings), "guarded": guarded,
+                       "problems": len(problems)},
+            "real_rails": sorted(REAL_RAIL_GUARDS),
+            "drill_rails": sorted(DRILL_RAILS),
+            "non_money_rails": sorted(NON_MONEY_RAILS),
+            "problems": problems,
+            "findings": findings,
+        }
+        with open(json_out, "w", encoding="utf-8", newline="\n") as fh:
+            json.dump(payload, fh, ensure_ascii=False, indent=2, sort_keys=True)
+            fh.write("\n")
+        print("json=%s" % json_out)
+    return 0 if not problems else 1
 
 # Rails that hold subscription-cycle rows owe a reminder field (§六 L59:
 # 续费提醒触发记录入流水轨). Kept explicit so a NEW rail cannot silently be
@@ -883,6 +1016,31 @@ def cmd_selftest() -> int:
                        for f in fixture_findings)))
     checks.append(("reminder-gap: no declared rail field yet => no EVIDENCED",
                    not any(f["status"] == "EVIDENCED" for f in fixture_findings)))
+    # T202 honesty guards: a real rail must refuse a drill row outright, and the
+    # census must name a missing guard instead of waiting for a polluting row.
+    checks.append(("guard census green on declared schemas", guard_census() == []))
+    checks.append(("aftersale rejects mock=true drill row",
+                   validate_rows("aftersale", [dict(good_aftersale, mock=True)]) != []))
+    checks.append(("gacha_draw rejects mock=true drill row",
+                   validate_rows("gacha_draw", [dict(
+                       good_draw_mock, draw_id="GD-20261104-2",
+                       draw_simulated=False, live=True, mock=True)]) != []))
+    stripped = {"aftersale": {"type": "object", "properties": {
+        "refund_simulated": {"const": False}, "live": {"const": True}}}}
+    missing_guards = guard_census(schemas=stripped)
+    checks.append(("guard census names missing mock guard",
+                   any("GUARD-MISSING" in p and "'aftersale'" in p and "mock" in p
+                       for p in missing_guards)))
+    unclassified = guard_census(schemas={"mystery_rail": {"properties": {}}})
+    checks.append(("guard census names unclassified rail",
+                   any("GUARD-UNCLASSIFIED" in p and "mystery_rail" in p
+                       for p in unclassified)))
+    checks.append(("guard census catches wrong const value",
+                   any("live (const=False" in p for p in guard_census(
+                       schemas={"aftersale": {"properties": {
+                           "mock": {"const": False},
+                           "live": {"const": False},
+                           "refund_simulated": {"const": False}}}}))))
     for name, ok in checks:
         print(f"{'PASS' if ok else 'FAIL'} {name}")
     failed = sum(1 for _, ok in checks if not ok)
@@ -901,6 +1059,9 @@ def main(argv: list[str]) -> int:
     if cmd == "reminder-gap":
         json_out = argv[2] if len(argv) > 2 else None
         return cmd_reminder_gap(json_out)
+    if cmd == "guard-census":
+        json_out = argv[2] if len(argv) > 2 else None
+        return cmd_guard_census(json_out)
     if cmd == "selftest":
         return cmd_selftest()
     if cmd == "dump":

@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-11-04 22:3x",
- "current_activity": "2026-11-04 22:3x 夜班轮：T201 收口——probe_registry_census 的条款覆盖集合改走 clause_occurrences() 全文单扫描，§三 只留 charter_ext 计数与 reserved 解析，双向覆盖同一集合判定。selftest 11/11 PASS（新增 S9 §三 外条款→GAPS、S10 §三 外条款有探针→CLEAN），实跑 PROBE-REGISTRY-CLEAN probes=27 clauses=24 dup=0。",
- "latest_artifact": "state/probe-registry-20261104-2235.json（22:35·PROBE-REGISTRY-CLEAN probes=27 clauses=24） ＋ Tools/probe_registry_census.py（census 全文单扫描改造） ＋ qa/smoke-20261104-2227.log/.png（25/27 PASS）",
- "next_milestone": "T202 真轨诚实标记 guard 普查（rails_schema_check 增 guard-census：真轨补 mock:false/live:true/*_simulated:false 三类 const，缺 guard 点名 GUARD-MISSING，加「演练行混入必被拒」夹具·零真实交易零定价动作）→ 11-05 午班；同批 T203 py 阈值调用点改线（M118 标定结论执行面）。"
+ "updated_at": "2026-11-04 22:55",
+ "current_activity": "2026-11-04 22:4x 夜班轮：T202 收口——rails_schema_check 新增 guard-census，每条轨必须声明 real/drill/non-money 类，real 轨钉死 mock:false/live:true/<flag>:false，缺一即 GUARD-MISSING 点名；aftersale 真轨补 mock 守卫（此前 additionalProperties 会静默放行演练行）。selftest 39→45/45 PASS，实跑 GUARD-CENSUS-GREEN rails=8 guarded=2 problems=0，负控摘掉守卫后立刻点名。",
+ "latest_artifact": "state/guard-census-20261104.json（22:47·GUARD-CENSUS-GREEN rails=8 guarded=2 problems=0） ＋ Tools/rails_schema_check.py（guard_census/guard_status/cmd_guard_census + aftersale mock 守卫） ＋ qa/smoke-20261104-2252.log/.png（25/27 PASS）",
+ "next_milestone": "T203 py 阈值调用点改线（M118 标定结论：70% 只对 py_cpu_psutil 生效，idle_selfcheck J8 仍读 shell → 切到 psutil 通道并留并列诊断字段·须夹具改+心跳读回）→ 11-05 午班；同批 BC-P-198 guard-census 接 no.29 常驻探针。"
 }
