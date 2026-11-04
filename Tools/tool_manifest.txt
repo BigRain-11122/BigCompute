@@ -19,6 +19,7 @@ deal_flow_mock.py
 delivery_dispatch_mock.py
 dispatch_precheck.py
 distr_flow_mock.py
+drill_set_census.py
 e12_package_anchor_probe.py
 executor_liveness.py
 first_order_consent_drill.py

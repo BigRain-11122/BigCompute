@@ -610,3 +610,6 @@ P2: 本轮净减 1（M115 关）并新立 M119（植入集完整性普查：dril
 2026-11-04 21:1x 日清：M116 抽卡流水轨数据面立起来了（T-20261104-83）——`rails_schema_check` 增 `gacha_draw`（真·计划态缺位）/`gacha_draw_mock`（演练·缺失即红）两轨，`user` 用 `^anon-` 结构性禁 PII；`gacha_probability_audit.py rails-drill` 一命令写 1200 行→过 schema+census→**阈值未落仍 CANNOT-JUDGE(exit 3)**→3.00pp 才 OK。实跑 `RAILS-SCHEMA-GREEN rows=1216` / `RAILS-CENSUS-GREEN problems=0`，selftest 39/39。
 P2: 自查抓真缺口并已修：真轨 `additionalProperties` 会放行 `mock:true` 的演练行（钱与演练混轨），已补 `mock:const false`；同类面 `aftersale` 真轨仍未锁 `mock` → 提案 BC-P-193（真轨诚实标记 const 化 + 缺 guard 普查）。
 P2: 如实边界=真抽卡轨（`gacha_draw`）仍空，本行不得据此宣称「已有真实抽样」；`price`/`sku_id` 为设计值非定价，§7.1 数值与 §7.3① 阈值仍待 CEO 定价确认批。
+2026-11-04 21:4x 令牌轮：M119 植入集完整性普查落地（T-20261104-85）——`Tools/drill_set_census.py` 读六个 drill 的真实植入集并与钉死清单比对，selftest 12/12，实跑 `DRILL-SET-CLEAN drills=6`，负控 `--bump-defects 1` → `DRILL-SET-DEGRADED rc=2`。
+P2: 本轮抓到的是「自证链无守卫」而不是某个 drill 坏了——当前六件植入集齐备（缺陷数 5/8/2/7/5，unit_cost 显式 N/A），但读它仍需手动；已立 tech T205（接 no.28 常驻探针）+ 提案 BC-P-194。
+P2: 已知红不在本轮范围=no.22 M96 回执缺失（7 日历史窗口）+ 集团 orders.md 尾部半合并块（外部面，只报警不改）+ lane artifact 面；main open 5→4（M104 仍在）。
