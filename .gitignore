@@ -14,6 +14,9 @@ state/queue/*
 !state/quota-cycle-drill-*.txt
 !state/quota-cycle-drill-*.json
 !state/compute-service-statement-*
+# 产品件：工时归因对账 + D-05 取证件（真实出数报告，供集团消费方直读）
+!state/cpu-hours-attribution-*
+!state/d05-no16-*
 logs/
 .codely-cli/
 .playwright-mcp/

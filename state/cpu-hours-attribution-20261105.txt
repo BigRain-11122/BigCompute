@@ -1,0 +1,45 @@
+CPU 有效工时归因对账（bm-a · 7 日窗 · 2026-11-05）
+数据源：Tools/cpu_effective_hours.py --days 7（现役仪器，零新增工具）
+
+一、总数
+  扫描回执 685 条 · 计入 61 条 · 有效 866 秒 = 0.241 小时 · verdict=ATTENTION
+  全部扫描回执的声明工时合计 = 4179.0 秒 = 1.1608 小时
+  计入率（可验证工时/声明工时）= 20.7%
+
+二、声明工时去向（按剔除桶，逐桶含样例任务号）
+  rc-fail rc=1         44 条  声明    1352.8 秒 ( 0.376 h)  缺秒值 0  例: C-MV-STABILITY, C-TTS-QC-ALL, C-TTS-QC-ALL
+  REMOTE-UNVERIF      313 条  声明    1098.5 秒 ( 0.305 h)  缺秒值 11  例: C-FIN-ETF-COMPOSITE-20261102, C-INFRA-AUDIT-BM-C-20261103, C-INFRA-AUDIT-BM-C-20261103
+  no-deliverable       26 条  声明     657.0 秒 ( 0.182 h)  缺秒值 0  例: KN-FILM-GATE-LATEST-20261102, LINE-TRIAGE-MV-20261102, LINE-TRIAGE-MV
+  MISSING-LOCAL        11 条  声明     107.2 秒 ( 0.030 h)  缺秒值 0  例: ART-PUSH-BMA-20261104, Q-SMOKE-LANE-001, Q-TEST-LOCALLLM
+  rc-fail rc=4294967295    1 条  声明      80.0 秒 ( 0.022 h)  缺秒值 0  例: C-INFRA-AUDIT-BM-A-20261103
+  rc-fail rc=2         22 条  声明       9.7 秒 ( 0.003 h)  缺秒值 0  例: C-INFRA-AUDIT-BM-A-20261103, C-QUANT-NOBOND-20261103, CHK-LIB-20261103
+  rc-fail rc=3         29 条  声明       6.0 秒 ( 0.002 h)  缺秒值 0  例: C-INFRA-AUDIT-BM-A-20261103, C-INFRA-AUDIT-BM-B-20261103, C-INFRA-AUDIT-BM-C-20261103
+  rc-fail rc=9009       5 条  声明       1.0 秒 ( 0.000 h)  缺秒值 0  例: C-MV-STABILITY, CHK-CANON-20261104, CHK-DUPES-20261103
+  rc-fail rc=127       13 条  声明       0.0 秒 ( 0.000 h)  缺秒值 0  例: ART-PUSH-BMA-20261104, PROBE-BMB-AUDIOQC-20261104, Q-TRIAGE-RECON-20261102
+  rc-fail rc=RESULT     1 条  声明       0.0 秒 ( 0.000 h)  缺秒值 1  例: asset-lib-char-gen-2026-11-05
+  rc-fail rc=           1 条  声明       0.0 秒 ( 0.000 h)  缺秒值 1  例: mv-promo
+  [计入 VERIFIED]        61 条  计入     866.8 秒 ( 0.241 h)
+
+三、MISSING-LOCAL 逐条定谳（缺产物 = 本机路径上确实没有）
+  ART-PUSH-BMA-20261104            ABSENT                 cph4/fleet/artifacts/bm-a/PUSHED.jsonl
+  Q-SMOKE-LANE-001                 ABSENT                 D:\FleetWorker\review\smoke_lane.txt
+  Q-TEST-LOCALLLM                  ABSENT                 D:\FleetWorker\review\local_llm_test.txt
+  R-ART-PUSH-B-20261102            NAME-CLASH-SUSPECT     cph4/fleet/artifacts/bm-b/MANIFEST.jsonl
+      候选 C:\Users\sjs20\Desktop\FluxGroup\cph4\fleet\artifacts\bm-a\MANIFEST.jsonl (12712 B)
+  R-MODEL-RADAR-BMA-20261103       ABSENT                 cph4/fleet/queue-receipts/model-radar-bm-a-20261103.json
+  R-MODEL-RADAR-BMC-20261103       ABSENT                 cph4/fleet/queue-receipts/model-radar-bm-c-20261103.json
+  R-MODEL-RADAR-BMM-20261103       ABSENT                 cph4/fleet/queue-receipts/model-radar-bm-m-20261103.json
+  R-MV-V718-AIGC                   RELOCATED-CANDIDATE    D:\FleetWorker\review\v718_label\full_mv_v718_aigc.mp4
+      候选 D:\FleetWorker\out\v718-rebuild-20261103\full_mv_v718_aigc.mp4 (184036501 B)
+  R-MV-V718-FIDELITY               RELOCATED-CANDIDATE    D:\FleetWorker\review\fidelity_v718.json
+      候选 D:\FleetWorker\out\v718-rebuild-20261103\fidelity_v718.json (556 B)
+  R-MV-V718-SHOTAUDIT              RELOCATED-CANDIDATE    D:\FleetWorker\review\shot_audit_v718.json
+      候选 D:\FleetWorker\out\v718-rebuild-20261103\shot_audit_v718.json (13864 B)
+  biggame-playable-2026-11-03      ABSENT                 cph4/fleet/queue-receipts/game-playable-2026-11-03.md
+  可回收工时（找到文件的三条 v718 类）= 73.4 秒 = 0.0204 小时
+
+四、读法（诚实边界）
+  1) 0.241 小时不是「没人干活」：同期声明工时合计 1.1608 小时，其中 79.3% 落在「本机无证据」的桶里（他机回执/无产物/rc 失败），不是被判定为空转。
+  2) REMOTE-UNVERIF 是他机回执（mac/他机路径），本机不可证也不算缺陷；本行只陈述「本机能证明多少」。
+  3) 找到同名文件只证明「文件还在」，不证明它就是该回执的产物；正式回收需回执侧改路径或补指纹（消费者侧纪律，不属本仪器射程）。
+  4) 本件只读现役账本与磁盘，零写入任何轨，零新增 Tools 件（CEO 00:36 令）。

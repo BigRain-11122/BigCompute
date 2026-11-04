@@ -1,0 +1,40 @@
+D-20261105-05 待裁项取证：no.16 :8792 /ask 超时的归因（bm-a · 2026-11-05 00:5x）
+判据来源：集团 docs/decisions.md D-20261105-05（11-05 06:00 前需判：no.16 是否应改判 GPU-CONTENDED，而非任由「超时」冒充 QA 服务缺陷）
+
+一、服务面（谁是活的）
+  GET http://127.0.0.1:8792/health -> 200
+    {"status":"ok","server":"resident-qa v1.3 (BigCompute MaaS consumer face)",
+     "model":"qwen3.6-35b","anchors":20,"whitelist":"anchors20_v1","uptime_s":21295,
+     "llm":{"lane":"FALLBACK", ...}}
+  GET http://127.0.0.1:8792/v1/models -> 404（该服务非 OpenAI 兼容面，属设计态，非缺陷）
+  说明：服务进程与路由都在，健康面自报 ok，车道=FALLBACK（L1 缺失 → 落到本机 Ollama）。
+
+二、请求面（谁是错的）
+  错误载荷 {"question":"ping"} -> 403 {"reason":"问题格式不符（C-xxxxx）"}
+    → 403 是本轮探针自造，不是服务异常（契约=POST /ask {id,q}，见 resident_qa_server.py L4）
+  正确载荷 {"id":"C-00010","q":"你好"} -> 90.0s 无响应（TimeoutError，客户端 timeout=90 用尽）
+    → 服务收下请求但不回，属「能答的壳子拿不到算力」。
+
+三、算力面（为什么答不出）
+  nvidia-smi 即时读数：memory.total=12282MiB / used=11833MiB / free=165MiB / util=100%
+  同机共租户（nvidia-smi --query-compute-apps 采样）：Tuanjie.exe 编辑器实例 11 个
+    （PID 45792/37288/43916/38964/61420/36176/70072/40056/60744 …）
+    + llama-server.exe PID 101228 + 桌面侧 Edge/Photoshop/Feishu/GameViewer 等图形进程
+  与 11-04 22:1x/22:3x/23:4x 三轮 smoke 记录一致（当轮 vram_free=440MiB 后继续下降）。
+
+四、结论（供 06:00 裁定用）
+  1) no.16 的红是真红，不是误报：消费者侧确实拿不到回答（90s 无响应）。
+  2) 但缺陷不在 QA 服务本身：/health 200、路由在位、契约正确；缺的是显存/算力。
+     「超时」与「服务死」被同一个红点混在一起，是判据粒度问题，不是服务问题。
+  3) 归因明确：GPU 被同机 11 个 Tuanjie 编辑器实例 + llama-server 占满（free 165MiB，util 100%），
+     FALLBACK 车道的 35B 生成排不进显存。
+  4) 建议判法（不改本轮提交，留 06:00 定）：no.16 增加第三态 GPU-CONTENDED——
+     条件=服务健康 200 且 生成请求超时 且 nvidia-smi free < 1GiB；
+     该态仍为红（消费者确实不可用），但理由写「算力争用」并附取证指针，
+     让「该扩容/该让路」与「该修服务」不再共用一个红点。
+  5) 诚实边界：本轮只取单点证据（00:5x 一次采样 + 一次 90s 超时），
+     未做隔离实验证明「腾出显存后必然恢复」；该因果留待净窗复验，不作既成结论。
+
+五、本轮动作
+  零改动：未改 qa_smoke、未改探针判据、未新增工具（CEO 00:36 令：只要真实产出）。
+  本件=纯取证，供 06:00 决策与后续净窗复验直接引用。

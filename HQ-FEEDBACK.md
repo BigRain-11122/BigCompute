@@ -634,6 +634,8 @@ P2: 新 token 目前不在 no.18 守卫域内——探针绿是「它不看新�
 00:3x 日清：无待报 | T206 条款号变体识别 + T208 qa_smoke argv 守卫收口（selftest 16/16 与 10/10；live PROBE-REGISTRY-CLEAN probes=27 clauses=24 dup=0；smoke 25/27，两红=no.16 :8792 GPU 争用超时 + no.22 回执产物律既有面，均非本轮引入）
 00:5x 日清：无待报 | M121 钱面非正额守卫收口（cost_ledger 五入口 + deal_flow_mock 出生地守卫 + 新件 money_entry_census 实跑 MONEY-GUARD-CLEAN）+ 实弹演练证伪 cap-dodge
 P2: 真发现=deal_flow_mock 自测 F10 长期红（WRITER_KEYS 18 键 vs rails_schema_check.PRODUCERS["mock_order"] 22 键）——同一 producer 名下两个写者各写一半字段，schema 闸会对每个都放过 → BC-P-200 + tech T209 步②
-
 2026-11-05 00:47 日清：无待报 | CEO 00:36 令（OB-20261105-003656-879）承接=**全线停建机制/规则/文档/巡检卡**，本轮只出实物：集团算力服务结单真数件（state/compute-service-statement-20261105.txt/.json）。
 P2: 原列「下个里程碑 T209 = 把 money_entry_census 接成 qa_smoke 常驻探针」按 00:36 令**撤下**（那是巡检卡），后续轮改为「只做产线下一步实物」，产出清单待委员会对表；本司可交付实物面＝算力服务结单/账本读数/服务端点，均无需新机制即可供消费方使用。
+00:5x 日清：无待报 | 实物=CPU 有效工时归因对账 state/cpu-hours-attribution-20261105.txt/.json（声明 1.1608h vs 可证 0.241h=20.7%，逐桶去向+11 条缺产物定谳：3 条 v718 文件其实在 D:/FleetWorker/out/v718-rebuild-20261103）
+P1: D-20261105-05 取证完（06:00 裁定用）=state/d05-no16-gpu-contention-20261105.txt——health 200 + 正确载荷 {id,q} 90s 无响应 + nvidia-smi free 165MiB/util 100%/11 个 Tuanjie 实例共租；结论=红是真红、根因是算力争用不是服务故障；建议 no.16 加第三态 GPU-CONTENDED（仍红但归因分离），本轮零改动未落闸。
+P2: 本轮探针自造 403（我用 {question} 试 /ask，契约是 {id,q}）已入证据件留痕，提醒后续探针必须按契约发载荷。

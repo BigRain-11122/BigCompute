@@ -1,0 +1,282 @@
+{
+  "generated_for": "2026-11-05 7d window",
+  "source_payload": "Tools/cpu_effective_hours.py --days 7 --json-out .codely-cli/tmp/cpu7.json",
+  "totals": {
+    "receipts_scanned": 685,
+    "counted": 61,
+    "net_seconds": 866.8,
+    "net_hours": 0.241
+  },
+  "buckets": {
+    "verified": 61,
+    "remote_unverif": 313,
+    "missing_local": 11,
+    "rc_fail": 116,
+    "replay": 0,
+    "copy": 9,
+    "zero_seconds": 0,
+    "no_deliverable": 26,
+    "bad_json": 4,
+    "not_work_receipt": 145,
+    "unparsed": 0,
+    "sha_mismatch": 0
+  },
+  "declared_by_skip_reason": {
+    "MISSING-LOCAL": {
+      "receipts": 11,
+      "declared_seconds": 107.19999999999999,
+      "seconds_without_value": 0,
+      "ids": [
+        "ART-PUSH-BMA-20261104",
+        "Q-SMOKE-LANE-001",
+        "Q-TEST-LOCALLLM",
+        "R-ART-PUSH-B-20261102",
+        "R-MODEL-RADAR-BMA-20261103",
+        "R-MODEL-RADAR-BMC-20261103"
+      ],
+      "declared_hours": 0.0298
+    },
+    "rc-fail rc=127": {
+      "receipts": 13,
+      "declared_seconds": 0.0,
+      "seconds_without_value": 0,
+      "ids": [
+        "ART-PUSH-BMA-20261104",
+        "PROBE-BMB-AUDIOQC-20261104",
+        "Q-TRIAGE-RECON-20261102",
+        "R-ART-PUSH-B-20261102",
+        "R-ART-PUSH-C-20261102",
+        "R-PLAN-BIGDOMAIN-20261102"
+      ],
+      "declared_hours": 0.0
+    },
+    "REMOTE-UNVERIF": {
+      "receipts": 313,
+      "declared_seconds": 1098.5000000000011,
+      "seconds_without_value": 11,
+      "ids": [
+        "C-FIN-ETF-COMPOSITE-20261102",
+        "C-INFRA-AUDIT-BM-C-20261103",
+        "C-INFRA-AUDIT-BM-C-20261103",
+        "C-VB-DISCOVER-V02-20261102",
+        "CANARY-20261102T180632",
+        "CANARY-20261102T180639"
+      ],
+      "declared_hours": 0.3051
+    },
+    "rc-fail rc=2": {
+      "receipts": 22,
+      "declared_seconds": 9.699999999999998,
+      "seconds_without_value": 0,
+      "ids": [
+        "C-INFRA-AUDIT-BM-A-20261103",
+        "C-QUANT-NOBOND-20261103",
+        "CHK-LIB-20261103",
+        "CHK-RECEIPT-20261103",
+        "CHK-RECEIPT-20261104",
+        "Q-TRIAGE-CARGAMING-20261031"
+      ],
+      "declared_hours": 0.0027
+    },
+    "rc-fail rc=4294967295": {
+      "receipts": 1,
+      "declared_seconds": 80.0,
+      "seconds_without_value": 0,
+      "ids": [
+        "C-INFRA-AUDIT-BM-A-20261103"
+      ],
+      "declared_hours": 0.0222
+    },
+    "rc-fail rc=3": {
+      "receipts": 29,
+      "declared_seconds": 6.0,
+      "seconds_without_value": 0,
+      "ids": [
+        "C-INFRA-AUDIT-BM-A-20261103",
+        "C-INFRA-AUDIT-BM-B-20261103",
+        "C-INFRA-AUDIT-BM-C-20261103",
+        "Q-VCORP-PREP-e01-20261104",
+        "Q-VCORP-PREP-e02-20261104",
+        "Q-VCORP-PREP-e03-20261104"
+      ],
+      "declared_hours": 0.0017
+    },
+    "rc-fail rc=9009": {
+      "receipts": 5,
+      "declared_seconds": 1.0,
+      "seconds_without_value": 0,
+      "ids": [
+        "C-MV-STABILITY",
+        "CHK-CANON-20261104",
+        "CHK-DUPES-20261103",
+        "CHK-DUPES-20261103",
+        "CHK-RECEIPT-20261103"
+      ],
+      "declared_hours": 0.0003
+    },
+    "rc-fail rc=1": {
+      "receipts": 44,
+      "declared_seconds": 1352.8,
+      "seconds_without_value": 0,
+      "ids": [
+        "C-MV-STABILITY",
+        "C-TTS-QC-ALL",
+        "C-TTS-QC-ALL",
+        "C-TTS-QC-ALL",
+        "Q-MV-0001-015",
+        "Q-MV-0001-017"
+      ],
+      "declared_hours": 0.3758
+    },
+    "no-deliverable": {
+      "receipts": 26,
+      "declared_seconds": 657.0,
+      "seconds_without_value": 0,
+      "ids": [
+        "KN-FILM-GATE-LATEST-20261102",
+        "LINE-TRIAGE-MV-20261102",
+        "LINE-TRIAGE-MV",
+        "Q-MV-0001-001",
+        "Q-MV-0001-002",
+        "Q-MV-0001-003"
+      ],
+      "declared_hours": 0.1825
+    },
+    "rc-fail rc=RESULT": {
+      "receipts": 1,
+      "declared_seconds": 0.0,
+      "seconds_without_value": 1,
+      "ids": [
+        "asset-lib-char-gen-2026-11-05"
+      ],
+      "declared_hours": 0.0
+    },
+    "rc-fail rc=": {
+      "receipts": 1,
+      "declared_seconds": 0.0,
+      "seconds_without_value": 1,
+      "ids": [
+        "mv-promo"
+      ],
+      "declared_hours": 0.0
+    }
+  },
+  "declared_seconds_all_scanned": 4179.0,
+  "declared_hours_all_scanned": 1.1608,
+  "missing_local_adjudication": [
+    {
+      "id": "ART-PUSH-BMA-20261104",
+      "node": "bm-a",
+      "deliverable": "cph4/fleet/artifacts/bm-a/PUSHED.jsonl",
+      "seconds": 0.4,
+      "verdict": "ABSENT",
+      "candidates": []
+    },
+    {
+      "id": "Q-SMOKE-LANE-001",
+      "node": "bm-a",
+      "deliverable": "D:\\FleetWorker\\review\\smoke_lane.txt",
+      "seconds": 0.2,
+      "verdict": "ABSENT",
+      "candidates": []
+    },
+    {
+      "id": "Q-TEST-LOCALLLM",
+      "node": "bm-a",
+      "deliverable": "D:\\FleetWorker\\review\\local_llm_test.txt",
+      "seconds": 0.8,
+      "verdict": "ABSENT",
+      "candidates": []
+    },
+    {
+      "id": "R-ART-PUSH-B-20261102",
+      "node": "bm-a",
+      "deliverable": "cph4/fleet/artifacts/bm-b/MANIFEST.jsonl",
+      "seconds": 0.3,
+      "verdict": "NAME-CLASH-SUSPECT",
+      "candidates": [
+        {
+          "path": "C:\\Users\\sjs20\\Desktop\\FluxGroup\\cph4\\fleet\\artifacts\\bm-a\\MANIFEST.jsonl",
+          "bytes": 12712,
+          "sha256": "10a28787f937493bc270b6076fd7f195732bd721cc588a5b16bc481ef7c9a296"
+        }
+      ]
+    },
+    {
+      "id": "R-MODEL-RADAR-BMA-20261103",
+      "node": "bm-a",
+      "deliverable": "cph4/fleet/queue-receipts/model-radar-bm-a-20261103.json",
+      "seconds": 0.2,
+      "verdict": "ABSENT",
+      "candidates": []
+    },
+    {
+      "id": "R-MODEL-RADAR-BMC-20261103",
+      "node": "bm-a",
+      "deliverable": "cph4/fleet/queue-receipts/model-radar-bm-c-20261103.json",
+      "seconds": 0.2,
+      "verdict": "ABSENT",
+      "candidates": []
+    },
+    {
+      "id": "R-MODEL-RADAR-BMM-20261103",
+      "node": "bm-a",
+      "deliverable": "cph4/fleet/queue-receipts/model-radar-bm-m-20261103.json",
+      "seconds": 0.2,
+      "verdict": "ABSENT",
+      "candidates": []
+    },
+    {
+      "id": "R-MV-V718-AIGC",
+      "node": "bm-a",
+      "deliverable": "D:\\FleetWorker\\review\\v718_label\\full_mv_v718_aigc.mp4",
+      "seconds": 25.5,
+      "verdict": "RELOCATED-CANDIDATE",
+      "candidates": [
+        {
+          "path": "D:\\FleetWorker\\out\\v718-rebuild-20261103\\full_mv_v718_aigc.mp4",
+          "bytes": 184036501,
+          "sha256": "ecc276a358f6ce5cd9ead2da532f687e88de6bd12ba577d89169dc79a1de2b97"
+        }
+      ]
+    },
+    {
+      "id": "R-MV-V718-FIDELITY",
+      "node": "bm-a",
+      "deliverable": "D:\\FleetWorker\\review\\fidelity_v718.json",
+      "seconds": 11.1,
+      "verdict": "RELOCATED-CANDIDATE",
+      "candidates": [
+        {
+          "path": "D:\\FleetWorker\\out\\v718-rebuild-20261103\\fidelity_v718.json",
+          "bytes": 556,
+          "sha256": "94c90f121ff3e92f821e2e432fb2c11ff3b6785e2b15f432c97e615ec749da66"
+        }
+      ]
+    },
+    {
+      "id": "R-MV-V718-SHOTAUDIT",
+      "node": "bm-a",
+      "deliverable": "D:\\FleetWorker\\review\\shot_audit_v718.json",
+      "seconds": 36.8,
+      "verdict": "RELOCATED-CANDIDATE",
+      "candidates": [
+        {
+          "path": "D:\\FleetWorker\\out\\v718-rebuild-20261103\\shot_audit_v718.json",
+          "bytes": 13864,
+          "sha256": "48862d32eb975beb27690bd596ab3e7550cf895df4da03537b257d97d945fc9a"
+        }
+      ]
+    },
+    {
+      "id": "biggame-playable-2026-11-03",
+      "node": "bm-a",
+      "deliverable": "cph4/fleet/queue-receipts/game-playable-2026-11-03.md",
+      "seconds": 31.5,
+      "verdict": "ABSENT",
+      "candidates": []
+    }
+  ],
+  "missing_local_recoverable_seconds": 73.4,
+  "missing_local_recoverable_hours": 0.0204
+}
