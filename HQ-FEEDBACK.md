@@ -631,3 +631,4 @@ P2: 旧态=70% 线只活在 mandate/文档里，代码侧谁都能拿 shell py_c
 P2: 新 token 目前不在 no.18 守卫域内——探针绿是「它不看新字段」而非「新字段已受守」，已立提案 BC-P-199 + 队列 T207（写侧 token 名单与守卫表交叉对账）。
 23:4x 日清小结：产品增量=满载线通道归属从「文档自律」变成「代码单源判决 + 每轮心跳可见」，一命令可复现。
 23:5x 日清：无待报 | T207 收口（cpu_load_line 入 no.18 守卫域+写侧名单交叉对账·selftest 33/33）·修 HQ-FEEDBACK 缺尾换行（no.8 红因）
+00:3x 日清：无待报 | T206 条款号变体识别 + T208 qa_smoke argv 守卫收口（selftest 16/16 与 10/10；live PROBE-REGISTRY-CLEAN probes=27 clauses=24 dup=0；smoke 25/27，两红=no.16 :8792 GPU 争用超时 + no.22 回执产物律既有面，均非本轮引入）
