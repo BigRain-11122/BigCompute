@@ -132,7 +132,70 @@ def _append_row(path, row):
         fh.write(json.dumps(row, sort_keys=True, ensure_ascii=True) + "\n")
 
 
+def _numeric(value):
+    """Coerce to float; None when not a finite number (bool is not a number
+    here -- True would silently read as 1.0)."""
+    if value is None or isinstance(value, bool):
+        return None
+    try:
+        v = float(value)
+    except (TypeError, ValueError):
+        return None
+    if v != v or v in (float("inf"), float("-inf")):
+        return None
+    return v
+
+
+def _need_positive(field, value):
+    """BC-P-195 guard: a non-positive amount on an entry command is not a
+    sign flip, it is a silent balance printer -- a negative consume raises
+    the balance, a negative COGS inflates gross, a negative cloud entry
+    lowers the month's used total and walks straight past the budget cap."""
+    v = _numeric(value)
+    if v is None or v <= 0:
+        return {"status": "invalid_amount", "field": field,
+                "attempt": value, "note": "%s must be > 0" % field}
+    return None
+
+
+def _need_non_negative(field, value):
+    """Zero is legal for cost/count faces (a free or zero-token row is
+    real); only a negative one is refused."""
+    v = _numeric(value)
+    if v is None or v < 0:
+        return {"status": "invalid_amount", "field": field,
+                "attempt": value, "note": "%s must be >= 0" % field}
+    return None
+
+
+def _need_rate(field, value):
+    v = _numeric(value)
+    if v is None or v < 0.0 or v >= 1.0:
+        return {"status": "invalid_rate", "field": field, "attempt": value,
+                "note": "%s must be in [0, 1)" % field}
+    return None
+
+
+def _first_error(*checks):
+    for err in checks:
+        if err:
+            return err
+    return None
+
+
 def add_row(args, path=LEDGER):
+    bad = _first_error(
+        _need_positive("price", args.price),
+        _need_non_negative("amount", args.amount),
+        _need_rate("fee_rate", args.fee_rate),
+        _need_rate("refund_rate", args.refund_rate),
+        _need_non_negative("tokens_local", args.tokens_local),
+        _need_non_negative("tokens_api", args.tokens_api),
+        _need_non_negative("fund_accrual", args.fund_accrual),
+    )
+    if bad:
+        bad.update({"order_id": args.order_id, "ledger": "orders"})
+        return bad
     net = round(args.price * (1.0 - args.refund_rate) * (1.0 - args.fee_rate), 4)
     gross = round(net - args.amount, 4)
     row = {
@@ -430,6 +493,14 @@ def cloud_entry(args, ledger=CLEDGER, budget=CBUDGET):
     for r in rows:
         if r.get("tx_id") == args.tx_id:
             return {"status": "duplicate", "tx_id": args.tx_id, "row": r}
+    bad = _first_error(
+        _need_positive("amount_mtok", args.amount_mtok),
+        _need_non_negative("tokens_local", args.tokens_local),
+        _need_non_negative("tokens_api", args.tokens_api),
+    )
+    if bad:
+        bad.update({"tx_id": args.tx_id, "ledger": "cloud"})
+        return bad
     date_str = _resolve_date(args.date)
     month = _month_of(date_str)
     used_mtd = round(sum(r.get("amount_mtok", 0.0) for r in rows
@@ -471,6 +542,10 @@ def cloud_entry(args, ledger=CLEDGER, budget=CBUDGET):
 def cloud_bill(args, ledger=CLEDGER):
     """Month-end backfill: the real paid bill is the ONLY legal unit-price
     source (J2); flips pending_bill -> billed for month+lane in place."""
+    bad = _first_error(_need_positive("unit_cost_b", args.unit_cost_b))
+    if bad:
+        bad.update({"ledger": "cloud", "command": "cloud-bill"})
+        return bad
     rows = _load_rows(ledger)
     hit = 0
     for r in rows:
@@ -574,6 +649,13 @@ def borrow_entry(args, ledger=BLEDGER, budget=BBUDGET):
     for r in rows:
         if r.get("tx_id") == args.tx_id:
             return {"status": "duplicate", "tx_id": args.tx_id, "row": r}
+    bad = _first_error(
+        _need_positive("tokens_mtok", args.tokens_mtok),
+        _need_non_negative("quota_debit_mtok", args.quota_debit_mtok),
+    )
+    if bad:
+        bad.update({"tx_id": args.tx_id, "ledger": "borrow"})
+        return bad
     date_str = _resolve_date(args.date)
     month = _month_of(date_str)
     used_mtd = round(sum(r.get("tokens_mtok", 0.0) for r in rows
@@ -620,6 +702,10 @@ def borrow_entry(args, ledger=BLEDGER, budget=BBUDGET):
 def borrow_settle(args, ledger=BLEDGER):
     """Month-end retroactive settle: the ONLY legal lender-cost backfill
     channel (J2); flips pending_settlement -> settled for the month in place."""
+    bad = _first_error(_need_non_negative("unit_cost_b", args.unit_cost_b))
+    if bad:
+        bad.update({"ledger": "borrow", "command": "borrow-settle"})
+        return bad
     rows = _load_rows(ledger)
     hit = 0
     for r in rows:
@@ -772,6 +858,10 @@ def l1_settle(args, ledger=L1LEDGER):
     """Month-end retroactive settle: the caliber-B collection (N1 month-end
     cost allocation) is the ONLY legal unit-price source for local
     inference; flips pending_conversion -> converted for the month."""
+    bad = _first_error(_need_non_negative("unit_cost_b", args.unit_cost_b))
+    if bad:
+        bad.update({"ledger": "l1", "command": "l1-settle"})
+        return bad
     rows = _load_rows(ledger)
     hit = 0
     for r in rows:
@@ -915,6 +1005,7 @@ def sli_line(args, cpath=CLEDGER, l1path=L1LEDGER):
 
 def _selftest():
     order_results, quota_results, cloud_results, borrow_results = [], [], [], []
+    guard_results = []
     l1_results = []
     t94_results = []
     sli_results = []
@@ -1179,6 +1270,78 @@ def _selftest():
         )
         l1_results.append((l1_ok, lrows, lsumm))
 
+        # BC-P-195 money-face guards: every entry command must refuse a
+        # non-positive amount instead of writing a row that prints money or
+        # walks past the monthly cap. Fixtures below are one negative per
+        # face plus a "cap dodge" case (negative cloud entry lowers used_mtd).
+        gtmp = os.path.join(tempfile.gettempdir(), "bc_guard_selftest_%d.jsonl" % run)
+        if os.path.isfile(gtmp):
+            os.remove(gtmp)
+
+        class G:
+            pass
+        ga = G()
+        ga.order_id, ga.date, ga.sku, ga.tier = "BC-G%03d" % run, "2026-09-24", "guard", "L2"
+        ga.cost_item, ga.price, ga.fee_rate, ga.refund_rate = "llm", 9.9, 0.05, 0.08
+        ga.amount, ga.tokens_local, ga.tokens_api = -0.5, 0, 0
+        ga.api_reason, ga.fund_accrual = "selftest", FUND_ACCRUAL_DEFAULT
+        g_neg_cogs = add_row(ga, path=gtmp)
+        ga.amount = 0.0
+        ga.price = -1.0
+        g_neg_price = add_row(ga, path=gtmp)
+        ga.price = 9.9
+        ga.fee_rate = 1.5
+        g_bad_rate = add_row(ga, path=gtmp)
+        ga.fee_rate, ga.fund_accrual = 0.05, -3.0
+        g_neg_fund = add_row(ga, path=gtmp)
+        g_rows_after_add = len(_load_rows(gtmp))
+
+        gc = G()
+        gc.tx_id, gc.date, gc.consumer = "CG1", "2026-09-28", "bigcompute"
+        gc.lane, gc.task_ref, gc.reason = "openrouter", "TASK-G", "selftest"
+        gc.ceo_approved = False
+        gc.tokens_local, gc.tokens_api, gc.api_reason = 0, 0, "-"
+        gc.amount_mtok = -6.0
+        g_neg_cloud = cloud_entry(gc, ledger=gtmp, budget=cbtmp)
+        gc.amount_mtok = "abc"
+        g_nan_cloud = cloud_entry(gc, ledger=gtmp, budget=cbtmp)
+
+        gb = G()
+        gb.tx_id, gb.date = "WG1", "2026-09-28"
+        gb.lender_dept, gb.borrower_dept = "bigcompute", "biglife"
+        gb.machine_id, gb.work_type = "bm-a", "batch_inference"
+        gb.tokens_mtok, gb.quota_debit_mtok = -6.0, 6.0
+        gb.timeout_rule, gb.return_rule = "30min", "on-complete"
+        gb.verdict_source, gb.reason = "idlewatch-log-L1", "selftest"
+        gb.ceo_approved = False
+        g_neg_borrow = borrow_entry(gb, ledger=gtmp, budget=bbtmp)
+
+        gs = G()
+        gs.month, gs.lane, gs.ref = "2026-09", "openrouter", "BILL-G"
+        gs.unit_cost_b = -2.0
+        g_neg_bill = cloud_bill(gs, ledger=gtmp)
+
+        guard_ok = (
+            g_neg_cogs["status"] == "invalid_amount"
+            and g_neg_cogs["field"] == "amount"
+            and g_neg_price["status"] == "invalid_amount"
+            and g_neg_price["field"] == "price"
+            and g_bad_rate["status"] == "invalid_rate"
+            and g_bad_rate["field"] == "fee_rate"
+            and g_neg_fund["status"] == "invalid_amount"
+            and g_neg_fund["field"] == "fund_accrual"
+            and g_rows_after_add == 0          # nothing was written
+            and g_neg_cloud["status"] == "invalid_amount"
+            and g_neg_cloud["field"] == "amount_mtok"
+            and g_nan_cloud["status"] == "invalid_amount"
+            and g_neg_borrow["status"] == "invalid_amount"
+            and g_neg_borrow["field"] == "tokens_mtok"
+            and g_neg_bill["status"] == "invalid_amount"
+            and g_neg_bill["field"] == "unit_cost_b"
+            and len(_load_rows(gtmp)) == 0
+        )
+        guard_results.append(guard_ok)
+
         # T94: direct-call date=None fallback probes (quota/cloud/borrow/l1
         # four tracks; CLI face already covered in main()). Fallback must
         # land rows on today's date/month -- never month='None' dirty rows.
@@ -1327,12 +1490,13 @@ def _selftest():
                and cloud_results[0][0] and cloud_results[1][0]
                and borrow_results[0][0] and borrow_results[1][0]
                and l1_results[0][0] and l1_results[1][0])
+    guard_all = all(guard_results)
     t94_all = t94_results[0] and t94_results[1]
     sli_all = sli_results[0] and sli_results[1]
-    print("selftest: math=%s determinism=%s count=%s t94date=%s sli8=%s (orders+quota-gate+count+cloud+borrow+l1+t94date+sli8) -> %s"
-          % (math_ok, same, count_status, t94_all, sli_all,
-             "PASS" if (math_ok and same and count_ok and t94_all and sli_all) else "FAIL"))
-    return 0 if (math_ok and same and count_ok and t94_all and sli_all) else 1
+    print("selftest: math=%s determinism=%s count=%s t94date=%s sli8=%s guards=%s (orders+quota-gate+count+cloud+borrow+l1+t94date+sli8+money-guard) -> %s"
+          % (math_ok, same, count_status, t94_all, sli_all, guard_all,
+             "PASS" if (math_ok and same and count_ok and t94_all and sli_all and guard_all) else "FAIL"))
+    return 0 if (math_ok and same and count_ok and t94_all and sli_all and guard_all) else 1
 
 
 def main():

@@ -131,6 +131,10 @@ def default_fulfillment_check():
 
 def ledger_write(order_id, date, sku_id, spec, qty):
     """Mock deal ledger: cost-rail schema mirror + idempotency (J2 same rule)."""
+    # BC-P-195: guard at the write site too, not only in run_ring -- this is
+    # the function that would actually print a negative-price row.
+    if isinstance(qty, bool) or not isinstance(qty, int) or qty <= 0:
+        return "invalid-qty", {"qty": qty, "note": "qty must be an integer > 0"}
     rows = _load_rows(MOCK_RAIL)
     for r in rows:
         if r.get("order_id") == order_id:
@@ -164,6 +168,12 @@ def run_ring(order_id, sku_id, qty=1, date=None, rail_path=None,
     spec = SKUS.get(sku_id)
     if not spec:
         return 2, {"verdict": "MOCK-RING-RED", "reason": "unknown-sku", "sku": sku_id}
+    # BC-P-195: a non-positive qty is not a quantity, it is a sign flip on
+    # money (qty=-3 writes a negative-price revenue row into the drill rail).
+    if isinstance(qty, bool) or not isinstance(qty, int) or qty <= 0:
+        return 2, {"verdict": "MOCK-RING-RED", "reason": "invalid-qty",
+                   "attempt_qty": qty, "note": "qty must be an integer > 0",
+                   "order_id": order_id, "ledger_written": False}
     # stage 1-2: inquiry -> auto-quote (design values only)
     price_total = round(spec["design_price_cny"] * qty, 2)
     quote = {

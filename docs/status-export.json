@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-11-05 00:17",
- "current_activity": "2026-11-05 00:00 轮：T-20261105-91 条款号变体识别（probe_registry_census.clause_scan 五写法=短横/星号/顿号/括号/表格行·§一 base 表行排除防双计·selftest 11→16/16·live PROBE-REGISTRY-CLEAN probes=27 clauses=24 dup=0）+qa_smoke argv 守卫（无参数=live·--selftest 与 selftest 只跑夹具且不写证 ｜ 2026-11-03 03:2x 夜班轮：serve 瞬态判别常驻化 —— qa_smoke 新增 no.23（settle 窗口三态：UP 绿／DEGRADED 与 DOWN 红并点名 attempts／读不到 UNVERIFIED 不假绿），selftest 5/5 PASS、live no.23 PASS；同日结案上轮两 P1（orders.md 冲突块 0 命中、no.22 历史红留档）[via BigCompute-OSLoop]",
- "latest_artifact": "state/c1c4-20261105-001633.json（mtime 2026-11-05 00:16） ｜ qa/smoke-20261103-0317.log/.png（21/22 PASS，新探针 no.23 绿）｜Tools/qa_smoke.py（+serve_health_judge/probe/selftest，SERVE_SETTLE_S=20）｜docs/qa-smoke-test-charter.md §三 第 23 条",
- "next_milestone": "M4 接产对齐矩阵 blocked 项随开店/平台后台逐项销 ⬜（T-27 余项）（队列状态=**blocked 如实**（10-28 23:2x 令牌轮队列卫生）：销 ⬜ ） ｜ ①no.22 残红自然滚出 7 日窗（BC-P-168 提案待批，真实产出落受管目录）②tech T189 v718 质检链三步重跑（约 73s CPU，产物落 repo 受管目录）③M25/T26 室内烘焙样板间实弹（净窗一命令，BLOCKED 计数在册）"
+ "updated_at": "2026-11-05 00:55",
+ "current_activity": "2026-11-05 00:2x-00:5x 夜班轮：M121 钱面非正额守卫 + 写入器普查（BC-P-195）——cost_ledger 五处入口补同构守卫（add/cloud-entry/borrow-entry/cloud-bill/l1-settle/borrow-settle），负额不再落行而报 invalid_amount 点名字段；deal_flow_mock 补 qty<=0 出生地守卫；新件 Tools/money_entry_census.py 实跑 MONEY-GUARD-CLEAN scanned=95 writers=17 declared=10；cost_ledger selftest PASS（含 8 条负控）、census selftest 12/12 [via BigCompute-OSLoop]",
+ "latest_artifact": "state/money-guard-drill-20261105.txt（负额全拒 + cap-dodge 闭环：+9 填月→-6 被拒→+2 仍 blocked_over_cloud_budget）｜state/money-guard-census-20261105.json（MONEY-GUARD-CLEAN）｜Tools/money_entry_census.py｜qa/smoke-20261105-0031.log/.png（25/27，两红=no.16 8792 /ask 与 no.22 回执产物律 既有面）",
+ "next_milestone": "T209：把 money_entry_census 接成 qa_smoke 常驻探针（窗口 ≤48h，判据=census selftest 全绿 + live 出态 + PROBE-REGISTRY-CLEAN）｜ 同件步②：deal_flow_mock F10 长期红定谳（WRITER_KEYS 18 vs PRODUCERS.mock_order 22 两侧漂移，BC-P-200）"
 }

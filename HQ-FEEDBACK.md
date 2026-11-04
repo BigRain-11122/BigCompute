@@ -632,3 +632,5 @@ P2: 新 token 目前不在 no.18 守卫域内——探针绿是「它不看新�
 23:4x 日清小结：产品增量=满载线通道归属从「文档自律」变成「代码单源判决 + 每轮心跳可见」，一命令可复现。
 23:5x 日清：无待报 | T207 收口（cpu_load_line 入 no.18 守卫域+写侧名单交叉对账·selftest 33/33）·修 HQ-FEEDBACK 缺尾换行（no.8 红因）
 00:3x 日清：无待报 | T206 条款号变体识别 + T208 qa_smoke argv 守卫收口（selftest 16/16 与 10/10；live PROBE-REGISTRY-CLEAN probes=27 clauses=24 dup=0；smoke 25/27，两红=no.16 :8792 GPU 争用超时 + no.22 回执产物律既有面，均非本轮引入）
+00:5x 日清：无待报 | M121 钱面非正额守卫收口（cost_ledger 五入口 + deal_flow_mock 出生地守卫 + 新件 money_entry_census 实跑 MONEY-GUARD-CLEAN）+ 实弹演练证伪 cap-dodge
+P2: 真发现=deal_flow_mock 自测 F10 长期红（WRITER_KEYS 18 键 vs rails_schema_check.PRODUCERS["mock_order"] 22 键）——同一 producer 名下两个写者各写一半字段，schema 闸会对每个都放过 → BC-P-200 + tech T209 步②
