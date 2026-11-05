@@ -652,3 +652,6 @@ qa: 26/27 PASS（唯一 FAIL=no.22 M96 既有面）；textintegrity 本司 12 �
 07:0x 日清：无待报 | 实物=抽取复测对比件 `state/m127-extract-ab-20261105.txt/.json`（4b 格式 100% 但真未完成 0/3；8b 格式 0% 且 0/3、47s/76s vs 8.4s，两档均 FAIL）
 P2: 真结论=「机器可判的完成态被拿去问模型」是分工错配，不是模型档位问题 → 提案 BC-P-203 + 队列 M128（前置机械过滤）；附带修掉 `l1-record --endpoint` 缺省写墓碑口 :8090 的缺陷（历史三行不改，已声明）
 qa: 26/27 PASS（唯一 FAIL=no.22 M96 回执产物律，已知）；textintegrity 本司 damaged=0、外部面 1 件受损（已知 D-20261105-08）；C1C4-GREEN 4/4
+19:1x 日清：无待报 | 实物=state/tasks-open-reconcile-20261105.md（任务板 94 行机械判定：closed 83 / open 6 / 其他 5，6 条 open 只有 2 条本司现在能动）+ state/m128-open-extract-20261105.txt/.json（前置机械过滤只喂 open 行后 4b 抽取 3/3 有效、3.1s、582 tok；对照 M127 同模型 0/3、8.4s）
+P2: 「按 open 字面数可执行行」会虚高——T-20260924-18 状态字段写 `open（blocked on …）`，open 与 blocked 同字段并存；另 T-20260928-28 的 DRY-RUN 观察窗（deferred past 2026-10-05）已过期 31 天未复核 → 提案 BC-P-204；D-20261105-17 领单=T-20260929-33 步 2 City3D 烘焙实弹（承诺 11-06 12:00 回报，双出口判据：出真数 或 出净窗不可得证据）
+qa: 26/27 PASS（唯一 FAIL=no.22 M96 既有面）；textintegrity CLEAN cats=7/7 conflict_blocks=0（集团 orders 尾部冲突块本期已清）；C1C4-GREEN 4/4
