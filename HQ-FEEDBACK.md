@@ -685,3 +685,8 @@ P0 无。
 P1 无（9 行历史漂移行已从「声明」转成「修好」：7 行是散文里的裸竖线 VRAM|COTENANT/coder|swift|unsloth，2 行是尾部多挂列的游标竖线；修法只插反斜杠，脚本内断言「去掉反斜杠还原=原行逐字节相等」）。
 P2 余 34 行本仓（HQ-FEEDBACK 16/main 14/tech 0/proposals 4）+ 4 行集团只读台账不做（不写他人台账），下批对象与逐批递减口径已写进 M134 行；M132 烘焙仍 BLOCKED 如实（free 1222MiB/util 93%/6 个 Tuanjie 实例）。
 qa: textintegrity CLEAN cats=7/7 table_mismatch=38 declared=38 new=0 stale=0·C1C4-GREEN 4/4·smoke 27/28（唯一 FAIL=no.22 M96 回执产物既有面）
+## 2026-11-06 06:3x 令牌轮·M134 批次 2（真发现：半张表整段隐身）
+P0 无。
+P1 **闸的覆盖盲区**：tech.md 一行块引用维护注记夹在表格中间（原 L140），把表格截断在那一行，其后 **80 行从来没被列数闸判过**——「无表头不判」这条规则在表格被中途打断时等于整段豁免。把注记移到表尾后，17 行历史漂移当场现形（15 行同一规则修好、2 行补空指针列），tech.md 现归零。这不是一次修复事故，是闸的已知边界：**别的文件若也有夹在表格中的非表格行，其后行同样不会被判**。
+P2 本仓余 38 条（HQ-FEEDBACK 16/main 14/proposals 4）转批次 3；集团只读 4 条不动。
+qa: textintegrity CLEAN cats=7/7 table_mismatch=38 declared=38 new=0 stale=0·C1C4-GREEN 4/4

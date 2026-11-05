@@ -1,8 +1,8 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-11-06 06:2x",
- "current_activity": "2026-11-06 06:2x 令牌轮：M134 批次 1——把 9 行「整行不可判」的历史表格行真正修好（只插反斜杠、逐行可逆），不看总数只看逐条，table_mismatch 47->38、stale 归零 [via BigCompute-OSLoop]",
- "latest_artifact": "state/table-column-baseline.json（47->38 条·修好的行逐条从声明表删除）+ state/text-integrity-m134-batch1b.json（table_mismatch=38 declared=38 new=0 stale=0）+ state/queue/tech.md、state/queue/explore.md、state/proposals.md 九行已可读，时间戳 2026-11-06 06:2x",
- "next_milestone": "M134 批次 2（本仓余 34 行 + 集团只读 4 行不动）：下一批修 HQ-FEEDBACK 16 行与 main 14 行，收口=本仓声明条目归零；窗 ≤24h。M132 烘焙仍 BLOCKED（free 1222MiB/util 93%/6 个 Tuanjie 实例）",
- "previous_updated_at": "2026-11-06 06:1x"
+ "updated_at": "2026-11-06 06:3x",
+ "current_activity": "2026-11-06 06:3x 令牌轮：M134 批次 1+2——26 行「整行不可判」的表格行修好（批次 1 的 9 行本来就在读数里，批次 2 的 17 行此前被闸漏掉）；读数口径 47→38 是因为新现形的 17 行同时又修掉了，tech.md 列数漂移归零 [via BigCompute-OSLoop]",
+ "latest_artifact": "state/queue/tech.md（表格恢复连续·漂移归零）+ state/table-column-baseline.json（47→38 条逐条删）+ state/text-integrity-m134-batch1b.json（table_mismatch=38 declared=38 new=0 stale=0），时间戳 2026-11-06 06:3x",
+ "next_milestone": "M134 批次 3：本仓余 38 条（HQ-FEEDBACK 16/main 14/proposals 4）逐条修，集团只读 4 条不动；收口=本仓声明条目归零，窗 ≤24h",
+ "previous_updated_at": "2026-11-06 06:2x"
 }
