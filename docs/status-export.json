@@ -1,8 +1,8 @@
 {
  "company": "BigCompute",
  "updated_at": "2026-11-05 23:2x",
- "current_activity": "2026-11-05 夜班令牌轮：M133 收口——mock 账本四个「有值无写入者」的分红键（amount_mtok/cost_rate_cny_per_mtok/cost_simulated/denominator_simulated）改由 unit_cost_drill.regen_mock_rows 从声明设计值推导，可复跑可普查 [via BigCompute-OSLoop]",
- "latest_artifact": "Tools/unit_cost_drill.py（新增 regen 子命令：分母二分=配额读 amount_mtok/生成读 tokens_local，成本=分母×0.60 设计单价，缺分母只报 issue 不造键；selftest 28/28）+ state/mock-order-ledger.jsonl（regen 首跑 REGEN-OK、二跑 NO-CHANGE，唯一字节差异=末行补 EOF 换行，22 个字段值逐字节未变）+ state/m133-mock-regen-20261105.txt/.json，时间戳 2026-11-05 23:1x",
- "next_milestone": "D-20261105-17 承诺件：City3D 室内烘焙步 2（T-20260929-33 步 2）净窗真数或净窗不可得证据，死线 2026-11-06 12:00——当前 vram_free≈0.7GB、13 个 Tuanjie 实例共租，属净窗不可得候选；另 M132 同行",
- "previous_updated_at": "2026-11-05 22:5x"
+ "current_activity": "2026-11-05 夜班轮（23:2x）：T209 收口——钱面写入守卫接成常驻探针 qa_smoke no.29（未申报写者/失效申报/守卫被删 逐条点名；CLEAN 带问题、未知 verdict、零扫描 三种无效绿均判红） [via BigCompute-OSLoop]",
+ "latest_artifact": "Tools/qa_smoke.py 新增 no.29 money_guard_judge/probe_money_guard/selftest_money_guard（selftest 9/9）+ docs/qa-smoke-test-charter.md §三 第 29 条 + 实跑 MONEY-GUARD-CLEAN scanned=95 writers=17 declared=10（10 条钱面写者全 GUARDED）+ qa/smoke-20261105-2323.log/.png（26/28）+ state/probe-registry-20261105-2324.json（PROBE-REGISTRY-CLEAN probes=28），时间戳 2026-11-05 23:2x",
+ "next_milestone": "D-20261105-17 承诺件 City3D 室内烘焙（T-20260929-33 步 2）：净窗到达即一命令实弹烘焙并出 GPU/CPU 双路三指标，死线 2026-11-06 12:00；当前 vram_free≈0.45GB 且 13 个 Tuanjie 实例共租，净窗未到则如实 BLOCKED 并记 M132 同步",
+ "previous_updated_at": "2026-11-05 23:1x"
 }

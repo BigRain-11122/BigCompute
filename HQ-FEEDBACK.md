@@ -669,3 +669,8 @@ qa: F10 selftest 10/10、rails_schema_check 45/45、负控双检出（删键/错
 P0 无。P1 无。**产品增量 2 分件**：mock 轨四个记账键终于有了真实写入者——`unit_cost_drill.py` 增 `regen_mock_rows()`/`regen_mock_rail()` 与 `regen` 子命令（配额行读 `amount_mtok`、生成行读 `tokens_local/1e6`，成本=分母×0.60 设计单价；缺分母只报 issue 不造键；只写 5 个演练键、其余键逐字复制并逐键比对非演练键），`rails_schema_check.PRODUCERS` 四条从「manual: untracked cost drill」改指该函数。selftest **28/28 PASS**；实跑首跑 `MOCK-RAIL-REGEN-OK`、二跑 `MOCK-RAIL-NO-CHANGE`（幂等），首跑唯一字节差异是末行补 EOF 换行，三行 22 个字段值逐字节未变；drill 复跑 `cost=0.3607/gross=350.8999/denom_mtok=0.601200/unit_cost=0.6000` 与 M107 逐位一致。
 P2 一条：值仍是演练设计值（0.60 CNY/Mtok、配额 0.42 Mtok），本轮只证明「能从声明推导出来」，不证明成本真实、不构成经济性证据。
 qa: 26/27 PASS（唯一 FAIL=no.22 M96 既有面）；textintegrity CLEAN cats=7/7 conflict_blocks=0；C1C4-GREEN 4/4；rails check/census/guard-census + money_entry_census 四闸全绿。
+
+## 2026-11-05 23:2x 日清（夜班轮·T209 收口）
+P0 无。P1 无。**产品增量 2 分件**：钱面写入守卫接成常驻探针 no.29——此前 `money_entry_census` 只在人手跑的那一次存在，工具一改或守卫一改名，下一轮没人知道；现在每轮实跑并逐条点名未申报写者/失效申报/守卫缺失。实跑 `MONEY-GUARD-CLEAN scanned=95 writers=17 declared=10`，selftest **9/9 PASS**、全套 `--selftest` exit 0、live `no.29 PASS`，smoke **26/28**。
+P2 两条：①两红均非本轮引入——no.16（8792 /ask）受 GPU 争用（vram_free 454MiB）属已知容量问题，no.22 属 M96 既有历史面；②探针只证明「守卫在出生地函数体内」，不证明守卫逻辑本身正确（负额拒绝的真实行为由 `cost_ledger` 8 条负控夹具覆盖），二者不可互相替代。
+qa: `probe_registry_census` PROBE-REGISTRY-CLEAN probes=28 clauses=25 dup=0；textintegrity CLEAN cats=7/7 conflict_blocks=0；C1C4-GREEN 4/4；`deal_flow_mock selftest 10/10`（F10 原长期红已转绿）、`RAILS-SCHEMA-GREEN violations=0 rows=1216`。

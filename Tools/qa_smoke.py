@@ -3226,6 +3226,126 @@ def selftest_drill_sets():
     return 0 if all(results) else 1
 
 
+MONEY_GUARD_CLEAN = "MONEY-GUARD-CLEAN"
+MONEY_GUARD_GAPS = "MONEY-GUARD-GAPS"
+
+
+def money_guard_judge(verdict, problems, scanned=None, writers=None,
+                      declared=None):
+    """Judge money_entry_census output (no.29 / T209).
+
+    The census answers "which money-face writers are guarded"; this only
+    decides whether that answer is healthy.  Rules kept narrow on purpose:
+      - only the census's own CLEAN verdict passes; an unknown verdict is
+        never assumed healthy (D-20 the-conclusion-overshoots family),
+      - problems are named, not shrunk into a count,
+      - CLEAN with nothing scanned measured nothing -> red,
+      - a CLEAN verdict carrying problems is a contradiction -> red.
+    """
+    counts = "scanned=%s writers=%s declared=%s" % (
+        "?" if scanned is None else scanned,
+        "?" if writers is None else writers,
+        "?" if declared is None else declared)
+    if verdict is None:
+        return False, "UNVERIFIED: census produced no verdict"
+    probs = [str(p) for p in (problems or [])]
+    if verdict == MONEY_GUARD_GAPS or probs:
+        shown = " | ".join(probs[:6])
+        more = "" if len(probs) <= 6 else " (+%d more)" % (len(probs) - 6)
+        return False, ("%s gaps=%d %s%s" % (
+            counts, len(probs),
+            shown or "verdict=GAPS with no problem text", more))
+    if verdict != MONEY_GUARD_CLEAN:
+        return False, ("%s unknown verdict %r -- a verdict this judge does "
+                       "not name cannot be called healthy" % (counts, verdict))
+    if not scanned:
+        return False, ("%s -- no tool file scanned, nothing was measured"
+                       % counts)
+    return True, counts
+
+
+def probe_money_guard():
+    """Probe no.29 (T209): the money-face writer census still runs clean."""
+    if HERE not in sys.path:
+        sys.path.insert(0, HERE)
+    try:
+        import money_entry_census as mec
+    except Exception as e:  # noqa: BLE001 - probe must report, not crash
+        return False, "money_entry_census import raised: %r" % e
+    try:
+        verdict, problems, rows, scanned, writers = mec.run()
+    except Exception as e:  # noqa: BLE001
+        return False, "money_entry_census.run raised: %r" % e
+    return money_guard_judge(verdict, problems, scanned, writers,
+                             len(getattr(mec, "DECLARED", {})))
+
+
+def selftest_money_guard():
+    """T209 fixtures: clean / gaps / contradiction / unknown / empty."""
+    results = []
+
+    def check(name, cond, detail=""):
+        results.append(bool(cond))
+        print(("[%s] S%d %s%s" % ("PASS" if cond else "FAIL",
+                                  len(results), name,
+                                  "" if cond else " :: " + str(detail))))
+
+    ok, det = money_guard_judge(MONEY_GUARD_CLEAN, [], 95, 17, 10)
+    check("clean -> PASS and reports scanned/writers/declared",
+          ok and "scanned=95" in det and "writers=17" in det
+          and "declared=10" in det, det)
+
+    ok, det = money_guard_judge(
+        MONEY_GUARD_GAPS, ["UNDECLARED-WRITER x.py:new_writer L9"], 95, 18, 10)
+    check("gaps -> FAIL and names the writer",
+          (not ok) and "x.py:new_writer" in det and "gaps=1" in det, det)
+
+    ok, det = money_guard_judge(MONEY_GUARD_CLEAN,
+                                ["STALE-DECLARATION a.py:f"], 95, 17, 10)
+    check("clean verdict carrying problems -> FAIL (contradiction)",
+          (not ok) and "STALE-DECLARATION" in det, det)
+
+    ok, det = money_guard_judge("SOMETHING-NEW", [], 95, 17, 10)
+    check("unknown verdict -> FAIL, never assumed healthy",
+          (not ok) and "unknown verdict" in det, det)
+
+    ok, det = money_guard_judge(None, None)
+    check("no verdict -> UNVERIFIED FAIL", (not ok) and "UNVERIFIED" in det,
+          det)
+
+    ok, det = money_guard_judge(MONEY_GUARD_CLEAN, [], 0, 0, 10)
+    check("clean with zero files scanned -> FAIL (nothing measured)",
+          (not ok) and "nothing was measured" in det, det)
+
+    many = ["GUARD-MISSING f%d:w" % i for i in range(9)]
+    ok, det = money_guard_judge(MONEY_GUARD_GAPS, many, 95, 17, 10)
+    check("long problem list is truncated but counted",
+          (not ok) and "gaps=9" in det and "+3 more" in det, det)
+
+    first = money_guard_judge(MONEY_GUARD_GAPS, ["a"], 95, 17, 10)
+    second = money_guard_judge(MONEY_GUARD_GAPS, ["a"], 95, 17, 10)
+    check("deterministic on the same input", first == second, str(first))
+
+    # wiring check: the tool really returns the 5-tuple this judge consumes.
+    try:
+        if HERE not in sys.path:
+            sys.path.insert(0, HERE)
+        import money_entry_census as mec
+        verdict, problems, rows, scanned, writers = mec.run()
+        shaped = (verdict in (MONEY_GUARD_CLEAN, MONEY_GUARD_GAPS)
+                  and isinstance(problems, list) and scanned > 0
+                  and writers > 0)
+    except Exception as e:  # noqa: BLE001
+        shaped = False
+        verdict = repr(e)
+    check("live census returns the shape this probe consumes",
+          shaped, verdict)
+
+    print("selftest money-guard verdict: %d/%d PASS"
+          % (sum(results), len(results)))
+    return 0 if all(results) else 1
+
+
 def probe_probe_registry():
     """Probe no.24 (T190 / BC-P-169): probe numbering single-source census.
 
@@ -3276,6 +3396,7 @@ PROBE_REGISTRY = [
     (26, "shared jsonl row-loss census (T198)", probe_row_loss),
     (27, "aftersale rails judgeable (M115)", probe_aftersale_rails),
     (28, "drill planted-set census (T205)", probe_drill_sets),
+    (29, "money-face writer guards (T209)", probe_money_guard),
 ]
 
 
@@ -3359,7 +3480,7 @@ def main():
                 | selftest_receipt_product_law() | selftest_serve_health()
                 | selftest_write_encoding() | selftest_row_loss()
                 | selftest_aftersale_rails() | selftest_drill_sets()
-                | selftest_argv())
+                | selftest_money_guard() | selftest_argv())
     os.makedirs(QA_DIR, exist_ok=True)
     ts = datetime.datetime.now().strftime("%Y%m%d-%H%M")
     log_path = os.path.join(QA_DIR, "smoke-%s.log" % ts)

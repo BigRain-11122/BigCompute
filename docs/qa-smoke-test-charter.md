@@ -53,6 +53,8 @@
 
 - 28. 植入集完整性普查（T205／BC-P-194·11-04 立）：五个 drill 都靠「植入集含缺陷→检测器点名」自证，但没有任何东西能回答「植入集还在吗」——把某个缺陷用例删掉或改成合格值，drill 依旧打印 OK／零偏差（M119 的 `--bump-defects 1` 只证检测器有牙，证不了植入面没退化）。本条每轮跑 `drill_set_census.scan()`，按行判〔不信单行 banner〕：`DRILL-SET-SHRUNK`（案例数掉到钉死下限以下）／`DRILL-SET-DEGRADED`（计数对但缺陷位被改成合格值、或植入用例无期望）／`DRILL-SET-UNREADABLE`（读不到植入集）一律 FAIL 并**点名 drill 与 cases/defects 读数**；`N/A-NO-PLANTED-SET` 属显式声明的「本 drill 无植入集」，只打印不红门；但**全部行皆 N/A 时 FAIL**（一条也没测=没量）。未知 verdict 一律 FAIL 不臆测为健康。判据=selftest 九夹具（S1 全净 PASS 且报 drills/clean／S2 缩小 FAIL 点名／S3 零缺陷 FAIL 带 defects 计数／S4 不可读 FAIL 带错误／S5 单行 N/A 打印不红／S6 全 N/A FAIL／S7 无行 UNVERIFIED／S8 未知 verdict FAIL／S9 确定性）+ live `drills=… clean=…` 一行。
 
+- 29. 钱面写入守卫普查（T209／BC-P-195 承接·11-05 立）：T-20261104-86 抓到 `quota-issue -0.5` 凭空印配额后只修了那一处，同类洞（负价、负额、负单价、负数量）在 90+ 个工具里靠眼睛是查不完的；`money_entry_census` 因此建了「谁在写钱轨、守卫是否还在出生地函数内」的静态普查，但它此前只能人手跑，工具一改就没人知道守卫还在不在。本条每轮跑 `money_entry_census.run()`：只有普查自己给出的 `MONEY-GUARD-CLEAN` 算过；`MONEY-GUARD-GAPS`（未申报写者 `UNDECLARED-WRITER`／失效申报 `STALE-DECLARATION`／守卫被改名或删掉 `GUARD-MISSING`／解析失败 `PARSE-FAIL`）一律 FAIL 并**逐条点名 file:function**（超六条折叠成 `+N more` 但仍报总数）；**CLEAN 却带着 problems** 判矛盾 FAIL；**未知 verdict 判 FAIL 不臆测健康**；**scanned=0 的 CLEAN 判 FAIL**（一个文件都没扫＝没量）。判据=selftest 九夹具（S1 净→PASS 并报 scanned/writers/declared／S2 GAPS→FAIL 点名写者／S3 CLEAN 带问题→FAIL／S4 未知 verdict→FAIL／S5 无 verdict→UNVERIFIED／S6 零扫描→FAIL／S7 长清单折叠但计数不变／S8 确定性／S9 工具真返回本探针消费的五元组）+ live `scanned=… writers=… declared=…` 一行。
+
 ## 四、执行律
 
 - 执行位=每轮收尾步 QA 自验先行（mandate §每轮固定步 8）；实装=Tools/qa_smoke.py（tech T11 一键化：探针→log+png 产出+自判行）；exit 0=全过/1=有缺。
