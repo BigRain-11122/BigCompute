@@ -1,0 +1,34 @@
+D-20261105-17 领单（T-20260929-33 步 2 · City3D 室内烘焙样板间实弹）净窗证据
+时刻：2026-11-05 20:45（本轮实读）
+判据（领单已写死，双出口）：
+  出口 A = run_bake.ps1 跑完，出 GPU/CPU 双路 耗时 + 峰值显存 + AO/光照图产物
+  出口 B = 净窗不可得实况证据（进程数/显存/时刻）+ 下一个可执行窗位
+
+【本轮判定】出口 B —— 净窗不可得
+  原因：Tuanjie 编辑器族进程在场，J1/J2 指标窗被污染（run_bake.ps1 净窗闸设计即判 BLOCKED exit 3）
+
+实测读数（20:45）
+  Tuanjie 编辑器本体        Tuanjie=6
+  Tuanjie Hub               Tuanjie Hub=5
+  Tuanjie ShaderCompiler    TuanjieShaderCompiler=16
+  Tuanjie 崩溃/退出辅助     TuanjieCrashHandler64=5 / TuanjieAutoQuitter=5
+  Tuanjie 授权客户端        Tuanjie.Licensing.Client=2
+  PackageManager            TuanjiePackageManager=2
+  mcp-for-unity            mcp-for-unity=5
+  Unity ILPP                Unity.ILPP.Runner=2
+  Tuanjie/Unity 相关进程合计 48
+  GPU：free 2294 MiB / util 52%
+  CPU：_Total 27.2%
+  本地 Ollama :11434 = 可用（不影响烘焙窗口判定）
+
+【下一个可执行窗位（建议）】
+  1) 编辑器族进程 ≤1 且 GPU util <20% 连续 5 分钟（净窗闸同判据）
+  2) 优先夜间 23:00-06:00 或 CEO 明确停工时段；本轮之后由下一轮再探一次
+  3) 净窗一到，一命令执行：
+     powershell -File Tools/bake_spike_assets/run_bake.ps1 -Lightmapper ProgressiveCPU
+     再跑 -Lightmapper ProgressiveGPU 取双路三指标
+
+诚实边界
+  - 本件是「净窗不可得」的证据，不是烘焙失败；未执行任何烘焙动作、未启动编辑器。
+  - 进程计数为 20:45 单次快照，非趋势；Tuanjie 编辑器数会随时间变化（本轮 6 个）。
+  - 死线 2026-11-06 12:00 前的最后复探窗=11-06 上午轮；若仍 BLOCKED，本件即为该令的回执出口 B。

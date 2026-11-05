@@ -21,6 +21,10 @@ state/queue/*
 !state/d05-no16-*
 # M127 抽取 A/B 复测对比件（产品面实物：判定 + 真 token）
 !state/m127-extract-ab-*
+# M129 任务板状态口径修正件（产品面实物：人读证据 + 机读计数）
+!state/m129-task-state-caliber-*
+# D-20261105-17 承诺件：净窗不可得实况证据（该令的双出口之 B）
+!state/d17-cleanwindow-*
 logs/
 .codely-cli/
 .playwright-mcp/
