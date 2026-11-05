@@ -1,8 +1,8 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-11-05 07:05",
- "current_activity": "2026-11-05 06:5x 令牌轮：M127 抽取复测收口——4b 与 8b 同材料对照，两档均 FAIL，结论=卡在任务分工（done/open 机器可判却拿去问模型），并顺手修掉 L1 记账端点缺省写墓碑口 :8090 的真缺陷 [via BigCompute-OSLoop]",
- "latest_artifact": "state/m127-extract-ab-20261105.txt + .json（4b 格式合规 100% 但真未完成 0/3；8b 格式 0% 且 0/3、慢 9×；三笔真实 L1 token=9331 = 0.009331 Mtok），时间戳 2026-11-05 07:00",
- "next_milestone": "M128：抽取前置机械过滤（先用 **done 标记只喂未完成行，再交 4b 出「任务号：一句话动作」），判据=新鲜度 3/3 且格式 100%；窗 ≤24h（2026-11-06 07:00）",
- "previous_updated_at": "2026-11-05 06:53"
+ "updated_at": "2026-11-05 20:4x",
+ "current_activity": "2026-11-05 夜班令牌轮：任务板状态字段口径修正（M129）——7 行状态单元改固定前缀四态，可执行行数由虚高 6 修正为 3；同轮发现转义竖线导致 T-27 整行被机器漏读 [via BigCompute-OSLoop]",
+ "latest_artifact": "state/m129-task-state-caliber-20261105.md + .json（ACTIVE=3 / BLOCKED-PHYSICAL=3 / BLOCKED-EXTERNAL=1 / DONE=79 / UNPREFIXED-LIVE=0 / MALFORMED-COLUMN=8），时间戳 2026-11-05 20:4x",
+ "next_milestone": "M130：8 行表格列数整形（4 列口径整行不可判），判据=重排后 MALFORMED-COLUMN=0 且正文逐字保留（diff 为零）；窗 ≤24h（2026-11-06 20:00）。另 D-20261105-17 承诺件（City3D 烘焙步 2 净窗证据或真数）死线 2026-11-06 12:00",
+ "previous_updated_at": "2026-11-05 07:05"
 }
