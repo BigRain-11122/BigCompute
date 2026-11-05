@@ -1,8 +1,8 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-11-05 20:4x",
- "current_activity": "2026-11-05 夜班令牌轮：任务板状态字段口径修正（M129）——7 行状态单元改固定前缀四态，可执行行数由虚高 6 修正为 3；同轮发现转义竖线导致 T-27 整行被机器漏读 [via BigCompute-OSLoop]",
- "latest_artifact": "state/m129-task-state-caliber-20261105.md + .json（ACTIVE=3 / BLOCKED-PHYSICAL=3 / BLOCKED-EXTERNAL=1 / DONE=79 / UNPREFIXED-LIVE=0 / MALFORMED-COLUMN=8），时间戳 2026-11-05 20:4x",
- "next_milestone": "M130：8 行表格列数整形（4 列口径整行不可判），判据=重排后 MALFORMED-COLUMN=0 且正文逐字保留（diff 为零）；窗 ≤24h（2026-11-06 20:00）。另 D-20261105-17 承诺件（City3D 烘焙步 2 净窗证据或真数）死线 2026-11-06 12:00",
- "previous_updated_at": "2026-11-05 07:05"
+ "updated_at": "2026-11-05 22:5x",
+ "current_activity": "2026-11-05 夜班轮：压行族写入者定位（M131）——9 个被机器读不动的任务板行，反查 9/9 全由本循环自己的会话内联编辑引入，Tools/ 下零个 TASKS.md 写函数（所以「在出生地加转义」无处可挂）；同轮修掉钱面一条长期红：F10 曾要求两条轨的两个写入者集合恰好相等，永远不可能成立 [via BigCompute-OSLoop]",
+ "latest_artifact": "Tools/deal_flow_mock.py（F10 由集合相等改为逐键归属：每个写出的键必须已声明、归属本写入者、且无声明键缺归属；selftest 10/10、rails_schema_check 45/45、负控删键/错归属均报红）+ state/m131-pipe-writer-20261105.txt（9 行 git 反查表 + 三种破损形态同源结论 + mock 轨四键无写入者同族第二例），时间戳 2026-11-05 22:5x",
+ "next_milestone": "M133：mock 轨四键（amount_mtok/cost_rate_cny_per_mtok/cost_simulated/denominator_simulated）的生产者要从「untracked」改成可复跑的函数，判据=复跑数值与现盘一致且零新增工具文件；窗 ≤48h（2026-11-07 22:00）。另 D-20261105-17 承诺件（City3D 烘焙步 2 净窗证据或真数）死线 2026-11-06 12:00",
+ "previous_updated_at": "2026-11-05 20:4x"
 }
