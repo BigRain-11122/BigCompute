@@ -45,6 +45,15 @@ DRILL_NOTE = ("drill data only; caliber B settlement; self-use l1 tokens exclude
 UNIT_COST_OK = "UNIT-COST-CALCULATED"
 UNIT_COST_BLOCKED = "UNIT-COST-BLOCKED"
 
+# M133: the four cost keys on mock rows had no writer at all -- PRODUCERS listed
+# them as "manual: ... (untracked cost drill)", i.e. values existed on disk but
+# no code path could reproduce them. They are now derived from these two
+# declared design values (never a settlement price -- see unit_cost_caliber).
+MOCK_DESIGN_COST_RATE = 0.60   # CNY per Mtok, design value (M107)
+MOCK_DESIGN_QUOTA_MTOK = 0.42  # M12 quota band lower bound, design value (M66)
+MOCK_DRILL_KEYS = ("amount", "amount_mtok", "cost_rate_cny_per_mtok",
+                   "cost_simulated", "denominator_simulated")
+
 
 def _load_rows(path):
     rows = []
@@ -442,6 +451,87 @@ def render_sensitivity(items):
 
 # ---------------------------------------------------------------- selftest
 
+def _mock_denominator_mtok(row):
+    """Quota rows carry amount_mtok; generation rows carry tokens_local."""
+    if row.get("amount_mtok") is not None:
+        try:
+            return float(row["amount_mtok"]), "quota"
+        except (TypeError, ValueError):
+            return None, "bad-amount-mtok"
+    tokens = row.get("tokens_local")
+    try:
+        tokens = float(tokens)
+    except (TypeError, ValueError):
+        return None, "missing-denominator"
+    if tokens <= 0:
+        return None, "missing-denominator"
+    return tokens / 1000000.0, "generation"
+
+
+def regen_mock_rows(rows, rate=MOCK_DESIGN_COST_RATE):
+    """Return (rows_with_cost_keys, issues). Pure, no IO.
+
+    Only the drill cost keys are written. Every other key is copied verbatim, so
+    a rerun cannot silently move prices, dates or order ids.
+    """
+    out, issues = [], []
+    for row in rows:
+        new = dict(row)
+        mtok, kind = _mock_denominator_mtok(row)
+        if mtok is None:
+            issues.append("%s %s (no amount_mtok and tokens_local<=0)"
+                          % (new.get("order_id"), kind))
+            out.append(new)
+            continue
+        new["cost_rate_cny_per_mtok"] = rate
+        new["amount"] = round(mtok * rate, 4)
+        new["cost_simulated"] = True
+        new["denominator_simulated"] = True
+        out.append(new)
+    return out, issues
+
+
+def render_mock_rail(rows):
+    return "".join(json.dumps(r, sort_keys=True) + "\n" for r in rows)
+
+
+def regen_mock_rail(path=MOCK_RAIL, rate=MOCK_DESIGN_COST_RATE):
+    """Write the derived cost keys onto the mock rail; idempotent by construction."""
+    rows = _load_rows(path)
+    new_rows, issues = regen_mock_rows(rows, rate)
+    expected = render_mock_rail(new_rows)
+    with open(path, "r", encoding="utf-8") as fh:
+        before = fh.read()
+    before_sha = _sha256(path)
+    if issues:
+        return {"verdict": "MOCK-RAIL-REJECTED", "rail": path,
+                "rows": len(rows), "issues": issues,
+                "sha256_before": before_sha, "sha256_after": before_sha}
+    changed_other = []
+    for old, new in zip(rows, new_rows):
+        for key in sorted(set(old) | set(new)):
+            if key in MOCK_DRILL_KEYS:
+                continue
+            if old.get(key) != new.get(key):
+                changed_other.append("%s:%s" % (old.get("order_id"), key))
+    if expected == before:
+        return {"verdict": "MOCK-RAIL-NO-CHANGE", "rail": path,
+                "rows": len(rows), "issues": [], "changed_other_keys": [],
+                "sha256_before": before_sha, "sha256_after": before_sha}
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8", newline="\n") as fh:
+        fh.write(expected)
+    os.replace(tmp, path)
+    after_sha = _sha256(path)
+    again, _ = regen_mock_rows(_load_rows(path), rate)
+    idempotent = render_mock_rail(again) == expected
+    return {"verdict": ("MOCK-RAIL-REGEN-OK" if (idempotent and not changed_other)
+                        else "MOCK-RAIL-NOT-IDEMPOTENT"),
+            "rail": path, "rows": len(rows), "issues": [],
+            "changed_other_keys": changed_other,
+            "sha256_before": before_sha, "sha256_after": after_sha}
+
+
 def _fixture_rows():
     base = [
         {"order_id": "MOCK-A", "date": "2026-10-19", "price": 49.9,
@@ -621,6 +711,40 @@ def _selftest():
     finally:
         shutil.rmtree(tmpdir, ignore_errors=True)
 
+    drill_rows = [
+        {"order_id": "MOCK-Q", "date": "2026-10-19", "price": 49.9,
+         "refund_rate": 0.08, "fee_rate": 0.05, "net_price": 43.6126,
+         "amount": 0.0, "fund_3090": 0.0, "lane": "subscription",
+         "tokens_local": 0, "tokens_api": 0, "amount_mtok": 0.42,
+         "cost_item": "MOCK-DRILL", "mock": True},
+        {"order_id": "MOCK-G", "date": "2026-10-19", "price": 3.0,
+         "refund_rate": 0.08, "fee_rate": 0.05, "net_price": 2.622,
+         "amount": 0.0, "fund_3090": 0.0, "lane": "gacha",
+         "tokens_local": 1200, "tokens_api": 0,
+         "cost_item": "MOCK-DRILL", "mock": True},
+        {"order_id": "MOCK-X", "date": "2026-10-19", "price": 1.0,
+         "amount": 0.0, "tokens_local": 0, "tokens_api": 0,
+         "cost_item": "MOCK-DRILL", "mock": True},
+    ]
+    regen1, regen_issues = regen_mock_rows(drill_rows)
+    regen2, _ = regen_mock_rows(regen1)
+    chk("S24 regen is idempotent",
+        render_mock_rail(regen1) == render_mock_rail(regen2))
+    chk("S25 quota row cost = amount_mtok x design rate",
+        abs(regen1[0]["amount"] - 0.252) < 1e-9
+        and abs(regen1[0]["cost_rate_cny_per_mtok"] - 0.6) < 1e-9,
+        "amount=%s" % regen1[0]["amount"])
+    chk("S26 generation row cost = tokens_local/1e6 x rate",
+        abs(regen1[1]["amount"] - 0.0007) < 1e-9,
+        "amount=%s" % regen1[1]["amount"])
+    chk("S27 no denominator -> issue named, no cost keys invented",
+        any("MOCK-X" in i for i in regen_issues)
+        and regen1[2]["amount"] == 0.0
+        and "cost_simulated" not in regen1[2], str(regen_issues))
+    chk("S28 regen leaves every other key untouched",
+        regen1[0]["price"] == 49.9 and regen1[0]["net_price"] == 43.6126
+        and regen1[1]["date"] == "2026-10-19")
+
     failed = [c for c in checks if not c[1]]
     for name, ok, detail in checks:
         print("%s %s%s" % ("PASS" if ok else "FAIL", name,
@@ -645,6 +769,12 @@ def main(argv=None):
 
     sub.add_parser("selftest", help="in-memory fixtures, no live file writes")
 
+    re_gen = sub.add_parser("regen",
+                            help="rewrite the derived cost keys on the mock rail")
+    re_gen.add_argument("--mock", default=MOCK_RAIL)
+    re_gen.add_argument("--rate", default=MOCK_DESIGN_COST_RATE)
+    re_gen.add_argument("--json-out", default=None)
+
     sens = sub.add_parser("sensitivity",
                           help="gross margin versus unit cost, prices fixed")
     sens.add_argument("--rates", default="0.4,0.5,0.6,0.8",
@@ -658,6 +788,26 @@ def main(argv=None):
     args = parser.parse_args(argv)
     if args.cmd == "selftest":
         return _selftest()
+    if args.cmd == "regen":
+        try:
+            rate = float(args.rate)
+        except (TypeError, ValueError):
+            print("rate must be a number")
+            return 2
+        result = regen_mock_rail(args.mock, rate)
+        text = "%s rows=%d rate=%.4f" % (result["verdict"], result["rows"], rate)
+        if result["issues"]:
+            text += " issues=" + ";".join(result["issues"])
+        if result.get("changed_other_keys"):
+            text += " changed_other=" + ",".join(result["changed_other_keys"])
+        print(text)
+        if args.json_out:
+            with open(args.json_out, "w", encoding="utf-8") as fh:
+                json.dump(result, fh, sort_keys=True, indent=2,
+                          ensure_ascii=True)
+                fh.write("\n")
+        return 0 if result["verdict"] in ("MOCK-RAIL-REGEN-OK",
+                                          "MOCK-RAIL-NO-CHANGE") else 3
     if args.cmd == "sensitivity":
         try:
             rates = [float(x) for x in str(args.rates).split(",") if x.strip()]

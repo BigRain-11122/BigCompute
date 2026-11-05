@@ -339,12 +339,13 @@ PRODUCERS = {
         "tokens_api": "deal_flow_mock.ledger_write",
         "api_reason": "deal_flow_mock.ledger_write",
         "route_group": "deal_flow_mock.ledger_write",
-        # 写入脚本未入库（T135 普查漏网·M114 复查抓出）。如实标注来源，
-        # 不假称是 deal_flow_mock 写的。
-        "amount_mtok": "manual:state/mock-order-ledger.jsonl (untracked cost drill)",
-        "cost_rate_cny_per_mtok": "manual:state/mock-order-ledger.jsonl (untracked cost drill)",
-        "cost_simulated": "manual:state/mock-order-ledger.jsonl (untracked cost drill)",
-        "denominator_simulated": "manual:state/mock-order-ledger.jsonl (untracked cost drill)",
+        # 写入脚本曾未入库（T135 普查漏网·M114 复查抓出·M133 收口）：现由
+        # unit_cost_drill.regen_mock_rows 推导（design rate 0.60 CNY/Mtok），
+        # 可复跑、可普查；值仍是演练设计值，不是结算价。
+        "amount_mtok": "unit_cost_drill.regen_mock_rows (M133)",
+        "cost_rate_cny_per_mtok": "unit_cost_drill.regen_mock_rows (M133)",
+        "cost_simulated": "unit_cost_drill.regen_mock_rows (M133)",
+        "denominator_simulated": "unit_cost_drill.regen_mock_rows (M133)",
     },
     "aftersale": {
         "aftersale_id": "manual:平台后台退款流水导出（计划态未接·M114 schema 先行）",

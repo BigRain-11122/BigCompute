@@ -664,3 +664,8 @@ qa: 25/27 PASS（两红=no.2 争用超时＋no.22 M96 既有回执面）；texti
 22:5x 夜班轮（日清）：无待报 | 实物=`state/m131-pipe-writer-20261105.txt`（压行族 9 个破损行写入者定位=无脚本写者，9/9 全是本循环会话内联编辑）+ `Tools/deal_flow_mock.py` F10 错断言修正（要求「两写入者恰好相等」→ 逐键归属判定，长期红转绿）
 P2: 行追加要真拦住须改为走脚本（T212 三问未答），属机制建设——按 2026-11-05 00:36 CEO 令本轮不新建；同族第二例（mock 轨四键无写入者）已立 M133
 qa: F10 selftest 10/10、rails_schema_check 45/45、负控双检出（删键/错归属均报红）
+
+## 2026-11-05 23:1x 日清（令牌轮·M133 收口）
+P0 无。P1 无。**产品增量 2 分件**：mock 轨四个记账键终于有了真实写入者——`unit_cost_drill.py` 增 `regen_mock_rows()`/`regen_mock_rail()` 与 `regen` 子命令（配额行读 `amount_mtok`、生成行读 `tokens_local/1e6`，成本=分母×0.60 设计单价；缺分母只报 issue 不造键；只写 5 个演练键、其余键逐字复制并逐键比对非演练键），`rails_schema_check.PRODUCERS` 四条从「manual: untracked cost drill」改指该函数。selftest **28/28 PASS**；实跑首跑 `MOCK-RAIL-REGEN-OK`、二跑 `MOCK-RAIL-NO-CHANGE`（幂等），首跑唯一字节差异是末行补 EOF 换行，三行 22 个字段值逐字节未变；drill 复跑 `cost=0.3607/gross=350.8999/denom_mtok=0.601200/unit_cost=0.6000` 与 M107 逐位一致。
+P2 一条：值仍是演练设计值（0.60 CNY/Mtok、配额 0.42 Mtok），本轮只证明「能从声明推导出来」，不证明成本真实、不构成经济性证据。
+qa: 26/27 PASS（唯一 FAIL=no.22 M96 既有面）；textintegrity CLEAN cats=7/7 conflict_blocks=0；C1C4-GREEN 4/4；rails check/census/guard-census + money_entry_census 四闸全绿。

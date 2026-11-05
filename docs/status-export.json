@@ -1,8 +1,8 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-11-05 22:5x",
- "current_activity": "2026-11-05 夜班轮：压行族写入者定位（M131）——9 个被机器读不动的任务板行，反查 9/9 全由本循环自己的会话内联编辑引入，Tools/ 下零个 TASKS.md 写函数（所以「在出生地加转义」无处可挂）；同轮修掉钱面一条长期红：F10 曾要求两条轨的两个写入者集合恰好相等，永远不可能成立 [via BigCompute-OSLoop]",
- "latest_artifact": "Tools/deal_flow_mock.py（F10 由集合相等改为逐键归属：每个写出的键必须已声明、归属本写入者、且无声明键缺归属；selftest 10/10、rails_schema_check 45/45、负控删键/错归属均报红）+ state/m131-pipe-writer-20261105.txt（9 行 git 反查表 + 三种破损形态同源结论 + mock 轨四键无写入者同族第二例），时间戳 2026-11-05 22:5x",
- "next_milestone": "M133：mock 轨四键（amount_mtok/cost_rate_cny_per_mtok/cost_simulated/denominator_simulated）的生产者要从「untracked」改成可复跑的函数，判据=复跑数值与现盘一致且零新增工具文件；窗 ≤48h（2026-11-07 22:00）。另 D-20261105-17 承诺件（City3D 烘焙步 2 净窗证据或真数）死线 2026-11-06 12:00",
- "previous_updated_at": "2026-11-05 20:4x"
+ "updated_at": "2026-11-05 23:2x",
+ "current_activity": "2026-11-05 夜班令牌轮：M133 收口——mock 账本四个「有值无写入者」的分红键（amount_mtok/cost_rate_cny_per_mtok/cost_simulated/denominator_simulated）改由 unit_cost_drill.regen_mock_rows 从声明设计值推导，可复跑可普查 [via BigCompute-OSLoop]",
+ "latest_artifact": "Tools/unit_cost_drill.py（新增 regen 子命令：分母二分=配额读 amount_mtok/生成读 tokens_local，成本=分母×0.60 设计单价，缺分母只报 issue 不造键；selftest 28/28）+ state/mock-order-ledger.jsonl（regen 首跑 REGEN-OK、二跑 NO-CHANGE，唯一字节差异=末行补 EOF 换行，22 个字段值逐字节未变）+ state/m133-mock-regen-20261105.txt/.json，时间戳 2026-11-05 23:1x",
+ "next_milestone": "D-20261105-17 承诺件：City3D 室内烘焙步 2（T-20260929-33 步 2）净窗真数或净窗不可得证据，死线 2026-11-06 12:00——当前 vram_free≈0.7GB、13 个 Tuanjie 实例共租，属净窗不可得候选；另 M132 同行",
+ "previous_updated_at": "2026-11-05 22:5x"
 }
