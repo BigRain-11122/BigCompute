@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "provenance": "T212 / M130: a table row whose cell count disagrees with its own header is unreadable as a row even though its bytes are intact. Legacy rows are enumerated one by one (never absorbed by a count); any row NOT listed here reds text_integrity_census so the next one is caught at birth.",
+  "provenance": "T212 / M130: a table row whose cell count disagrees with its own header is unreadable as a row even though its bytes are intact. Legacy rows are enumerated one by one (never absorbed by a count); any row NOT listed here reds text_integrity_census so the next one is caught at birth. M134 batch 1 (2026-11-06): nine rows dropped after their pipe escapes were verified byte-reversible; the list shrinks only as rows are actually repaired.",
   "declared": [
     {
       "file": "HQ-FEEDBACK.md",
@@ -124,18 +124,6 @@
     },
     {
       "file": "state/proposals.md",
-      "row_id": "BC-P-38",
-      "kind": "COLUMN-OVERFLOW",
-      "note": "legacy pre-T212 row (born before the column gate); cells=8 want=5"
-    },
-    {
-      "file": "state/proposals.md",
-      "row_id": "BC-P-39",
-      "kind": "COLUMN-OVERFLOW",
-      "note": "legacy pre-T212 row (born before the column gate); cells=6 want=5"
-    },
-    {
-      "file": "state/proposals.md",
       "row_id": "BC-P-41",
       "kind": "COLUMN-UNDERFLOW",
       "note": "legacy pre-T212 row (born before the column gate); cells=4 want=5"
@@ -154,21 +142,9 @@
     },
     {
       "file": "state/proposals.md",
-      "row_id": "BC-P-59",
-      "kind": "COLUMN-OVERFLOW",
-      "note": "legacy pre-T212 row (born before the column gate); cells=6 want=5"
-    },
-    {
-      "file": "state/proposals.md",
       "row_id": "BC-P-76",
       "kind": "COLUMN-UNDERFLOW",
       "note": "legacy pre-T212 row (born before the column gate); cells=4 want=5"
-    },
-    {
-      "file": "state/queue/explore.md",
-      "row_id": "E72",
-      "kind": "COLUMN-OVERFLOW",
-      "note": "legacy pre-T212 row (born before the column gate); cells=5 want=4"
     },
     {
       "file": "state/queue/main.md",
@@ -253,36 +229,6 @@
       "row_id": "M66",
       "kind": "COLUMN-OVERFLOW",
       "note": "legacy pre-T212 row (born before the column gate); cells=6 want=4"
-    },
-    {
-      "file": "state/queue/tech.md",
-      "row_id": "T129",
-      "kind": "COLUMN-OVERFLOW",
-      "note": "legacy pre-T212 row (born before the column gate); cells=5 want=4"
-    },
-    {
-      "file": "state/queue/tech.md",
-      "row_id": "T44",
-      "kind": "COLUMN-OVERFLOW",
-      "note": "legacy pre-T212 row (born before the column gate); cells=5 want=4"
-    },
-    {
-      "file": "state/queue/tech.md",
-      "row_id": "T46",
-      "kind": "COLUMN-OVERFLOW",
-      "note": "legacy pre-T212 row (born before the column gate); cells=5 want=4"
-    },
-    {
-      "file": "state/queue/tech.md",
-      "row_id": "T58",
-      "kind": "COLUMN-OVERFLOW",
-      "note": "legacy pre-T212 row (born before the column gate); cells=6 want=4"
-    },
-    {
-      "file": "state/queue/tech.md",
-      "row_id": "T74",
-      "kind": "COLUMN-OVERFLOW",
-      "note": "legacy pre-T212 row (born before the column gate); cells=5 want=4"
     }
   ]
 }
