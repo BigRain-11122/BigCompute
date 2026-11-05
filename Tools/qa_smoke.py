@@ -2388,11 +2388,20 @@ def selftest_qa_version():
 
 
 def text_integrity_judge(s):
-    """Probe no.19 verdict (M93 / D-20261102-03 ③): advisory, never silent.
+    """Probe no.19 verdict (M93 / D-20261102-03 ③ / T212): advisory, never silent.
 
-    Damaged rows are reported with file:line and never block the round -- old
-    damage must not stop the line -- but a census that cannot produce a summary
-    is UNVERIFIED and reds, because "I could not read" must never look green.
+    Two independent families are reported side by side and never merged:
+
+    * content damage (flattened / U+FFFD / double-encoded / conflict markers) --
+      reported with file:line and never blocks the round, because old damage
+      must not stop the line;
+    * table column defects (a row whose cell count disagrees with its own
+      header) -- declared legacy rows are only counted, but an UNDECLARED local
+      row reds. That class used to be invisible: eight ledger rows were
+      unreadable as rows while every gate stayed green (M130/T212).
+
+    A census that cannot produce a summary is UNVERIFIED and reds, because
+    "I could not read" must never look green.
     """
     if not isinstance(s, dict) or "verdict" not in s:
         return False, "verdict=UNVERIFIED no summary"
@@ -2408,6 +2417,20 @@ def text_integrity_judge(s):
         for d in r.get("damaged_lines") or []:
             hits.append("%s:%s:%d" % (tag, os.path.basename(r.get("path", "?")),
                                       d.get("line", 0)))
+    head += " table=%s(declared=%s)" % (s.get("table_rows_mismatch", 0),
+                                        s.get("table_mismatch_declared", 0))
+    new_local = s.get("table_mismatch_new") or []
+    new_ext = s.get("table_mismatch_new_external") or []
+    if new_local:
+        names = ["loc:%s:%d(%s %d/%d)"
+                 % (os.path.basename(d.get("path", "?")), d.get("line", 0),
+                    d.get("kind", "?"), d.get("cells", 0), d.get("expected", 0))
+                 for d in new_local[:6]]
+        return False, head + " TABLE-MISMATCH-NEW=%d %s" % (len(new_local), ",".join(names))
+    if new_ext:
+        names = ["ext:%s:%d" % (os.path.basename(d.get("path", "?")), d.get("line", 0))
+                 for d in new_ext[:6]]
+        head += " table_new_ext=%d %s" % (len(new_ext), ",".join(names))
     if v == "TEXT-INTEGRITY-CLEAN":
         return True, head + " damaged=0"
     return True, head + " WARN-damaged=%d %s" % (len(hits), ",".join(hits[:6]))
@@ -2435,9 +2458,10 @@ def selftest_text_integrity():
     """M93 fixtures: clean / local damage / external damage / unreadable."""
     results = []
 
-    def check(name, cond):
+    def check(name, cond, detail=""):
         results.append(bool(cond))
-        print(("PASS " if cond else "FAIL ") + name)
+        print(("PASS " if cond else "FAIL ") + name
+              + (("  " + str(detail)) if (detail and not cond) else ""))
 
     clean = {"verdict": "TEXT-INTEGRITY-CLEAN", "files_scanned": 12,
              "categories_covered_n": 7, "categories_required_n": 7, "rows": []}
@@ -2470,6 +2494,36 @@ def selftest_text_integrity():
     check("S5 default set covers 7 families",
           len(tic.REQUIRED_CATEGORIES) == 7
           and all(p in tic.DEFAULT_TARGETS for _, p in tic.REQUIRED_TARGETS))
+
+    # S6/T212 an UNDECLARED local column defect reds -- that family had no
+    # alarm at all (M130), so being advisory would mean being ignored again
+    col_new = dict(clean, verdict="TEXT-INTEGRITY-NEEDS-FIX",
+                   table_rows_mismatch=48, table_mismatch_declared=47,
+                   table_mismatch_new=[{"path": os.path.join(ROOT, "state", "queue", "main.md"),
+                                        "line": 141, "kind": "COLUMN-OVERFLOW",
+                                        "cells": 5, "expected": 4}])
+    ok, det = text_integrity_judge(col_new)
+    check("S6 undeclared column row -> FAIL named",
+          (not ok) and "TABLE-MISMATCH-NEW=1" in det and "main.md:141" in det, det[:120])
+
+    # S7 declared legacy rows alone stay advisory (old rows must not stop the line)
+    col_declared = dict(clean, table_rows_mismatch=47, table_mismatch_declared=47,
+                        table_mismatch_new=[])
+    ok, det = text_integrity_judge(col_declared)
+    check("S7 declared-legacy only -> PASS with counts",
+          ok and "table=47(declared=47)" in det, det[:120])
+
+    # S8 a column defect in a read-only group ledger is named but not ours
+    col_ext = dict(clean, verdict="TEXT-INTEGRITY-EXTERNAL-DAMAGED",
+                   table_rows_mismatch=48, table_mismatch_declared=47,
+                   table_mismatch_new=[],
+                   table_mismatch_new_external=[{"path": os.path.join(
+                       os.path.dirname(ROOT), "docs", "decisions.md"),
+                       "line": 300, "kind": "COLUMN-OVERFLOW",
+                       "cells": 8, "expected": 7}])
+    ok, det = text_integrity_judge(col_ext)
+    check("S8 external column row -> named, not blocking",
+          ok and "table_new_ext=1" in det and "decisions.md:300" in det, det[:120])
 
     print("selftest text-integrity verdict: %d/%d PASS"
           % (len([r for r in results if r]), len(results)))

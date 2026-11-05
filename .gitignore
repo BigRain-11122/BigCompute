@@ -35,3 +35,6 @@ docs/_trash/
 .env
 .env.*
 __pycache__/
+
+# T212 列数基线=规则面（普查按它区分历史漂移与新缺陷；不入库则新克隆 fail-closed 全红）
+!state/table-column-baseline.json

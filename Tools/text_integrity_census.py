@@ -135,6 +135,14 @@ FFFD = "FFFD-DAMAGE"
 DOUBLE = "DOUBLE-DAMAGE"
 NOT_UTF8 = "NOT-UTF8"
 CONFLICT = "CONFLICT-MARKER"
+# T212: a table row whose cell count disagrees with its header is a different
+# defect from a corrupted line -- the bytes are intact, the row is unreadable.
+COLUMN_OVER = "COLUMN-OVERFLOW"
+COLUMN_UNDER = "COLUMN-UNDERFLOW"
+
+TABLE_ROW_RE = re.compile(r"^\s*\|")
+TABLE_DELIM_RE = re.compile(r"^\s*\|?[\s:|-]*-[\s:|-]*\|?\s*$")
+TABLE_BASELINE_DEFAULT = os.path.join(REPO_ROOT, "state", "table-column-baseline.json")
 
 CM_OPEN = "<<<<<<<"
 CM_CLOSE = ">>>>>>>"
@@ -191,6 +199,129 @@ def conflict_blocks(lines, fenced=None):
     return blocks, orphans, quoted
 
 
+def split_table_cells(line):
+    """GFM cell split: only an UNESCAPED '|' separates cells.
+
+    `\\|` is a literal pipe inside a cell (that is why M130's rows with a raw
+    pipe in the prose lost their columns). Leading/trailing optional pipes do
+    not create empty cells.
+    """
+    s = line.strip()
+    if s.startswith("|"):
+        s = s[1:]
+    if s.endswith("|") and not s.endswith("\\|"):
+        s = s[:-1]
+    cells, buf, i = [], [], 0
+    while i < len(s):
+        ch = s[i]
+        if ch == "\\" and i + 1 < len(s) and s[i + 1] == "|":
+            buf.append("|")
+            i += 2
+            continue
+        if ch == "|":
+            cells.append("".join(buf))
+            buf = []
+            i += 1
+            continue
+        buf.append(ch)
+        i += 1
+    cells.append("".join(buf))
+    return cells
+
+
+DATE_LIKE_RE = re.compile(r"^[\d\-:/ xX]+$")
+ID_TOKEN_RE = re.compile(r"^[A-Za-z][A-Za-z0-9._\-]*\d[A-Za-z0-9._\-]*$")
+
+
+def table_row_id(cells):
+    """Row identity for the legacy registry: first id-looking cell token.
+
+    Line numbers drift as append-only ledgers grow, so the baseline keys on the
+    row id. Ledgers whose first cell is a timestamp (decisions.md) must fall
+    through to the next cell, or four different rows collapse into one key.
+    """
+    for cell in cells:
+        s = cell.replace("*", "").replace("`", "").strip()
+        if not s or DATE_LIKE_RE.match(s):
+            continue
+        tok = s.split()[0]
+        if ID_TOKEN_RE.match(tok):
+            return tok[:40]
+    for cell in cells:
+        s = cell.replace("*", "").replace("`", "").strip()
+        if s:
+            return s.split()[0][:40]
+    return ""
+
+
+def table_file_key(path):
+    """Stable file key for the registry (repo-relative, or group-relative)."""
+    ap = os.path.abspath(path)
+    if is_external(path):
+        return "group/" + os.path.relpath(ap, group_root()).replace(os.sep, "/")
+    rp = os.path.abspath(REPO_ROOT)
+    if ap.lower().startswith(rp.lower() + os.sep):
+        return os.path.relpath(ap, rp).replace(os.sep, "/")
+    return "abs/" + os.path.basename(ap)
+
+
+def table_row_defects(lines, fenced=None):
+    """-> list of row-level column defects (empty = every row matches its header).
+
+    A table starts at a pipe row immediately followed by a delimiter row; every
+    following contiguous pipe row is a body row and must have the header's cell
+    count. Rows inside a fence are documentation examples and are skipped.
+    """
+    if fenced is None:
+        fenced = _fence_mask(lines)
+    out = []
+    i = 0
+    while i < len(lines) - 1:
+        if fenced[i] or not TABLE_ROW_RE.match(lines[i]):
+            i += 1
+            continue
+        delim = lines[i + 1]
+        if fenced[i + 1] or not TABLE_DELIM_RE.match(delim) or "-" not in delim:
+            i += 1
+            continue
+        want = len(split_table_cells(lines[i]))
+        j = i + 2
+        while j < len(lines) and not fenced[j] and TABLE_ROW_RE.match(lines[j]):
+            cells = split_table_cells(lines[j])
+            if len(cells) != want:
+                out.append({
+                    "line": j + 1,
+                    "cells": len(cells),
+                    "expected": want,
+                    "kind": COLUMN_OVER if len(cells) > want else COLUMN_UNDER,
+                    "row_id": table_row_id(cells),
+                    "preview": lines[j].strip()[:110],
+                })
+            j += 1
+        i = j
+    return out
+
+
+def load_table_baseline(path=TABLE_BASELINE_DEFAULT):
+    """Declared legacy column defects -> {(file_key, row_id): note}.
+
+    Legacy rows are enumerated one by one, never absorbed by a count, so a new
+    malformed row cannot ride in on yesterday's total. A missing registry means
+    nothing is declared -- every such row is new and must be looked at.
+    """
+    try:
+        with io.open(path, encoding="utf-8") as fh:
+            data = json.load(fh)
+    except (OSError, ValueError):
+        return {}, path
+    out = {}
+    for item in data.get("declared") or []:
+        f, rid = item.get("file"), item.get("row_id")
+        if f and rid is not None:
+            out[(f, rid)] = item.get("note", "")
+    return out, path
+
+
 def _print_safe(text):
     """Console codec on zh-CN hosts is GBK; printing must never abort a report."""
     try:
@@ -224,7 +355,9 @@ def classify_line(line):
     return hits
 
 
-def census(paths):
+def census(paths, baseline=None):
+    if baseline is None:
+        baseline, _ = load_table_baseline()
     rows = []
     for p in paths:
         ext = is_external(p)
@@ -266,6 +399,12 @@ def census(paths):
                                       "qmark_runs": 0,
                                       "preview": lines[n - 1].strip()[:110]}
         damaged = [damaged_map[k] for k in sorted(damaged_map)]
+        table_bad = table_row_defects(lines, fenced)
+        fkey = table_file_key(p)
+        for d in table_bad:
+            d["file"] = fkey
+            d["declared"] = (fkey, d["row_id"]) in baseline
+            d["note"] = baseline.get((fkey, d["row_id"]), "")
         rows.append({
             "path": p, "external": ext,
             "status": "DAMAGED" if damaged else "CLEAN",
@@ -274,11 +413,16 @@ def census(paths):
             "conflict_marker_lines": len({n for b in blocks for n in b["marker_lines"]}),
             "conflict_orphans": orphans,
             "conflict_quoted": quoted,
+            "table_mismatch": table_bad,
+            "table_mismatch_n": len(table_bad),
+            "table_mismatch_new": [d for d in table_bad if not d["declared"]],
         })
     return rows
 
 
-def summarize(rows):
+def summarize(rows, baseline=None):
+    if baseline is None:
+        baseline, _ = load_table_baseline()
     readable = [r for r in rows
                 if "skipped" not in r and "error" not in r
                 and r.get("status") != "ABSENT-EXTERNAL"]
@@ -288,9 +432,28 @@ def summarize(rows):
     unreadable_local = [r for r in rows if "error" in r and not r.get("external")]
     unreadable_ext = [r for r in rows if "error" in r and r.get("external")]
 
-    if bad_local or unreadable_local:
+    # T212: column defects are counted on their own axis -- a row can be
+    # perfectly encoded and still unreadable, and neither family may hide
+    # inside the other's number.
+    tbl_all, tbl_new_local, tbl_new_ext, tbl_declared = [], [], [], 0
+    for r in readable:
+        for d in r.get("table_mismatch") or []:
+            entry = dict(d, path=r["path"], external=bool(r.get("external")))
+            tbl_all.append(entry)
+            if d.get("declared"):
+                tbl_declared += 1
+            elif r.get("external"):
+                tbl_new_ext.append(entry)
+            else:
+                tbl_new_local.append(entry)
+    seen = {(r.get("table_file_key") or table_file_key(r["path"]), d["row_id"])
+            for r in readable for d in (r.get("table_mismatch") or [])}
+    stale = [{"file": f, "row_id": rid, "note": n}
+             for (f, rid), n in sorted(baseline.items()) if (f, rid) not in seen]
+
+    if bad_local or unreadable_local or tbl_new_local:
         verdict = "TEXT-INTEGRITY-NEEDS-FIX"
-    elif bad_ext or unreadable_ext:
+    elif bad_ext or unreadable_ext or tbl_new_ext:
         # Never silently green: damage exists, it is just not ours to repair.
         verdict = "TEXT-INTEGRITY-EXTERNAL-DAMAGED"
     else:
@@ -314,6 +477,11 @@ def summarize(rows):
         "conflict_quoted": sum(r.get("conflict_quoted", 0) for r in readable),
         "files_unreadable": len(unreadable_local),
         "external_unreadable": len(unreadable_ext),
+        "table_rows_mismatch": len(tbl_all),
+        "table_mismatch_declared": tbl_declared,
+        "table_mismatch_new": tbl_new_local,
+        "table_mismatch_new_external": tbl_new_ext,
+        "table_mismatch_stale": stale,
         "absent_external": [r["path"] for r in absent_ext],
         "categories_covered": covered,
         "categories_required": REQUIRED_CATEGORIES,
@@ -491,6 +659,111 @@ def _selftest():
         and r["status"] == "DAMAGED",
         "blocks=%s orphans=%s" % (r.get("conflict_blocks"), r.get("conflict_orphans")))
 
+    # --- T212: table column defects (a row can be readable bytes yet unreadable
+    # as a row). Q1 answered by construction: judgement is per row against the
+    # file's own header anchor; the file level only aggregates.
+    def _write(body, suffix=".md"):
+        fd, path = tempfile.mkstemp(suffix=suffix)
+        os.write(fd, body.encode("utf-8"))
+        os.close(fd)
+        return path
+
+    # G1 overflow: an unescaped pipe in the prose splits a cell away
+    p = _write("| ID | 任务 | 判据 | 状态 |\n|---|---|---|---|\n"
+               "| M1 | 甲 | 乙|丙 | **done** |\n")
+    r = census([p])[0]
+    os.unlink(p)
+    run("G1 column-overflow",
+        r["table_mismatch_n"] == 1 and r["table_mismatch"][0]["kind"] == COLUMN_OVER
+        and r["table_mismatch"][0]["cells"] == 5 and r["table_mismatch"][0]["expected"] == 4,
+        str([(d["cells"], d["expected"], d["kind"]) for d in r["table_mismatch"]]))
+
+    # G2 underflow: the row is short, so the state cell never lands anywhere
+    p = _write("| ID | 任务 | 判据 | 状态 |\n|---|---|---|---|\n"
+               "| M2 | 甲 | 乙 |\n")
+    r = census([p])[0]
+    os.unlink(p)
+    run("G2 column-underflow",
+        r["table_mismatch_n"] == 1 and r["table_mismatch"][0]["kind"] == COLUMN_UNDER,
+        str([(d["cells"], d["expected"], d["kind"]) for d in r["table_mismatch"]]))
+
+    # G3 Q2 answer: `\|` is a literal pipe, not a separator -> row stays 4 cells
+    p = _write("| ID | 任务 | 判据 | 状态 |\n|---|---|---|---|\n"
+               "| M3 | 甲\\|乙 | 丙 | **done** |\n")
+    r = census([p])[0]
+    os.unlink(p)
+    run("G3 escaped-pipe-not-separator",
+        r["table_mismatch_n"] == 0 and split_table_cells("| a \\| b | c |") == [" a | b ", " c "],
+        "n=%d cells=%r" % (r["table_mismatch_n"], split_table_cells("| a \\| b | c |")))
+
+    # G4 a fenced example stays documentation
+    p = _write("```\n| ID | 任务 |\n|---|---|\n| X | 甲 | 乙 | 丙 |\n```\n")
+    r = census([p])[0]
+    os.unlink(p)
+    run("G4 fenced-table-ignored", r["table_mismatch_n"] == 0, "n=%d" % r["table_mismatch_n"])
+
+    # G5 declared legacy row does not red; an undeclared one does (no silent
+    # absorption by count -- the registry enumerates rows one by one)
+    p = _write("| ID | 任务 | 判据 | 状态 |\n|---|---|---|---|\n"
+               "| M9 | 甲 | 乙|丙 | x |\n")
+    fkey = table_file_key(p)
+    base = {(fkey, "M9"): "drill"}
+    s = summarize(census([p], base), base)
+    os.unlink(p)
+    run("G5 declared-legacy-clean",
+        s["verdict"] == "TEXT-INTEGRITY-CLEAN" and s["table_mismatch_declared"] == 1
+        and not s["table_mismatch_new"],
+        "%s declared=%d new=%d" % (s["verdict"], s["table_mismatch_declared"],
+                                   len(s["table_mismatch_new"])))
+
+    p = _write("| ID | 任务 | 判据 | 状态 |\n|---|---|---|---|\n"
+               "| M9 | 甲 | 乙|丙 | x |\n| M10 | 甲 | 乙|丙 | x |\n")
+    fkey = table_file_key(p)
+    base = {(fkey, "M9"): "drill"}
+    s = summarize(census([p], base), base)
+    os.unlink(p)
+    run("G6 undeclared-row-reds",
+        s["verdict"] == "TEXT-INTEGRITY-NEEDS-FIX" and len(s["table_mismatch_new"]) == 1,
+        "%s new=%d" % (s["verdict"], len(s["table_mismatch_new"])))
+
+    # G7 Q3 answer: the two families never share a counter -- a column defect
+    # must not inflate damaged_lines, and content damage must not read as a
+    # column defect.
+    p = _write("| ID | 任务 | 判据 | 状态 |\n|---|---|---|---|\n"
+               "| M4 | 甲 | 乙|丙 | x |\n")
+    s = summarize(census([p], {}), {})
+    os.unlink(p)
+    run("G7 families-separate",
+        s["damaged_lines"] == 0 and len(s["table_mismatch_new"]) == 1,
+        "damaged_lines=%d table_new=%d" % (s["damaged_lines"], len(s["table_mismatch_new"])))
+
+    # G8 a fixed row leaves a stale declaration visible instead of silent
+    p = _write("| ID | 任务 | 判据 | 状态 |\n|---|---|---|---|\n"
+               "| M5 | 甲 | 乙 | x |\n")
+    fkey = table_file_key(p)
+    base = {(fkey, "M5"): "drill"}
+    s = summarize(census([p], base), base)
+    os.unlink(p)
+    run("G8 stale-declaration-visible",
+        s["verdict"] == "TEXT-INTEGRITY-CLEAN" and len(s["table_mismatch_stale"]) == 1,
+        "stale=%d" % len(s["table_mismatch_stale"]))
+
+    # G9 a pipe row without a header above it is not a table -> no opinion
+    p = _write("正文\n| a | b | c | d | e |\n")
+    r = census([p])[0]
+    os.unlink(p)
+    run("G9 headerless-row-ignored", r["table_mismatch_n"] == 0, "n=%d" % r["table_mismatch_n"])
+
+    # G10 a ledger whose first cell is a timestamp must key on the row id, or
+    # several different rows collapse into one registry key (real defect found
+    # on decisions.md: four rows shared row_id "2026-11-05")
+    cells = split_table_cells("| 2026-11-05 06:0x | D-20261105-07 **标题** | x |")
+    run("G10 date-cell-falls-through",
+        table_row_id(cells) == "D-20261105-07"
+        and table_row_id(split_table_cells("| M47 | 10-05 |")) == "M47",
+        "date_first=%r id_first=%r"
+        % (table_row_id(cells), table_row_id(split_table_cells("| M47 | 10-05 |"))))
+
     passed = sum(1 for _, ok, _ in checks if ok)
     for name, ok, detail in checks:
         _print_safe("  [%s] %s%s" % ("PASS" if ok else "FAIL", name, ("  " + detail) if detail else ""))
@@ -502,6 +775,7 @@ def rounds_line(s):
     """One line for state/rounds.log (D-20261102-03 ③). Deterministic."""
     return ("textintegrity:%s cats=%d/%d files=%d damaged_files=%d damaged_lines=%d"
             " ext_damaged=%d ext_absent=%d unreadable=%d conflict_blocks=%d conflict_orphans=%d"
+            " table_mismatch=%d table_new=%d"
             % ("CLEAN" if s["verdict"] == "TEXT-INTEGRITY-CLEAN" else
                ("EXTERNAL-DAMAGED" if s["verdict"] == "TEXT-INTEGRITY-EXTERNAL-DAMAGED"
                 else "NEEDS-FIX"),
@@ -509,7 +783,10 @@ def rounds_line(s):
                s["files_scanned"], s["files_damaged"], s["damaged_lines"],
                s["external_files_damaged"], len(s["absent_external"]),
                s["files_unreadable"], s.get("conflict_blocks", 0),
-               s.get("conflict_orphans", 0)))
+               s.get("conflict_orphans", 0),
+               s.get("table_rows_mismatch", 0),
+               len(s.get("table_mismatch_new") or [])
+               + len(s.get("table_mismatch_new_external") or [])))
 
 
 def main(argv=None):
@@ -519,13 +796,18 @@ def main(argv=None):
     ap.add_argument("--json-out")
     ap.add_argument("--rounds-line", action="store_true",
                     help="also print the one-line rounds.log summary (D-03 ③)")
+    ap.add_argument("--table-baseline", default=TABLE_BASELINE_DEFAULT,
+                    help="declared legacy table-column defects (T212)")
     args = ap.parse_args(argv)
 
     if args.command == "selftest":
         return _selftest()
 
+    baseline, baseline_path = load_table_baseline(args.table_baseline)
     paths = args.paths or DEFAULT_TARGETS
-    s = summarize(census(paths))
+    s = summarize(census(paths, baseline), baseline)
+    s["table_baseline_path"] = baseline_path
+    s["table_baseline_declared"] = len(baseline)
     for r in s["rows"]:
         if "skipped" in r:
             _print_safe("SKIP  %s (%s)" % (r["path"], r["skipped"]))
@@ -544,6 +826,19 @@ def main(argv=None):
             _print_safe("        conflict: blocks=%d markers=%d orphans=%d quoted=%d"
                         % (r.get("conflict_blocks", 0), r.get("conflict_marker_lines", 0),
                            r.get("conflict_orphans", 0), r.get("conflict_quoted", 0)))
+        if r.get("table_mismatch_n"):
+            new_n = len(r.get("table_mismatch_new") or [])
+            _print_safe("        table: rows_mismatch=%d new=%d%s"
+                        % (r["table_mismatch_n"], new_n,
+                           "  [external/read-only]" if r.get("external") else ""))
+            for d in r["table_mismatch"][:6]:
+                _print_safe("        T%-5d %-16s cells=%d want=%d %s%s"
+                            % (d["line"], d["kind"], d["cells"], d["expected"],
+                               d.get("row_id", "?"),
+                               " (declared)" if d.get("declared") else " (NEW)"))
+            if r["table_mismatch_n"] > 6:
+                _print_safe("        ... %d more mismatched rows"
+                            % (r["table_mismatch_n"] - 6))
         for d in r["damaged_lines"][:6]:
             _print_safe("        L%-5d %-22s q=%-3d %s"
                         % (d["line"], ",".join(d["classes"]), d["qmark_runs"], d["preview"]))
@@ -559,6 +854,16 @@ def main(argv=None):
                 % (s["files_with_conflict_blocks"], s["conflict_blocks"],
                    s["conflict_marker_lines"], s["conflict_orphans"],
                    s["conflict_quoted"]))
+    _print_safe("TABLE rows_mismatch=%d declared=%d new_local=%d new_ext=%d stale=%d"
+                % (s["table_rows_mismatch"], s["table_mismatch_declared"],
+                   len(s["table_mismatch_new"]),
+                   len(s["table_mismatch_new_external"]),
+                   len(s["table_mismatch_stale"])))
+    _print_safe("TABLE-BASELINE %s declared=%d" % (baseline_path, len(baseline)))
+    for d in s["table_mismatch_new"][:10]:
+        _print_safe("  NEW-ROW %s L%d %s cells=%d want=%d"
+                    % (table_file_key(d["path"]), d["line"], d["kind"],
+                       d["cells"], d["expected"]))
     if args.rounds_line:
         _print_safe("ROUNDS-LINE " + rounds_line(s))
     if args.json_out:

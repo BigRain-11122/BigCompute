@@ -674,3 +674,9 @@ qa: 26/27 PASS（唯一 FAIL=no.22 M96 既有面）；textintegrity CLEAN cats=7
 P0 无。P1 无。**产品增量 2 分件**：钱面写入守卫接成常驻探针 no.29——此前 `money_entry_census` 只在人手跑的那一次存在，工具一改或守卫一改名，下一轮没人知道；现在每轮实跑并逐条点名未申报写者/失效申报/守卫缺失。实跑 `MONEY-GUARD-CLEAN scanned=95 writers=17 declared=10`，selftest **9/9 PASS**、全套 `--selftest` exit 0、live `no.29 PASS`，smoke **26/28**。
 P2 两条：①两红均非本轮引入——no.16（8792 /ask）受 GPU 争用（vram_free 454MiB）属已知容量问题，no.22 属 M96 既有历史面；②探针只证明「守卫在出生地函数体内」，不证明守卫逻辑本身正确（负额拒绝的真实行为由 `cost_ledger` 8 条负控夹具覆盖），二者不可互相替代。
 qa: `probe_registry_census` PROBE-REGISTRY-CLEAN probes=28 clauses=25 dup=0；textintegrity CLEAN cats=7/7 conflict_blocks=0；C1C4-GREEN 4/4；`deal_flow_mock selftest 10/10`（F10 原长期红已转绿）、`RAILS-SCHEMA-GREEN violations=0 rows=1216`。
+
+## 2026-11-06 06:1x 令牌轮·产品优先律 2 分件（T212 收口·表格列数族）
+P0 无。
+P1 无（本轮主件=「整行不可判」族接入既有 census：47 处历史行逐条声明、未声明即判红、两族不混计，selftest 30/30、smoke 27/28）。
+P2 M132 烘焙实弹仍 BLOCKED 如实（free 920MiB/12282、util 93%、Tuanjie 6 实例——差一个量级，不硬闯）；另记 D-20261106-03 把 `BigCompute-LaneTaskGuard` 编入 EXPECTED-DISABLED 29 件（owner @HQ、review_by 11-10），本司侧无动作。
+qa: textintegrity CLEAN cats=7/7 table_mismatch=47 declared=47 new=0 stale=0·PROBE-REGISTRY-CLEAN probes=28 clauses=25 dup=0·C1C4-GREEN 4/4
