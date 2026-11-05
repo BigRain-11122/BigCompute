@@ -658,3 +658,6 @@ qa: 26/27 PASS（唯一 FAIL=no.22 M96 回执产物律，已知）；textintegri
 19:1x 日清：无待报 | 实物=state/tasks-open-reconcile-20261105.md（任务板 94 行机械判定：closed 83 / open 6 / 其他 5，6 条 open 只有 2 条本司现在能动）+ state/m128-open-extract-20261105.txt/.json（前置机械过滤只喂 open 行后 4b 抽取 3/3 有效、3.1s、582 tok；对照 M127 同模型 0/3、8.4s）
 P2: 「按 open 字面数可执行行」会虚高——T-20260924-18 状态字段写 `open（blocked on …）`，open 与 blocked 同字段并存；另 T-20260928-28 的 DRY-RUN 观察窗（deferred past 2026-10-05）已过期 31 天未复核 → 提案 BC-P-204；D-20261105-17 领单=T-20260929-33 步 2 City3D 烘焙实弹（承诺 11-06 12:00 回报，双出口判据：出真数 或 出净窗不可得证据）
 qa: 26/27 PASS（唯一 FAIL=no.22 M96 既有面）；textintegrity CLEAN cats=7/7 conflict_blocks=0（集团 orders 尾部冲突块本期已清）；C1C4-GREEN 4/4
+21:3x 轮：无待报 | 实物=state/m130-column-reflow-20261105.txt/.json（任务板 8 行整行不可机判→按 GFM 语义重排 4 列；MALFORMED-COLUMN 8→0、DONE 79→88、ACTIVE 3 不变；9 个任务行与 git HEAD 逐单元格精确一致）
+P1: qa no.2 本地推理两车道全灭（GPU-CONTENDED util=100%/vram_free=556MiB；CPU 道 180s 超时、py_cpu≈77%）——不是探针误报：共租户满载下本司主营服务 3 分钟内交不出答案。建议登记为「争用下服务不可用」独立读数，禁与「服务死亡」混判（只登记，不新建机制/不新增巡检卡）
+qa: 25/27 PASS（两红=no.2 争用超时＋no.22 M96 既有回执面）；textintegrity CLEAN cats=7/7 conflict_blocks=0；C1C4-GREEN 4/4

@@ -23,6 +23,8 @@ state/queue/*
 !state/m127-extract-ab-*
 # M129 任务板状态口径修正件（产品面实物：人读证据 + 机读计数）
 !state/m129-task-state-caliber-*
+# M130 任务板列数整形件（产品面实物：逐行零丢失复核 + 整形后计数）
+!state/m130-column-reflow-*
 # D-20261105-17 承诺件：净窗不可得实况证据（该令的双出口之 B）
 !state/d17-cleanwindow-*
 logs/

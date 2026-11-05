@@ -1,0 +1,51 @@
+{
+ "method": "cell-level exact match vs HEAD (each after-cell is the declared merge of its before-cells)",
+ "exact_all_ok": true,
+ "rows": [
+  {
+   "id": "T-20261027-37",
+   "cols": 4,
+   "exact_cell_match": true
+  },
+  {
+   "id": "T-20261104-84",
+   "cols": 4,
+   "exact_cell_match": true
+  },
+  {
+   "id": "T-20261104-85",
+   "cols": 4,
+   "exact_cell_match": true
+  },
+  {
+   "id": "T-20261104-86",
+   "cols": 4,
+   "exact_cell_match": true
+  },
+  {
+   "id": "T-20261105-91",
+   "cols": 4,
+   "exact_cell_match": true
+  },
+  {
+   "id": "T-20261105-92",
+   "cols": 4,
+   "exact_cell_match": true
+  },
+  {
+   "id": "T-20261105-96",
+   "cols": 4,
+   "exact_cell_match": true
+  },
+  {
+   "id": "T-20261105-97",
+   "cols": 4,
+   "exact_cell_match": true
+  },
+  {
+   "id": "T-20261105-98",
+   "cols": 4,
+   "exact_cell_match": true
+  }
+ ]
+}

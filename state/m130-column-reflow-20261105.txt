@@ -1,0 +1,32 @@
+M130 任务板列数整形 · 2026-11-05 21:2x 令牌轮
+缺陷：8 个物理行在 4 列口径下整行不可机判（M129 记 MALFORMED-COLUMN=8），
+      其中 1 行是「两条任务被挤在同一行」（T-20261104-84 与 T-20261104-85 共线，无换行）。
+根因三类（写入侧追加造成，非渲染问题）：
+  a) 正文里出现未转义竖线 —— [VRAM|COTENANT]（L41）、`0|1`（L91）被当成列分隔符；
+  b) 两行被追加成一行 —— 缺换行的连续追加（L86）；
+  c) 尾部多挂列 —— 产物源/证据列与重复的 **done** 列（L88/L92/L97/L98/L99）。
+处置：逐行按 GFM 语义（\| 为字面竖线）重排为 4 列；正文逐字保留。
+
+逐行复核（单元格级精确比对，基准 = git HEAD）:
+  T-20261027-37  cols=4  exact_cell_match=True
+  T-20261104-84  cols=4  exact_cell_match=True
+  T-20261104-85  cols=4  exact_cell_match=True
+  T-20261104-86  cols=4  exact_cell_match=True
+  T-20261105-91  cols=4  exact_cell_match=True
+  T-20261105-92  cols=4  exact_cell_match=True
+  T-20261105-96  cols=4  exact_cell_match=True
+  T-20261105-97  cols=4  exact_cell_match=True
+  T-20261105-98  cols=4  exact_cell_match=True
+  exact_all_ok = True
+
+整形前后普查（同一解析器，escape-aware）:
+  MALFORMED-COLUMN  8 -> 0
+  DONE             79 -> 88
+  ACTIVE            3（不变）
+  BLOCKED-EXTERNAL  1  BLOCKED-PHYSICAL 3  UNPREFIXED-LIVE 0
+  executable_rows   3（不变）
+
+诚实边界：
+  1) 只改可判性，不改任何任务结论；9 行正文与 HEAD 逐单元格一致（仅合并分隔符与转义符为新增）。
+  2) DONE 79->88 不是新完成 9 件，是原本已完成但机器看不见的 9 行恢复可见。
+  3) 写入侧根因未修（本轮不新建机制）：下次同类追加仍可能再压行——已入 tech 队列登记，不新立闸。

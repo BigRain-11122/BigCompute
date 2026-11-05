@@ -1,0 +1,127 @@
+[PASS] no.1 gpu collector
+[FAIL] no.2 ollama response
+[PASS] no.3 queue rows
+[PASS] no.4 cost ledger
+[PASS] no.5 rounds.log strict-decode
+[PASS] no.6 resident QA serve 8792
+[PASS] no.9 L1 coder serve 8090
+[PASS] no.8 ledger tail integrity (BC-P-45)
+[PASS] no.10 supply dual-field reading (T132)
+[PASS] no.11 runbook size budget (T133)
+[PASS] no.12 cost contract census (T138)
+[PASS] no.13 lane artifacts presence+integrity (T140/T141)
+[PASS] no.14 CEO status export (T143)
+[PASS] no.15 ledger encoding health (T145)
+[PASS] no.16 resident QA 8792 /ask function (T153)
+[PASS] no.17 scan root self-reference census (T161)
+[PASS] no.18 heartbeat guarded numeric tokens (T168)
+[PASS] no.20 ledger parallel fused-row census (T177)
+[PASS] no.21 resident QA version drift (T184)
+[PASS] no.19 living-index text integrity (M93/D-20261102-03)
+[FAIL] no.22 receipt product law (M96/BC-P-166)
+[PASS] no.23 ollama serve death vs transient (T188)
+[PASS] no.24 probe registry census (T190/BC-P-169)
+[PASS] no.25 write-side encoding declarations (T193)
+[PASS] no.26 shared jsonl row-loss census (T198)
+[PASS] no.27 aftersale rails judgeable (M115)
+GACHA-CAP-DRILL cap=200.00 source=drill-design-value steps=16
+  allow=8 blocked_over_cap=4 bypass=1 unset=1 duplicate=1 bad=1
+  anon-a/2026-11 spent=240.00 anon-c/2026-11 spent=200.00
+[PASS] no.28 drill planted-set census (T205)
+smoke verdict: 25/27 PASS (charter 1-4 + extension probes nos=1,2,3,4,5,6,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28; no.7 reserved) (log=smoke-20261105-2125.log png=smoke-20261105-2125.png)
+sy��vram_free 329MiB��cotenant ���أ�ʵê)
+borrow-window declared: 2026-10-12..2026-10-12 consumer=������ء������� 2026-10-12 09:5x��ʵ��=LLM ��פ�����أ�ollama qwen2.5:14b-8k��10.5GB VRAM pin���������� util 97%������ԭ������BigStream ר�� KN i2v ���ش���δ��VRAM �� LLM ռ����H3 int8 19.5GB �����ء�ComfyUI 8188 ���������+������ KN ��Ƭʵ֤�����ռ���������ά�֣��� SELF ������ʵ��E57 ������������ 14:53�� (source=orders O-20261011-21xx ר�����У�������ڲᣩ+E57 �������ݹ�����ʵê��state/h3-window-energy-llmserve-interim-20261012-0958.json+ollama /api/ps ʵ����)
+borrow-window declared: 2026-10-12..2026-10-13 consumer=BigStream mv0001 KF demo ѡ����ҹ����bm-a seeds 9012-9014 ѡ����+E01c ��ʽ��ء�O-20261012-2025 CEO �°�ȫ�����ƽ���˫�� KF ���ӷֹ���ҹ����ǰ�� 20:2x��i2v ���� INT8 ˫����ͬ������� (source=orders O-20261012-2025��origin ac305c5��10-12 20:2x �У�+���̬ʵ�� 20:3x��GPU util 1%/used 8770MiB��llama-server PID 74832 ����+ComfyUI PID 10336 ��λ=��δ���ǰ��̬��)
+borrow-window declared: 2026-10-13..2026-10-13 consumer=BigStream mv0001 ����������׼֡������ҹ����O-20261012-2330 �� bm-a ҹ�� GPU��jman LoRA RAW 52 ���������� turbo �ݰ桤��ס/�Ķ�/����/��Ȼ/���� 5-7 �š�����ϯ���� (source=orders O-20261012-2330 �� bm-a ҹ�� GPU=����������׼֡�������У�origin 6a5e0cf��10-12 23:3x��+���̬ʵ�� 10-13 00:14:52��GPU util 1%/used 9323MiB �� llama-server PID 74648 �����7����ִ�� #5 ˫ɱ�� used 4227/free 7771=����ϯ����ǰ�þ�����)
+borrow-window declared: 2026-10-13..2026-10-14 consumer=����ϯ mv0001 V3 ��� bm-a �Σ���� fullres ������ 7/7 locked seeds 1344��768 jman0.6��orders 6851396 19:41 ʵê��+21:0x CEO �°�ȫ�����������Σ�O-20261013-2200 bm-a=�ල+װ��˵��ȡ�CPU �棩 (source=orders 6851396��10-13 19:41 @bm-a V3 fullres 7/7 relay��+O-20261013-2100 CEO �°�ȫ������+O-20261013-2200 ȫ������֤�bm-a=�ල+װ��˵������ۣ�)
+7-day benchmark (D-20260930-36 R-C1, head-firm gap line): 2026-10-30..2026-11-05 n=1355 avg=42.5% -> BELOW-BENCH(<50% structural-failure line on 7-day avg, R-C1 D-20260930-36) (gap line only; sole call-out stays 30%; 70% target = directional ref pending R- threshold-calibration receipts)
+rolling 30-min window: n=6 avg=98.5% -> busy
+
+[FAIL] no.2 ollama response
+ollama probe failed: BOTH-LANES (gpu=GPU-CONTENDED(util=100%>=90,vram_free=556MiB<1024) budget=60s; cpu fallback: cpu lane failed after 180s: TimeoutError('timed out'); TimeoutError('timed out'))
+
+[PASS] no.3 queue rows
+main.md: 131 rows
+tech.md: 214 rows
+explore.md: 79 rows
+
+[PASS] no.4 cost ledger
+selftest: math=True determinism=True count=ok t94date=True sli8=True guards=True (orders+quota-gate+count+cloud+borrow+l1+t94date+sli8+money-guard) -> PASS
+
+[PASS] no.5 rounds.log strict-decode
+strict utf-8 decode ok: 491131 bytes / 436 lines
+
+[PASS] no.6 resident QA serve 8792
+health 200 status=ok anchors=20 server=resident-qa v1.3 (BigCompute MaaS consumer face) model=qwen3.6-35b
+
+[PASS] no.9 L1 coder serve 8090
+L1 coder serve 8090 TOMBSTONE-N/A: lane retired by D-20261029-11 (URLError(ConnectionRefusedError(10061, '由于目标计算机积极拒绝，无法连接。', None, 10061, None)); owner=- pid=-) - successor KPI = Tools/l1_kpi_probe.py reach on L1_ENDPOINT
+
+[PASS] no.8 ledger tail integrity (BC-P-45)
+state/rounds.log: tail_nl=ok tail_empty=0 last_markers=0 last_len=873
+state/heartbeat.txt: tail_nl=ok tail_empty=0 last_markers=1 last_len=612
+HQ-FEEDBACK.md: tail_nl=ok tail_empty=0 last_markers=0 last_len=120
+state/proposals.md: tail_nl=ok tail_empty=0 last_markers=1 last_len=430
+state/queue/main.md: tail_nl=ok tail_empty=0 last_markers=1 last_len=251
+state/queue/tech.md: tail_nl=ok tail_empty=0 last_markers=1 last_len=274
+state/queue/explore.md: tail_nl=ok tail_empty=0 last_markers=1 last_len=797
+
+[PASS] no.10 supply dual-field reading (T132)
+pool_effective=0 pool_ignitable=2 (effective <= ready)
+
+[PASS] no.11 runbook size budget (T133)
+runbook 2045 bytes <= 2048 cap
+
+[PASS] no.12 cost contract census (T138)
+verdict=COST-CONTRACT-GREEN rails=5 gaps=0
+
+[PASS] no.13 lane artifacts presence+integrity (T140/T141)
+TOMBSTONE-N/A (LANE-ARTIFACT-MISSING model=C:\Users\sjs20\models\qwen36-35b\Qwen3.6-35B-A3B-UD-IQ4_XS.gguf, exe=C:\Users\sjs20\models\llamacpp-b11429\llama-server.exe - the :8090 lane cannot start while a prerequisite is gone; a port probe only sees this after the old listener dies (10-25 09:26 first MISSING -> 10-27 03:16 first notice = 41.8h blind window; restore = model-supply window / group launcher, this suite only makes it visible)) - :8090 lane retired by D-20261029-11, prerequisites no longer owed
+
+[PASS] no.14 CEO status export (T143)
+verdict=EXPORT-GREEN three lines present, updated_at=2026-11-05 20:00 age=1.5h
+
+[PASS] no.15 ledger encoding health (T145)
+ENCODING-OK files=2 cjk_chars=103975 latin_runs=7002
+
+[PASS] no.16 resident QA 8792 /ask function (T153)
+ASK-ERROR->KEPT-OPEN-KNOWN-ENV: 8792 /ask failed against a listening backend: timed out [known environment constraint: GPU contention, D-20261105-10, evidence=state/d05-no16-gpu-contention-20261105.txt - not counted as a defect, do not re-collect]
+gpu: GPU-CONTENDED(util=100%>=90,vram_free=543MiB<1024) budget=60s attempts=1
+
+[PASS] no.17 scan root self-reference census (T161)
+verdict=SCAN-ROOT-CLEAN rows=19 ROOT-SEPARATED=6 STRUCTURAL-NA=13 sweep=7(informational)
+
+[PASS] no.18 heartbeat guarded numeric tokens (T168)
+guarded=20 ram_free_pct=12.9 vram_free_mb=275 py_cpu=77.0 py_cpu_psutil=21.1 queue_open=78 consecutive_idle=0 idle_rounds=0 pool_rows_candidate=0 pool_effective=0 pool_ignitable=2 cpu_lane_idle=false agenda_starved=false serve_alive=true breach_eff=true task_face=ok model_drift=DRIFT(m=2,a=3) lane8090=DARK[DOWN] c1c4_line=FRESH(rounds_ago=0,verdict=C1C4-GREEN,ev=C1C4-GREEN) hq_line=FRESH(age_h=20.5,date=2026-11-05) cpu_load_line=PASS(psutil=21.1<70.0,ref=77.0) | crosscheck-ok writer=27 guarded=20 declared=7
+
+[PASS] no.20 ledger parallel fused-row census (T177)
+verdict=PARALLEL-CLEAN files=7 lines=3465 parallel=3 whitelisted=3 new=0
+
+[PASS] no.21 resident QA version drift (T184)
+VERSION-IN-SYNC resident-qa v1.3 (BigCompute MaaS consumer face) (running process == source)
+
+[PASS] no.19 living-index text integrity (M93/D-20261102-03)
+verdict=TEXT-INTEGRITY-CLEAN cats=7/7 files=12 damaged=0
+
+[FAIL] no.22 receipt product law (M96/BC-P-166)
+verdict=ATTENTION counted=72 net_h=0.366 missing_local=6 copy=13 no_deliverable=27 copy:bm-a/C-QUANT-NOBOND-20261103<-bigmoney-backtest-2026-11-03-v3 copy:bm-a/bigmoney-backtest-2026-11-04<-bigmoney-backtest-2026-11-03-v3 copy:bm-a/R-PLAN-BIGGAME-20261104<-Q-TRIAGE-BIGGAME-20261104 copy:bm-a/Q-TRIAGE-FLUXVERSE-20261102<-R-PLAN-FLUXVERSE-20261102 copy:bm-a/Q-TRIAGE-FLUXVERSE-20261105<-R-PLAN-FLUXVERSE-20261105 copy:bm-a/Q-TRIAGE-RECON-20261105<-R-PLAN-RECON-20261105
+
+[PASS] no.23 ollama serve death vs transient (T188)
+verdict=UP attempts=1 settle_s=20.0 recovered_after_s=None models=4
+
+[PASS] no.24 probe registry census (T190/BC-P-169)
+PROBE-REGISTRY-CLEAN probes=27 base=4 charter_ext=24 clauses=24 reserved=[7] dup=0 problems=0
+
+[PASS] no.25 write-side encoding declarations (T193)
+verdict=WRITE-ENCODING-CLEAN scanned=138 risk=0 unjudged=0
+
+[PASS] no.26 shared jsonl row-loss census (T198)
+verdict=ROW-LOSS-PARTIAL-NA window=4 permanent=0 transient=0 scanned=2 n/a=1 targets=3
+
+[PASS] no.27 aftersale rails judgeable (M115)
+rails aftersale=ABSENT/aftersale_mock=3 rows exclusion mock->real=REJECTED real->mock=REJECTED cal=REFUND-CALIBRATED
+
+[PASS] no.28 drill planted-set census (T205)
+drills=6 clean=5 n/a=1 n/a-name=unit_cost_drill
+
+smoke verdict: 25/27 PASS (charter 1-4 + extension probes nos=1,2,3,4,5,6,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28; no.7 reserved)
