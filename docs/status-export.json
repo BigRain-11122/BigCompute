@@ -1,8 +1,8 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-11-05 23:2x",
- "current_activity": "2026-11-05 夜班轮（23:2x）：T209 收口——钱面写入守卫接成常驻探针 qa_smoke no.29（未申报写者/失效申报/守卫被删 逐条点名；CLEAN 带问题、未知 verdict、零扫描 三种无效绿均判红） [via BigCompute-OSLoop]",
- "latest_artifact": "Tools/qa_smoke.py 新增 no.29 money_guard_judge/probe_money_guard/selftest_money_guard（selftest 9/9）+ docs/qa-smoke-test-charter.md §三 第 29 条 + 实跑 MONEY-GUARD-CLEAN scanned=95 writers=17 declared=10（10 条钱面写者全 GUARDED）+ qa/smoke-20261105-2323.log/.png（26/28）+ state/probe-registry-20261105-2324.json（PROBE-REGISTRY-CLEAN probes=28），时间戳 2026-11-05 23:2x",
- "next_milestone": "D-20261105-17 承诺件 City3D 室内烘焙（T-20260929-33 步 2）：净窗到达即一命令实弹烘焙并出 GPU/CPU 双路三指标，死线 2026-11-06 12:00；当前 vram_free≈0.45GB 且 13 个 Tuanjie 实例共租，净窗未到则如实 BLOCKED 并记 M132 同步",
- "previous_updated_at": "2026-11-05 23:1x"
+ "updated_at": "2026-11-06 06:1x",
+ "current_activity": "2026-11-06 06:1x 令牌轮：T212 收口——把「整行不可判」（表格列数漂移）接进既有 text_integrity_census，与内容损坏分字段计数、互不混计；47 处历史行逐条声明，未声明的本仓新行当场判红 [via BigCompute-OSLoop]",
+ "latest_artifact": "Tools/text_integrity_census.py（split_table_cells/table_row_defects/table_row_id·GFM 转义语义·围栏跳过）+ state/table-column-baseline.json（47 条按 file+row_id 逐条枚举·入库）+ Tools/qa_smoke.py no.19 增红边界（未声明本仓新行判红/集团只读只点名）+ docs/qa-smoke-test-charter.md §三 第 19 条增补 + selftest 30/30、qa selftest 全绿、实跑 CLEAN table_mismatch=47 declared=47 new=0，时间戳 2026-11-06 06:1x",
+ "next_milestone": "M132 净窗烘焙（死线 2026-11-06 12:00）：本轮实读 free 920MiB/util 93%/6 个 Tuanjie 实例，净窗未到=如实 BLOCKED；随后 M134 逐条修复本仓 43 行历史漂移（每修一批从基线删一条，stale 归零即收口），窗内 ≤48h",
+ "previous_updated_at": "2026-11-05 23:2x"
 }
