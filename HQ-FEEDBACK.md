@@ -661,3 +661,6 @@ qa: 26/27 PASS（唯一 FAIL=no.22 M96 既有面）；textintegrity CLEAN cats=7
 21:3x 轮：无待报 | 实物=state/m130-column-reflow-20261105.txt/.json（任务板 8 行整行不可机判→按 GFM 语义重排 4 列；MALFORMED-COLUMN 8→0、DONE 79→88、ACTIVE 3 不变；9 个任务行与 git HEAD 逐单元格精确一致）
 P1: qa no.2 本地推理两车道全灭（GPU-CONTENDED util=100%/vram_free=556MiB；CPU 道 180s 超时、py_cpu≈77%）——不是探针误报：共租户满载下本司主营服务 3 分钟内交不出答案。建议登记为「争用下服务不可用」独立读数，禁与「服务死亡」混判（只登记，不新建机制/不新增巡检卡）
 qa: 25/27 PASS（两红=no.2 争用超时＋no.22 M96 既有回执面）；textintegrity CLEAN cats=7/7 conflict_blocks=0；C1C4-GREEN 4/4
+22:5x 夜班轮（日清）：无待报 | 实物=`state/m131-pipe-writer-20261105.txt`（压行族 9 个破损行写入者定位=无脚本写者，9/9 全是本循环会话内联编辑）+ `Tools/deal_flow_mock.py` F10 错断言修正（要求「两写入者恰好相等」→ 逐键归属判定，长期红转绿）
+P2: 行追加要真拦住须改为走脚本（T212 三问未答），属机制建设——按 2026-11-05 00:36 CEO 令本轮不新建；同族第二例（mock 轨四键无写入者）已立 M133
+qa: F10 selftest 10/10、rails_schema_check 45/45、负控双检出（删键/错归属均报红）

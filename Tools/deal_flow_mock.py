@@ -47,9 +47,10 @@ LIVE = False  # J4: planned-state drill. Real wiring = CEO physical gate.
 DESIGN_BANNER = "MOCK/DESIGN-VALUE-NOT-APPROVED (pricing slot pending CEO batch)"
 ROUTE_GROUPS = ("resident-qa-8792", "batch-pool", "direct-outbox")
 
-# T136: the exact keys ledger_write emits. Mirrors rails_schema_check.PRODUCERS
-# ["mock_order"]; drift is caught at write time (not swallowed by
-# additionalProperties) and asserted again in selftest.
+# T136: the exact keys ledger_write emits. A subset of rails_schema_check.PRODUCERS
+# ["mock_order"] -- that rail has a second writer (denominator/COGS injection), so
+# selftest asserts attribution per key rather than set equality (M133). Extra keys
+# are still caught at write time instead of being swallowed by additionalProperties.
 WRITER_KEYS = (
     "order_id", "date", "sku", "tier", "cost_item", "price", "fee_rate",
     "refund_rate", "net_price", "amount", "gross", "tokens_local", "tokens_api",
@@ -295,14 +296,26 @@ def _selftest():
             and len(WRITER_KEYS) == 18, "%d keys" % len(emitted))
         try:
             import rails_schema_check as rsc
+            producers = rsc.PRODUCERS["mock_order"]
             census_problems = rsc.census("mock_order", _load_rows(rail))
-            producer_drift = sorted(set(rsc.PRODUCERS["mock_order"]) ^ set(WRITER_KEYS))
+            # M133: one rail may legitimately have more than one writer (the
+            # denominator/COGS injection writes keys this writer never emits), so
+            # set equality is the wrong assertion. What must hold: every key this
+            # writer emits is (a) declared, (b) attributed to this writer, and
+            # (c) no declared key is left unnamed -- silence about a writer is
+            # exactly what let an untracked one hide behind additionalProperties.
+            unproduced = sorted(set(WRITER_KEYS) - set(producers))
+            missattributed = sorted(
+                k for k in WRITER_KEYS
+                if producers.get(k) not in (None, "deal_flow_mock.ledger_write"))
+            nameless = sorted(k for k, v in producers.items() if not v)
         except Exception as exc:  # pragma: no cover - import failure is a real fail
             census_problems = ["census import failed: %s" % exc]
-            producer_drift = ["producer unavailable"]
-        run("F10 census clean + WRITER_KEYS == PRODUCERS.mock_order",
-            census_problems == [] and producer_drift == [],
-            str(census_problems + producer_drift)[:90])
+            unproduced = missattributed = nameless = ["producer unavailable"]
+        run("F10 census clean + every WRITER_KEY attributed here",
+            census_problems == [] and not unproduced
+            and not missattributed and not nameless,
+            str(census_problems + unproduced + missattributed + nameless)[:90])
 
     n_pass = sum(1 for _, ok, _ in checks if ok)
     for name, ok, detail in checks:
