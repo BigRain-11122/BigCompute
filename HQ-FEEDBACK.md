@@ -680,3 +680,8 @@ P0 无。
 P1 无（本轮主件=「整行不可判」族接入既有 census：47 处历史行逐条声明、未声明即判红、两族不混计，selftest 30/30、smoke 27/28）。
 P2 M132 烘焙实弹仍 BLOCKED 如实（free 920MiB/12282、util 93%、Tuanjie 6 实例——差一个量级，不硬闯）；另记 D-20261106-03 把 `BigCompute-LaneTaskGuard` 编入 EXPECTED-DISABLED 29 件（owner @HQ、review_by 11-10），本司侧无动作。
 qa: textintegrity CLEAN cats=7/7 table_mismatch=47 declared=47 new=0 stale=0·PROBE-REGISTRY-CLEAN probes=28 clauses=25 dup=0·C1C4-GREEN 4/4
+## 2026-11-06 06:2x 令牌轮·产品优先律 1 分件（M134 批次 1·表格行真修）
+P0 无。
+P1 无（9 行历史漂移行已从「声明」转成「修好」：7 行是散文里的裸竖线 VRAM|COTENANT/coder|swift|unsloth，2 行是尾部多挂列的游标竖线；修法只插反斜杠，脚本内断言「去掉反斜杠还原=原行逐字节相等」）。
+P2 余 34 行本仓（HQ-FEEDBACK 16/main 14/tech 0/proposals 4）+ 4 行集团只读台账不做（不写他人台账），下批对象与逐批递减口径已写进 M134 行；M132 烘焙仍 BLOCKED 如实（free 1222MiB/util 93%/6 个 Tuanjie 实例）。
+qa: textintegrity CLEAN cats=7/7 table_mismatch=38 declared=38 new=0 stale=0·C1C4-GREEN 4/4·smoke 27/28（唯一 FAIL=no.22 M96 回执产物既有面）
