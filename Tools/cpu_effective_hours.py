@@ -43,7 +43,7 @@ HOST_NODE = os.environ.get("FLUXGROUP_NODE", "bm-a")
 HASH_CAP = 16 * 1024 * 1024  # 超过 16MB 只取前 1MB+size 做指纹，避免大件拖慢
 
 BUCKETS = ("verified", "remote_unverif", "missing_local", "rc_fail",
-           "replay", "copy", "zero_seconds", "no_deliverable",
+           "replay", "copy", "path_reuse", "zero_seconds", "no_deliverable",
            "bad_json", "not_work_receipt", "unparsed", "sha_mismatch")
 
 # 回执可能用这些键声明产物内容指纹（BC-P-173：文件名与大小都不变、内容变了时，
@@ -322,7 +322,11 @@ def evaluate(records, root, host, days=None, node=None, now=None):
 
     # 复制当产物：同一节点上同一内容被不同 id 当成各自产物 → 后者不计净工时
     # （不同节点各自跑出同名同内容产物属正常，不算复制——见上方 foreign 判定）
+    # 「复制」必须两个路径：同一路径被后一次运行覆盖，盘上只能读到最后一次内容，
+    # 两条回执的 digest 必然相同——这不是搬运证据，是确定性重跑（M215 triage 1）。
+    # 只有「不同路径 + 同内容」才构成复制证据；同路径重跑照计工时，仅做可见告警。
     copy_rows = []
+    reuse_rows = []
     for _node_digest, group in by_deliverable.items():
         if len(group) < 2:
             continue
@@ -330,14 +334,23 @@ def evaluate(records, root, host, days=None, node=None, now=None):
         ids = {r["id"] for r in group}
         if len(ids) < 2:
             continue
+        first = group[0]
+        seen_paths = {first["deliverable"]: first["id"]}
         for dup in group[1:]:
+            if dup["deliverable"] in seen_paths:
+                dup["state"] = "PATH-REUSED"
+                dup["reused_with"] = seen_paths[dup["deliverable"]]
+                reuse_rows.append(dup)
+                continue
+            seen_paths[dup["deliverable"]] = dup["id"]
             dup["state"] = "COPY-AS-PRODUCT"
-            dup["copy_of"] = group[0]["id"]
+            dup["copy_of"] = first["id"]
             copy_rows.append(dup)
     if copy_rows:
         copy_set = {id(r) for r in copy_rows}
         rows = [r for r in rows if id(r) not in copy_set]
         buckets["copy"] += len(copy_rows)
+    buckets["path_reuse"] += len(reuse_rows)
 
     buckets["verified"] = len(rows)
     net_seconds = sum(r["seconds"] for r in rows)
@@ -377,6 +390,9 @@ def evaluate(records, root, host, days=None, node=None, now=None):
         "rows": rows,
         "copies": [{"id": r["id"], "node": r["node"], "copy_of": r["copy_of"],
                     "deliverable": r["deliverable"]} for r in copy_rows],
+        "path_reuses": [{"id": r["id"], "node": r["node"],
+                         "reused_with": r["reused_with"],
+                         "deliverable": r["deliverable"]} for r in reuse_rows],
         "skipped": [{"id": r["id"], "node": r["node"], "receipt": r.get("receipt", ""),
                      "reason": why, "deliverable": r["deliverable"]} for r, why in skipped],
     }
@@ -392,12 +408,12 @@ def report(payload, show_list=False):
     _out("verdict=%s  counted=%d  net=%sh  (%.0fs)"
          % (payload["verdict"], t["counted"], t["net_hours"], t["net_seconds"]))
     _out("receipts_scanned=%d  verified=%d  remote_unverif=%d  missing_local=%d  "
-         "rc_fail=%d  replay=%d  copy=%d  zero_seconds=%d  no_deliverable=%d  "
-         "bad_json=%d  not_work_receipt=%d"
+         "rc_fail=%d  replay=%d  copy=%d  path_reuse=%d  zero_seconds=%d  "
+         "no_deliverable=%d  bad_json=%d  not_work_receipt=%d"
          % (t["receipts_scanned"], b["verified"], b["remote_unverif"],
             b["missing_local"], b["rc_fail"], b["replay"], b["copy"],
-            b["zero_seconds"], b["no_deliverable"], b["bad_json"],
-            b["not_work_receipt"]))
+            b["path_reuse"], b["zero_seconds"], b["no_deliverable"],
+            b["bad_json"], b["not_work_receipt"]))
     cover = payload.get("sha_coverage") or {}
     _out("sha_coverage: declared=%s matched=%s mismatched=%s"
          % (cover.get("declared", "?"), cover.get("matched", "?"),
@@ -414,6 +430,9 @@ def report(payload, show_list=False):
                     row["seconds"], row["deliverable"], row["sha"]))
     for item in payload["copies"]:
         _out("  COPY  %s/%s ← %s" % (item["node"], item["id"], item["copy_of"]))
+    for item in payload.get("path_reuses") or []:
+        _out("  REUSE %s/%s 同路径重跑（计工时·同 %s）%s"
+             % (item["node"], item["id"], item["reused_with"], item["deliverable"]))
     for item in payload["skipped"]:
         if item["reason"].startswith("rc-fail"):
             continue
@@ -454,7 +473,8 @@ def selftest():
         # 真实产物
         for name, body in (("a.json", {"v": 1}), ("b.json", {"v": 2}),
                            ("same1.json", {"v": 9}), ("same2.json", {"v": 9}),
-                           ("c.json", {"v": 3}), ("old.json", {"v": 7})):
+                           ("c.json", {"v": 3}), ("old.json", {"v": 7}),
+                           ("rerun.json", {"v": 11})):
             _write(os.path.join(root, "out", name), body)
 
         _write(os.path.join(rdir, "r1.json"),
@@ -494,19 +514,25 @@ def selftest():
         # 这是本机 J-OK 的产物，不能被当成 bm-c 的产物核销，更不得判成复制
         _write(os.path.join(rdir, "r16.json"),
                _lane("J-REMOTE-SAMEPATH", "bm-c", 500, "out/a.json", fresh))
+        # 同一路径被两次运行覆盖：盘上只留最后一次内容，两条回执 digest 必然相同。
+        # 这是重跑不是搬运——工时须计、不得剔除（M215 triage 定谳）
+        _write(os.path.join(rdir, "r17.json"),
+               _lane("J-RERUN1", "bm-a", 200, "out/rerun.json", fresh))
+        _write(os.path.join(rdir, "r18.json"),
+               _lane("J-RERUN2", "bm-a", 250, "out/rerun.json", fresh))
 
         recs, bad, other = load_receipts(rdir)
         want("S1 坏 JSON 进 bad_json", len(bad) == 1)
         want("S2 list 形态被展开为一条", any(r["id"] == "J-LIST" for r in recs))
 
         p = evaluate(recs, root, "bm-a", days=1, now=now)
-        want("S3 有效行计入 (J-OK/J-COPY1/llm-ok/J-LIST)",
-             p["totals"]["counted"] == 4)
+        want("S3 有效行计入 (J-OK/J-COPY1/llm-ok/J-LIST/J-RERUN1/J-RERUN2)",
+             p["totals"]["counted"] == 6)
         if os.environ.get("CPUEFF_DEBUG"):
             _out("DEBUG totals=%s rows=%s" % (p["totals"],
                   [(r["id"], r["seconds"]) for r in p["rows"]]))
-        want("S4 纯有效工时=3600+100+60+30 秒",
-             abs(p["totals"]["net_seconds"] - 3790.0) < 0.01)
+        want("S4 纯有效工时=3600+100+60+30+200+250 秒",
+             abs(p["totals"]["net_seconds"] - 4240.0) < 0.01)
         want("S5 rc 失败不入账", p["buckets"]["rc_fail"] >= 1)
         want("S6 本机缺产物=missing_local 且 verdict ATTENTION",
              p["buckets"]["missing_local"] == 1 and p["verdict"] == "ATTENTION")
@@ -519,6 +545,13 @@ def selftest():
         want("S8 同 id 同产物重放只计一次", p["buckets"]["replay"] == 1)
         want("S9 复制当产物被抓(J-COPY2)",
              any(c["id"] == "J-COPY2" for c in p["copies"]))
+        want("S23 同路径同内容=重跑不作复制、工时照计(J-RERUN2)",
+             all(c["id"] != "J-RERUN2" for c in p["copies"])
+             and any(r["id"] == "J-RERUN2" for r in p["rows"])
+             and p["buckets"]["path_reuse"] == 1)
+        want("S24 不同路径同内容仍判复制（copy 计数不因新规则放水）",
+             p["buckets"]["copy"] == 1
+             and [c["id"] for c in p["copies"]] == ["J-COPY2"])
         want("S10 零秒被剔除", p["buckets"]["zero_seconds"] == 1)
 
         p1 = evaluate(recs, root, "bm-a", days=1, now=now)
@@ -546,7 +579,7 @@ def selftest():
         p2 = evaluate(recs2, root, "bm-a", now=now)
         want("S15 posix 绝对路径=remote 不判缺陷", p2["buckets"]["remote_unverif"] == 1)
         want("S16 无产物字段回执单列 no_deliverable（不计工时、不判缺陷）",
-             p["buckets"]["no_deliverable"] == 1 and p["totals"]["counted"] == 4)
+             p["buckets"]["no_deliverable"] == 1 and p["totals"]["counted"] == 6)
         want("S17 QC 结果件（非执行回执）单列 not_work_receipt",
              len(other) == 1 and p["buckets"]["not_work_receipt"] == 0)
 
