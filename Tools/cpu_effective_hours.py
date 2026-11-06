@@ -32,6 +32,7 @@ import hashlib
 import json
 import os
 import shutil
+import subprocess
 import sys
 import tempfile
 from datetime import datetime, timedelta
@@ -399,6 +400,87 @@ def evaluate(records, root, host, days=None, node=None, now=None):
     return payload
 
 
+def _git_last_commit(root, relpath):
+    """该路径在**任意分支**上的最近提交行（只读）。空=从未入过库。"""
+    try:
+        run = subprocess.run(["git", "-C", root, "log", "--all", "--oneline",
+                              "-1", "--", relpath],
+                             capture_output=True, text=True, encoding="utf-8",
+                             errors="replace", timeout=20)
+        return (run.stdout or "").strip()
+    except Exception:  # noqa: BLE001 - triage must classify, not crash
+        return ""
+
+
+def triage_missing(payload, root, hist_fn=None):
+    """MISSING-LOCAL 逐条定性（BC-P-211）。
+
+    红本身不告诉任何人该怎么办：件不在盘，可能是「曾入过库后被删」「名字漂移」
+    或「从来就没有」。三类处置完全不同（找回/改收据路径/作废收据），所以把
+    git 全分支历史与同目录近名件作为判据显式出数，禁用人读猜。
+    """
+    hist_fn = hist_fn or _git_last_commit
+    items = []
+    for item in payload.get("skipped") or []:
+        if item.get("reason") != "MISSING-LOCAL":
+            continue
+        rel = item.get("deliverable") or ""
+        if not rel:
+            items.append({"id": item.get("id"), "node": item.get("node"),
+                          "deliverable": "", "class": "NO-PATH",
+                          "hist": "", "variants": []})
+            continue
+        hist = hist_fn(root, rel)
+        d = os.path.dirname(os.path.join(root, rel))
+        base = os.path.basename(rel)
+        stem_tokens = os.path.splitext(base)[0].lower().split("-")
+        variants = []
+        if os.path.isdir(d):
+            cands = []
+            for name in os.listdir(d):
+                if name == base:
+                    continue
+                toks = os.path.splitext(name)[0].lower().split("-")
+                shared = 0
+                for a, b in zip(stem_tokens, toks):
+                    if a != b:
+                        break
+                    shared += 1
+                if not shared:
+                    continue
+                # 共享词干越多越像同一个件；排序只定展示先后，不做判定
+                cands.append((-shared, name))
+            cands.sort()
+            variants = [n for _s, n in cands[:5]]
+        if hist:
+            cls = "IN-HISTORY-REMOVED"
+        elif variants:
+            cls = "NAME-DRIFT"
+        else:
+            cls = "NEVER-EXISTED"
+        items.append({"id": item.get("id"), "node": item.get("node"),
+                      "deliverable": rel, "class": cls, "hist": hist,
+                      "variants": variants})
+    return items
+
+
+def report_triage(items):
+    if not items:
+        _out("MISSING-TRIAGE none")
+        return
+    tally = {}
+    for it in items:
+        tally[it["class"]] = tally.get(it["class"], 0) + 1
+    _out("MISSING-TRIAGE %d 件  分类=%s"
+         % (len(items), " ".join("%s:%d" % (k, tally[k]) for k in sorted(tally))))
+    for it in items:
+        extra = ("  hist=%s" % it["hist"][:60]) if it["hist"] else ""
+        var = ("  near=%s" % ",".join(it["variants"])) if it["variants"] else ""
+        _out("  %-22s %-6s %-18s %s%s%s"
+             % (it["class"], it["node"], it["id"][:18], it["deliverable"],
+                extra, var))
+
+
 def report(payload, show_list=False):
     t = payload["totals"]
     b = payload["buckets"]
@@ -617,6 +699,40 @@ def selftest():
              sp["sha_coverage"]["declared"] == 2
              and sp["sha_coverage"]["matched"] == 1
              and sp["sha_coverage"]["mismatched"] == 1)
+
+        td = os.path.join(tmp, "triage_root")
+        tdir = os.path.join(td, "cph4", "fleet", "queue-receipts")
+        os.makedirs(tdir)
+        with open(os.path.join(tdir, "model-radar-bm-a-20261104.json"), "w",
+                  encoding="utf-8") as fh:
+            fh.write("{}")
+        tpay = {"skipped": [
+            {"id": "A-NEVER", "node": "bm-a", "reason": "MISSING-LOCAL",
+             "deliverable": os.path.join("cph4", "fleet", "queue-receipts",
+                                         "ghost-a.json")},
+            {"id": "B-DRIFT", "node": "bm-a", "reason": "MISSING-LOCAL",
+             "deliverable": os.path.join("cph4", "fleet", "queue-receipts",
+                                         "model-radar-bm-a-20261103.json")},
+            {"id": "C-HIST", "node": "bm-a", "reason": "MISSING-LOCAL",
+             "deliverable": os.path.join("cph4", "fleet", "queue-receipts",
+                                         "old.json")},
+            {"id": "D-REMOTE", "node": "bm-b", "reason": "REMOTE-UNVERIF",
+             "deliverable": os.path.join("cph4", "fleet", "queue-receipts",
+                                         "x.json")}]}
+        tri = triage_missing(
+            tpay, td,
+            hist_fn=lambda r, p: "abc1234 add" if p.endswith("old.json") else "")
+        kinds = {i["id"]: i["class"] for i in tri}
+        want("S25 从未入过库且无近名件 → NEVER-EXISTED",
+             kinds.get("A-NEVER") == "NEVER-EXISTED")
+        want("S26 未入过库但同目录有近名件 → NAME-DRIFT 并列出近名件",
+             kinds.get("B-DRIFT") == "NAME-DRIFT"
+             and any("model-radar-bm-a-20261104.json" in i["variants"]
+                     for i in tri if i["id"] == "B-DRIFT"))
+        want("S27 曾有提交 → IN-HISTORY-REMOVED（可找回）",
+             kinds.get("C-HIST") == "IN-HISTORY-REMOVED")
+        want("S28 只对 MISSING-LOCAL 定性，其余跳过项不入表",
+             len(tri) == 3 and "D-REMOTE" not in kinds)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 
@@ -633,6 +749,7 @@ def main(argv=None):
     ap.add_argument("--days", type=int, default=None)
     ap.add_argument("--node", default=None)
     ap.add_argument("--list", action="store_true")
+    ap.add_argument("--triage-missing", action="store_true")
     ap.add_argument("--json-out", default=None)
     ap.add_argument("--selftest", action="store_true")
     args = ap.parse_args(argv)
@@ -653,6 +770,9 @@ def main(argv=None):
     payload["totals"]["receipts_scanned"] = len(recs) + len(bad) + len(other)
     payload["other_receipts"] = [os.path.basename(p) for p in other]
     report(payload, show_list=args.list)
+    if args.triage_missing:
+        payload["missing_triage"] = triage_missing(payload, args.root)
+        report_triage(payload["missing_triage"])
 
     if args.json_out:
         out = os.path.abspath(args.json_out)

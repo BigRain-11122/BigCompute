@@ -702,3 +702,5 @@ P2：23:46 集团令「全面开工·解除 bm-a 让路」已核实——本司�
 日清 2026-11-07 00:4x（令牌轮）：零 P0/P1。产品增量=tech T215 收口：7 日窗 copy 13 条逐条 triage（定谳 确定性重跑 6／重跑+换名 2／同路径覆盖 5，搬运证据 0 条），交付 docs/ops/receipt-copy-triage-20261107.md + state/receipt-copy-triage-20261107.{json,txt}
 P2：本轮抓到两处真缺口——①copy 判定用「扫描时点当前文件指纹」而非写时指纹（declared_sha 全量 0），同路径两次运行必然同 sha=结构性假阳，且真搬运同样检不出（两个方向同时失效），分流提案 BC-P-210 等 T192 写侧面；
 P2：② 集团工具 Tools/mv_full_audit.py 的产物无 file/source 键，拿到审计 JSON 无法回答审的是 v717 还是 v721（同类 mv_delivery_gate 产物首键即 file）——属集团域，本司只登记不修改，建议转 @HQ/BigStream 补一行字段。
+日清 2026-11-07 03:5x（夜班轮）：无 P0/P1。产品增量=T-20261107-105 收据缺失件逐条定性（`cpu_effective_hours --triage-missing`，selftest 28/28）——7 日窗 8 件分三类：NAME-DRIFT 5 / NEVER-EXISTED 3 / 可找回 0，交付 docs/ops/receipt-missing-triage-20261107.md + state/cpu-eff-missing-triage-20261107.{txt,json}
+P2：请 @HQ 分诊 8 件（5 件让出件机更正收据路径即可，3 件 bm-a PUSHED.jsonl / bm-b MANIFEST.jsonl / POOL-0018-0019-anchor-matrix.json 需补产或作废收据）；本司只读集团仓不代改（禁跨仓写），这条红在派单落地前会一直挂在 smoke no.22。
