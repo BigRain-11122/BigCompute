@@ -699,3 +699,6 @@ P2 维持：M132 烘焙实弹等净窗（vram_free≈4.0GB、Tuanjie 共租 2 �
 日清 2026-11-06 23:5x（夜班轮）：P0/P1 无。本轮 T214 日清行读取器容差缺口收口（`HQ_LINE_RE` 容忍全角括号/冒号三形 + 三夹具 + 负控），selftest PASS、live `FRESH(age_h=0.7,date=2026-11-06)` 判定未变
 P2：23:46 集团令「全面开工·解除 bm-a 让路」已核实——本司七件计划任务全 Ready/Running（OSLoop/OSLoop-PM/GPU-IdleWatch/OrderSentinel/LaneTaskGuard/CleanWindowProbe/ResidentQA），无需重注册
 日清 2026-11-07 00:2x（令牌轮）：零 P0/P1。产品增量=T192 规格面落成 Tools/receipt_seal.py（selftest 13/13 PASS）：787 件回执→可核算 595（SEALABLE 120／ABSENT 26／REMOTE 398／NO-DELIVERABLE 51），declared=0 维持 SHA-COVERAGE-NONE；缺件 ≤7d=20／8-30d=6／>30d=0，与工时器 7d（counted=76 net=1.084h·missing_local=7·copy=13）交叉核对后仅 7 条落在本该可核销面；顺带 is_foreign 单源化（22/22 回归绿）+工具清单补 3 件使 F3 tools-drift 转绿。P2=集团 11-07 第 50 批 D-01~06 零本司派单（D-05 仅观察本司在更）；净窗未开（vram_free≈509MiB）M132 烘焙维持 BLOCKED。
+日清 2026-11-07 00:4x（令牌轮）：零 P0/P1。产品增量=tech T215 收口：7 日窗 copy 13 条逐条 triage（定谳 确定性重跑 6／重跑+换名 2／同路径覆盖 5，搬运证据 0 条），交付 docs/ops/receipt-copy-triage-20261107.md + state/receipt-copy-triage-20261107.{json,txt}
+P2：本轮抓到两处真缺口——①copy 判定用「扫描时点当前文件指纹」而非写时指纹（declared_sha 全量 0），同路径两次运行必然同 sha=结构性假阳，且真搬运同样检不出（两个方向同时失效），分流提案 BC-P-210 等 T192 写侧面；
+P2：② 集团工具 Tools/mv_full_audit.py 的产物无 file/source 键，拿到审计 JSON 无法回答审的是 v717 还是 v721（同类 mv_delivery_gate 产物首键即 file）——属集团域，本司只登记不修改，建议转 @HQ/BigStream 补一行字段。
