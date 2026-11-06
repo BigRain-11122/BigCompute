@@ -693,3 +693,6 @@ qa: textintegrity CLEAN cats=7/7 table_mismatch=38 declared=38 new=0 stale=0·C1
 日清（2026-11-06 夜班）：P1 已闭环——本仓表格「整行不可判」的 34 行历史漂移全部整形（M134 批次 3），列数漂移 38→4、新行 0、stale 0；余 4 行是集团只读 decisions，本司无权改。
 P2 维持——烘焙实弹（M132）等净窗：现 vram_free 约 1.8GB、Tuanjie 六实例共租，硬闯会污染 J2 指标；净窗出现即一轮出真实烘焙件。
 P2 提示——集团 orders 11-06 新增六行全部是 token 工具实测与 docbus 立法（bm-a 交互窗回执），无本司派单，本司仅收讫零动作；CEO「只做真实产出、禁新增机制」令继续生效，本轮未新增任何工具与闸。
+日清 2026-11-06 23:0x（夜班轮）：P0/P1 无。本轮 T171④ serve 存活复拍判定落地（单拍读失败不再直报 P1·复用 serve_health 45s settle 窗单源），selftest J19 九断言 PASS + 实跑双路径证据 state/t171-serve-resample-20261106.txt
+P1 已闭环（上轮 M134 批次 3 本仓 34 行整形收口）；本轮 T171④ serve 存活复拍判定落地——单拍读失败不再直报 P1（复用 serve_health 的 45s settle 窗·单源），selftest J19 九断言 PASS + 实跑双路径证据 state/t171-serve-resample-20261106.txt
+P2 维持：M132 烘焙实弹等净窗（vram_free≈4.0GB、Tuanjie 共租 2 实例，硬闯污染 J2 指标）；供给地板 breach_eff=true（本机 2 行自陈旧 3 天 + bm-b claim 静默约 178h）已出登记请求件 M125，等集团收池

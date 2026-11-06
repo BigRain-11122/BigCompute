@@ -312,6 +312,46 @@ def probe_serve_liveness(url=OLLAMA_TAGS_URL, timeout=2):
         return False, type(e).__name__
 
 
+SERVE_RESAMPLE_SETTLE_S = 45.0  # T171④（BC-P-74）：首拍与复拍之间的窗口
+
+
+def resample_serve_liveness(settle_s=SERVE_RESAMPLE_SETTLE_S, _run=None):
+    """J19（T171④·BC-P-74）：首拍失败后的复拍判定——单拍失败不算死。
+
+    复用 Tools/serve_health.py 的 settle 窗口（单源·禁复制重试字面）：窗口内
+    恢复记 http200(recovered_after=<n>s)；能答但干不了活判 DEGRADED；窗口耗尽
+    才 DOWN。与 qa_smoke no.23 同源，避免同一物理量两套口径。
+    """
+    try:
+        sys.path.insert(0, os.path.join(PROJECT, "Tools"))
+        import serve_health as sh
+        res = (_run or sh.run)(settle_s=settle_s)
+        verdict = res.get("verdict")
+        if verdict == sh.UP:
+            ra = res.get("recovered_after_s")
+            return True, "http200(recovered_after=%ss)" % (
+                "?" if ra is None else ra)
+        if verdict == sh.DEGRADED:
+            why = "; ".join(res.get("reasons") or [])[:60].replace(" ", "_")
+            return False, "DEGRADED[%s]" % (why or "no-reason")
+        return False, "DOWN[attempts=%s,elapsed=%ss]" % (
+            res.get("attempts"), res.get("elapsed_s"))
+    except Exception as e:
+        return False, "RESAMPLE-FAIL[%s]" % type(e).__name__
+
+
+def serve_verdict(first, _resample=None):
+    """J19：首拍+复拍合成终判（纯函数·首拍活则不碰窗口）。
+
+    返回 (alive, detail)。首拍已活=原样返回（零额外 IO/零等待）；首拍死才进
+    复拍——这条顺序本身就是「单拍失败不得直报 P1」的落点。
+    """
+    alive, detail = first
+    if alive:
+        return True, detail
+    return (_resample or resample_serve_liveness)()
+
+
 LANE8090_URL = "http://127.0.0.1:8090/v1/models"  # 35B 车道（resident_qa_server 默认 LLM_URL）
 
 
@@ -1039,6 +1079,11 @@ def check():
                      ("ALERT:" + ",".join(task_alerts) if task_alerts
                       else "ok"))
 
+    # T171④（BC-P-74）：首拍失败 → 复拍（45s settle 窗）。pause 期 serve 下线
+    # 是受令行为，不进窗口空等 45s；非 pause 期单拍失败一律先复拍再谈 P1。
+    if not serve_alive and not pause_mode:
+        serve_alive, serve_detail = serve_verdict((serve_alive, serve_detail))
+
     st = load_state()
     # T85（O-2215 ①）：饥饿面闸=cpu_idle（RAM 单闸·CPU 车道常开）——green_idle
     # ⊂ cpu_idle（GPU 车道闲 ⊆ CPU 车道闲），VRAM 忙而 RAM 闲时纯 CPU 面照算
@@ -1544,6 +1589,37 @@ def selftest():
     ok &= classify_cpu_lane_idle(RAM_FREE_PCT_MIN) is True
     ok &= (RAM_FREE_PCT_MIN - 0.1) >= 0 and not classify_cpu_lane_idle(
         RAM_FREE_PCT_MIN - 0.1)
+    # J19 首拍失败不直报死（T171④·BC-P-74）：首拍活=零等待原样返回；首拍死
+    # 才进 settle 窗；窗口内恢复／能答但干不了活／窗口耗尽／复拍本身坏 四形可分。
+    called = []
+    v_live = serve_verdict((True, "http200"))
+    untouched = [] == called          # 首拍活=不碰窗口（先断言再构造复拍夹具）
+    v_ok = serve_verdict((False, "URLError"),
+                         _resample=lambda: (called.append(1), (True,
+                                          "http200(recovered_after=6.0s)"))[1])
+    v_deg = serve_verdict((False, "URLError"), _resample=lambda: (
+        False, "DEGRADED[no_models_installed]"))
+    v_down = serve_verdict((False, "URLError"), _resample=lambda: (
+        False, "DOWN[attempts=16,elapsed=45.0s]"))
+    v_fake_up = resample_serve_liveness(
+        _run=lambda **kw: {"verdict": "UP", "recovered_after_s": 6.0})
+    v_fake_down = resample_serve_liveness(
+        _run=lambda **kw: {"verdict": "DOWN", "attempts": 16, "elapsed_s": 45.0})
+    v_fake_deg = resample_serve_liveness(
+        _run=lambda **kw: {"verdict": "DEGRADED", "reasons": ["no models installed"]})
+    v_boom = resample_serve_liveness(_run=lambda **kw: 1 / 0)
+    print("J19 serve resample: live=%r ok=%r deg=%r down=%r boom=%r"
+          % (v_live, v_ok, v_deg, v_fake_down, v_boom))
+    ok &= (v_live == (True, "http200") and untouched)   # 首拍活=不碰窗口
+    ok &= (called == [1])                              # 首拍死才进窗口（一次）
+    ok &= v_ok[0] is True and "recovered_after" in v_ok[1]
+    ok &= v_deg[0] is False and v_deg[1].startswith("DEGRADED")
+    ok &= v_down[0] is False and "attempts=16" in v_down[1]
+    ok &= v_fake_up[0] is True and v_fake_up[1] == "http200(recovered_after=6.0s)"
+    ok &= v_fake_down[0] is False and v_fake_down[1].startswith("DOWN[")
+    ok &= v_fake_deg[0] is False and v_fake_deg[1].startswith("DEGRADED[")
+    ok &= v_boom[0] is False and v_boom[1].startswith("RESAMPLE-FAIL")
+    ok &= SERVE_RESAMPLE_SETTLE_S >= 45.0   # 预注册：窗口不得短于 45s
     print("SELFTEST %s" % ("PASS" if ok else "FAIL"))
     return 0 if ok else 1
 

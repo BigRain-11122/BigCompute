@@ -1,0 +1,11 @@
+T171④（BC-P-74）serve 存活复拍判定 实跑证据 2026-11-06 23:0x
+机=bm-a（CEO 让路 pause 期·serve 由他窗拉起）
+
+[1] 首拍（现行 2s 单拍）: (True, 'http200')
+[2] 复拍活路径（真 serve·窗口不触发·零等待）: (True, 'http200')
+[3] 复拍死路径（闭合端口 :1·settle 5s 缩短版实跑·真等待 5.0s）: (False, 'DOWN[attempts=3,elapsed=5.0s]')
+[4] 判定常量: SERVE_RESAMPLE_SETTLE_S=45.0（预注册 ≥45s·本证据仅为缩短实测）
+
+读法：单拍失败不再直接写 P1；窗口内恢复记 recovered_after，两拍皆死才 DOWN，
+能答但干不了活判 DEGRADED（不当成 DOWN 也不当成活），复拍自身坏=RESAMPLE-FAIL 可见不假绿。
+pause 期豁免：serve 下线属受令行为，不进窗口空等（run_check 里 if not serve_alive and not pause_mode）。

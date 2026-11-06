@@ -1,8 +1,8 @@
 {
  "company": "BigCompute",
  "updated_at": "2026-11-06 23:0x",
- "current_activity": "2026-11-06 23:0x 夜班轮：M134 批次 3 收口——本仓 34 行历史表格行全部整形（补空列/把多余的判据列并入待办/裸竖线转义/状态合并），逐行断言去竖线与分隔符后正文逐字未变；列数漂移 38→4（余 4 行是集团只读 decisions，本司无权改），new_local=0、stale=0。连带修 tech.md 尾部空行（尾行完整性探针 no.8 红转绿） [via BigCompute-OSLoop]",
- "latest_artifact": "state/text-integrity-m134-batch3.json（table_mismatch=4 declared=4 new=0 stale=0）+ state/table-column-baseline.json（declared 38→4，逐条删不按总数吸收）+ qa/smoke-20261106-2243.log/.png（27/28，唯一红=no.22 已知历史面），时间戳 2026-11-06 22:43",
- "next_milestone": "①M132 烘焙实弹等净窗（现 vram_free 约 1.8GB、Tuanjie 共租，净窗出现即一条命令出 GPU/CPU 双路三指标）；②集团只读 4 行要等 decisions 台账作者侧整形或接受为常设声明；窗 ≤48h",
- "previous_updated_at": "2026-11-06 06:3x"
+ "current_activity": "2026-11-06 23:0x 夜班轮：T171④ serve 存活复拍判定落地——单拍读失败不再直接写 P1。idle_selfcheck 新增 serve_verdict/resample_serve_liveness，复用 Tools/serve_health.py 的 45s settle 窗（单源，禁复制重试字面）：首拍活=零等待不碰窗口；窗口内恢复记 http200(recovered_after=<n>s)；能答但干不了活判 DEGRADED；窗口耗尽才 DOWN；复拍自身坏判 RESAMPLE-FAIL（可见不假绿）；pause 期 serve 下线属受令行为，不进窗空等。selftest 增 J19 九断言全绿，心跳实跑 23:03:52 serve_alive=true serve_detail=http200（快路径零等待）。 [via BigCompute-OSLoop]",
+ "latest_artifact": "state/t171-serve-resample-20261106.txt（真 serve 首拍/复拍双活 + 闭合端口 :1 缩短版 settle 5s 实跑 DOWN[attempts=3,elapsed=5.0s] 真等待 5.0s）+ Tools/idle_selfcheck.py（SERVE_RESAMPLE_SETTLE_S=45.0 / resample_serve_liveness / serve_verdict）+ qa/smoke-20261106-2304.log/.png（27/28，唯一红=no.22 已知历史面），时间戳 2026-11-06 23:04",
+ "next_milestone": "①T171③ BC-P-58 Ollama 更新器钉住（须 Quit 托盘 WAL 落盘窗·共租面，另窗做）；②M132 烘焙实弹等净窗（现 vram_free≈4.0GB、Tuanjie 共租 2 实例，净窗出现即一条命令出 GPU/CPU 双路三指标）；窗 ≤48h",
+ "previous_updated_at": "2026-11-06 23:0x"
 }
