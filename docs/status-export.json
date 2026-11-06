@@ -1,8 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-11-06 23:5x",
- "current_activity": "2026-11-06 23:5x 夜班轮 T214 收口：日清行读取器读侧容差缺口修复（HQ_LINE_RE 日期前分隔符容忍空格/全角括号/冒号三形），selftest J15 三夹具 PASS、live 日清判定 FRESH 未变；同轮核实 23:46 集团令「全面开工·解除 bm-a 让路」——本司七件计划任务全 Ready/Running，无需重注册 [via BigCompute-OSLoop]",
- "latest_artifact": "Tools/idle_selfcheck.py（HQ_LINE_RE 三形容差 + J15 三夹具）+ qa/smoke-20261106-2356.log（27/28 PASS，唯一红=no.22 M96 既有面）+ state/queue/tech.md T214 done，时间戳 2026-11-06 23:56",
- "next_milestone": "①M132 City3D 烘焙实弹等净窗（Tuanjie 实例退出后一命令开跑，48h 内复核）；②BC-P-208 提案：跨解析器「写侧合规·读侧看不到」一次人工盘点出清单（不实装，仅盘点）；③R-65 Ollama 0.40.15 升级观察窗续验",
- "previous_updated_at": "2026-11-06 23:3x"
+ "updated_at": "2026-11-07 00:11",
+ "current_activity": "2026-11-06 23:00 轮：R-65 决定性补测（T171③ 后续）=应用完整退出→重启两次：23:15 那次退出时 flag 仍 1、23:27 那次 flag=0，两次 app.log 的 version= 均为 0.40.13，1.69GB v0.40.15 安装包（sha256 106EF3D2A02437810FBA6F574914B1413C512EA84DDD4F184C8E7F434B6F5564）全程在盘 → 本机该版本不存在「退出即静默安装」， ｜ 2026-11-03 03:2x 夜班轮：serve 瞬态判别常驻化 —— qa_smoke 新增 no.23（settle 窗口三态：UP 绿／DEGRADED 与 DOWN 红并点名 attempts／读不到 UNVERIFIED 不假绿），selftest 5/5 PASS、live no.23 PASS；同日结案上轮两 P1（orders.md 冲突块 0 命中、no.22 历史红留档）[via BigCompute-OSLoop]",
+ "latest_artifact": "state/sop-coverage-20261107-001052.json（mtime 2026-11-07 00:10） ｜ qa/smoke-20261103-0317.log/.png（21/22 PASS，新探针 no.23 绿）｜Tools/qa_smoke.py（+serve_health_judge/probe/selftest，SERVE_SETTLE_S=20）｜docs/qa-smoke-test-charter.md §三 第 23 条",
+ "next_milestone": "M4 接产对齐矩阵 blocked 项随开店/平台后台逐项销 ⬜（T-27 余项）（队列状态=**blocked 如实**（10-28 23:2x 令牌轮队列卫生）：销 ⬜ ） ｜ ①no.22 残红自然滚出 7 日窗（BC-P-168 提案待批，真实产出落受管目录）②tech T189 v718 质检链三步重跑（约 73s CPU，产物落 repo 受管目录）③M25/T26 室内烘焙样板间实弹（净窗一命令，BLOCKED 计数在册）"
 }

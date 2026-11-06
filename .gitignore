@@ -38,3 +38,6 @@ __pycache__/
 
 # T212 列数基线=规则面（普查按它区分历史漂移与新缺陷；不入库则新克隆 fail-closed 全红）
 !state/table-column-baseline.json
+# T192 回执指纹封存面（产品面实物：人读出数 + 机读审计 + 可被写侧 owner 直取的封存册）
+!state/receipt-seal-*
+!state/receipt-seals-*

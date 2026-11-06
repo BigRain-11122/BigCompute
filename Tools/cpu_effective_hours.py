@@ -219,6 +219,16 @@ def _is_machine_node(name):
     return bool(name) and name.replace("-", "").isalnum() and name.startswith("bm-")
 
 
+def is_foreign(rec, host):
+    """他机回执不得用本机磁盘判真（T192 封存面共用此判据，禁两处各写一份）。"""
+    node = rec.get("node") or ""
+    if not node or node == host:
+        return False
+    return (_is_machine_node(node)
+            or rec.get("schema") == "lane"
+            or str(rec.get("deliverable") or "").startswith("/"))
+
+
 def evaluate(records, root, host, days=None, node=None, now=None):
     now = now or datetime.now()
     cutoff = None
@@ -251,10 +261,7 @@ def evaluate(records, root, host, days=None, node=None, now=None):
         # 他机回执不得用本机磁盘判真：repo 相对路径在每台机上同名同构，
         # 拿它在本机算 digest 会把两台机各自真跑出来的同名产物判成「复制当产物」，
         # 也会把本机残留的旧文件当成他机产物已核销（D-20261103-02 回执产物律 triage）。
-        foreign = (rec["node"] and rec["node"] != host
-                   and (_is_machine_node(rec["node"])
-                        or rec["schema"] == "lane"
-                        or rec["deliverable"].startswith("/")))
+        foreign = is_foreign(rec, host)
         if foreign:
             buckets["remote_unverif"] += 1
             skipped.append((rec, "REMOTE-UNVERIF"))

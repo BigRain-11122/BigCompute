@@ -49,6 +49,7 @@ marker_literal_census.py
 model_blob_manifest.py
 model_impact_probe.py
 model_ref_drift_check.py
+money_entry_census.py
 month_end_append.py
 month_end_collect.py
 openstd_render_probe.py
@@ -58,10 +59,12 @@ q8_trial_probe.py
 qa_restart.py
 qa_smoke.py
 queue_check.py
+quota_cycle_drill.py
 quota_design.py
 quota_prepaid_liability.py
 rails_schema_check.py
 ratio_denominator_census.py
+receipt_seal.py
 refund_rate_calibration.py
 renewal_reminder_drill.py
 resident_qa_server.py

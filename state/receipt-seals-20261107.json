@@ -1,0 +1,1207 @@
+{
+ "schema": "receipt-seals/v1",
+ "note": "本司离线封存册：仅供写侧 owner 采纳为回执 sha256，不改对方仓",
+ "updated_at": "2026-11-07T00:09:37",
+ "seals": [
+  {
+   "receipt": "B-MV-AUDIT-20261105-bm-a.json",
+   "id": "B-MV-AUDIT-20261105",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/mv-audit-20261105.json",
+   "sha": "d8a407dc99f5a243:26221",
+   "size": 26221,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "C-FIN-EQUITY-ALPHA-bm-a.json",
+   "id": "C-FIN-EQUITY-ALPHA",
+   "node": "bm-a",
+   "deliverable": "quant/bigmoney/results/etf_equity_alpha.json",
+   "sha": "c7ac03dedf5cf021:5269",
+   "size": 5269,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "C-INFRA-AUDIT-BM-A-20261103-bm-a.json",
+   "id": "C-INFRA-AUDIT-BM-A-20261103",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/inference-audit-bm-a.json",
+   "sha": "ddd85fad096e04b4:1245",
+   "size": 1245,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "C-MV-STABILITY-bm-a.json",
+   "id": "C-MV-STABILITY",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/mv-stability.json",
+   "sha": "20797a06bfdc516e:84",
+   "size": 84,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "C-MV-TRANSITION-20261102-bm-a.json",
+   "id": "C-MV-TRANSITION-20261102",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/mv-transition.json",
+   "sha": "35796b5eeab60fe1:28697",
+   "size": 28697,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "C-MV-TRANSITION-bm-a.json",
+   "id": "C-MV-TRANSITION",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/mv-transition.log",
+   "sha": "d9fd61c17a556ee0:7749",
+   "size": 7749,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "C-QUANT-NOBOND-20261103-bm-a.json",
+   "id": "C-QUANT-NOBOND-20261103",
+   "node": "bm-a",
+   "deliverable": "quant/bigmoney/results/etf_nobond_vt.json",
+   "sha": "0da7d210dfa7ae6a:1824",
+   "size": 1824,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "CANARY-20261103T154230-bm-a.json",
+   "id": "CANARY-20261103T154230",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/state/canary/RUN-20261103T154230.txt",
+   "sha": "1e6d556f7566d238:66",
+   "size": 66,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "CANARY-20261103T221514-bm-a.json",
+   "id": "CANARY-20261103T221514",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/state/canary/RUN-20261103T221514.txt",
+   "sha": "42d83f213b5cc559:66",
+   "size": 66,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "CANARY-20261104T125141-bm-a.json",
+   "id": "CANARY-20261104T125141",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/state/canary/RUN-20261104T125141.txt",
+   "sha": "27e323492ebbed3a:66",
+   "size": 66,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "CANARY-20261104T131747-bm-a.json",
+   "id": "CANARY-20261104T131747",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/state/canary/RUN-20261104T131747.txt",
+   "sha": "6cce1a45be58184f:66",
+   "size": 66,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "CANARY-20261104T134046-bm-a.json",
+   "id": "CANARY-20261104T134046",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/state/canary/RUN-20261104T134046.txt",
+   "sha": "5594edb791126987:66",
+   "size": 66,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "CANARY-20261104T140742-bm-a.json",
+   "id": "CANARY-20261104T140742",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/state/canary/RUN-20261104T140742.txt",
+   "sha": "3a0cc0e85a6a0a8d:66",
+   "size": 66,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "CANARY-20261104T155338-bm-a.json",
+   "id": "CANARY-20261104T155338",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/state/canary/RUN-20261104T155338.txt",
+   "sha": "8c49f899dfbb2c99:66",
+   "size": 66,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "CANARY-20261104T175030-bm-a.json",
+   "id": "CANARY-20261104T175030",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/state/canary/RUN-20261104T175030.txt",
+   "sha": "21f96b0373117a22:66",
+   "size": 66,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "CANARY-20261104T201032-bm-a.json",
+   "id": "CANARY-20261104T201032",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/state/canary/RUN-20261104T201032.txt",
+   "sha": "0f9d4533e10095d3:66",
+   "size": 66,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "CANARY-20261104T202057-bm-a.json",
+   "id": "CANARY-20261104T202057",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/state/canary/RUN-20261104T202057.txt",
+   "sha": "ecb32e7cd55afb54:66",
+   "size": 66,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "CHK-RECEIPT-20261103-bm-a.json",
+   "id": "CHK-RECEIPT-20261103",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/receipt-attrib-20261103.json",
+   "sha": "105ddcfb6b550035:507",
+   "size": 507,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "CLOCK-RESYNC-bm-b-20261106-bm-a.json",
+   "id": "CLOCK-RESYNC-bm-b-20261106",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/clock-resync-bm-b-20261106.json",
+   "sha": "00075fce0f1374e4:2370",
+   "size": 2370,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "MV-AUDIT-V722G-20261106-bm-a.json",
+   "id": "MV-AUDIT-V722G-20261106",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/mv-audit-v722g-20261106.json",
+   "sha": "1faf2bfd19dae8a2:25201",
+   "size": 25201,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "MV-DIRECTOR-PACKET-20261104-bm-a.json",
+   "id": "MV-DIRECTOR-PACKET-20261104",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/review-packet-kn-20261104.md",
+   "sha": "55b73f500d64787a:1184",
+   "size": 1184,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "MV-DIRECTOR-PACKET-bm-a.json",
+   "id": "MV-DIRECTOR-PACKET",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/review-packet-kn-20261102.md",
+   "sha": "abe0e3c5b6be2608:1212",
+   "size": 1212,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "MV-NEWPROC-PACKET-20261103-bm-a.json",
+   "id": "MV-NEWPROC-PACKET-20261103",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/review-packet-mv-20261103.md",
+   "sha": "6e1957c278f75297:1117",
+   "size": 1117,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "MV-NEWPROC-PACKET-20261104-bm-a.json",
+   "id": "MV-NEWPROC-PACKET-20261104",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/review-packet-mv-20261104.md",
+   "sha": "1c70d1f9a91155e8:1117",
+   "size": 1117,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "MV-NEWPROC-PACKET-bm-a.json",
+   "id": "MV-NEWPROC-PACKET",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/review-packet-mv-20261101.md",
+   "sha": "8267626dcec16894:1145",
+   "size": 1145,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "OPS-CLOCK-RESYNC-BMA-20261105-bm-a.json",
+   "id": "OPS-CLOCK-RESYNC-BMA-20261105",
+   "node": "bm-a",
+   "deliverable": "C:/Users/sjs20/Desktop/FluxGroup/cph4/fleet/queue-receipts/clock-resync-bm-a.json",
+   "sha": "73dd692dae815e33:2370",
+   "size": 2370,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "Q-ALIGN-20261030-BMA-bm-a.json",
+   "id": "Q-ALIGN-20261030-BMA",
+   "node": "bm-a",
+   "deliverable": "C:\\Users\\sjs20\\Desktop\\FluxGroup\\cph4\\fleet\\queue-receipts\\fleet-align-bm-a.json",
+   "sha": "45cf984ccfd5addd:1423",
+   "size": 1423,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "Q-MV-ANCHOR-WORDS-DRAIN-BMA-20261106-bm-a.json",
+   "id": "Q-MV-ANCHOR-WORDS-DRAIN-BMA-20261106",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/mv-album-001-jay/POOL-0018-0019-anchor-matrix.json",
+   "sha": "14a3e820e748dbf9:5952",
+   "size": 5952,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "Q-TRIAGE-ASSETLIB-20261105-bm-a.json",
+   "id": "Q-TRIAGE-ASSETLIB-20261105",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/triage-asset-lib-20261105.md",
+   "sha": "acc3b9ec6958525a:535",
+   "size": 535,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "Q-TRIAGE-BIGGAME-20261104-bm-a.json",
+   "id": "Q-TRIAGE-BIGGAME-20261104",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/triage-biggame-20261104.md",
+   "sha": "d111f0dc3f7bb7c3:618",
+   "size": 618,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "Q-TRIAGE-BIGMONEY-20261101-bm-a.json",
+   "id": "Q-TRIAGE-BIGMONEY-20261101",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/triage-bigmoney-20261101.md",
+   "sha": "e3cb42c1507ccc94:517",
+   "size": 517,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "Q-TRIAGE-BIGSTREAMMV-20261105-bm-a.json",
+   "id": "Q-TRIAGE-BIGSTREAMMV-20261105",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/triage-bigstream-mv-20261105.md",
+   "sha": "a0832bf9096459fa:1379",
+   "size": 1379,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "Q-TRIAGE-CARGAMING-20261031-bm-a.json",
+   "id": "Q-TRIAGE-CARGAMING-20261031",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/triage-car-gaming-20261031.md",
+   "sha": "9f12637e95bcacdb:428",
+   "size": 428,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "Q-TRIAGE-CARGAMING-20261101-bm-a.json",
+   "id": "Q-TRIAGE-CARGAMING-20261101",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/triage-car-gaming-20261101.md",
+   "sha": "54d178850ad0ad31:416",
+   "size": 416,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "Q-TRIAGE-CARGAMING-20261102-bm-a.json",
+   "id": "Q-TRIAGE-CARGAMING-20261102",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/triage-car-gaming-20261102.md",
+   "sha": "e62e5bd77cb7d1b6:685",
+   "size": 685,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "Q-TRIAGE-FLUXVERSE-20261031-bm-a.json",
+   "id": "Q-TRIAGE-FLUXVERSE-20261031",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/triage-fluxverse-20261031.md",
+   "sha": "6dae092f47854481:519",
+   "size": 519,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "Q-TRIAGE-FLUXVERSE-20261101-bm-a.json",
+   "id": "Q-TRIAGE-FLUXVERSE-20261101",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/triage-fluxverse-20261101.md",
+   "sha": "531bca936f901b9b:517",
+   "size": 517,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "Q-TRIAGE-FLUXVERSE-20261102-bm-a.json",
+   "id": "Q-TRIAGE-FLUXVERSE-20261102",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/triage-fluxverse-20261102.md",
+   "sha": "18cfb8be0a5c3b6a:538",
+   "size": 538,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "Q-TRIAGE-FLUXVERSE-20261104-bm-a.json",
+   "id": "Q-TRIAGE-FLUXVERSE-20261104",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/triage-fluxverse-20261104.md",
+   "sha": "369b05c15bf5cc97:538",
+   "size": 538,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "Q-TRIAGE-FLUXVERSE-20261105-bm-a.json",
+   "id": "Q-TRIAGE-FLUXVERSE-20261105",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/triage-fluxverse-20261105.md",
+   "sha": "84147b73de9a3bd8:670",
+   "size": 670,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "Q-TRIAGE-RECON-20261031-bm-a.json",
+   "id": "Q-TRIAGE-RECON-20261031",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/triage-recon-20261031.md",
+   "sha": "04f5f957727c652e:416",
+   "size": 416,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "Q-TRIAGE-RECON-20261101-bm-a.json",
+   "id": "Q-TRIAGE-RECON-20261101",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/triage-recon-20261101.md",
+   "sha": "047d523539f9346c:416",
+   "size": 416,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "Q-TRIAGE-RECON-20261102-bm-a.json",
+   "id": "Q-TRIAGE-RECON-20261102",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/triage-recon-20261102.md",
+   "sha": "c04af63438c5e940:691",
+   "size": 691,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "Q-TRIAGE-RECON-20261105-bm-a.json",
+   "id": "Q-TRIAGE-RECON-20261105",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/triage-recon-20261105.md",
+   "sha": "b65059a5e42d75e0:691",
+   "size": 691,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "QUEUE-CARD-AUDIT-20261106-bm-a.json",
+   "id": "QUEUE-CARD-AUDIT-20261106",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/queue-card-audit-20261106.json",
+   "sha": "80a8aaca36a89589:629",
+   "size": 629,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "R-ART-PUSH-A-20261102-bm-a.json",
+   "id": "R-ART-PUSH-A-20261102",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/artifacts/bm-a/MANIFEST.jsonl",
+   "sha": "10a28787f937493b:12712",
+   "size": 12712,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "R-LLM-BMA-PROBE-bm-a.json",
+   "id": "R-LLM-BMA-PROBE",
+   "node": "bm-a",
+   "deliverable": "C:/Users/sjs20/Desktop/FluxGroup/cph4/fleet/queue-receipts/bm-a-local-llm-probe.md",
+   "sha": "f5eb32f0f40ac15d:333",
+   "size": 333,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "R-MODEL-RADAR-BMA-20261104-bm-a.json",
+   "id": "R-MODEL-RADAR-BMA-20261104",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/model-radar-bm-a-20261104.json",
+   "sha": "8678a063d0512667:129",
+   "size": 129,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "R-MODEL-RADAR-BMA-20261105-bm-a.json",
+   "id": "R-MODEL-RADAR-BMA-20261105",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/model-radar-bm-a-20261105.json",
+   "sha": "ae26def0b266fa45:136",
+   "size": 136,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "R-MODEL-RADAR-BMA-20261106-bm-a.json",
+   "id": "R-MODEL-RADAR-BMA-20261106",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/model-radar-bm-a-20261106.json",
+   "sha": "cc42417867aa42c8:129",
+   "size": 129,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "R-MODEL-RADAR-BMB-20261103-bm-a.json",
+   "id": "R-MODEL-RADAR-BMB-20261103",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/model-radar-bm-b-20261103.json",
+   "sha": "b1ce1c5110e7db0a:1040",
+   "size": 1040,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "R-MODEL-RADAR-BMB-20261104-bm-a.json",
+   "id": "R-MODEL-RADAR-BMB-20261104",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/model-radar-bm-b-20261104.json",
+   "sha": "0fc261dbb40e216c:129",
+   "size": 129,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "R-MODEL-RADAR-BMC-20261104-bm-a.json",
+   "id": "R-MODEL-RADAR-BMC-20261104",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/model-radar-bm-c-20261104.json",
+   "sha": "2dbb5929a731aee4:129",
+   "size": 129,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "R-MODEL-RADAR-BMM-20261104-bm-a.json",
+   "id": "R-MODEL-RADAR-BMM-20261104",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/model-radar-bm-m-20261104.json",
+   "sha": "e552aeb02ef959f4:129",
+   "size": 129,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "R-MV-AUDIT-R2-20261102-bm-a.json",
+   "id": "R-MV-AUDIT-R2-20261102",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/mv-full-audit-r2-20261102.json",
+   "sha": "97b1d22a6d56b1a7:23668",
+   "size": 23668,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "R-MV-GATE-1D-20261102-bm-a.json",
+   "id": "R-MV-GATE-1D-20261102",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/mv-gate-latest.json",
+   "sha": "c22c2699dffec842:355",
+   "size": 355,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "R-MV-GATE-1D-bm-a.json",
+   "id": "R-MV-GATE-1D",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/mv-gate-latest.json",
+   "sha": "c22c2699dffec842:355",
+   "size": 355,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "R-MV-GATE-R2-20261102-bm-a.json",
+   "id": "R-MV-GATE-R2-20261102",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/mv-gate-r2-20261102.json",
+   "sha": "c22c2699dffec842:355",
+   "size": 355,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "R-MV-STAB-20261102-bm-a.json",
+   "id": "R-MV-STAB-20261102",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/mv-stab-20261102.json",
+   "sha": "20797a06bfdc516e:84",
+   "size": 84,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "R-MV-TRANS-20261102-bm-a.json",
+   "id": "R-MV-TRANS-20261102",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/mv-trans-20261102.json",
+   "sha": "5bee0813fe11c093:28702",
+   "size": 28702,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "R-MV-V718-REBUILD-bm-a.json",
+   "id": "R-MV-V718-REBUILD",
+   "node": "bm-a",
+   "deliverable": "C:\\Users\\sjs20\\Desktop\\FluxGroup\\cph4\\fleet\\mv0001-handover\\outbound\\krea2\\30s-reel-v1\\full_mv_v718.mp4",
+   "sha": "79ed8614fdf76dcb:659718890",
+   "size": 659718890,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "R-MV-V718-STILL-5273-bm-a.json",
+   "id": "R-MV-V718-STILL-5273",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/mv-v718-still-5273.json",
+   "sha": "c22c2699dffec842:355",
+   "size": 355,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "R-NEXT-BIGGAME-SUBMIT-P-20261105-bm-a.json",
+   "id": "R-NEXT-BIGGAME-SUBMIT-P-20261105",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/game-v1/SUBMIT-PACK-20261105.json",
+   "sha": "af43e92a193c65e0:8647",
+   "size": 8647,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "R-NEXT-BIGSTREAMM-AUDIT-20261101-bm-a.json",
+   "id": "R-NEXT-BIGSTREAMM-AUDIT-20261101",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/mv-full-audit-20261101.json",
+   "sha": "62c8eedc7516c92c:24045",
+   "size": 24045,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "R-NEXT-BIGSTREAMM-AUDIT-20261102-bm-a.json",
+   "id": "R-NEXT-BIGSTREAMM-AUDIT-20261102",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/mv-full-audit-20261102.json",
+   "sha": "62c8eedc7516c92c:24045",
+   "size": 24045,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "R-NEXT-BIGSTREAMM-AUDIT-20261103-bm-a.json",
+   "id": "R-NEXT-BIGSTREAMM-AUDIT-20261103",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/mv-full-audit-20261103.json",
+   "sha": "628b71c092ceb1dd:24305",
+   "size": 24305,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "R-NEXT-BIGSTREAMM-AUDIT-20261104-bm-a.json",
+   "id": "R-NEXT-BIGSTREAMM-AUDIT-20261104",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/mv-full-audit-20261104.json",
+   "sha": "628b71c092ceb1dd:24305",
+   "size": 24305,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "R-NEXT-BIGSTREAMM-AUDIT-20261105-bm-a.json",
+   "id": "R-NEXT-BIGSTREAMM-AUDIT-20261105",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/mv-full-audit-20261105.json",
+   "sha": "628b71c092ceb1dd:24305",
+   "size": 24305,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "R-NEXT-BIGSTREAMM-GATE-20261101-bm-a.json",
+   "id": "R-NEXT-BIGSTREAMM-GATE-20261101",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/mv-gate-20261101.json",
+   "sha": "59de553a93c90725:737",
+   "size": 737,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "R-NEXT-BIGSTREAMM-GATE-20261102-bm-a.json",
+   "id": "R-NEXT-BIGSTREAMM-GATE-20261102",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/mv-gate-20261102.json",
+   "sha": "59de553a93c90725:737",
+   "size": 737,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "R-NEXT-BIGSTREAMM-GATE-20261103-bm-a.json",
+   "id": "R-NEXT-BIGSTREAMM-GATE-20261103",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/mv-gate-20261103.json",
+   "sha": "28dae9765fa03c2d:640",
+   "size": 640,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "R-NEXT-BIGSTREAMM-GATE-20261104-bm-a.json",
+   "id": "R-NEXT-BIGSTREAMM-GATE-20261104",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/mv-gate-20261104.json",
+   "sha": "28dae9765fa03c2d:640",
+   "size": 640,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "R-NEXT-BIGSTREAMM-GATE-20261105-bm-a.json",
+   "id": "R-NEXT-BIGSTREAMM-GATE-20261105",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/mv-gate-20261105.json",
+   "sha": "28dae9765fa03c2d:640",
+   "size": 640,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "R-NEXT-FLUXVERSE-CITY-STA-20261105-bm-a.json",
+   "id": "R-NEXT-FLUXVERSE-CITY-STA-20261105",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/state/city-state.json",
+   "sha": "c5987acdf25d05ae:6567",
+   "size": 6567,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "R-PLAN-BIGCOMPUTE-20261102-bm-a.json",
+   "id": "R-PLAN-BIGCOMPUTE-20261102",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/triage-bigcompute-20261102.md",
+   "sha": "94b5d05a74f1c089:324",
+   "size": 324,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "R-PLAN-BIGCOMPUTE-20261104-bm-a.json",
+   "id": "R-PLAN-BIGCOMPUTE-20261104",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/triage-bigcompute-20261104.md",
+   "sha": "453279d8a23121ce:345",
+   "size": 345,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "R-PLAN-BIGCOMPUTE-20261105-bm-a.json",
+   "id": "R-PLAN-BIGCOMPUTE-20261105",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/triage-bigcompute-20261105.md",
+   "sha": "a52133dc45ed071e:345",
+   "size": 345,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "R-PLAN-BIGGAME-20261102-bm-a.json",
+   "id": "R-PLAN-BIGGAME-20261102",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/triage-biggame-20261102.md",
+   "sha": "65e66a323a99f763:618",
+   "size": 618,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "R-PLAN-BIGGAME-20261104-bm-a.json",
+   "id": "R-PLAN-BIGGAME-20261104",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/triage-biggame-20261104.md",
+   "sha": "d111f0dc3f7bb7c3:618",
+   "size": 618,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "R-PLAN-BIGGAME-20261105-bm-a.json",
+   "id": "R-PLAN-BIGGAME-20261105",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/triage-biggame-20261105.md",
+   "sha": "925e326d3adf6ec2:618",
+   "size": 618,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "R-PLAN-BIGLIFE-20261102-bm-a.json",
+   "id": "R-PLAN-BIGLIFE-20261102",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/triage-biglife-20261102.md",
+   "sha": "f2f4b4ad4b5e75a9:443",
+   "size": 443,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "R-PLAN-BIGLIFE-20261105-bm-a.json",
+   "id": "R-PLAN-BIGLIFE-20261105",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/triage-biglife-20261105.md",
+   "sha": "516224de22b79c59:443",
+   "size": 443,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "R-PLAN-BIGMONEY-20261103-bm-a.json",
+   "id": "R-PLAN-BIGMONEY-20261103",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/triage-bigmoney-20261103.md",
+   "sha": "919ba6b52faf4a28:738",
+   "size": 738,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "R-PLAN-BIGMONEY-20261104-bm-a.json",
+   "id": "R-PLAN-BIGMONEY-20261104",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/triage-bigmoney-20261104.md",
+   "sha": "b0be0539f06be533:622",
+   "size": 622,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "R-PLAN-BIGMONEY-20261105-bm-a.json",
+   "id": "R-PLAN-BIGMONEY-20261105",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/triage-bigmoney-20261105.md",
+   "sha": "6dbaa3a1bb487d20:668",
+   "size": 668,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "R-PLAN-BIGSTREAMDRA-20261101-bm-a.json",
+   "id": "R-PLAN-BIGSTREAMDRA-20261101",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/triage-bigstream-drama-20261101.md",
+   "sha": "580b64a7fc512df0:775",
+   "size": 775,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "R-PLAN-BIGSTREAMMV-20261102-bm-a.json",
+   "id": "R-PLAN-BIGSTREAMMV-20261102",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/triage-bigstream-mv-20261102.md",
+   "sha": "0f4ab0237ecf4d28:999",
+   "size": 999,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "R-PLAN-FLUXVERSE-20261102-bm-a.json",
+   "id": "R-PLAN-FLUXVERSE-20261102",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/triage-fluxverse-20261102.md",
+   "sha": "18cfb8be0a5c3b6a:538",
+   "size": 538,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "R-PLAN-FLUXVERSE-20261105-bm-a.json",
+   "id": "R-PLAN-FLUXVERSE-20261105",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/triage-fluxverse-20261105.md",
+   "sha": "84147b73de9a3bd8:670",
+   "size": 670,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "R-PLAN-RECON-20261104-bm-a.json",
+   "id": "R-PLAN-RECON-20261104",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/triage-recon-20261104.md",
+   "sha": "3b7cd88c10a82c72:691",
+   "size": 691,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "R-PLAN-RECON-20261105-bm-a.json",
+   "id": "R-PLAN-RECON-20261105",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/triage-recon-20261105.md",
+   "sha": "b65059a5e42d75e0:691",
+   "size": 691,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "R-QUANT-ETF-DAILY-20261102-bm-a.json",
+   "id": "R-QUANT-ETF-DAILY-20261102",
+   "node": "bm-a",
+   "deliverable": "quant/bigmoney/results/etf_composite_pf.json",
+   "sha": "64b62465eaacf5fe:4337",
+   "size": 4337,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "R-TRIAGE-BIGGAME-BMM-20261105-bm-a.json",
+   "id": "R-TRIAGE-BIGGAME-BMM-20261105",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/triage-biggame-20261105.md",
+   "sha": "925e326d3adf6ec2:618",
+   "size": 618,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "R-TRIAGE-BIGLIFE-BMA-20261104-bm-a.json",
+   "id": "R-TRIAGE-BIGLIFE-BMA-20261104",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/triage-biglife-20261104.md",
+   "sha": "50e3fbf753762acb:443",
+   "size": 443,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "R-TRIAGE-BIGSTREAMDRAMA-BMC-20261102-bm-a.json",
+   "id": "R-TRIAGE-BIGSTREAMDRAMA-BMC-20261102",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/triage-bigstream-drama-20261102.md",
+   "sha": "ba5f2a3ab3a7539d:876",
+   "size": 876,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "R-TRIAGE-FLEETOPS-BMM-20261102-bm-a.json",
+   "id": "R-TRIAGE-FLEETOPS-BMM-20261102",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/triage-fleet-ops-20261102.md",
+   "sha": "58572e1aec4ada90:402",
+   "size": 402,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "R-TTS-QC-R2-20261102-bm-a.json",
+   "id": "R-TTS-QC-R2-20261102",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/tts-qc-r2-20261102.json",
+   "sha": "c846819f5c8edb0c:193",
+   "size": 193,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "RCANARY2-20261102T181500-bm-a.json",
+   "id": "RCANARY2-20261102T181500",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/state/canary/REMOTE2-20261102T181500.txt",
+   "sha": "1e1d6be00f193d91:31",
+   "size": 31,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "RCANARY3-20261102T182704-bm-a.json",
+   "id": "RCANARY3-20261102T182704",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/state/canary/REMOTE3-20261102T182704.txt",
+   "sha": "9af470399c4dd68c:31",
+   "size": 31,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "RCANARY4-20261102T183254-bm-a.json",
+   "id": "RCANARY4-20261102T183254",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/RCANARY4-20261102T183254.txt",
+   "sha": "498a76ec9bc30ea6:60",
+   "size": 60,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "VOICE-CORPUS-LIBRIVOX-BMA-20261106-bm-a.json",
+   "id": "VOICE-CORPUS-LIBRIVOX-BMA-20261106",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/vcorpus-librivox-20261106.json",
+   "sha": "055ac2f32cc1e733:639",
+   "size": 639,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "asset-lib-asset-gen-2026-11-04-bm-a.json",
+   "id": "asset-lib-asset-gen-2026-11-04",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/asset-gen-props-2026-11-04.json",
+   "sha": "ff0998c90485e008:2609",
+   "size": 2609,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "asset-lib-asset-gen-2026-11-05-bm-a.json",
+   "id": "asset-lib-asset-gen-2026-11-05",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/asset-gen-props-2026-11-05.json",
+   "sha": "eb06fe07e6442e34:2609",
+   "size": 2609,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "asset-lib-char-gen-2026-11-03-bm-a.json",
+   "id": "asset-lib-char-gen-2026-11-03",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/char-gen-bm-c-2026-11-03.json",
+   "sha": "d787b66876dc3820:8848",
+   "size": 8848,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "asset-lib-char-prompts-2026-11-03-bm-a.json",
+   "id": "asset-lib-char-prompts-2026-11-03",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/char-gen-plan-2026-11-03.json",
+   "sha": "e7dea573360ab2e8:1085",
+   "size": 1085,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "asset-lib-index-2026-11-04-bm-a.json",
+   "id": "asset-lib-index-2026-11-04",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/asset-index-2026-11-04.json",
+   "sha": "516118968d5dd9f6:5117",
+   "size": 5117,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "asset-lib-library-check-2026-11-04-bm-a.json",
+   "id": "asset-lib-library-check-2026-11-04",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/asset-library-2026-11-04.json",
+   "sha": "3d371e892158a1b9:3034",
+   "size": 3034,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "asset-lib-voice-corpus-2026-11-05-bm-a.json",
+   "id": "asset-lib-voice-corpus-2026-11-05",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/voice-corpus-2026-11-05.json",
+   "sha": "01ec54756092330d:527",
+   "size": 527,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "asset-lib-voice-corpus-bma-2026-11-04-bm-a.json",
+   "id": "asset-lib-voice-corpus-bma-2026-11-04",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/voice-corpus-bm-a-2026-11-04.json",
+   "sha": "db755dfff679bf3d:448",
+   "size": 448,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "asset-lib-voice-corpus-bmc-2026-11-05-bm-a.json",
+   "id": "asset-lib-voice-corpus-bmc-2026-11-05",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/voice-corpus-bm-c-2026-11-05.json",
+   "sha": "7c92edeca08c0c6b:448",
+   "size": 448,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "asset-lib-voice-dataset-2026-11-05-bm-a.json",
+   "id": "asset-lib-voice-dataset-2026-11-05",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/asset-voice-2026-11-05.json",
+   "sha": "e1eb929d7cd1437a:819",
+   "size": 819,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "biggame-accept-2026-11-04-bm-a.json",
+   "id": "biggame-accept-2026-11-04",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/quality-biggame-2026-11-04.json",
+   "sha": "8d8ec4c756159a6e:563",
+   "size": 563,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "biggame-pack-scan-2026-11-04-bm-a.json",
+   "id": "biggame-pack-scan-2026-11-04",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/game-packs-2026-11-04.json",
+   "sha": "29e5c5a5b6b954ef:9829",
+   "size": 9829,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "bigmoney-backtest-2026-11-03-bm-a.json",
+   "id": "bigmoney-backtest-2026-11-03",
+   "node": "bm-a",
+   "deliverable": "quant/bigmoney/results/etf_composite_pf.json",
+   "sha": "64b62465eaacf5fe:4337",
+   "size": 4337,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "bigmoney-backtest-2026-11-03-v3-bm-a.json",
+   "id": "bigmoney-backtest-2026-11-03-v3",
+   "node": "bm-a",
+   "deliverable": "quant/bigmoney/results/etf_nobond_vt.json",
+   "sha": "0da7d210dfa7ae6a:1824",
+   "size": 1824,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "bigmoney-backtest-2026-11-04-bm-a.json",
+   "id": "bigmoney-backtest-2026-11-04",
+   "node": "bm-a",
+   "deliverable": "quant/bigmoney/results/etf_nobond_vt.json",
+   "sha": "0da7d210dfa7ae6a:1824",
+   "size": 1824,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "bigmoney-signal-2026-11-03-bm-a.json",
+   "id": "bigmoney-signal-2026-11-03",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/quant-signal-2026-11-03.csv",
+   "sha": "67cfe0a3c49e3c17:533",
+   "size": 533,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "bigstream-mv-gate-2026-11-04-bm-a.json",
+   "id": "bigstream-mv-gate-2026-11-04",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/mv-gate-v721-2026-11-04.json",
+   "sha": "96a72c21cf2899a8:1946",
+   "size": 1946,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "bigstream-mv-gate-2026-11-05-bm-a.json",
+   "id": "bigstream-mv-gate-2026-11-05",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/mv-gate-v721-2026-11-05.json",
+   "sha": "b6e478e698b2c39c:505",
+   "size": 505,
+   "declared": "",
+   "compare": "UNDECLARED"
+  },
+  {
+   "receipt": "bigstream-mv-transition-2026-11-04-bm-a.json",
+   "id": "bigstream-mv-transition-2026-11-04",
+   "node": "bm-a",
+   "deliverable": "cph4/fleet/queue-receipts/mv-transition-v721-2026-11-04.json",
+   "sha": "7af0aff5ecaa536f:17130",
+   "size": 17130,
+   "declared": "",
+   "compare": "UNDECLARED"
+  }
+ ]
+}
