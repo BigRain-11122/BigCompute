@@ -1,0 +1,35 @@
+{
+ "task": "T171(3) / BC-P-58 batch-2 path: pin Ollama auto-update",
+ "at": "2026-11-06 23:15-23:18",
+ "machine": "bm-a (CEO yield pause window)",
+ "db": "%LOCALAPPDATA%\\Ollama\\db.sqlite",
+ "column": "settings.auto_update_enabled",
+ "before": 1,
+ "after_write": 0,
+ "readback_after_restart": 0,
+ "readback_while_app_reads_settings_api": 0,
+ "backup": ".codely-cli/tmp/ollama-db-backup-20261106/db.sqlite{,-wal,-shm}",
+ "sequence": [
+  "waited for 0 loaded models (23:15:03 /api/ps empty) to avoid aborting co-tenant generation",
+  "taskkill ollama app.exe + ollama.exe (/T)",
+  "sqlite3 update settings set auto_update_enabled=0 where id=1; commit",
+  "start ollama app.exe",
+  "poll /api/tags -> 200 in 13.6s, 6 models intact",
+  "readback flag=0; real generation: done_reason=stop, eval_count=2, 4.87s"
+ ],
+ "updater_observation": {
+  "checker_still_runs": true,
+  "checker_log": "updater.go:373 beginning update checker interval=1h0m0s",
+  "found": "updater.go:133 New update available v0.40.15 (installed 0.40.13)",
+  "download_activity_in_70s": "none (updates_v2 mtime unchanged)",
+  "conclusion": "auto_update_enabled=0 不阻止检查器，只约束下载/安装路径；本次观察窗内无下载动作，但一次观察不能证明安装路径永不触发"
+ },
+ "preexisting_disk_item": {
+  "path": "%LOCALAPPDATA%\\Ollama\\updates_v2\\0d9169...\\OllamaSetup.exe",
+  "bytes": 1689667936,
+  "mtime": "2026-11-06 11:04:24",
+  "note": "1.69GB 已下载安装包缓存（今日 11:04 落下，本司未删——删除属磁盘侧决定，先报告）"
+ },
+ "residual_risk": "若更新器在应用退出时静默安装，pause/resume 链每轮退出都可能触发；验证法=下次应用重启后读 app.log 的 version= 字段应仍为 0.40.13",
+ "verdict": "PINNED-OK(checker-only-unverified)"
+}

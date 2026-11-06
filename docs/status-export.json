@@ -1,8 +1,8 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-11-06 23:0x",
- "current_activity": "2026-11-06 23:0x 夜班轮：T171④ serve 存活复拍判定落地——单拍读失败不再直接写 P1。idle_selfcheck 新增 serve_verdict/resample_serve_liveness，复用 Tools/serve_health.py 的 45s settle 窗（单源，禁复制重试字面）：首拍活=零等待不碰窗口；窗口内恢复记 http200(recovered_after=<n>s)；能答但干不了活判 DEGRADED；窗口耗尽才 DOWN；复拍自身坏判 RESAMPLE-FAIL（可见不假绿）；pause 期 serve 下线属受令行为，不进窗空等。selftest 增 J19 九断言全绿，心跳实跑 23:03:52 serve_alive=true serve_detail=http200（快路径零等待）。 [via BigCompute-OSLoop]",
- "latest_artifact": "state/t171-serve-resample-20261106.txt（真 serve 首拍/复拍双活 + 闭合端口 :1 缩短版 settle 5s 实跑 DOWN[attempts=3,elapsed=5.0s] 真等待 5.0s）+ Tools/idle_selfcheck.py（SERVE_RESAMPLE_SETTLE_S=45.0 / resample_serve_liveness / serve_verdict）+ qa/smoke-20261106-2304.log/.png（27/28，唯一红=no.22 已知历史面），时间戳 2026-11-06 23:04",
- "next_milestone": "①T171③ BC-P-58 Ollama 更新器钉住（须 Quit 托盘 WAL 落盘窗·共租面，另窗做）；②M132 烘焙实弹等净窗（现 vram_free≈4.0GB、Tuanjie 共租 2 实例，净窗出现即一条命令出 GPU/CPU 双路三指标）；窗 ≤48h",
+ "updated_at": "2026-11-06 23:2x",
+ "current_activity": "2026-11-06 23:1x 接续轮：T171③（BC-P-58 ②径）把 Ollama 自动更新钉住——settings.auto_update_enabled 1→0，先备份 db{,-wal,-shm}、等 /api/ps 空（不打断共租生成）才 taskkill app+server → sqlite3 改值 → 重启；服务 13.6s 恢复、6 模型全在、真生成 done_reason=stop eval_count=2 4.87s；跨重启回读仍为 0。如实边界：检查器仍每小时跑并报 v0.40.15 可用（开关只管下载/安装路径，不管检查），70s 观察窗无下载但「退出时静默安装」未实测，已立风险 R-65 并给验证法。 [via BigCompute-OSLoop]",
+ "latest_artifact": "state/t64-ollama-autoupdate-pin-20261106.txt/.json（读了 before=1→after=0→重启后 0 三态 + 13.6s 恢复 + 真生成佐证 + 三条边界）+ docs/risk-register.md R-65（退出静默安装的版本跳变风险 E3），时间戳 2026-11-06 23:18",
+ "next_milestone": "①R-65 验证：下次 Ollama app 重启后读 app.log 的 version= 应仍为 0.40.13，否则升 E2 改硬法；②M132 烘焙实弹等净窗（vram_free≈3.7GB、Tuanjie 共租，净窗出现即一条命令出双路三指标）；窗 ≤48h",
  "previous_updated_at": "2026-11-06 23:0x"
 }

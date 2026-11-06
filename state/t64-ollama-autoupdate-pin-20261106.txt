@@ -1,0 +1,27 @@
+T171③ / BC-P-58 ②径（auto_update_enabled 钉住）实跑证据 2026-11-06 23:15-23:18 · bm-a
+（CEO 让路 pause 窗内执行·全程约 20 秒 serve 下线，已在无模型驻留静默窗施工）
+
+一、做了什么
+  1. 等到 /api/ps 空（23:15:03）= 不打断任何共租生成；
+  2. taskkill ollama app.exe + ollama.exe（/T），备份 db.sqlite{,-wal,-shm} 到 .codely-cli/tmp/ollama-db-backup-20261106/；
+  3. sqlite3 写 settings.auto_update_enabled: 1 -> 0（commit）；
+  4. 重启 ollama app.exe；/api/tags 恢复用时 13.6s，6 个模型全在；
+  5. 回读 flag=0；真生成 done_reason=stop / eval_count=2 / 4.87s（服务确已可用）。
+
+二、读数
+  auto_update_enabled  before=1  after=0  readback(重启后)=0  readback(应用读设置 API 之后)=0
+  应用版本 0.40.13 · 更新器报告 v0.40.15 可用
+
+三、如实边界（三条）
+  1. 检查器仍然每小时跑：app.log `updater.go:373 beginning update checker interval=1h0m0s`，
+     并 `updater.go:133 New update available ... v0.40.15` —— 这个开关拦的是下载/安装路径，
+     不是检查动作本身；把「钉住」理解成「永不检查」是错的。
+  2. 70 秒观察窗内 updates_v2 无任何写入（缓存文件 mtime 仍是 11:04:24），即本窗未见下载；
+     但一次观察不能证明安装路径永不触发（退出时静默安装的形态未实测）。
+     验证法=下次应用重启后 app.log 的 version= 仍应为 0.40.13。
+  3. 磁盘上已躺着 1.69GB 的 OllamaSetup.exe（今日 11:04 落下的已下载更新包）。
+     本司只报告不删除——删不删属磁盘/回收席决定。
+
+四、结论
+  verdict=PINNED-OK(checker-only-unverified)：开关已落盘且跨重启保持，服务无损恢复并有真生成佐证；
+  「不再自动安装」这一点只有检查器日志与 70s 无下载两条弱证据，缺一次真实升级周期的验证。
