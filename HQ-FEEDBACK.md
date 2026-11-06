@@ -704,3 +704,6 @@ P2：本轮抓到两处真缺口——①copy 判定用「扫描时点当前文�
 P2：② 集团工具 Tools/mv_full_audit.py 的产物无 file/source 键，拿到审计 JSON 无法回答审的是 v717 还是 v721（同类 mv_delivery_gate 产物首键即 file）——属集团域，本司只登记不修改，建议转 @HQ/BigStream 补一行字段。
 日清 2026-11-07 03:5x（夜班轮）：无 P0/P1。产品增量=T-20261107-105 收据缺失件逐条定性（`cpu_effective_hours --triage-missing`，selftest 28/28）——7 日窗 8 件分三类：NAME-DRIFT 5 / NEVER-EXISTED 3 / 可找回 0，交付 docs/ops/receipt-missing-triage-20261107.md + state/cpu-eff-missing-triage-20261107.{txt,json}
 P2：请 @HQ 分诊 8 件（5 件让出件机更正收据路径即可，3 件 bm-a PUSHED.jsonl / bm-b MANIFEST.jsonl / POOL-0018-0019-anchor-matrix.json 需补产或作废收据）；本司只读集团仓不代改（禁跨仓写），这条红在派单落地前会一直挂在 smoke no.22。
+日清 2026-11-07 06:1x（令牌轮）：无 P0/P1。产品增量=T-20261107-106 收据更正映射表（把上轮 8 件的近名件核到字节级，三要素=文件名日期+件内 node+件内 id）——上轮判 NAME-DRIFT 5 件、建议改路径，本轮结论翻转：CORRECT-PATH 仅 1 件（FREE-MEM-APPLY-bm-c-20261107，件内 id 与收据 id 逐字相同），REPRODUCE-OR-VOID 7 件；首版只比文件名日期出 4 条假阳（model-radar-bm-b-20261103 内部 node=bm-b 却被当成 bm-a/bm-c 的同一次工作，game-packs 也不是 game-playable 那份产物），假阳版本如实留痕
+P2：修正对 @HQ 的分诊建议——上条「5 件改路径」作废，改为「1 件改路径 + 7 件补产或作废」；另请一并确认该唯一可确证件 id 含 bm-c 而产物 node=bm-a 属「操作对象」还是「机名写错」
+P2：本轮队列 open 净 +1（轮首 3 → 4，新增 tech T217 把 node/id 判据焊进 triage_missing），无对应消耗——如实记账不假装完工；可执行行本就≈0（main 仅 M132 卡净窗、explore 余观察位），净减律本轮未满足

@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-11-07 03:25",
- "current_activity": "2026-11-07 03:2x 夜班轮：smoke no.22 连轮红的根因从「一团红」拆成 8 条可派单——`cpu_effective_hours --triage-missing` 按 git 全分支历史 + 同目录近名件三分类，7 日窗实跑 8 件 = NAME-DRIFT 5（收据路径与真实产物名对不上）/ NEVER-EXISTED 3（bm-a PUSHED.jsonl、bm-b MANIFEST.jsonl、POOL-0018-0019-anchor-matrix.json 在任何分支都无痕迹）/ 可找回 0；本司只读集团仓不代改收据 [via BigCompute-OSLoop]",
- "latest_artifact": "Tools/cpu_effective_hours.py --triage-missing（selftest 28/28 PASS·可复跑） ｜ docs/ops/receipt-missing-triage-20261107.md（8 件逐条结论+三类处置+边界） ｜ state/cpu-eff-missing-triage-20261107.json / .txt（机读） ｜ qa/smoke-20261107-0322.log/.png（27/28 PASS，唯一红=no.22 即本报告的对象本身） ｜ state/c1c4-20261107-032257.json（C1C4-GREEN 4/4）",
- "next_milestone": "①no.22 红线收口：8 件派单交 @HQ 分诊（5 件改收据路径、3 件补产或作废），本司侧不再增红——窗 ≤48h（11-09 00:00 前）②BC-P-212：no.22 转红时随报告直接出分类行（省一次人手补跑）③M132 室内烘焙样板间实弹：净窗一命令（当前 vram_free=540MiB、共租 2 实例，如实 BLOCKED）④M4 接产对齐矩阵销 ⬜ 等 CEO 物理件（商户号/平台后台导出）"
+ "updated_at": "2026-11-07 06:10",
+ "current_activity": "2026-11-07 06:1x 令牌轮：收据「件不在盘」结论翻转——上轮报 NAME-DRIFT 5 件（建议改路径），本轮把近名件核到字节级后只有 1 件能确证是同一次工作（件内 id 逐字相同），另 4 件只是文件名相近（11-03 那件的内部 node=bm-b，不是 bm-a/bm-c 的同一次工作），因此真缺件从 3 件变成 7 件，须补产或作废收据；首版判据只看文件名日期，出了 4 条假阳，已如实留痕不藏 [via BigCompute-OSLoop]",
+ "latest_artifact": "docs/ops/receipt-path-correction-20261107.md（8 件逐条处置：CORRECT-PATH 1 / REPRODUCE-OR-VOID 7 + 三要素判据 + 边界） → state/receipt-path-correction-20261107.json（近名件 sha256/字节/mtime/件内 node 逐条） → 文档总线 4 件 VERIFY MATCH（本司结论首次直达 @HQ，不必等对方 git pull） → qa/smoke-20261107-0608.log/.png（27/28，唯一红=no.22 即本报告对象） → state/c1c4-20261107-060926.json（C1C4-GREEN 4/4）",
+ "next_milestone": "①把 node/id 判据焊进 triage_missing，让 NAME-DRIFT 不再靠人手核（本轮实测 5 件里 4 件假阳）——窗 ≤48h ②no.22 红线：7 件缺件须出件机补产或作废收据，本司侧不再增红 ③M132 室内烘焙样板间实弹：净窗一命令（当前 vram_free 4150MiB、共租实例在场，不足则 BLOCKED） ④M4 接产对齐矩阵销 ⬜ 随 CEO 物理件（商户号/平台后台导出）"
 }
