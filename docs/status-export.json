@@ -1,8 +1,8 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-11-06 23:2x",
- "current_activity": "2026-11-06 23:1x 接续轮：T171③（BC-P-58 ②径）把 Ollama 自动更新钉住——settings.auto_update_enabled 1→0，先备份 db{,-wal,-shm}、等 /api/ps 空（不打断共租生成）才 taskkill app+server → sqlite3 改值 → 重启；服务 13.6s 恢复、6 模型全在、真生成 done_reason=stop eval_count=2 4.87s；跨重启回读仍为 0。如实边界：检查器仍每小时跑并报 v0.40.15 可用（开关只管下载/安装路径，不管检查），70s 观察窗无下载但「退出时静默安装」未实测，已立风险 R-65 并给验证法。 [via BigCompute-OSLoop]",
- "latest_artifact": "state/t64-ollama-autoupdate-pin-20261106.txt/.json（读了 before=1→after=0→重启后 0 三态 + 13.6s 恢复 + 真生成佐证 + 三条边界）+ docs/risk-register.md R-65（退出静默安装的版本跳变风险 E3），时间戳 2026-11-06 23:18",
- "next_milestone": "①R-65 验证：下次 Ollama app 重启后读 app.log 的 version= 应仍为 0.40.13，否则升 E2 改硬法；②M132 烘焙实弹等净窗（vram_free≈3.7GB、Tuanjie 共租，净窗出现即一条命令出双路三指标）；窗 ≤48h",
+ "updated_at": "2026-11-06 23:3x",
+ "current_activity": "2026-11-06 23:27 决定性补测（R-65）：应用完整退出→重启两次，两次 app.log 的 version= 都是 0.40.13（23:15 那次退出时开关仍是 1、23:27 这次是 0），1.69GB 的 v0.40.15 安装包全程在盘——本机该版本不存在「退出即静默安装」，升级必须由应用 UI 显式动作；R-65 由 open（观察窗）转缓解中。试验只用了 4.9 秒 serve 下线，6 个模型全在、开关回读仍 0。 [via BigCompute-OSLoop]",
+ "latest_artifact": "state/r65-quit-restart-20261106.json（version 前后 0.40.13/0.40.13、flag 0/0、恢复 4.9s、upgrade_happened=false）+ state/t64-ollama-autoupdate-pin-20261106.txt 第五节补测 + docs/risk-register.md R-65 状态推进，时间戳 2026-11-06 23:27",
+ "next_milestone": "①M132 City3D 烘焙实弹仍等净窗（23:20 实读 vram_free=219MiB、Tuanjie 45 进程，差一个量级，硬闯会污染 J1/J2）；②若后续 Ollama 升级到 0.40.15，按 R-65 复查开关是否仍生效；窗 ≤48h",
  "previous_updated_at": "2026-11-06 23:0x"
 }

@@ -25,3 +25,12 @@ T171③ / BC-P-58 ②径（auto_update_enabled 钉住）实跑证据 2026-11-06 
 四、结论
   verdict=PINNED-OK(checker-only-unverified)：开关已落盘且跨重启保持，服务无损恢复并有真生成佐证；
   「不再自动安装」这一点只有检查器日志与 70s 无下载两条弱证据，缺一次真实升级周期的验证。
+
+五、23:27 补充实测（R-65 决定性试验：完整退出→重启）
+  version_before=0.40.13  flag_before=0  驻留模型=0（静默窗内施工）
+  taskkill app+server → serve 眼观下线（api/ps 不可达）→ 重启 → 4.9s 恢复、6 模型全在
+  version_after=0.40.13  flag_after=0  upgrade_happened=false  → verdict=PIN-HOLDS
+  另：23:15 那次退出时 flag 仍为 1（顺序是先停后写），version 同样没有变 0.40.15；
+      且 1.69GB 的 v0.40.15 安装包（sha256 106EF3D2A02437810FBA6F574914B1413C512EA84DDD4F184C8E7F434B6F5564）
+      全程在盘 —— 结论：本机 0.40.13 不存在「退出即静默安装」，升级需应用 UI 显式动作。
+  机读=state/r65-quit-restart-20261106.json
