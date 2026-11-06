@@ -696,3 +696,5 @@ P2 提示——集团 orders 11-06 新增六行全部是 token 工具实测与 d
 日清 2026-11-06 23:0x（夜班轮）：P0/P1 无。本轮 T171④ serve 存活复拍判定落地（单拍读失败不再直报 P1·复用 serve_health 45s settle 窗单源），selftest J19 九断言 PASS + 实跑双路径证据 state/t171-serve-resample-20261106.txt
 P1 已闭环（上轮 M134 批次 3 本仓 34 行整形收口）；本轮 T171④ serve 存活复拍判定落地——单拍读失败不再直报 P1（复用 serve_health 的 45s settle 窗·单源），selftest J19 九断言 PASS + 实跑双路径证据 state/t171-serve-resample-20261106.txt
 P2 维持：M132 烘焙实弹等净窗（vram_free≈4.0GB、Tuanjie 共租 2 实例，硬闯污染 J2 指标）；供给地板 breach_eff=true（本机 2 行自陈旧 3 天 + bm-b claim 静默约 178h）已出登记请求件 M125，等集团收池
+日清 2026-11-06 23:5x（夜班轮）：P0/P1 无。本轮 T214 日清行读取器容差缺口收口（`HQ_LINE_RE` 容忍全角括号/冒号三形 + 三夹具 + 负控），selftest PASS、live `FRESH(age_h=0.7,date=2026-11-06)` 判定未变
+P2：23:46 集团令「全面开工·解除 bm-a 让路」已核实——本司七件计划任务全 Ready/Running（OSLoop/OSLoop-PM/GPU-IdleWatch/OrderSentinel/LaneTaskGuard/CleanWindowProbe/ResidentQA），无需重注册

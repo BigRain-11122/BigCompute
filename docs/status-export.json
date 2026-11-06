@@ -1,8 +1,8 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-11-06 23:3x",
- "current_activity": "2026-11-06 23:27 决定性补测（R-65）：应用完整退出→重启两次，两次 app.log 的 version= 都是 0.40.13（23:15 那次退出时开关仍是 1、23:27 这次是 0），1.69GB 的 v0.40.15 安装包全程在盘——本机该版本不存在「退出即静默安装」，升级必须由应用 UI 显式动作；R-65 由 open（观察窗）转缓解中。试验只用了 4.9 秒 serve 下线，6 个模型全在、开关回读仍 0。 [via BigCompute-OSLoop]",
- "latest_artifact": "state/r65-quit-restart-20261106.json（version 前后 0.40.13/0.40.13、flag 0/0、恢复 4.9s、upgrade_happened=false）+ state/t64-ollama-autoupdate-pin-20261106.txt 第五节补测 + docs/risk-register.md R-65 状态推进，时间戳 2026-11-06 23:27",
- "next_milestone": "①M132 City3D 烘焙实弹仍等净窗（23:20 实读 vram_free=219MiB、Tuanjie 45 进程，差一个量级，硬闯会污染 J1/J2）；②若后续 Ollama 升级到 0.40.15，按 R-65 复查开关是否仍生效；窗 ≤48h",
- "previous_updated_at": "2026-11-06 23:0x"
+ "updated_at": "2026-11-06 23:5x",
+ "current_activity": "2026-11-06 23:5x 夜班轮 T214 收口：日清行读取器读侧容差缺口修复（HQ_LINE_RE 日期前分隔符容忍空格/全角括号/冒号三形），selftest J15 三夹具 PASS、live 日清判定 FRESH 未变；同轮核实 23:46 集团令「全面开工·解除 bm-a 让路」——本司七件计划任务全 Ready/Running，无需重注册 [via BigCompute-OSLoop]",
+ "latest_artifact": "Tools/idle_selfcheck.py（HQ_LINE_RE 三形容差 + J15 三夹具）+ qa/smoke-20261106-2356.log（27/28 PASS，唯一红=no.22 M96 既有面）+ state/queue/tech.md T214 done，时间戳 2026-11-06 23:56",
+ "next_milestone": "①M132 City3D 烘焙实弹等净窗（Tuanjie 实例退出后一命令开跑，48h 内复核）；②BC-P-208 提案：跨解析器「写侧合规·读侧看不到」一次人工盘点出清单（不实装，仅盘点）；③R-65 Ollama 0.40.15 升级观察窗续验",
+ "previous_updated_at": "2026-11-06 23:3x"
 }
