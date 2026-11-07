@@ -728,3 +728,5 @@ P2：同轮自捉假动作——首版 overlay 只搜 `--root`（集团根）的
 - 承办 OB-20261107-180106-609：本机仓库收口 closeout-dasheng.json（ahead0/behind5→0/0）+ audio_bgm_fill 10/10 SKIP rc=0，两回执落 cph4/fleet/queue-receipts/。
 - P2：集团仓工作树仍有 9 修改+186 未跟踪（他窗在飞），本司不代提交、不碰；收口脚本已把代码面拉到 origin。
 - M157 判负留痕：三源禁用词交叉普查按标题截段解析失败（words=0），已 fail-closed 拒判，复发路径=复用 census groups 解析器（未转新工具）。
+- P2（新发现）：按 18:01 令实跑所得 audio-bgm-fill-20261107.json 回执 node 字段为 "?" —— Tools/fleet/audio_bgm_fill.py:172 只读 os.environ.get("NODE", "?")，未设环境变量即落占位；
+  即「令要求机器自查身份」而该令指向的回执工具本身不写可识别节点（T220 ODD-NODE 同族第 8 例·归集团工具 owner 修，本司不跨仓改）。
