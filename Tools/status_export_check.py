@@ -28,6 +28,19 @@ drifts silently; a composed one cannot claim work the ledgers do not show.
 `docs/status-export-overrides.json` is an append-only supplement layer --
 it may add text after a generated line, never replace it.
 
+M166: the two-pool reading (`stock_dispatchable` = this company's stocked
+cards that could be dispatched, `pool_effective` = the fleet pool's
+ignitable rows) now travels into `current_activity` from the heartbeat
+line, not from a hand-typed sentence. They are different pools (T-20261105-96),
+so the note states both numbers side by side and never subtracts them. A
+missing field or a stale heartbeat renders `n/a` with the reason -- `0`
+means "read as zero", never "could not read".
+
+M167 (found while wiring M166): the overrides supplement had no freshness
+gate, so an 11-03 sentence still appended itself onto an 11-08 face as
+soon as anyone ran `compose --write`. Supplements older than the export's
+own staleness cap are now ignored with a NOTE instead of being merged.
+
 T169 adds the write-side half of the same defect: the read gate could see
 a BOM but nobody asserted the *writer* produced none. An editor save or a
 PowerShell `Out-File` aimed at this file re-introduces the BOM and the face
@@ -199,6 +212,15 @@ QUEUE_PATH = os.path.join("state", "queue", "main.md")
 OVERRIDES_PATH = os.path.join("docs", "status-export-overrides.json")
 QUEUE_ID_RE = re.compile(r"^(M|T|E)\d+$")
 
+# M166: the heartbeat is the single source for both pool readings.
+HEARTBEAT_PATH = os.path.join("state", "heartbeat.txt")
+HEARTBEAT_MAX_AGE_MIN = 45.0
+POOL_FIELDS = ("stock_dispatchable", "pool_effective")
+POOL_FIELD_RE = re.compile(r"\b(stock_dispatchable|pool_effective)=(\S+)")
+# M167: a supplement older than the export's own cap is stale by the same
+# argument the export itself is -- it describes a round nobody can verify.
+OVERRIDE_MAX_AGE_H = MAX_AGE_H
+
 
 READABLE_RE = re.compile(r"[\x20-\x7e\u3000-\u303f\u4e00-\u9fff\uff00-\uffef\u2000-\u2bff]+")
 # Below this share of readable characters a chunk is mojibake, not text.
@@ -228,7 +250,70 @@ def _clean(text, limit):
         runs = [m.group(0).strip() for m in READABLE_RE.finditer(text)]
         runs = [r for r in runs if r]
         text = max(runs, key=len) if runs else ""
-    return text[:limit]
+    if len(text) > limit:
+        # Cutting mid-token ("…call-") reads to the CEO as a broken feed;
+        # drop the trailing partial word unless that would lose most of it.
+        text = text[:limit]
+        cut = text.rfind(" ")
+        if cut > limit * 0.6:
+            text = text[:cut]
+    return text
+
+
+def last_heartbeat_line(text):
+    """Newest `idle_selfcheck:` line carrying a timestamp, or None."""
+    newest, newest_ts = None, None
+    for line in (text or "").splitlines():
+        if "idle_selfcheck:" not in line:
+            continue
+        ts = parse_ts(line)
+        if ts is None:
+            continue
+        if newest_ts is None or ts > newest_ts:
+            newest, newest_ts = line, ts
+    return newest, newest_ts
+
+
+def _pool_count(value):
+    """Integer count, or None when the token is not a count.
+
+    `n/a` and friends must stay unreadable: turning an unreadable pool
+    into `0` is the exact confusion this note exists to remove.
+    """
+    text = str(value or "").strip()
+    if re.fullmatch(r"\d+", text):
+        return int(text)
+    return None
+
+
+def pool_note(heartbeat_text, now=None, max_age_min=HEARTBEAT_MAX_AGE_MIN):
+    """Pure: one-line two-pool reading for the CEO face.
+
+    Two pools are reported side by side and never combined: `stock_dispatchable`
+    is this company's stocked cards (batch_pool review), `pool_effective` is the
+    fleet queue's ignitable rows. T-20261105-96 established that they read
+    different objects; summing or subtracting them would invent a number.
+    """
+    now = now or datetime.datetime.now()
+    line, ts = last_heartbeat_line(heartbeat_text)
+    if line is None:
+        return "两池：n/a（心跳无 idle_selfcheck 行）"
+    age_min = (now - ts).total_seconds() / 60.0
+    if age_min > max_age_min:
+        return ("两池：n/a（心跳 %.0f 分钟未更新，超 %.0f 分钟上限）"
+                % (age_min, max_age_min))
+    found = dict(POOL_FIELD_RE.findall(line))
+    parts, missing = [], []
+    for field in POOL_FIELDS:
+        count = _pool_count(found.get(field))
+        if count is None:
+            missing.append(field)
+            continue
+        parts.append("%d" % count)
+    if missing:
+        return "两池：n/a（心跳缺 %s，不按 0 读）" % "/".join(missing)
+    return ("两池：本司备货可派 %s ／ 机队可领 %s（两个不同池，本司卡未登记进机队池）"
+            % (parts[0], parts[1]))
 
 
 def compose_activity(rounds_text):
@@ -266,7 +351,15 @@ def compose_artifact(files):
 
 
 def compose_milestone(queue_text):
-    """First not-done row of the P1 queue, in file order."""
+    """First not-done row of the P1 queue, in file order.
+
+    M166 finding: this used to return the first not-done row even when it
+    was BLOCKED-PHYSICAL (waiting on the CEO), so the CEO-facing "next
+    milestone" could only ever name an item nobody can start. Active rows
+    win; a queue with nothing active falls back to the blocked rows so the
+    line never goes blank (and the status text still says blocked).
+    """
+    rows = []
     for line in (queue_text or "").splitlines():
         if not line.lstrip().startswith("|"):
             continue
@@ -282,17 +375,32 @@ def compose_milestone(queue_text):
         title = _clean(cells[1].replace("**", ""), 150)
         if not title:
             continue
-        return "%s %s（队列状态=%s）" % (cells[0], title, _clean(status, 40) or "open")
+        rows.append((cells[0], title, status, low))
+    for rid, title, status, low in rows:
+        if low.startswith("blocked"):
+            continue
+        return "%s %s（队列状态=%s）" % (rid, title, _clean(status, 40) or "open")
+    if rows:
+        rid, title, status, _ = rows[0]
+        return "%s %s（队列状态=%s）" % (rid, title, _clean(status, 40) or "open")
     return "队列无未闭合行（state/queue/main.md）"
 
 
-def compose_lines(rounds_text, queue_text, files, now=None, overrides=None):
-    """Pure: three machine lines + overrides appended, never replacing."""
+def compose_lines(rounds_text, queue_text, files, now=None, overrides=None,
+                  pool_line=None):
+    """Pure: three machine lines + overrides appended, never replacing.
+
+    `pool_line` (M166) is appended to current_activity so the two-pool
+    reading reaches the CEO face without being retyped each round.
+    """
     now = now or datetime.datetime.now()
+    activity = compose_activity(rounds_text)
+    if pool_line:
+        activity = activity + " ｜ " + pool_line
     lines = {
         "company": "BigCompute",
         "updated_at": now.strftime("%Y-%m-%d %H:%M"),
-        "current_activity": compose_activity(rounds_text),
+        "current_activity": activity,
         "latest_artifact": compose_artifact(files),
         "next_milestone": compose_milestone(queue_text),
     }
@@ -405,19 +513,46 @@ def _read_overrides(path):
     return payload, warn
 
 
+def overrides_freshness(path, now=None, max_age_h=OVERRIDE_MAX_AGE_H):
+    """(fresh, note) -- is the supplement layer describing the current work?
+
+    M167: an override written nine days ago still merged into today's face
+    the moment `compose --write` ran, because nothing asked "when was this
+    written". No timestamp exists inside the file, so file mtime is the
+    evidence available; a stale layer is dropped with a NOTE rather than
+    silently merged (it would be a claim about a round nobody can verify).
+    """
+    now = now or datetime.datetime.now()
+    try:
+        mtime = os.path.getmtime(path)
+    except OSError:
+        return False, "%s unreadable, supplements ignored" % OVERRIDES_PATH
+    age_h = (now - datetime.datetime.fromtimestamp(mtime)).total_seconds() / 3600.0
+    if age_h > max_age_h:
+        return False, ("%s is %.1fh old (> %.0fh), supplements ignored as stale"
+                       % (OVERRIDES_PATH, age_h, max_age_h))
+    return True, None
+
+
 def compose(root=None, now=None, write=False):
     """Live compose; --write also gates the result through check()."""
     root = root or ROOT
     rounds_text = _read_text(os.path.join(root, *ROUNDS_PATH.split("/")))
     queue_text = _read_text(os.path.join(root, *QUEUE_PATH.split("/")))
+    heartbeat_text = _read_text(os.path.join(root, *HEARTBEAT_PATH.split("/")))
     overrides = {}
     ov_path = os.path.join(root, *OVERRIDES_PATH.split("/"))
     if os.path.exists(ov_path):
-        overrides, warn = _read_overrides(ov_path)
+        fresh, warn = overrides_freshness(ov_path, now=now)
         if warn:
             _print_safe("NOTE %s" % warn)
+        if fresh:
+            overrides, read_warn = _read_overrides(ov_path)
+            if read_warn:
+                _print_safe("NOTE %s" % read_warn)
     lines = compose_lines(rounds_text, queue_text, collect_files(root),
-                          now=now, overrides=overrides)
+                          now=now, overrides=overrides,
+                          pool_line=pool_note(heartbeat_text, now=now))
     if write:
         path = os.path.join(root, *EXPORT_PATH.split("/"))
         problems, first3 = guarded_write(path, lines)
@@ -592,6 +727,71 @@ def selftest():
     cases.append(q_ok)
     print("  [%s] Q guarded write lands BOM-free (first3=%s) and reads GREEN"
           % ("PASS" if q_ok else "FAIL", first3.hex()))
+
+    # M166 R: both pool readings present -> both numbers in one line, and
+    # the note never merges them into a single total.
+    hb = ("2026-10-27 20:40:00 idle_selfcheck: verdict=busy "
+          "python_tokens stock_dispatchable=4 pool_effective=0\n")
+    note = pool_note(hb, now=datetime.datetime(2026, 10, 27, 20, 45))
+    r_ok = ("4" in note and "0" in note and "n/a" not in note
+            and "本司备货可派 4" in note and "机队可领 0" in note)
+    cases.append(r_ok)
+    print("  [%s] R two-pool note carries both numbers (%s)"
+          % ("PASS" if r_ok else "FAIL", note))
+
+    # M166 S: an absent field must read n/a, never 0 -- "could not read"
+    # and "read as zero" are different claims (the T-22 no.10 precedent).
+    hb_one = ("2026-10-27 20:40:00 idle_selfcheck: verdict=busy "
+              "pool_effective=0\n")
+    note_s = pool_note(hb_one, now=datetime.datetime(2026, 10, 27, 20, 45))
+    s_ok = "n/a" in note_s and "stock_dispatchable" in note_s
+    cases.append(s_ok)
+    print("  [%s] S missing pool field -> n/a named, not 0 (%s)"
+          % ("PASS" if s_ok else "FAIL", note_s))
+
+    # M166 T: a stale heartbeat is not a current reading, whatever it says.
+    note_t = pool_note(hb, now=datetime.datetime(2026, 10, 27, 23, 0))
+    t_ok = "n/a" in note_t and "未更新" in note_t
+    cases.append(t_ok)
+    print("  [%s] T stale heartbeat -> n/a with age (%s)"
+          % ("PASS" if t_ok else "FAIL", note_t))
+
+    # M166 U: the note must reach the composed activity line, so a CEO who
+    # only reads the export sees the two pools without running anything.
+    c_pool = compose_lines(base_round, q_one, files_a, now=now, pool_line=note)
+    u_ok = c_pool["current_activity"].endswith(note) and "T143" in c_pool["current_activity"]
+    cases.append(u_ok)
+    print("  [%s] U pool note appended to current_activity, round text kept"
+          % ("PASS" if u_ok else "FAIL"))
+
+    # M167 V: a supplement older than the cap is ignored, not merged -- the
+    # 11-03 sentence must not appear on an 11-08 face.
+    with tempfile.TemporaryDirectory() as td:
+        ovp = os.path.join(td, "ov.json")
+        with open(ovp, "w", encoding="utf-8") as f:
+            f.write('{"next_milestone": "11-03 旧窗口"}')
+        old_time = (now - datetime.timedelta(days=5)).timestamp()
+        os.utime(ovp, (old_time, old_time))
+        fresh_old, warn_old = overrides_freshness(ovp, now=now)
+        os.utime(ovp, (now.timestamp(), now.timestamp()))
+        fresh_new, warn_new = overrides_freshness(ovp, now=now)
+    v_ok = (fresh_old is False and "stale" in (warn_old or "")
+            and fresh_new is True and warn_new is None)
+    cases.append(v_ok)
+    print("  [%s] V stale overrides ignored, fresh overrides kept (%s)"
+          % ("PASS" if v_ok else "FAIL", warn_old))
+
+    # M166 W: a blocked row earlier in file order must not shadow an active
+    # milestone -- and with nothing active the blocked row still shows.
+    q_blocked = ("| M4 | 接产对齐 | x | **BLOCKED-PHYSICAL**（待 CEO） |\n"
+                 "| M9 | 真活行 | y | open |\n")
+    q_all_blocked = "| M4 | 接产对齐 | x | **BLOCKED-PHYSICAL**（待 CEO） |\n"
+    w_ok = ("M9" in compose_milestone(q_blocked)
+            and "M4" not in compose_milestone(q_blocked)
+            and "M4" in compose_milestone(q_all_blocked))
+    cases.append(w_ok)
+    print("  [%s] W active milestone skips blocked; all-blocked falls back"
+          % ("PASS" if w_ok else "FAIL"))
 
     print("status_export_check selftest: %d/%d PASS" % (sum(cases), len(cases)))
     return 0 if all(cases) else 1

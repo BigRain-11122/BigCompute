@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-11-08 03:25",
- "current_activity": "2026-11-08 03:1x-03:2x 令牌轮：M163 把「本司备货卡可派数」接进心跳——心跳行现在并排 stock_dispatchable=4 ／ pool_effective=0（两池不同一：4 张卡可派但未登记进机队池），M165 同时修掉 review 分母随类型漂移（consumer_named=4/6 valid=6）[via BigCompute-OSLoop]",
- "latest_artifact": "Tools/idle_selfcheck.py + Tools/qa_smoke.py（selftest 全绿，心跳实跑 stock_dispatchable=4）+ Tools/batch_pool.py（review 分母恒定 cards，selftest 59 checks）+ qa/smoke-20261108-0319.log（27/28，唯一红=no.22 既有回执产物面）+ state/c1c4-20261108-032052.json（C1C4-GREEN 4/4）",
- "next_milestone": "48h 内：M166 把两池数（可派 4 ／ 机队可领 0）固定进本实况面并挂 T-20261105-96 对账结论，让倒挂不只在心跳里可见；阻断面=M25 烘焙实弹（vram_free ~4.2GB 不足批次需，净窗未开）"
+ "updated_at": "2026-11-08 06:18",
+ "current_activity": "2026-11-08 06:00 轮：M166 done=两池读数进 CEO 实况面（心跳为单一真源·两池并列不合并不按 0 兜底·selftest 17->23 PASS·实跑 两池：本司备货可派 4 ／ 机队可领 0 + EXPORT-GREEN）+M167 新立=台账唤醒按 mtime 会空跑（decisions 06:09 mtime 新但零新行）·轮内真发现三处同窗修（blocked 行当里程碑／overrides 无新鲜度闸致 11-03 旧句贴 11-08 ｜ 两池：本司备货可派 4 ／ 机队可领 0（两个不同池，本司卡未登记进机队池）",
+ "latest_artifact": "qa/smoke-20261108-0615.png（mtime 2026-11-08 06:16）",
+ "next_milestone": "M25 室内烘焙批步 2：labbench 烘焙样板间实弹（AD-021 模块壳围合+AD-035 灯板光池→Tuanjie 批模式烘焙·GPU/CPU 双路时长/峰值/质量三指标实测·J1-J4 判据窗·labbench 隔离区零碰司仓〔O-023 先例〕·编辑器启动窗承接）（队列状态=open（**步 2 机械链预建毕 09-29 22:43）"
 }

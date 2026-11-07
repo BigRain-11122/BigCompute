@@ -744,3 +744,8 @@ P2：同轮自捉假动作——首版 overlay 只搜 `--root`（集团根）的
 P2=text_integrity 本仓零缺陷，但列数族 new_ext=13 全在集团只读台账（decisions.md 并发改写中）——本司只报警不改，供 @HQ 参考。
 - 03:2x 收口（M163 + M165 同窗毕）：心跳行新增 `stock_dispatchable=4`，与 `pool_effective=0` 并排出现——本司 4 张备货卡可派、机队可领 0，两池不同一这件事此前只有跑 `batch_pool review` 的人看得见；登记簿读不到时一律 `n/a`，不填 0 冒充「无可派卡」。`review` 分母改为恒定 `cards`，字符串错标不再让分母悄悄从 6 变 5（实跑 `consumer_named=4/6 valid=6 badtype=0`）。
 - P2（外部面）：集团 `decisions.md` 第 49 批新行 `table_new=11`，列数与表头不符（本司只报警不改他司台账），供 @HQ 修；本司 `new_local=0`。
+
+日清（11-08 06:1x 令牌轮）：
+- 收口：M166 两池读数进 CEO 实况面——心跳是单一真源，两池并列不合并，缺字段或心跳超 45 分钟一律 n/a；CEO 只读 docs/status-export.json 即可见「本司备货可派 4 ／ 机队可领 0」。
+- P2（外部面）：集团 decisions.md mtime 06:09 晚于上轮 03:26 但零新决策行=并发重写；按 mtime 唤醒会空跑，本司 M167/BC-P-222 提行集 hash 判据，只读不改集团台账。
+- 已知红：no.22 M96 历史回执产物面（多轮既有）+ text_integrity new_ext=11 全在集团只读台账（本司 new_local=0）。
