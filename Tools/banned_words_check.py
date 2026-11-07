@@ -6,6 +6,8 @@
   python Tools/banned_words_check.py <file> [<file2> ...]   话术面过检（默认）
   python Tools/banned_words_check.py census [--doc PATH] [--txt-out PATH]
                                                             词表漂移普查（扫描域自证）
+  python Tools/banned_words_check.py coverage [--txt-out PATH] [--json-out PATH]
+                                                            引号覆盖率普查（量化漏检面）
   python Tools/banned_words_check.py selftest                夹具自检
 
 扫描目标文件中「」引号内文本（=口播/发布面），逐词检索禁用词总表：
@@ -27,6 +29,7 @@ census（词表漂移普查）:
   docs/ops/livestream-plan-v1.md §4.4 打赏权益暗示禁词 + §五 D 话术禁区
 豁免面: 否定式合规提示（非投顾声明）先剥离再扫描（ALLOW_PHRASES）。
 """
+import os
 import re
 import sys
 
@@ -144,6 +147,221 @@ def render_census(verdict, p):
     return "\n".join(out)
 
 
+# ---- M156 口播引号覆盖率普查（漏检面量化·只读·复用本工具词表） ----
+PLAN_DOC = "docs/ops/livestream-plan-v1.md"
+# (path, selector)：selector 首位是数字=按编号取节（4.1 不吃 4.10），否则按标题子串取节
+COVERAGE_TARGETS = [
+    (PLAN_DOC, "4.1"),
+    (PLAN_DOC, "4.2"),
+    (PLAN_DOC, "4.4"),
+    (PLAN_DOC, "4.6"),  # 队列行引用的节号；文档里不存在=必须如实报缺，禁静默跳过
+    (DEFAULT_DOC, "二、十类挂载讲解词"),
+    (DEFAULT_DOC, "三、禁挂两类口播位"),
+]
+HEADING_RE = re.compile(r"^(#{1,6})\s+(\S.*)$")
+MARKUP_RE = re.compile(r"[>*`「」]")
+
+
+def _sections(path):
+    """按标题切节，返回 [(level, title, lineno, [(lineno, line)])]。"""
+    out, cur = [], None
+    with open(path, encoding="utf-8") as fh:
+        for lineno, raw in enumerate(fh, 1):
+            line = raw.rstrip("\n")
+            m = HEADING_RE.match(line)
+            if m:
+                if cur:
+                    out.append(cur)
+                cur = [len(m.group(1)), m.group(2).strip(), lineno, []]
+            elif cur is not None:
+                cur[3].append((lineno, line))
+    if cur:
+        out.append(cur)
+    return [tuple(s) for s in out]
+
+
+def _pick_section(sections, selector):
+    """返回 (title, lineno, lines)；取不到= (None, 0, [])。"""
+    key = str(selector).strip()
+    for idx, (level, title, lineno, lines) in enumerate(sections):
+        if key[0].isdigit():
+            if not re.match(r"^" + re.escape(key) + r"(?![\d.])", title):
+                continue
+        elif key not in title:
+            continue
+        block = list(lines)
+        for level2, title2, lineno2, lines2 in sections[idx + 1:]:
+            if level2 <= level:
+                break
+            block.extend(lines2)
+        return title, lineno, block
+    return None, 0, []
+
+
+def _speech_lines(lines):
+    """口播候选行=引用块行（>）或含「」的行；表格/清单勾选/标题/分隔线不算口播。"""
+    out = []
+    for lineno, raw in lines:
+        s = raw.strip()
+        if not s or s.startswith("|") or s.startswith("#") or s.startswith("---") or s.startswith("- ["):
+            continue
+        body = s
+        while body.startswith(">"):
+            body = body[1:].lstrip()
+        if not body:
+            continue
+        if s.startswith(">") or "「" in body:
+            out.append((lineno, body))
+    return out
+
+
+def _plain(text):
+    return re.sub(r"\s+", "", MARKUP_RE.sub("", text))
+
+
+def _scan_quotes(speech):
+    """按「」深度配对逐字扫描（跨行状态连续）。
+
+    正则 `「(.*?)」` 遇到嵌套引号（如 4.1 披露语里的「本产品」）会提前闭合，
+    把整段引用误判成引号外——这里用深度计数消除该偏差。
+    返回 (chars, quoted, unquoted, per_line, remainder_text)。
+    """
+    depth = 0
+    chars = quoted = unquoted = 0
+    per_line, rem = [], []
+    for lineno, body in speech:
+        in_q = un_q = 0
+        bare_chars = []
+        for ch in re.sub(r"[>*`]", "", body):
+            if ch.isspace():
+                continue
+            if ch == "「":
+                depth += 1
+                continue
+            if ch == "」":
+                depth = max(0, depth - 1)
+                continue
+            chars += 1
+            if depth > 0:
+                quoted += 1
+                in_q += 1
+            else:
+                unquoted += 1
+                un_q += 1
+                bare_chars.append(ch)
+                rem.append(ch)
+        per_line.append((lineno, in_q, un_q, "".join(bare_chars)))
+    return chars, quoted, unquoted, per_line, "".join(rem)
+
+
+def coverage(targets=None, min_chars=50):
+    """量化「引号外口播」：口播候选行里有多少字不在「」内，以及这些字里有没有禁词。
+
+    min_chars=真实文档的下限（哑夹具可放宽），低于它=没量够，禁判 FULL/GAP。
+    每行三态：quoted（整行在引号内）/ partial（有引号但行内仍有引号外文本）/
+    bare（整行无引号 = 纯文本口播候选，真漏检面）。
+    """
+    targets = COVERAGE_TARGETS if targets is None else targets
+    rows, missing, total_chars, total_quoted = [], [], 0, 0
+    hits, samples = [], []
+    bare_lines_total = 0
+    for path, selector in targets:
+        try:
+            sections = _sections(path)
+        except OSError as exc:
+            rows.append({"path": path, "selector": selector, "error": str(exc)})
+            missing.append("%s §%s (文件不可读)" % (path, selector))
+            continue
+        title, lineno, block = _pick_section(sections, selector)
+        if title is None:
+            missing.append("%s §%s (节不存在)" % (path, selector))
+            continue
+        speech = _speech_lines(block)
+        chars, qchars, uchars, per_line, rem = _scan_quotes(speech)
+        sec_hits = []
+        for lineno2, in_q, un_q, bare_txt in per_line:
+            cleaned = bare_txt
+            for allow in ALLOW_PHRASES:
+                cleaned = cleaned.replace(allow, "")
+            for w in BANNED:
+                if w in cleaned:
+                    sec_hits.append({"word": w, "line": lineno2, "text": bare_txt[:48]})
+                    hits.append("%s §%s L%d: 引号外命中 [%s] 上下文=%s"
+                                % (os.path.basename(path), selector, lineno2, w, bare_txt[:40]))
+        bare = [p for p in per_line if p[2] and not p[1]]
+        partial = [p for p in per_line if p[2] and p[1]]
+        for lineno2, in_q, un_q, bare_txt in (bare + partial)[:12]:
+            if len(samples) < 12:
+                samples.append("L%d %s %s…" % (lineno2,
+                                               "BARE" if (un_q and not in_q) else "PARTIAL",
+                                               bare_txt[:36]))
+        rows.append({
+            "path": path, "selector": selector, "title": title, "line": lineno,
+            "speech_lines": len(speech), "chars": chars,
+            "quoted_chars": qchars, "unquoted_chars": uchars,
+            "bare_lines": len(bare), "partial_lines": len(partial),
+            "hits": sec_hits,
+        })
+        total_chars += chars
+        total_quoted += qchars
+        bare_lines_total += len(bare)
+    if missing or total_chars < min_chars:
+        verdict = "QUOTE-COVERAGE-PARSE-SUSPECT"
+    elif hits:
+        verdict = "QUOTE-COVERAGE-GAP-HIT"
+    elif total_chars == total_quoted:
+        verdict = "QUOTE-COVERAGE-FULL"
+    else:
+        verdict = "QUOTE-COVERAGE-GAP"
+    unq = max(0, total_chars - total_quoted)
+    # 已解析各节的独立判定：缺节不该把整份文档的读数一并作废（缺节另计）
+    if total_chars < min_chars:
+        resolved = "QUOTE-COVERAGE-PARSE-SUSPECT"
+    elif hits:
+        resolved = "QUOTE-COVERAGE-GAP-HIT"
+    elif unq == 0:
+        resolved = "QUOTE-COVERAGE-FULL"
+    else:
+        resolved = "QUOTE-COVERAGE-GAP"
+    payload = {
+        "verdict": verdict, "resolved_verdict": resolved,
+        "rows": rows, "missing_sections": missing,
+        "speech_chars": total_chars, "quoted_chars": total_quoted,
+        "unquoted_chars": unq,
+        "unquoted_rate": round(unq / total_chars, 4) if total_chars else 0.0,
+        "bare_lines": bare_lines_total,
+        "hits": hits, "samples": samples,
+    }
+    return verdict, payload
+
+
+def render_coverage(verdict, p):
+    out = ["[quote-coverage] VERDICT=%s" % verdict]
+    out.append("[quote-coverage] resolved-only=%s（缺节不影响已解析节的读数·缺节另计）"
+               % p.get("resolved_verdict", "-"))
+    out.append("[quote-coverage] domain: speech_chars=%d quoted=%d unquoted=%d rate=%.1f%% bare_lines=%d sections=%d/%d"
+               % (p["speech_chars"], p["quoted_chars"], p["unquoted_chars"],
+                  p["unquoted_rate"] * 100, p.get("bare_lines", 0), len(p["rows"]),
+                  len(p["rows"]) + len(p["missing_sections"])))
+    for r in p["rows"]:
+        if "error" in r:
+            out.append("  %s §%s ERROR %s" % (r["path"], r["selector"], r["error"]))
+            continue
+        out.append("  %s §%s L%d lines=%d chars=%d quoted=%d unquoted=%d bare=%d partial=%d hits=%d"
+                   % (r["path"], r["selector"], r["line"], r["speech_lines"],
+                      r["chars"], r["quoted_chars"], r["unquoted_chars"],
+                      r["bare_lines"], r["partial_lines"], len(r["hits"])))
+    for m in p["missing_sections"]:
+        out.append("  MISSING-SECTION %s" % m)
+    if p["hits"]:
+        out.append("  引号外命中（真漏检·禁判 0 命中）:")
+        out.extend("    " + h for h in p["hits"])
+    if p["samples"]:
+        out.append("  引号外文本样本（前 12 行，取自话术面）:")
+        out.extend("    " + s for s in p["samples"])
+    return "\n".join(out)
+
+
 def selftest():
     import os
     import tempfile
@@ -206,6 +424,40 @@ def selftest():
     ok = "domain:" in text and "tool_words=" in text
     cases.append((ok, "S7 渲染含扫描域行", "domain:" in text, True))
 
+    # ---- coverage 夹具（S8-S12）----
+    def cov_case(name, body, want, selector="4.1", extra=None):
+        tmpdir = tempfile.mkdtemp(prefix="bwc-cov-")
+        path = os.path.join(tmpdir, "plan.md")
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write(body)
+        targets = [(path, selector)] + (extra or [])
+        verdict, payload = coverage(targets, min_chars=1)
+        cases.append((verdict == want, name, verdict, want))
+        return payload
+
+    sec = "### 4.1 开场白\n\n> 「{0}」\n{1}\n### 4.2 下一节\n\n> 「别段」\n"
+    # S8 口播全在引号内 -> FULL
+    cov_case("S8 全引号->FULL", sec.format("欢迎来到直播间，本场全程真人值守请大家安心观看", ""),
+             "QUOTE-COVERAGE-FULL")
+    # S9 有引号外裸文本 -> GAP（且未越界到下一节：裸文本在 4.1 块内）
+    p = cov_case("S9 引号外裸文本->GAP",
+                 sec.format("欢迎来到直播间", "> 这段没有引号的话直接上屏"),
+                 "QUOTE-COVERAGE-GAP")
+    cases.append((p["unquoted_chars"] > 0 and p["speech_chars"] > p["quoted_chars"],
+                  "S9b 量化出引号外字符", p["unquoted_chars"], ">0"))
+    # S10 引号外命中禁词 -> GAP-HIT（0 命中判据不成立）
+    cov_case("S10 引号外命中->GAP-HIT",
+             sec.format("欢迎来到直播间", "> 这款藏品保证升值翻倍"),
+             "QUOTE-COVERAGE-GAP-HIT")
+    # S11 引号内命中不算漏检（覆盖率口径只量表外，词检另跑）
+    p = cov_case("S11 引号内命中不走覆盖口径",
+                 sec.format("这款藏品保证升值", ""), "QUOTE-COVERAGE-FULL")
+    cases.append((p["hits"] == [] and p["unquoted_chars"] == 0,
+                  "S11b 引号内文本不计入引号外命中", p["hits"], []))
+    # S12 节号不存在 -> PARSE-SUSPECT（禁静默跳过）
+    cov_case("S12 缺节->PARSE-SUSPECT", sec.format("欢迎来到直播间", ""),
+             "QUOTE-COVERAGE-PARSE-SUSPECT", selector="4.6")
+
     failed = 0
     for ok, name, got, want in cases:
         print(f"[selftest] {'PASS' if ok else 'FAIL'} {name} got={got!r} want={want!r}")
@@ -247,6 +499,35 @@ def main():
                 fh.write(text + "\n")
             print(f"[banned-census] txt-out={txt_out}")
         return 0 if verdict == "CENSUS-GREEN" else 1
+
+    if args[0] == "coverage":
+        txt_out = json_out = None
+        rest = args[1:]
+        i = 0
+        while i < len(rest):
+            if rest[i] == "--txt-out" and i + 1 < len(rest):
+                txt_out = rest[i + 1]
+                i += 2
+            elif rest[i] == "--json-out" and i + 1 < len(rest):
+                json_out = rest[i + 1]
+                i += 2
+            else:
+                print(f"[quote-coverage] 未知参数 {rest[i]!r}")
+                return 2
+        verdict, payload = coverage()
+        text = render_coverage(verdict, payload)
+        print(text)
+        if txt_out:
+            with open(txt_out, "w", encoding="utf-8", newline="\n") as fh:
+                fh.write(text + "\n")
+        if json_out:
+            import json
+            with open(json_out, "w", encoding="utf-8", newline="\n") as fh:
+                json.dump(payload, fh, ensure_ascii=False, indent=1)
+                fh.write("\n")
+        if verdict == "QUOTE-COVERAGE-PARSE-SUSPECT":
+            return 3
+        return 0 if verdict == "QUOTE-COVERAGE-FULL" else 1
 
     total_hits, total_quotes, files_scanned = [], 0, 0
     for path in args:
