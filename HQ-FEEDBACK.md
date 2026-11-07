@@ -707,3 +707,7 @@ P2：请 @HQ 分诊 8 件（5 件让出件机更正收据路径即可，3 件 bm
 日清 2026-11-07 06:1x（令牌轮）：无 P0/P1。产品增量=T-20261107-106 收据更正映射表（把上轮 8 件的近名件核到字节级，三要素=文件名日期+件内 node+件内 id）——上轮判 NAME-DRIFT 5 件、建议改路径，本轮结论翻转：CORRECT-PATH 仅 1 件（FREE-MEM-APPLY-bm-c-20261107，件内 id 与收据 id 逐字相同），REPRODUCE-OR-VOID 7 件；首版只比文件名日期出 4 条假阳（model-radar-bm-b-20261103 内部 node=bm-b 却被当成 bm-a/bm-c 的同一次工作，game-packs 也不是 game-playable 那份产物），假阳版本如实留痕
 P2：修正对 @HQ 的分诊建议——上条「5 件改路径」作废，改为「1 件改路径 + 7 件补产或作废」；另请一并确认该唯一可确证件 id 含 bm-c 而产物 node=bm-a 属「操作对象」还是「机名写错」
 P2：本轮队列 open 净 +1（轮首 3 → 4，新增 tech T217 把 node/id 判据焊进 triage_missing），无对应消耗——如实记账不假装完工；可执行行本就≈0（main 仅 M132 卡净窗、explore 余观察位），净减律本轮未满足
+日清 2026-11-07 12:2x（午班轮）：无 P0/P1。产品增量=T217 收口（近名件三要素签名，BC-P-213）——`cpu_effective_hours --triage-missing` 的候选现在带件内 node/内部 id/文件名日期三要素并出五态 confirm，只有 CONFIRMED 才进 `actionable`；7d 实跑 8 件 MISSING=NAME-DRIFT 5/NEVER-EXISTED 3，**可改路径候选 5→1**（仅 FREE-MEM-APPLY-bm-c-20261107，与 06:1x 轮 CORRECT-PATH 同件），即旧判据会催 4 次错误改路径；selftest 22→31/31 PASS（S29 他机 node 必 NODE-CONFLICT／S30 异日期 DATE-DIFF／S31 三项齐才 CONFIRMED）。交付 docs/ops/receipt-near-name-signature-20261107.md + state/cpu-eff-missing-triage-sig-20261107.json。
+P2：上条「5 件改路径」再收紧为「1 件改路径 + 7 件补产或作废」，且补产/作废的判据现在有机器态（PARTIAL/NODE-CONFLICT/DATE-DIFF）可直接引用。
+P2（队列如实）：本轮 open 4→12 是**存量修复非新增空转**——M98 长期在案「P1 常备量塌到 0」，本轮补 M146-M154 九条业务面可点火行（Phase 1 先行件 2/3、法务终审核对、对账日报模板、退款口径、话术过检、打赏两域判据、三线口径表），消耗侧只 T217 一条；三线净减律本轮未满足，下轮起按 P1 新 stock 取活真减。
+P2：派生缺口 T218——`game-packs-*.json`/`model-radar-*.json` 件内无 node/id，近名件只能按日期判（PARTIAL），缺口在回执生产方不在读取侧。
