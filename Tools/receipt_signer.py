@@ -132,6 +132,9 @@ def collect(root, days=None, now=None):
         ts = None
         if isinstance(doc, dict):
             ts = ceh.parse_ts(doc.get("ts"))
+            # 回执时间戳带时区（...Z）时不能与 naive 的 now 比：先转本机 naive
+            if ts is not None and ts.tzinfo is not None:
+                ts = ts.astimezone().replace(tzinfo=None)
         if days is not None and ts is not None:
             if ts < now - timedelta(days=days):
                 continue
@@ -279,6 +282,208 @@ def render(payload):
         _out("  UNRESOLVABLE %s" % name)
 
 
+# ---- T221：产物侧签名普查（只测量，不建库不过滤）----
+DELIV_JSON_EXT = (".json", ".jsonl")
+DELIV_TEXT_EXT = (".md", ".txt", ".log", ".csv")
+DELIV_MEDIA_EXT = (".mp4", ".mov", ".mkv", ".webm", ".png", ".jpg", ".jpeg",
+                   ".gif", ".wav", ".mp3")
+DATE_TOKEN_RE = re.compile(r"(?<!\d)(20\d{2})[-_]?(\d{2})[-_]?(\d{2})(?!\d)")
+ID_LINE_RE = re.compile(r"(?im)^\s*(?:receipt[_-]?)?id\s*[:=]\s*\S+")
+NODE_LINE_RE = re.compile(r"(?im)^\s*node\s*[:=]\s*\S+")
+
+
+def deliverable_family(path):
+    ext = os.path.splitext(str(path or ""))[1].lower()
+    if ext in DELIV_JSON_EXT:
+        return "json"
+    if ext in DELIV_TEXT_EXT:
+        return "text"
+    if ext in DELIV_MEDIA_EXT:
+        return "media"
+    return "other"
+
+
+def product_signature(path, family):
+    """读盘上这一件，判它自身带不带 node/id。返回 (node, id, note)。
+
+    不猜、不补、不扫全目录：产物侧签名本来就应该长在产物里，
+    读不到就是没签，不是「换个地方找找」。
+    """
+    if family == "json":
+        try:
+            # utf-8-sig：他机产物带 BOM 是既成事实，读侧不容差（本仓写侧仍无 BOM）
+            if str(path).lower().endswith(".jsonl"):
+                # jsonl 是多条记录，整文件 json.load 必炸：只取首条非空行当签名字面
+                doc = None
+                with open(path, "r", encoding="utf-8-sig") as fh:
+                    for line in fh:
+                        if line.strip():
+                            doc = json.loads(line)
+                            break
+            else:
+                with open(path, "r", encoding="utf-8-sig") as fh:
+                    doc = json.load(fh)
+        except (OSError, ValueError):
+            return False, False, "UNREADABLE"
+        if not isinstance(doc, dict):
+            return False, False, "NON-OBJECT"
+        node = str(doc.get("node") or doc.get("host") or "").strip()
+        rid = str(doc.get("id") or doc.get("job") or "").strip()
+        return bool(node), bool(rid), "CONTENT"
+    if family == "text":
+        try:
+            with open(path, "r", encoding="utf-8", errors="replace") as fh:
+                head = "".join(fh.readline() for _ in range(15))
+        except OSError:
+            return False, False, "UNREADABLE"
+        has_node = bool(NODE_LINE_RE.search(head) or NODE_TOKEN_RE.search(head))
+        has_id = bool(ID_LINE_RE.search(head))
+        return has_node, has_id, "HEAD"
+    if family == "media":
+        # 媒体件只能靠文件名三要素：节点 token + 日期 + 非空主干
+        name = os.path.basename(path)
+        stem = os.path.splitext(name)[0]
+        return (bool(NODE_TOKEN_RE.search(name)),
+                bool(DATE_TOKEN_RE.search(name)) and bool(stem), "FILENAME")
+    return False, False, "NO-RULE"
+
+
+def receipt_deliverables(doc):
+    """回执声称的产物路径（顶层 deliverable + deliverables[].path），保持原样去重。"""
+    out = []
+    if isinstance(doc, dict):
+        primary = str(doc.get("deliverable") or "").strip()
+        if primary:
+            out.append(primary)
+        items = doc.get("deliverables")
+        if isinstance(items, list):
+            for item in items:
+                if isinstance(item, dict):
+                    rel = str(item.get("path") or "").strip()
+                    if rel and rel not in out:
+                        out.append(rel)
+    return out
+
+
+def deliverable_census(root, days=7, now=None, host=None):
+    host = host or ceh.HOST_NODE
+    now = now or datetime.now()
+    items, bad, rdir = collect(root, days=days, now=now)
+
+    refs, remote, no_path = {}, [], []
+    for name, doc, _ts in items:
+        paths = receipt_deliverables(doc)
+        if not paths:
+            no_path.append(name)
+            continue
+        rec = ceh.normalize(doc)
+        # 他机产物不得用本机磁盘判真（同 ceh.evaluate 判据，禁两处各写一份）
+        if rec is None or ceh.is_foreign(rec, host):
+            for rel in paths:
+                remote.append({"receipt": name, "deliverable": rel})
+            continue
+        for rel in paths:
+            refs.setdefault(rel, []).append(name)
+
+    rows = []
+    for rel in sorted(refs):
+        path = ceh.local_path(root, rel)
+        exists = bool(path) and os.path.isfile(path)
+        family = deliverable_family(rel)
+        if not exists:
+            rows.append({"deliverable": rel, "family": family, "state": "MISSING",
+                         "node": False, "id": False, "note": "NOT-ON-DISK",
+                         "receipts": refs[rel]})
+            continue
+        has_node, has_id, note = product_signature(path, family)
+        if note in ("UNREADABLE", "NON-OBJECT"):
+            state = "UNREADABLE"
+        elif has_node and has_id:
+            state = "SIGNED"
+        elif has_node or has_id:
+            state = "HALF"
+        else:
+            state = "UNSIGNED"
+        rows.append({"deliverable": rel, "family": family, "state": state,
+                     "node": has_node, "id": has_id, "note": note,
+                     "receipts": refs[rel]})
+
+    by_family = {}
+    for fam in ("json", "text", "media", "other"):
+        sel = [r for r in rows if r["family"] == fam and r["state"] != "MISSING"]
+        by_family[fam] = {
+            "eligible": len(sel),                      # 可带签名件数（在盘可检查）
+            "signed": sum(1 for r in sel if r["state"] == "SIGNED"),
+            "half": sum(1 for r in sel if r["state"] == "HALF"),
+            "unsigned": sum(1 for r in sel if r["state"] == "UNSIGNED"),
+            "unreadable": sum(1 for r in sel if r["state"] == "UNREADABLE"),
+        }
+
+    eligible = sum(1 for r in rows if r["state"] != "MISSING")
+    signed = sum(1 for r in rows if r["state"] == "SIGNED")
+    missing = sum(1 for r in rows if r["state"] == "MISSING")
+
+    payload = {
+        "verdict": "",
+        "generated_at": datetime.now().isoformat(timespec="seconds"),
+        "root": os.path.abspath(root),
+        "receipt_dir": rdir,
+        "window_days": days,
+        "host": host,
+        "scanned": {"receipts": len(items), "bad_json": len(bad)},
+        "headline": {"eligible": eligible, "signed": signed,
+                     "rate": (round(float(signed) / eligible, 4) if eligible else 0.0)},
+        "counts": {"deliverables_referenced": len(rows), "missing_on_disk": missing,
+                   "remote_unverifiable": len(remote), "receipts_without_path": len(no_path)},
+        "by_family": by_family,
+        # BC-P-216 ①：先出两数，数字为 0 就到此为止，不许先建库后找证据
+        "gate": {"generation_or_overlay_allowed": signed > 0,
+                 "why": ("产物侧签名实测为 0：加 generation 钩子或扩 overlay 都无处可用"
+                         if signed == 0 else
+                         "已有产物自带签名，产物侧 overlay 才有落点")},
+        "remote": remote[:30],
+        "rows": rows,
+    }
+    if not items:
+        payload["verdict"] = "DELIV-SIG-CENSUS-NO-DATA"
+    elif eligible == 0:
+        payload["verdict"] = "DELIV-SIG-CENSUS-NO-PRODUCT"
+    elif signed == 0:
+        payload["verdict"] = "DELIV-SIG-CENSUS-ABSENT"
+    elif signed == eligible:
+        payload["verdict"] = "DELIV-SIG-CENSUS-CLEAN"
+    else:
+        payload["verdict"] = "DELIV-SIG-CENSUS-PARTIAL"
+    return payload
+
+
+def render_deliv(payload):
+    head = payload["headline"]
+    c = payload["counts"]
+    _out("VERDICT=%s window=%s receipts=%d products=%d"
+         % (payload["verdict"], payload["window_days"],
+            payload["scanned"]["receipts"], c["deliverables_referenced"]))
+    _out("可带签名件数=%d 实际带签名件数=%d rate=%.1f%%"
+         % (head["eligible"], head["signed"], head["rate"] * 100))
+    _out("missing_on_disk=%d remote_unverifiable=%d no_path_receipts=%d"
+         % (c["missing_on_disk"], c["remote_unverifiable"],
+            c["receipts_without_path"]))
+    for fam in ("json", "text", "media", "other"):
+        f = payload["by_family"][fam]
+        if not (f["eligible"] or f["half"] or f["unsigned"]):
+            continue
+        _out("  %-5s eligible=%d signed=%d half=%d unsigned=%d unreadable=%d"
+             % (fam, f["eligible"], f["signed"], f["half"], f["unsigned"],
+                f["unreadable"]))
+    _out("gate %s（%s）"
+         % ("ALLOW" if payload["gate"]["generation_or_overlay_allowed"] else "STOP",
+            payload["gate"]["why"]))
+    for row in payload["rows"]:
+        if row["state"] in ("MISSING", "SIGNED"):
+            continue
+        _out("  %s %s family=%s" % (row["state"], row["deliverable"], row["family"]))
+
+
 def selftest():
     checks = []
     failed = set()
@@ -403,6 +608,148 @@ def selftest():
         want("S19 ODD-NODE 不改签名判据（三件都 SIGNED，verdict 不受影响）",
              op["counts"]["SIGNED"] == 3
              and op["verdict"] == "SIGN-CENSUS-CLEAN")
+
+        # ---- T221：产物侧签名普查（只出两数，不建库）----
+        droot = os.path.join(tmp, "deliv")
+        ddir = os.path.join(droot, "cph4", "fleet", "queue-receipts")
+        pdir = os.path.join(droot, "state")
+        os.makedirs(ddir)
+        os.makedirs(pdir)
+
+        def put_json(rel, doc):
+            with open(os.path.join(droot, rel), "w", encoding="utf-8") as fh:
+                json.dump(doc, fh)
+
+        def put_text(rel, text):
+            with open(os.path.join(droot, rel), "w", encoding="utf-8") as fh:
+                fh.write(text)
+
+        put_json("state/signed-product.json", {"node": "bm-a", "id": "P-1", "v": 1})
+        put_json("state/half-product.json", {"node": "bm-a", "v": 2})
+        put_text("state/report.md", "# 报告\nnode: bm-a\nid: R-9\n正文\n")
+        put_text("state/plain.md", "# 无签名报告\n正文\n")
+        put_text("state/noisy.md", "# 报告\nbm-c 参与\nid: R-10\n")
+        open(os.path.join(droot, "state", "clip-bm-a-20261107.mp4"), "wb").close()
+        open(os.path.join(droot, "state", "clip.mp4"), "wb").close()
+        put_text("state/broken.json", "{not json")
+
+        def rcp(name, doc):
+            with open(os.path.join(ddir, name), "w", encoding="utf-8") as fh:
+                json.dump(doc, fh)
+
+        rcp("d1.json", {"id": "J1", "node": "bm-a", "rc": 0, "seconds": 3,
+                        "deliverable": "state/signed-product.json"})
+        rcp("d2.json", {"id": "J2", "node": "bm-a", "rc": 0, "seconds": 3,
+                        "deliverable": "state/half-product.json"})
+        rcp("d3.json", {"id": "J3", "node": "bm-a", "rc": 0, "seconds": 3,
+                        "deliverable": "state/report.md"})
+        rcp("d4.json", {"id": "J4", "node": "bm-a", "rc": 0, "seconds": 3,
+                        "deliverable": "state/plain.md"})
+        rcp("d5.json", {"id": "J5", "node": "bm-a", "rc": 0, "seconds": 3,
+                        "deliverable": "state/clip-bm-a-20261107.mp4"})
+        rcp("d6.json", {"id": "J6", "node": "bm-a", "rc": 0, "seconds": 3,
+                        "deliverable": "state/clip.mp4"})
+        rcp("d7.json", {"id": "J7", "node": "bm-a", "rc": 0, "seconds": 3,
+                        "deliverable": "state/gone.json"})
+        rcp("d8.json", {"id": "J8", "node": "bm-c", "rc": 0, "seconds": 3,
+                        "deliverable": "state/signed-product.json"})
+        rcp("d9.json", {"id": "J9", "node": "bm-a", "rc": 0, "seconds": 3,
+                        "deliverable": "state/signed-product.json"})
+
+        dp = deliverable_census(droot, days=None, host="bm-a")
+        drows = {r["deliverable"]: r for r in dp["rows"]}
+        want("S20 json 自带 node+id → SIGNED；缺 id 只判 HALF",
+             drows["state/signed-product.json"]["state"] == "SIGNED"
+             and drows["state/half-product.json"]["state"] == "HALF")
+        want("S21 文本件首行 node/id 行 → SIGNED；无签名 → UNSIGNED",
+             drows["state/report.md"]["state"] == "SIGNED"
+             and drows["state/plain.md"]["state"] == "UNSIGNED")
+        want("S22 文件名三要素（节点+日期）→ SIGNED；缺节点 → UNSIGNED",
+             drows["state/clip-bm-a-20261107.mp4"]["state"] == "SIGNED"
+             and drows["state/clip.mp4"]["state"] == "UNSIGNED")
+        want("S23 他机回执不入分母（本机不能判他机产物）",
+             dp["counts"]["remote_unverifiable"] == 1
+             and all("d8.json" not in r["receipts"] for r in dp["rows"])
+             and drows["state/signed-product.json"]["receipts"] == ["d1.json", "d9.json"])
+        want("S24 多张回执引用同一件只算一件（d1+d9 同路径）",
+             dp["counts"]["deliverables_referenced"] == 7
+             and drows["state/signed-product.json"]["receipts"] == ["d1.json", "d9.json"])
+        want("S25 不在盘的产物单列 MISSING，不计入可带签名件数",
+             drows["state/gone.json"]["state"] == "MISSING"
+             and dp["counts"]["missing_on_disk"] == 1
+             and dp["headline"]["eligible"] == 6)
+        want("S26 两数如实（eligible=6 signed=3）且判 PARTIAL",
+             dp["headline"] == {"eligible": 6, "signed": 3, "rate": 0.5}
+             and dp["verdict"] == "DELIV-SIG-CENSUS-PARTIAL")
+        want("S27 族分母互不串（json=2 text=2 media=2）",
+             dp["by_family"]["json"]["eligible"] == 2
+             and dp["by_family"]["text"]["eligible"] == 2
+             and dp["by_family"]["media"]["eligible"] == 2
+             and dp["by_family"]["text"]["signed"] == 1
+             and dp["by_family"]["json"]["signed"] == 1)
+
+        only_unsigned = os.path.join(tmp, "deliv-unsigned")
+        odir = os.path.join(only_unsigned, "cph4", "fleet", "queue-receipts")
+        os.makedirs(os.path.join(only_unsigned, "state"))
+        os.makedirs(odir)
+        with open(os.path.join(only_unsigned, "state", "u.md"), "w", encoding="utf-8") as fh:
+            fh.write("正文\n")
+        with open(os.path.join(odir, "u.json"), "w", encoding="utf-8") as fh:
+            json.dump({"id": "U1", "node": "bm-a", "rc": 0, "seconds": 1,
+                       "deliverable": "state/u.md"}, fh)
+        up = deliverable_census(only_unsigned, days=None, host="bm-a")
+        want("S28 产物侧签名实测为 0 → ABSENT 且 gate=STOP（不许先建库）",
+             up["verdict"] == "DELIV-SIG-CENSUS-ABSENT"
+             and up["headline"]["signed"] == 0
+             and up["gate"]["generation_or_overlay_allowed"] is False)
+
+        empty = os.path.join(tmp, "deliv-empty")
+        os.makedirs(os.path.join(empty, "cph4", "fleet", "queue-receipts"))
+        want("S29 零回执 → NO-DATA（不假绿）",
+             deliverable_census(empty, days=None, host="bm-a")["verdict"]
+             == "DELIV-SIG-CENSUS-NO-DATA")
+
+        # ---- 带时区回执时间戳（...Z）不得让 --days 窗口崩 ----
+        tz = os.path.join(tmp, "deliv-tz")
+        tzdir = os.path.join(tz, "cph4", "fleet", "queue-receipts")
+        os.makedirs(os.path.join(tz, "state"))
+        os.makedirs(tzdir)
+        with open(os.path.join(tz, "state", "z.json"), "w", encoding="utf-8") as fh:
+            json.dump({"node": "bm-a", "id": "Z-1"}, fh)
+        with open(os.path.join(tzdir, "z.json"), "w", encoding="utf-8") as fh:
+            json.dump({"id": "Z", "node": "bm-a", "rc": 0, "seconds": 1,
+                       "ts": datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ"),
+                       "deliverable": "state/z.json"}, fh)
+        tzp = deliverable_census(tz, days=1, host="bm-a")
+        want("S30 回执 ts 带 Z 时 --days 窗口照常（时区不崩、当窗内件在册）",
+             tzp["scanned"]["receipts"] == 1
+             and tzp["headline"]["signed"] == 1
+             and census(tz, days=1)["scanned"]["receipts"] == 1)
+
+        # ---- jsonl 是多记录件，整文件 json.load 必炸（MANIFEST.jsonl 实测 UNREADABLE）----
+        jl = os.path.join(tmp, "deliv-jsonl")
+        jldir = os.path.join(jl, "cph4", "fleet", "queue-receipts")
+        os.makedirs(os.path.join(jl, "state"))
+        os.makedirs(jldir)
+        with open(os.path.join(jl, "state", "MANIFEST.jsonl"), "w", encoding="utf-8") as fh:
+            fh.write(json.dumps({"node": "bm-a", "id": "M-1"}) + "\n"
+                     + json.dumps({"node": "bm-a", "id": "M-2"}) + "\n")
+        with open(os.path.join(jldir, "m.json"), "w", encoding="utf-8") as fh:
+            json.dump({"id": "MJ", "node": "bm-a", "rc": 0, "seconds": 1,
+                       "deliverable": "state/MANIFEST.jsonl"}, fh)
+        jlp = deliverable_census(jl, days=None, host="bm-a")
+        want("S31 jsonl 取首条记录判签名（不判成 UNREADABLE）",
+             jlp["rows"][0]["state"] == "SIGNED"
+             and jlp["by_family"]["json"]["unreadable"] == 0)
+
+        # ---- 他机产物带 BOM：读侧不容差（artifacts/bm-a/MANIFEST.jsonl 实测）----
+        bom = os.path.join(tmp, "deliv-bom")
+        bomdir = os.path.join(bom, "state", "m.json")
+        os.makedirs(os.path.dirname(bomdir))
+        with open(bomdir, "wb") as fh:
+            fh.write(b"\xef\xbb\xbf" + json.dumps({"node": "bm-a"}).encode("utf-8"))
+        want("S32 带 UTF-8 BOM 的 json 仍可读（判 HALF 而非 UNREADABLE）",
+             product_signature(bomdir, "json") == (True, False, "CONTENT"))
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 
@@ -414,9 +761,11 @@ def selftest():
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description="回执签名普查与派生面（本司只读+落 overlay）")
-    ap.add_argument("cmd", choices=["census", "resolve", "selftest"])
+    ap.add_argument("cmd",
+                    choices=["census", "resolve", "deliverables", "selftest"])
     ap.add_argument("--root", default=ceh.DEFAULT_ROOT)
     ap.add_argument("--days", type=int, default=None)
+    ap.add_argument("--host", default=ceh.HOST_NODE)
     ap.add_argument("--receipt", default=None)
     ap.add_argument("--out", default=None)
     ap.add_argument("--write", action="store_true")
@@ -426,6 +775,23 @@ def main(argv=None):
 
     if args.cmd == "selftest":
         return selftest()
+
+    if args.cmd == "deliverables":
+        dpayload = deliverable_census(args.root,
+                                      days=args.days if args.days else 7,
+                                      host=args.host)
+        render_deliv(dpayload)
+        if args.json_out:
+            out = os.path.abspath(args.json_out)
+            os.makedirs(os.path.dirname(out), exist_ok=True)
+            with open(out, "w", encoding="utf-8") as fh:
+                json.dump(dpayload, fh, ensure_ascii=False, indent=1)
+                fh.write("\n")
+            _out("json_out=%s" % out)
+        if dpayload["verdict"] in ("DELIV-SIG-CENSUS-NO-DATA",
+                                   "DELIV-SIG-CENSUS-NO-PRODUCT"):
+            return 3
+        return 0
 
     payload = census(args.root, days=args.days)
     if args.cmd == "resolve":

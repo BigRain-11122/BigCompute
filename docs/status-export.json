@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-11-07 18:42",
- "current_activity": "2026-11-07 18:2x-18:4x 令牌轮双件：①T219 overlay 接线（`--triage-missing` 读 `state/receipt-sig-overlay-*.json` 补收据缺的 node/id，实跑 entries=656 但**提级=0**——8 件缺失件收据已自签，PARTIAL 卡在产物侧无内部签名，负结果入件并派生 BC-P-216）；②T220 ODD-NODE 收口（`receipt_signer.is_machine_node` + odd_node/odd_nodes 单列，实跑 809 件 **odd_node=7**，含 3 件 node=宿主主机名 junshengsundemacbook-pro.local 的非机队命名）[via BigCompute-OSLoop]",
- "latest_artifact": "Tools/cpu_effective_hours.py（overlay 接线·selftest 38/38）｜Tools/receipt_signer.py（is_machine_node/odd_node·selftest 19/19）｜docs/ops/triage-overlay-wiring-20261107.md（接线+负结果）｜state/cpu-eff-triage-overlay-20261107.txt/.json｜state/cpu-eff-triage-base-20261107.txt/.json｜state/receipt-sig-census-t220-20261107.json（odd_node 逐件点名）｜qa/smoke-20261107-1815.log/.png（27/28·唯一红=no.22 既有历史面）",
- "next_milestone": "≤48h：T221 产物侧签名普查（先出「可带签名/实际带签名」两数，>0 才建库）｜M155 回执签名义务交付单交 @HQ｜BC-P-216 产物侧口径｜M150 成本账本周对账日报模板（口径 B 单源）"
+ "updated_at": "2026-11-07 19:0x",
+ "current_activity": "2026-11-07 18:5x 令牌轮 T221 收口：产物侧签名普查（只出两数不建库）——7 日窗 778 张回执、可带签名件数 115 / 实际带签名 0（0.0%），gate=STOP，产物侧 overlay 不做；顺带发现 95/115「产物」其实就在回执目录、媒体面本机可检=0 [via BigCompute-OSLoop]",
+ "latest_artifact": "Tools/receipt_signer.py（新增 deliverables 子命令·selftest 32/32）｜state/deliv-sig-census-20261107.txt/.json（115 件逐条点位）｜docs/ops/deliv-sig-census-20261107.md（两数+三发现+边界）｜qa/smoke-20261107-1849.log/.png（27/28·唯一红=no.22 既有历史面）",
+ "next_milestone": "≤48h：BC-P-217（写侧产物内加 node+id、产物别落回执目录）派 @HQ 分诊｜M155 回执签名义务交付单交 @HQ｜成本账本周末对账（口径 B 单源）"
 }
