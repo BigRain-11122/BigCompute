@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-11-07 18:20",
- "current_activity": "2026-11-07 18:2x 令牌轮：T219 overlay 接线收口——`cpu_effective_hours --triage-missing` 按 receipt 读 `state/receipt-sig-overlay-*.json`（656 条 STRONG）补收据缺的 node/id，每候选出 confirm/confirm_base 双读数与「靠 overlay 提级=N」；selftest 38/38 PASS。实跑 7d 提级=0（8 件缺失件收据已自带 node+id，PARTIAL 卡在产物侧无内部签名）→ 负结果如实入件并派生 BC-P-216；同轮自捉「overlay 报 none 却确有 656 条」的搜索面假动作并修复 [via BigCompute-OSLoop]",
- "latest_artifact": "Tools/cpu_effective_hours.py（新增 load_sig_overlay/_expected_for + triage overlay 接线 + --sig-overlay）｜docs/ops/triage-overlay-wiring-20261107.md（接线与负结果逐条）｜state/cpu-eff-triage-overlay-20261107.txt/.json（含 overlay 实跑）｜state/cpu-eff-triage-base-20261107.txt/.json（对照：无 overlay，分类不变）｜qa/smoke-20261107-1815.log/.png（27/28·唯一红=no.22 既有历史面）",
- "next_milestone": "≤48h：BC-P-216 产物侧签名普查（先出「可带签名产物数/实际带签名数」两数，读数 >0 才建库）｜M155 回执签名义务交付单交 @HQ（本司只读不代写）｜T220 回执 node 语义 ODD-NODE 普查收口｜M150 成本账本周对账日报模板（口径 B 单源）"
+ "updated_at": "2026-11-07 18:42",
+ "current_activity": "2026-11-07 18:2x-18:4x 令牌轮双件：①T219 overlay 接线（`--triage-missing` 读 `state/receipt-sig-overlay-*.json` 补收据缺的 node/id，实跑 entries=656 但**提级=0**——8 件缺失件收据已自签，PARTIAL 卡在产物侧无内部签名，负结果入件并派生 BC-P-216）；②T220 ODD-NODE 收口（`receipt_signer.is_machine_node` + odd_node/odd_nodes 单列，实跑 809 件 **odd_node=7**，含 3 件 node=宿主主机名 junshengsundemacbook-pro.local 的非机队命名）[via BigCompute-OSLoop]",
+ "latest_artifact": "Tools/cpu_effective_hours.py（overlay 接线·selftest 38/38）｜Tools/receipt_signer.py（is_machine_node/odd_node·selftest 19/19）｜docs/ops/triage-overlay-wiring-20261107.md（接线+负结果）｜state/cpu-eff-triage-overlay-20261107.txt/.json｜state/cpu-eff-triage-base-20261107.txt/.json｜state/receipt-sig-census-t220-20261107.json（odd_node 逐件点名）｜qa/smoke-20261107-1815.log/.png（27/28·唯一红=no.22 既有历史面）",
+ "next_milestone": "≤48h：T221 产物侧签名普查（先出「可带签名/实际带签名」两数，>0 才建库）｜M155 回执签名义务交付单交 @HQ｜BC-P-216 产物侧口径｜M150 成本账本周对账日报模板（口径 B 单源）"
 }

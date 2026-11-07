@@ -100,6 +100,18 @@ def sig_state(has_node, has_id):
     return "BOTH-MISSING"
 
 
+def is_machine_node(value):
+    """`bm-a`/`bm-b`… 才是机队节点；`node` 位塞任务名或占位（DASHENG/unknown）不是。
+
+    这类行若照常入节点维度统计，会把「某台机器」和「某个任务」并成一列，
+    结果静默错位而不是报错——所以单列 ODD-NODE，禁入分母。
+    """
+    text = str(value or "").strip()
+    if not text:
+        return False
+    return text.startswith("bm-") and text.replace("-", "").isalnum()
+
+
 def collect(root, days=None, now=None):
     """读回执目录原始 JSON（不经 normalize——签名普查看的是原始字段）。"""
     now = now or datetime.now()
@@ -158,6 +170,8 @@ def census(root, days=None, now=None):
             "resolvable": bool(node) and bool(rid),
             "confidence": "STRONG" if node and rid and node_conf == "STRONG"
             and id_conf == "STRONG" else ("WEAK" if node and rid else "NONE"),
+            # node 位不是机队节点词（任务名/占位）→ 单列，禁入节点维度分母
+            "odd_node": bool(node) and not is_machine_node(node),
         }
         rows.append(row)
 
@@ -183,9 +197,12 @@ def census(root, days=None, now=None):
             "strong": strong,
             "weak": sum(1 for r in rows if r["confidence"] == "WEAK"),
             "unresolvable": len(unresolvable),
+            "odd_node": sum(1 for r in rows if r["odd_node"]),
         },
         "node_vocabulary": vocab,
         "unresolvable": unresolvable[:50],
+        "odd_nodes": [{"receipt": r["receipt"], "node": r["node"]}
+                      for r in rows if r["odd_node"]],
         "rows": rows,
     }
     if not rows:
@@ -247,9 +264,9 @@ def render(payload):
             payload["window_days"] if payload["window_days"] else "all",
             payload["scanned"]["receipts"], payload["scanned"]["bad_json"]))
     _out("states %s" % " ".join("%s=%d" % (k, c[k]) for k in SIG_STATES))
-    _out("coverage unsigned=%d resolvable=%d strong=%d weak=%d unresolvable=%d"
+    _out("coverage unsigned=%d resolvable=%d strong=%d weak=%d unresolvable=%d odd_node=%d"
          % (cov["unsigned"], cov["resolvable"], cov["strong"], cov["weak"],
-            cov["unresolvable"]))
+            cov["unresolvable"], cov.get("odd_node", 0)))
     if payload["node_vocabulary"]:
         _out("node_vocabulary %s" % ",".join(payload["node_vocabulary"]))
     for row in payload["rows"]:
@@ -363,6 +380,29 @@ def selftest():
         with open(put2, "w", encoding="utf-8") as fh:
             json.dump({"id": "J", "node": "bm-a"}, fh)
         want("S16 全签名 → CLEAN", census(only_signed)["verdict"] == "SIGN-CENSUS-CLEAN")
+
+        # ---- T220：node 位不是机器节点词 → 单列 ODD-NODE ----
+        odd = os.path.join(tmp, "odd")
+        odir = os.path.join(odd, "cph4", "fleet", "queue-receipts")
+        os.makedirs(odir)
+        for nm, doc in (("good-bm-a.json", {"id": "J-OK", "node": "bm-a"}),
+                        ("clock-resync.json", {"id": "J-ODD", "node": "DASHENG"}),
+                        ("unknown-node.json", {"id": "J-UNK", "node": "unknown"})):
+            with open(os.path.join(odir, nm), "w", encoding="utf-8") as fh:
+                json.dump(doc, fh)
+        op = census(odd)
+        ob = {r["receipt"]: r for r in op["rows"]}
+        want("S17 node 位塞任务名/占位 → odd_node=True 并单列点名",
+             ob["clock-resync.json"]["odd_node"] is True
+             and ob["unknown-node.json"]["odd_node"] is True
+             and op["coverage"]["odd_node"] == 2
+             and {x["receipt"] for x in op["odd_nodes"]}
+             == {"clock-resync.json", "unknown-node.json"})
+        want("S18 bm-a 是真机器节点不入 ODD-NODE（判据不误伤）",
+             ob["good-bm-a.json"]["odd_node"] is False)
+        want("S19 ODD-NODE 不改签名判据（三件都 SIGNED，verdict 不受影响）",
+             op["counts"]["SIGNED"] == 3
+             and op["verdict"] == "SIGN-CENSUS-CLEAN")
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 
