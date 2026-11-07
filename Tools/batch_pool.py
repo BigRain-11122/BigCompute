@@ -359,6 +359,21 @@ def is_named_consumer(plan):
     return not any(m in text for m in CONSUMER_PLACEHOLDER_MARKERS)
 
 
+def declared_named(row):
+    """Read the card's own `consumer_named` flag: True / False / None.
+
+    None means the card does not declare one (older cards, or a card added
+    before M162). It is kept distinct from False so "we never said" cannot be
+    read as "we said nobody takes it".
+    """
+    if "consumer_named" not in row:
+        return None
+    val = row.get("consumer_named")
+    if isinstance(val, bool):
+        return val
+    return None
+
+
 def build_review(rows, today=None, claims=None, refusals=None):
     """Assemble the M66 monthly review snapshot from stocked cards.
 
@@ -390,8 +405,19 @@ def build_review(rows, today=None, claims=None, refusals=None):
     # M161: "right now, how many cards could really be dispatched" = someone is
     # named to take it AND it is neither locked nor already in flight.
     dispatchable, placeholder = [], []
+    declared_true, declared_false, named_mismatch = [], [], []
     for row in rows:
         bid = str(row.get("batch_id") or "")
+        dec = declared_named(row)
+        if dec is True:
+            declared_true.append(bid)
+        elif dec is False:
+            declared_false.append(bid)
+        if dec is not None and bid and \
+                dec is not is_named_consumer(row.get("consumer_plan")):
+            # The card's own label and the text disagree - the label is what
+            # dispatch reads, so name it instead of silently trusting either.
+            named_mismatch.append(bid)
         if not bid or not str(row.get("consumer_plan", "") or "").strip():
             continue
         if not is_named_consumer(row.get("consumer_plan")):
@@ -422,6 +448,12 @@ def build_review(rows, today=None, claims=None, refusals=None):
             "consumer_plan names nobody on %d card(s) [%s]: placeholder text "
             "keeps J4 non-empty but there is no consumer to take the work"
             % (len(placeholder), ", ".join(placeholder)))
+    if named_mismatch:
+        findings.append(
+            "CONSUMER-NAMED-MISMATCH on %d card(s) [%s]: the card's own "
+            "consumer_named flag contradicts its consumer_plan text; fix the "
+            "label before dispatch reads it" % (len(named_mismatch),
+                                                ", ".join(named_mismatch)))
     if dispatchable:
         findings.append(
             "dispatchable now = %d card(s) [%s] (named + not locked + not "
@@ -435,6 +467,9 @@ def build_review(rows, today=None, claims=None, refusals=None):
         "dispatch_modes": modes,
         "consumer_plan_named": named,
         "consumer_plan_placeholder": placeholder,
+        "consumer_named_declared_true": declared_true,
+        "consumer_named_declared_false": declared_false,
+        "consumer_named_mismatch": named_mismatch,
         "dispatchable": len(dispatchable),
         "dispatchable_cards": dispatchable,
         "in_flight": in_flight,
@@ -464,12 +499,18 @@ def cmd_review(path, as_json=False, write=True):
     review["registry"] = os.path.relpath(path, ROOT)
     review["claims_source"] = os.path.relpath(CLAIM_LOG, ROOT)
     print("REVIEW cards=%d lanes=%d named=%d placeholder=%d dispatchable=%d "
+          "consumer_named=%d/%d mismatch=%d "
           "in_flight=%d dry_run_end=%s overdue=%s claims=%d refused=%d "
           "locked=%d j5_blocks_activation=%s"
           % (review["cards"], len(review["lanes"]),
              review["consumer_plan_named"],
              len(review["consumer_plan_placeholder"]),
-             review["dispatchable"], review["in_flight"],
+             review["dispatchable"],
+             len(review["consumer_named_declared_true"]),
+             len(review["consumer_named_declared_true"])
+             + len(review["consumer_named_declared_false"]),
+             len(review["consumer_named_mismatch"]),
+             review["in_flight"],
              review["dry_run_end"], review["dry_run_overdue"],
              review["j5_claims_total"], review["j5_refusals_total"],
              len(review["j5_locked_cards"]),
@@ -684,8 +725,38 @@ def cmd_selftest():
         today=datetime.date(2026, 10, 20))
     assert busy["dispatchable"] == 1 and busy["dispatchable_cards"] == ["B-T-01"], \
         "an in-flight card is not dispatchable"
+    # M162: a card may declare its own consumer_named flag. Declared flag and
+    # plan text must agree; disagreement is named, never silently resolved.
+    assert declared_named(_fixture()) is None, "no flag -> None (not False)"
+    assert declared_named(_fixture(consumer_named=False)) is False, \
+        "explicit false is readable"
+    assert declared_named(_fixture(consumer_named="false")) is None, \
+        "a string is not a bool declaration"
+    agree = build_review(
+        [_fixture(consumer_named=True),
+         _fixture(base={"batch_id": "B-T-02",
+                        "consumer_plan": "随协作市场表建面",
+                        "consumer_named": False})],
+        today=datetime.date(2026, 10, 20))
+    assert agree["consumer_named_mismatch"] == [], \
+        "agreeing declarations raise nothing"
+    assert agree["consumer_named_declared_true"] == ["B-T-01"], "true listed"
+    assert agree["consumer_named_declared_false"] == ["B-T-02"], "false listed"
+    mis = build_review(
+        [_fixture(consumer_named=False),
+         _fixture(base={"batch_id": "B-T-02",
+                        "consumer_plan": "随协作市场表建面",
+                        "consumer_named": True})],
+        today=datetime.date(2026, 10, 20))
+    assert mis["consumer_named_mismatch"] == ["B-T-01", "B-T-02"], \
+        "both contradiction directions are named"
+    assert any("CONSUMER-NAMED-MISMATCH" in f for f in mis["findings"]), \
+        "mismatch finding text"
+    assert not any("CONSUMER-NAMED-MISMATCH" in f for f in agree["findings"]), \
+        "no mismatch finding when declarations agree"
     print("selftest PASS (J1-J6 + gate lane map + review + J5 claim rule "
-          "+ claim log + determinism + dispatchable, %d checks)" % 43)
+          "+ claim log + determinism + dispatchable + consumer_named, "
+          "%d checks)" % 53)
     return 0
 
 

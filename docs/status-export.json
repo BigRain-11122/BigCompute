@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-11-08 00:22",
- "current_activity": "2026-11-08 00:22 令牌轮：M161 可派活面读数落地——batch_pool review 增 dispatchable 列（consumer_plan 实名 且 未锁 且 不在途），6 卡实读 named=4 placeholder=2 dispatchable=4 locked=1，纠正上轮「可点火 5」读数 [via BigCompute-OSLoop]",
- "latest_artifact": "state/batch-pool-review-20261108-001722.json（00:17 实跑）+ Tools/batch_pool.py（selftest 43 checks PASS，00:2x）",
- "next_milestone": "48h 内：M162 备货卡消费方实名化（占位卡标 consumer_named=false + J4 拆非空/实名两档提案 BC-P-220）+ M163 dispatchable 进心跳；阻断面=M25 烘焙实弹（GPU vram_free 232MB，净窗不可得）"
+ "updated_at": "2026-11-08 01:46",
+ "current_activity": "2026-11-08 01:46 令牌轮：M162 备货卡消费方实名化——6 卡全部落 consumer_named 布尔位（4 true / 2 false），review 增卡面标注与 consumer_plan 文本的一致性核对（矛盾即点名 CONSUMER-NAMED-MISMATCH），实读 consumer_named=4/6 mismatch=0 [via BigCompute-OSLoop]",
+ "latest_artifact": "Tools/batch_pool.py（selftest 53 checks PASS，01:32）+ state/batch-pool-review-20261108-013237.json（01:32 实跑）+ docs/ops/batch-pool-stock-v1.jsonl（六卡实名标注）",
+ "next_milestone": "48h 内：M163 把备货池 dispatchable 以 stock_dispatchable 独立字段随心跳落行（与机队池 pool_* 分名禁混算）；阻断面=M25 烘焙实弹（GPU vram_free 仍不足，净窗不可得）+ J4a/J4b 拆分待集团侧裁"
 }
