@@ -723,3 +723,8 @@ P2：缺口留痕——过检只认「」引号内文本，纯文本段落口播
 日清 2026-11-07 18:2x（令牌轮）：P0/P1：无。产品 2 分=T219 overlay 接线落地（`cpu_effective_hours --triage-missing` 读 `state/receipt-sig-overlay-*.json` 补收据缺的 node/id，selftest 38/38；实跑 7d `entries=656 strong=656`）。
 P2：负结果如实入件——**提级=0**：8 件缺失件的收据本身就带 node+id，`PARTIAL` 卡在**产物件没有内部签名**（game-packs 两条），overlay 键是回执名覆盖不到产物侧；缺口属出件方，提案 BC-P-216（先做产物侧签名普查，再谈建库）。
 P2：同轮自捉假动作——首版 overlay 只搜 `--root`（集团根）的 state，实跑报 `overlay=none` 却确有 656 条；改为 root/state 优先+本司仓兜底并加 S38 钉搜索序。no.22 收据产物面仍红（M96 既有历史面），本轮不动判据。
+
+## 日清 2026-11-07（19:3x-19:5x 令牌轮）
+- 承办 OB-20261107-180106-609：本机仓库收口 closeout-dasheng.json（ahead0/behind5→0/0）+ audio_bgm_fill 10/10 SKIP rc=0，两回执落 cph4/fleet/queue-receipts/。
+- P2：集团仓工作树仍有 9 修改+186 未跟踪（他窗在飞），本司不代提交、不碰；收口脚本已把代码面拉到 origin。
+- M157 判负留痕：三源禁用词交叉普查按标题截段解析失败（words=0），已 fail-closed 拒判，复发路径=复用 census groups 解析器（未转新工具）。

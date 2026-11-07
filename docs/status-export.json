@@ -1,7 +1,7 @@
 {
- "company": "BigCompute",
- "updated_at": "2026-11-07 19:0x",
- "current_activity": "2026-11-07 18:5x 令牌轮 T221 收口：产物侧签名普查（只出两数不建库）——7 日窗 778 张回执、可带签名件数 115 / 实际带签名 0（0.0%），gate=STOP，产物侧 overlay 不做；顺带发现 95/115「产物」其实就在回执目录、媒体面本机可检=0 [via BigCompute-OSLoop]",
- "latest_artifact": "Tools/receipt_signer.py（新增 deliverables 子命令·selftest 32/32）｜state/deliv-sig-census-20261107.txt/.json（115 件逐条点位）｜docs/ops/deliv-sig-census-20261107.md（两数+三发现+边界）｜qa/smoke-20261107-1849.log/.png（27/28·唯一红=no.22 既有历史面）",
- "next_milestone": "≤48h：BC-P-217（写侧产物内加 node+id、产物别落回执目录）派 @HQ 分诊｜M155 回执签名义务交付单交 @HQ｜成本账本周末对账（口径 B 单源）"
+  "company": "BigCompute",
+  "updated_at": "2026-11-07 19:5x",
+  "current_activity": "2026-11-07 19:3x 令牌轮：承办机队自动分发令 OB-20261107-180106-609 —— 本机仓库收口（ahead0/behind5→0/0，head=origin=2d94c1f6）+ audio 填充 10/10 SKIP rc=0，两机读回执落 cph4/fleet/queue-receipts/ [via BigCompute-OSLoop]",
+  "latest_artifact": "state/m157-banned-cross-20261107.txt（三源禁用词交叉普查·fail-closed 拒判 UNPARSEABLE）；同轮 cph4/fleet/queue-receipts/closeout-dasheng.json + audio-bgm-fill-20261107.json（19:33/19:34 落盘）",
+  "next_milestone": "48h 内：M155 回执签名义务交付单（T218 普查转派 @HQ）+ M150 成本周对账日报模板；净窗开则 M25 烘焙实弹（10 Tuanjie 实例占 GPU 维持 BLOCKED）"
 }
