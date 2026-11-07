@@ -717,3 +717,6 @@ P2〔本司〕4 件回执 `node` 位塞了任务名/占位（DASHENG/unknown）�
 日清 2026-11-07 12:5x（令牌轮）：P0/P1：无。产品 2 分=M152 禁用词复核——发布面稿 `banned_words_check` quotes=19 hits=0 PASS＋十类讲解词 10/10 各有独立口播句；工具加 `census` 词表漂移普查得 **CENSUS-GREEN**（文档 §四 32 词 vs 代码常量 32 词差集空·4 组全读·语义类 2 条单列不冒充已检）夹具 10/10 PASS；证据 state/m152-banned-scan-20261107.txt + state/m152-banned-census-20261107.txt + docs/ops/banned-words-review-20261107.md
 P2：真发现——把三份词源/纪律文档一并送检得 13 条命中，逐行核实**全属结构性假阳**（禁区词表自述 5／负面例句／类目命名／条款禁语四形态），结论=「0 命中」判据只适用发布面口播稿，词源文档只进 census 比对不进过检面。
 P2：缺口留痕——过检只认「」引号内文本，纯文本段落口播稿会整段跳过仍报 PASS（现役稿件引号包裹故无实际漏检）；提案 BC-P-215 已立，等真实稿形态出现再定口径，本轮不动判据。
+日清 2026-11-07 18:2x（令牌轮）：P0/P1：无。产品 2 分=T219 overlay 接线落地（`cpu_effective_hours --triage-missing` 读 `state/receipt-sig-overlay-*.json` 补收据缺的 node/id，selftest 38/38；实跑 7d `entries=656 strong=656`）。
+P2：负结果如实入件——**提级=0**：8 件缺失件的收据本身就带 node+id，`PARTIAL` 卡在**产物件没有内部签名**（game-packs 两条），overlay 键是回执名覆盖不到产物侧；缺口属出件方，提案 BC-P-216（先做产物侧签名普查，再谈建库）。
+P2：同轮自捉假动作——首版 overlay 只搜 `--root`（集团根）的 state，实跑报 `overlay=none` 却确有 656 条；改为 root/state 优先+本司仓兜底并加 S38 钉搜索序。no.22 收据产物面仍红（M96 既有历史面），本轮不动判据。

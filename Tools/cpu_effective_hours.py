@@ -457,8 +457,86 @@ def _confirm(expected, cand):
     return "PARTIAL" if known == 1 else "NO-STATE"
 
 
-def triage_missing(payload, root, hist_fn=None):
-    """MISSING-LOCAL 逐条定性（BC-P-211·BC-P-213 签名加固）。
+OVERLAY_GLOB = "receipt-sig-overlay-*.json"
+LOCAL_STATE_DIR = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "state")
+
+
+def load_sig_overlay(root=None, path=None):
+    """读回执签名 overlay（receipt_signer 的产出），按 receipt 名索引。
+
+    overlay 只补「回执自己没写 node/id」的那一半，且只认 STRONG 派生——
+    弱派生值一旦入判就是把猜测当证据，宁可维持 PARTIAL。
+    读不到=空表（调用方继续走收据原文，禁凭空提级）。
+
+    搜索面=--root 的 state/ 与本司仓 state/（默认 root 是集团根，overlay 却由
+    本司产出；只搜一处会「有 overlay 却报 none」，把接线做成假动作）。
+    """
+    meta = {"path": "", "entries": 0, "strong": 0, "weak": 0, "missing": ""}
+    if not path:
+        dirs = []
+        for base in (root or DEFAULT_ROOT,):
+            dirs.append(os.path.join(base, "state"))
+        if LOCAL_STATE_DIR not in dirs:
+            dirs.append(LOCAL_STATE_DIR)
+        cands = []
+        for d in dirs:
+            found = sorted(glob.glob(os.path.join(d, OVERLAY_GLOB)))
+            if found:
+                cands = found   # 先命中者为准（root 面优先，本司仓为兜底）
+                break
+        if not cands:
+            meta["missing"] = "no %s under %s" % (OVERLAY_GLOB, " | ".join(dirs))
+            return {}, meta
+        path = cands[-1]
+    try:
+        with open(path, "r", encoding="utf-8") as fh:
+            doc = json.load(fh)
+    except (OSError, ValueError) as exc:
+        meta["missing"] = "unreadable: %s" % exc
+        return {}, meta
+    rows = doc.get("entries") if isinstance(doc, dict) else None
+    if not isinstance(rows, list):
+        meta["missing"] = "no entries[] in %s" % os.path.basename(path)
+        return {}, meta
+    index = {}
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        name = str(row.get("receipt") or "")
+        if not name:
+            continue
+        index[name] = row
+        if str(row.get("confidence") or "").upper() == "STRONG":
+            meta["strong"] += 1
+        else:
+            meta["weak"] += 1
+    meta["path"] = path
+    meta["entries"] = len(index)
+    return index, meta
+
+
+def _expected_for(item, overlay):
+    """缺失件的期望签名：收据原文优先，缺的那一半才由 overlay STRONG 补。
+
+    返回 (expected, src)。src 逐字段标 receipt/overlay，输出面可查「这条结论
+    是靠收据自己说的，还是靠 overlay 推的」。
+    """
+    node = str(item.get("node") or "")
+    rid = str(item.get("id") or "")
+    src = {"node": "receipt" if node else "", "id": "receipt" if rid else ""}
+    ent = (overlay or {}).get(str(item.get("receipt") or "")) or {}
+    if not node and ent.get("node") and str(ent.get("node_conf") or "STRONG") == "STRONG":
+        node = str(ent["node"])
+        src["node"] = "overlay"
+    if not rid and ent.get("id") and str(ent.get("id_conf") or "STRONG") == "STRONG":
+        rid = str(ent["id"])
+        src["id"] = "overlay"
+    return {"node": node, "id": rid}, src
+
+
+def triage_missing(payload, root, hist_fn=None, overlay=None):
+    """MISSING-LOCAL 逐条定性（BC-P-211·BC-P-213 签名加固·T219 overlay 接线）。
 
     红本身不告诉任何人该怎么办：件不在盘，可能是「曾入过库后被删」「名字漂移」
     或「从来就没有」。三类处置完全不同（找回/改收据路径/作废收据），所以把
@@ -483,9 +561,11 @@ def triage_missing(payload, root, hist_fn=None):
         hist = hist_fn(root, rel)
         d = os.path.dirname(os.path.join(root, rel))
         base = os.path.basename(rel)
-        expected = {"node": str(item.get("node") or ""),
-                    "id": str(item.get("id") or ""),
-                    "date": _name_date(base)}
+        expected, sig_src = _expected_for(item, overlay)
+        base_expected = {"node": str(item.get("node") or ""),
+                         "id": str(item.get("id") or ""),
+                         "date": _name_date(base)}
+        expected["date"] = base_expected["date"]
         stem_tokens = os.path.splitext(base)[0].lower().split("-")
         candidates = []
         if os.path.isdir(d):
@@ -510,6 +590,7 @@ def triage_missing(payload, root, hist_fn=None):
                 cand = {"name": name, "node": node, "id": rid,
                         "date": _name_date(name)}
                 cand["confirm"] = _confirm(expected, cand)
+                cand["confirm_base"] = _confirm(base_expected, cand)
                 candidates.append(cand)
         variants = [c["name"] for c in candidates]
         actionable = [c["name"] for c in candidates
@@ -523,30 +604,51 @@ def triage_missing(payload, root, hist_fn=None):
         items.append({"id": item.get("id"), "node": item.get("node"),
                       "deliverable": rel, "class": cls, "hist": hist,
                       "variants": variants, "candidates": candidates,
-                      "actionable": actionable})
+                      "actionable": actionable,
+                      "sig_src": sig_src, "expected": expected,
+                      "upgraded": [c["name"] for c in candidates
+                                   if c["confirm"] == "CONFIRMED"
+                                   and c["confirm_base"] != "CONFIRMED"]})
     return items
 
 
-def report_triage(items):
+def report_triage(items, overlay_meta=None):
+    if overlay_meta:
+        if overlay_meta.get("path"):
+            _out("MISSING-TRIAGE overlay=%s entries=%d strong=%d weak=%d"
+                 % (os.path.basename(overlay_meta["path"]),
+                    overlay_meta.get("entries", 0), overlay_meta.get("strong", 0),
+                    overlay_meta.get("weak", 0)))
+        else:
+            _out("MISSING-TRIAGE overlay=none (%s)"
+                 % (overlay_meta.get("missing") or "not provided"))
     if not items:
         _out("MISSING-TRIAGE none")
         return
     tally = {}
     actionable = 0
+    upgraded = 0
     for it in items:
         tally[it["class"]] = tally.get(it["class"], 0) + 1
         actionable += len(it.get("actionable") or [])
-    _out("MISSING-TRIAGE %d 件  分类=%s  可改路径候选=%d"
+        upgraded += len(it.get("upgraded") or [])
+    _out("MISSING-TRIAGE %d 件  分类=%s  可改路径候选=%d  靠 overlay 提级=%d"
          % (len(items), " ".join("%s:%d" % (k, tally[k]) for k in sorted(tally)),
-            actionable))
+            actionable, upgraded))
     for it in items:
         extra = ("  hist=%s" % it["hist"][:60]) if it["hist"] else ""
-        _out("  %-22s %-6s %-18s %s%s"
-             % (it["class"], it["node"], it["id"][:18], it["deliverable"], extra))
+        src = it.get("sig_src") or {}
+        sig = "node=%s,id=%s" % (src.get("node") or "-", src.get("id") or "-")
+        _out("  %-22s %-6s %-18s %s  sig[%s]%s"
+             % (it["class"], it["node"], (it["id"] or "")[:18], it["deliverable"],
+                sig, extra))
         for cand in it.get("candidates") or []:
-            _out("    cand %-42s confirm=%-13s node=%-5s id=%-18s date=%s"
-                 % (cand["name"], cand["confirm"], cand["node"] or "-",
-                    cand["id"][:18] or "-", cand["date"] or "-"))
+            up = "  ↑overlay" if cand.get("confirm") == "CONFIRMED" and \
+                cand.get("confirm_base") != "CONFIRMED" else ""
+            _out("    cand %-42s confirm=%-13s base=%-13s node=%-5s id=%-18s date=%s%s"
+                 % (cand["name"], cand["confirm"], cand.get("confirm_base", "-"),
+                    cand["node"] or "-", (cand["id"] or "")[:18] or "-",
+                    cand["date"] or "-", up))
 
 
 def report(payload, show_list=False):
@@ -835,6 +937,84 @@ def selftest():
              f_cands.get("node-radar-bm-a-20261102-v2.json") == "CONFIRMED"
              and by_id["F-MATCH"]["actionable"]
              == ["node-radar-bm-a-20261102-v2.json"])
+
+        # ---- T219 overlay 接线：收据缺 node/id 时由 STRONG 签名补齐 ----
+        with open(os.path.join(tdir, "unsigned-20261102.json"), "w",
+                  encoding="utf-8") as fh:
+            json.dump({"node": "bm-a", "id": "G-OVERLAY"}, fh)
+        with open(os.path.join(tdir, "weak-20261102.json"), "w",
+                  encoding="utf-8") as fh:
+            json.dump({"node": "bm-a", "id": "H-WEAK"}, fh)
+        tpay["skipped"] += [
+            {"id": "", "node": "", "receipt": "unsigned-20261102.json",
+             "reason": "MISSING-LOCAL",
+             "deliverable": os.path.join("cph4", "fleet", "queue-receipts",
+                                         "unsigned-20261102-out.json")},
+            {"id": "", "node": "", "receipt": "weak-20261102.json",
+             "reason": "MISSING-LOCAL",
+             "deliverable": os.path.join("cph4", "fleet", "queue-receipts",
+                                         "weak-20261102-out.json")}]
+        ovy = {"unsigned-20261102.json": {
+                   "receipt": "unsigned-20261102.json", "node": "bm-a",
+                   "node_conf": "STRONG", "id": "G-OVERLAY",
+                   "id_conf": "STRONG", "confidence": "STRONG"},
+               "weak-20261102.json": {
+                   "receipt": "weak-20261102.json", "node": "bm-a",
+                   "node_conf": "WEAK", "id": "H-WEAK",
+                   "id_conf": "WEAK", "confidence": "WEAK"}}
+        tri_o = triage_missing(
+            tpay, td,
+            hist_fn=lambda r, p: "abc1234 add" if p.endswith("old.json") else "",
+            overlay=ovy)
+        by_o = {i["deliverable"].split(os.sep)[-1]: i for i in tri_o}
+        u = by_o.get("unsigned-20261102-out.json") or {}
+        w = by_o.get("weak-20261102-out.json") or {}
+        u_cands = {c["name"]: c for c in u.get("candidates") or []}
+        w_cands = {c["name"]: c for c in w.get("candidates") or []}
+        want("S32 收据缺 node/id + overlay STRONG → 提级 CONFIRMED 并列出",
+             u_cands.get("unsigned-20261102.json", {}).get("confirm") == "CONFIRMED"
+             and u_cands.get("unsigned-20261102.json", {}).get("confirm_base") == "PARTIAL"
+             and u.get("upgraded") == ["unsigned-20261102.json"]
+             and (u.get("sig_src") or {}).get("node") == "overlay"
+             and (u.get("sig_src") or {}).get("id") == "overlay")
+        want("S33 overlay 弱派生（WEAK）不入判 → 维持 PARTIAL 不提级",
+             w_cands.get("weak-20261102.json", {}).get("confirm") == "PARTIAL"
+             and not w.get("actionable") and not w.get("upgraded")
+             and (w.get("sig_src") or {}).get("node") == "")
+        tri_n = triage_missing(
+            tpay, td,
+            hist_fn=lambda r, p: "abc1234 add" if p.endswith("old.json") else "")
+        n0 = {i["deliverable"].split(os.sep)[-1]: i for i in tri_n}
+        n_cands = {c["name"]: c for c in
+                   (n0.get("unsigned-20261102-out.json") or {}).get("candidates") or []}
+        want("S34 无 overlay 时逐字维持现状（不得凭空提级）",
+             n_cands.get("unsigned-20261102.json", {}).get("confirm") == "PARTIAL"
+             and not (n0.get("unsigned-20261102-out.json") or {}).get("upgraded"))
+        mixed, msrc = _expected_for(
+            {"node": "bm-a", "id": "", "receipt": "unsigned-20261102.json"}, ovy)
+        want("S35 收据只写了 node → 只补 id（逐字段标源，不整条改判）",
+             mixed.get("node") == "bm-a" and mixed.get("id") == "G-OVERLAY"
+             and msrc.get("node") == "receipt" and msrc.get("id") == "overlay")
+
+        ostate = os.path.join(tmp, "state")
+        os.makedirs(ostate, exist_ok=True)
+        _write(os.path.join(ostate, "receipt-sig-overlay-20261101.json"),
+               {"entries": [{"receipt": "old-a.json"}]})
+        _write(os.path.join(ostate, "receipt-sig-overlay-20261107.json"),
+               {"entries": [{"receipt": "a.json", "confidence": "STRONG"},
+                            {"receipt": "b.json", "confidence": "WEAK"}]})
+        idx, meta = load_sig_overlay(tmp)
+        want("S36 overlay 自动取最新一件并按 STRONG/WEAK 分计",
+             meta["entries"] == 2 and meta["strong"] == 1 and meta["weak"] == 1
+             and meta["path"].endswith("receipt-sig-overlay-20261107.json")
+             and set(idx) == {"a.json", "b.json"})
+        idx2, meta2 = load_sig_overlay(
+            tmp, path=os.path.join(tmp, "absent", "receipt-sig-overlay-x.json"))
+        want("S37 overlay 显式路径读不到 → 空表且如实报 missing，不抛栈",
+             idx2 == {} and meta2["entries"] == 0 and bool(meta2["missing"]))
+        idx3, meta3 = load_sig_overlay(tmp)
+        want("S38 未给路径时 root/state 优先命中（本司仓只作兜底）",
+             meta3["path"].startswith(ostate) and len(idx3) == 2)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 
@@ -852,6 +1032,8 @@ def main(argv=None):
     ap.add_argument("--node", default=None)
     ap.add_argument("--list", action="store_true")
     ap.add_argument("--triage-missing", action="store_true")
+    ap.add_argument("--sig-overlay", default=None,
+                    help="回执签名 overlay 路径；缺省取 state/receipt-sig-overlay-*.json 最新一件")
     ap.add_argument("--json-out", default=None)
     ap.add_argument("--selftest", action="store_true")
     args = ap.parse_args(argv)
@@ -873,8 +1055,11 @@ def main(argv=None):
     payload["other_receipts"] = [os.path.basename(p) for p in other]
     report(payload, show_list=args.list)
     if args.triage_missing:
-        payload["missing_triage"] = triage_missing(payload, args.root)
-        report_triage(payload["missing_triage"])
+        overlay, overlay_meta = load_sig_overlay(args.root, args.sig_overlay)
+        payload["sig_overlay"] = overlay_meta
+        payload["missing_triage"] = triage_missing(payload, args.root,
+                                                  overlay=overlay)
+        report_triage(payload["missing_triage"], overlay_meta)
 
     if args.json_out:
         out = os.path.abspath(args.json_out)
