@@ -125,6 +125,15 @@ def check_rows(rows):
                             "J6 %s: DATA_NOT_LOCAL: %s "
                             "(claim-before-dispatch presence assertion, "
                             "D-20261004-02 (1) precedent)" % (rid, dp))
+        named_type = declared_named_type(row)
+        if named_type not in (None, "bool"):
+            # Warning level on purpose: J4's meaning has not changed, so this
+            # must not turn a stocked sheet red - but a silently dead label is
+            # named rather than absorbed.
+            info.append(
+                "J7 %s: consumer_named is %s, not a boolean - the label reads "
+                "as undeclared and the mismatch check skips this card"
+                % (rid, named_type))
         lane = str(row.get("lane", "") or "?")
         lanes[lane] = lanes.get(lane, 0) + 1
         if lane == CITY3D_LANE and row.get("category") == CITY3D_CATEGORY:
@@ -374,6 +383,33 @@ def declared_named(row):
     return None
 
 
+def declared_named_type(row):
+    """Name the JSON type of `consumer_named`: 'bool' / 'string' / ... / None.
+
+    M164: declared_named() folds every non-bool into "never declared", so a
+    card that writes "false" as a string loses its label silently and the
+    mismatch check never fires - the mislabel becomes indistinguishable from
+    no label, at exactly the spot M162 set out to make visible. A guard needs
+    the type name itself to say which card did it.
+    """
+    if "consumer_named" not in row:
+        return None
+    val = row.get("consumer_named")
+    if isinstance(val, bool):
+        return "bool"
+    if val is None:
+        return "null"
+    if isinstance(val, str):
+        return "string"
+    if isinstance(val, (int, float)):
+        return "number"
+    if isinstance(val, list):
+        return "list"
+    if isinstance(val, dict):
+        return "object"
+    return type(val).__name__
+
+
 def build_review(rows, today=None, claims=None, refusals=None):
     """Assemble the M66 monthly review snapshot from stocked cards.
 
@@ -405,10 +441,13 @@ def build_review(rows, today=None, claims=None, refusals=None):
     # M161: "right now, how many cards could really be dispatched" = someone is
     # named to take it AND it is neither locked nor already in flight.
     dispatchable, placeholder = [], []
-    declared_true, declared_false, named_mismatch = [], [], []
+    declared_true, declared_false, named_mismatch, bad_type = [], [], [], []
     for row in rows:
         bid = str(row.get("batch_id") or "")
         dec = declared_named(row)
+        named_type = declared_named_type(row)
+        if named_type not in (None, "bool") and bid:
+            bad_type.append("%s:%s" % (bid, named_type))
         if dec is True:
             declared_true.append(bid)
         elif dec is False:
@@ -454,6 +493,12 @@ def build_review(rows, today=None, claims=None, refusals=None):
             "consumer_named flag contradicts its consumer_plan text; fix the "
             "label before dispatch reads it" % (len(named_mismatch),
                                                 ", ".join(named_mismatch)))
+    if bad_type:
+        findings.append(
+            "CONSUMER-NAMED-BAD-TYPE on %d card(s) [%s]: consumer_named is not "
+            "a boolean, so it reads as 'never declared' and the mismatch check "
+            "skips it - a mislabel looks exactly like no label (M164)"
+            % (len(bad_type), ", ".join(bad_type)))
     if dispatchable:
         findings.append(
             "dispatchable now = %d card(s) [%s] (named + not locked + not "
@@ -470,6 +515,7 @@ def build_review(rows, today=None, claims=None, refusals=None):
         "consumer_named_declared_true": declared_true,
         "consumer_named_declared_false": declared_false,
         "consumer_named_mismatch": named_mismatch,
+        "consumer_named_bad_type": bad_type,
         "dispatchable": len(dispatchable),
         "dispatchable_cards": dispatchable,
         "in_flight": in_flight,
@@ -499,7 +545,7 @@ def cmd_review(path, as_json=False, write=True):
     review["registry"] = os.path.relpath(path, ROOT)
     review["claims_source"] = os.path.relpath(CLAIM_LOG, ROOT)
     print("REVIEW cards=%d lanes=%d named=%d placeholder=%d dispatchable=%d "
-          "consumer_named=%d/%d mismatch=%d "
+          "consumer_named=%d/%d mismatch=%d badtype=%d "
           "in_flight=%d dry_run_end=%s overdue=%s claims=%d refused=%d "
           "locked=%d j5_blocks_activation=%s"
           % (review["cards"], len(review["lanes"]),
@@ -510,6 +556,7 @@ def cmd_review(path, as_json=False, write=True):
              len(review["consumer_named_declared_true"])
              + len(review["consumer_named_declared_false"]),
              len(review["consumer_named_mismatch"]),
+             len(review["consumer_named_bad_type"]),
              review["in_flight"],
              review["dry_run_end"], review["dry_run_overdue"],
              review["j5_claims_total"], review["j5_refusals_total"],
@@ -754,9 +801,28 @@ def cmd_selftest():
         "mismatch finding text"
     assert not any("CONSUMER-NAMED-MISMATCH" in f for f in agree["findings"]), \
         "no mismatch finding when declarations agree"
-    print("selftest PASS (J1-J6 + gate lane map + review + J5 claim rule "
+    # M164: a label that is not a real bool must be named, not folded into
+    # "never declared" where it looks identical to no label at all.
+    assert declared_named_type(_fixture(consumer_named="false")) == "string", \
+        "string label is typed as string"
+    assert declared_named_type(_fixture(consumer_named=0)) == "number", \
+        "numeric label is typed as number"
+    typed = build_review(
+        [_fixture(consumer_named="false"),
+         _fixture(base={"batch_id": "B-T-02", "consumer_named": 0})],
+        today=datetime.date(2026, 10, 20))
+    assert typed["consumer_named_declared_true"] == [] and \
+        typed["consumer_named_declared_false"] == [], \
+        "bad-typed labels do not land in declared true/false"
+    assert typed["consumer_named_bad_type"] == ["B-T-01:string", "B-T-02:number"], \
+        "each bad-typed card is named with its type"
+    assert any("CONSUMER-NAMED-BAD-TYPE" in f for f in typed["findings"]), \
+        "bad-type finding text"
+    assert not any("CONSUMER-NAMED-BAD-TYPE" in f for f in agree["findings"]), \
+        "boolean labels raise no bad-type finding"
+    print("selftest PASS (J1-J7 + gate lane map + review + J5 claim rule "
           "+ claim log + determinism + dispatchable + consumer_named, "
-          "%d checks)" % 53)
+          "%d checks)" % 59)
     return 0
 
 
