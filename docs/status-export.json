@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-11-07 12:26",
- "current_activity": "2026-11-07 12:4x 令牌轮：T218 回执签名普查器落地（Tools/receipt_signer.py selftest 16/16）；全量 804 件回执实跑 SIGN-CENSUS-GAPS=签名缺口 208（ID-MISSING 47 / NODE-MISSING 13 / BOTH-MISSING 148），可派生 656 全 STRONG、不可解析 148 已按前缀分流 [via BigCompute-OSLoop]",
- "latest_artifact": "Tools/receipt_signer.py（census/resolve/selftest；四态签名判据+派生链：CONTENT/FILENAME/VOCAB/STEM 分级） ＋ state/receipt-sig-census-20261107.json（804 件逐件读数，含不可解析清单） ＋ state/receipt-sig-overlay-20261107.json（656 条派生签名册，供消费侧读，不改对方字节） ＋ qa/smoke-20261107-1226.log/.png",
- "next_milestone": "≤48h：①T219 消费侧接线——triage_missing 读签名 overlay 把 PARTIAL 升 CONFIRMED（overlay 缺行逐字维持现状，禁凭空提级）；②T220 ODD-NODE 单列，把 4 件 node 语义错误挡在节点维度分母之外；③M155 生产者交付单（148 件不可解析按前缀分流）随 lane 模板下发 @HQ"
+ "updated_at": "2026-11-07 12:56",
+ "current_activity": "2026-11-07 12:5x 令牌轮：M152 禁用词复核收口——发布面话术稿 banned_words_check quotes=19 hits=0 PASS，十类讲解词 10/10 各有独立口播句；工具新增 census 子命令（词表漂移普查）得 CENSUS-GREEN doc_words=32 / tool_words=32 差集空，语义类 2 条单列不冒充已检，夹具 10/10 PASS；真发现=三份词源/纪律文档送检 13 命中全属结构性假阳（禁区词表自述/负面例句/类目命名/条款禁语），故「0 命中」判据只适用发布面口播稿 [via BigCompute-OSLoop]",
+ "latest_artifact": "Tools/banned_words_check.py（新增 census/selftest 子命令）｜docs/ops/banned-words-review-20261107.md（四形态假阳逐行核实）｜state/m152-banned-scan-20261107.txt（三文档逐文件读数）｜state/m152-banned-census-20261107.txt（census 逐行输出）｜qa/smoke-20261107-1246.log/.png（27/28·唯一红=no.22 历史面）",
+ "next_milestone": "≤48h：M155 回执签名义务交付单（148 件不可解析回执按前缀分流交 @HQ，本司只读不代写）｜M150 成本账本周对账日报模板（口径 B 单源）｜M151 退款/售后账务口径表；BC-P-215 过检扫描域声明待真实口播稿形态出现再定口径（本轮不动判据）"
 }
