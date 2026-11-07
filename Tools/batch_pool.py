@@ -12,7 +12,10 @@ This tool NEVER dispatches anything - it machine-checks the stocking sheet:
       (O-20260929-007 hard criterion "3D 离线渲染批 >=2")
   J3  batch_id unique (tx_id idempotency basis)
   J4  consumer_plan non-empty on every card (备货律指名, O-1820 (3) same law)
-  J5  no card is in-flight/running (DRY-RUN to 2026-10-05; STOCKED only)
+  J5  no card is in-flight/running; the dry-run lock itself fires only when
+      the window is expired AND a card has >=2 consecutive claims without
+      ever leaving STOCKED (D-20261106-05 / D-20261108-03: expiry alone is a
+      reminder, not a lock)
   J6  data_deps local-presence gate (BC-P-37, group precedent
       D-20261004-02 (1) BigMoney F-01 four-shard crash): if a card
       declares data_deps (file/dir list), every path must exist locally
@@ -61,6 +64,12 @@ CITY3D_LANE = "City3D/FluxVerse"
 CITY3D_CATEGORY = "3d_offline_render"
 CITY3D_MIN = 2  # O-20260929-007: >=2 stocked 3D offline render batches
 DRY_RUN_END = "2026-10-05"  # J5 observation window end (M46 review package)
+CLAIM_LOG = os.path.join(ROOT, "state", "dispatch-gate.jsonl")
+# D-20261106-05 (re-issued D-20261108-03): the lock needs evidence of a card
+# being claimed and never igniting.  One expiry on its own must not freeze the
+# pool - that is what kept 6 STOCKED cards frozen for 31 days on a calendar
+# artefact instead of a finding.
+J5_LOCK_STREAK = 2
 
 
 def load_rows(path):
@@ -222,9 +231,11 @@ def cmd_gate(path, batch_id, consumer=None, exempt=None, as_json=False):
               % (batch_id, card.get("status")))
     result, exit_code = dispatch_precheck.evaluate(
         lane, consumer or "batch-pool:%s" % batch_id, exempt)
+    # batch_id must be in the snapshot itself: without it a claim cannot be
+    # attributed back to a card, and the J5 claim rule has nothing to read.
+    result["batch_id"] = batch_id
     log_path = dispatch_precheck.append_snapshot(result)
     result["snapshot"] = os.path.relpath(log_path, ROOT)
-    result["batch_id"] = batch_id
     if as_json:
         print(json.dumps(result, ensure_ascii=False, indent=2))
     else:
@@ -235,13 +246,110 @@ def cmd_gate(path, batch_id, consumer=None, exempt=None, as_json=False):
     return exit_code
 
 
-def build_review(rows, today=None):
+def load_claims(log_path=None, with_refusals=False):
+    """Read dispatch-gate snapshots into per-card claim history.
+
+    A *claim* is a snapshot where the gate actually cleared the card to run
+    (gate_exit == 0, lane OPEN).  A snapshot that refused the card - lane
+    CLOSED, stale heartbeat, unreadable gate - is a *refusal*, not a claim:
+    nothing was taken, so it cannot count as "claimed and never ignited".
+    Lines unreadable as JSON are skipped, never guessed.
+
+    Returns {batch_id: [claim,...]}; with with_refusals=True returns
+    (claims, refusals).  Cards are identified by the snapshot's ``batch_id``
+    field, or - for older lines - by ``consumer`` of the form
+    ``batch-pool:<batch_id>``.
+    """
+    log_path = log_path or CLAIM_LOG
+    claims, refused = {}, {}
+    if not os.path.exists(log_path):
+        return (claims, refused) if with_refusals else claims
+    with open(log_path, "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                row = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            bid = str(row.get("batch_id") or "")
+            if not bid:
+                consumer = str(row.get("consumer") or "")
+                if consumer.startswith("batch-pool:"):
+                    bid = consumer.split(":", 1)[1]
+            if not bid:
+                continue
+            rec = {
+                "ts": row.get("ts"),
+                "verdict": row.get("verdict"),
+                "gate_exit": row.get("gate_exit"),
+            }
+            if rec["gate_exit"] == 0:
+                claims.setdefault(bid, []).append(rec)
+            else:
+                refused.setdefault(bid, []).append(rec)
+    return (claims, refused) if with_refusals else claims
+
+
+def j5_lock_state(rows, claims=None, today=None, refusals=None):
+    """J5 lock judgement per card (D-20261106-05, re-issued D-20261108-03).
+
+    A card locks only when BOTH hold:
+      * the dry-run window is expired (calendar fact, alone insufficient), and
+      * the card carries >= J5_LOCK_STREAK *cleared* claims (gate_exit == 0)
+        while still STOCKED, i.e. it was cleared to run that many times and
+        never left STOCKED.
+    Refused attempts (lane closed / stale gate) are reported but never lock a
+    card: a card nobody could take was not "claimed and never ignited".
+    A card already in a non-STOCKED status is not locked.
+    """
+    import datetime
+    if today is None:
+        today = datetime.date.today()
+    claims = claims or {}
+    refusals = refusals or {}
+    end = datetime.date(*[int(x) for x in DRY_RUN_END.split("-")])
+    age_days = (today - end).days
+    overdue = age_days > 0
+    per_card = {}
+    locked = []
+    for row in rows:
+        bid = str(row.get("batch_id") or "")
+        if not bid:
+            continue
+        status = str(row.get("status", "?")).upper() or "?"
+        streak = len(claims.get(bid, []))
+        is_locked = bool(overdue and status == "STOCKED"
+                         and streak >= J5_LOCK_STREAK)
+        per_card[bid] = {"status": status, "claims": streak,
+                         "refused": len(refusals.get(bid, [])),
+                         "locked": is_locked}
+        if is_locked:
+            locked.append(bid)
+    return {
+        "rule": "expired AND >=%d cleared claims unignited (still STOCKED)"
+                % J5_LOCK_STREAK,
+        "dry_run_end": DRY_RUN_END,
+        "dry_run_age_days": age_days,
+        "dry_run_overdue": overdue,
+        "claims_total": sum(len(v) for v in claims.values()),
+        "refusals_total": sum(len(v) for v in refusals.values()),
+        "locked_cards": sorted(locked),
+        "per_card": per_card,
+        "blocks_activation": bool(locked),
+    }
+
+
+def build_review(rows, today=None, claims=None, refusals=None):
     """Assemble the M66 monthly review snapshot from stocked cards.
 
     Pure (no I/O, no clock unless today is omitted) so selftest can pin dates.
-    `today` is a date or None. The dry-run age is the gap between DRY_RUN_END
-    and today; a positive age with zero in-flight cards means the J5 gate is
-    still the only thing holding every card at STOCKED.
+    `today` is a date or None. `claims` is the per-card claim history returned
+    by load_claims(); when omitted the review sees zero claims, which means "no
+    evidence of a stuck card", not "fine". The dry-run age is the gap between
+    DRY_RUN_END and today; expiring alone no longer blocks activation
+    (D-20261108-03) - only cards with >= J5_LOCK_STREAK unignited claims do.
     """
     import datetime
     if today is None:
@@ -259,16 +367,21 @@ def build_review(rows, today=None):
         if str(row.get("consumer_plan", "") or "").strip():
             named += 1
     in_flight = sum(statuses.get(s, 0) for s in IN_FLIGHT_STATUSES)
-    end = datetime.date(*[int(x) for x in DRY_RUN_END.split("-")])
-    age_days = (today - end).days
-    overdue = age_days > 0
+    lock = j5_lock_state(rows, claims, today, refusals)
+    overdue = lock["dry_run_overdue"]
     findings = []
-    if overdue and in_flight == 0:
+    if overdue and not lock["locked_cards"]:
         findings.append(
-            "J5 dry-run window ended %s (%d days ago) but no card may leave "
-            "STOCKED while J5 discards in-flight statuses; activation needs an "
-            "explicit J5 revision, not a silent status edit"
-            % (DRY_RUN_END, age_days))
+            "J5 dry-run window ended %s (%d days ago) but expiry alone does not "
+            "lock (D-20261108-03); no card carries >=%d unignited claims yet, so "
+            "the pool is open subject to the per-card claim rule"
+            % (DRY_RUN_END, lock["dry_run_age_days"], J5_LOCK_STREAK))
+    if lock["locked_cards"]:
+        findings.append(
+            "J5 LOCKED %d card(s) [%s]: dry-run window expired %d days ago and "
+            "each carries >=%d claims while still STOCKED"
+            % (len(lock["locked_cards"]), ", ".join(lock["locked_cards"]),
+               lock["dry_run_age_days"], J5_LOCK_STREAK))
     if named < len(rows):
         findings.append(
             "consumer_plan named on %d/%d cards (备货律指名)" % (named, len(rows)))
@@ -282,9 +395,14 @@ def build_review(rows, today=None):
         "consumer_plan_named": named,
         "in_flight": in_flight,
         "dry_run_end": DRY_RUN_END,
-        "dry_run_age_days": age_days,
+        "dry_run_age_days": lock["dry_run_age_days"],
         "dry_run_overdue": overdue,
-        "j5_blocks_activation": bool(overdue and in_flight == 0),
+        "j5_rule": lock["rule"],
+        "j5_claims_total": lock["claims_total"],
+        "j5_refusals_total": lock["refusals_total"],
+        "j5_locked_cards": lock["locked_cards"],
+        "j5_per_card": lock["per_card"],
+        "j5_blocks_activation": lock["blocks_activation"],
         "problems": problems,
         "info": info,
         "findings": findings,
@@ -297,13 +415,17 @@ def cmd_review(path, as_json=False, write=True):
         print("FAIL registry not found: %s" % path)
         return 1
     rows = load_rows(path)
-    review = build_review(rows)
+    claims, refused = load_claims(with_refusals=True)
+    review = build_review(rows, claims=claims, refusals=refused)
     review["registry"] = os.path.relpath(path, ROOT)
+    review["claims_source"] = os.path.relpath(CLAIM_LOG, ROOT)
     print("REVIEW cards=%d lanes=%d named=%d in_flight=%d dry_run_end=%s "
-          "overdue=%s j5_blocks_activation=%s"
+          "overdue=%s claims=%d refused=%d locked=%d j5_blocks_activation=%s"
           % (review["cards"], len(review["lanes"]),
              review["consumer_plan_named"], review["in_flight"],
              review["dry_run_end"], review["dry_run_overdue"],
+             review["j5_claims_total"], review["j5_refusals_total"],
+             len(review["j5_locked_cards"]),
              review["j5_blocks_activation"]))
     for f in review["findings"]:
         print("FINDING " + f)
@@ -394,9 +516,79 @@ def cmd_selftest():
         "review status tally"
     assert rev["dry_run_age_days"] == 15 and rev["dry_run_overdue"], \
         "review dry-run age"
-    assert rev["j5_blocks_activation"], "review must flag J5 blocker"
+    # D-20261108-03: expiry alone is a reminder, NOT a lock.  This is the
+    # regression the revision exists to prevent.
+    assert not rev["j5_blocks_activation"], \
+        "expiry alone must not lock the pool (old J5 rule regression)"
+    assert rev["j5_locked_cards"] == [], "no claims -> no locked cards"
     assert any("J5 dry-run window ended" in f for f in rev["findings"]), \
-        "review finding text"
+        "review finding text (expiry reminder)"
+    assert any("expiry alone does not lock" in f for f in rev["findings"]), \
+        "review must state the new rule explicitly"
+    # one claim is an attempt, two are a stuck card
+    one = build_review(pair, today=datetime.date(2026, 10, 20),
+                       claims={"B-T-01": [{"ts": "t1"}]})
+    assert not one["j5_blocks_activation"], "one claim must not lock"
+    two = build_review(pair, today=datetime.date(2026, 10, 20),
+                       claims={"B-T-01": [{"ts": "t1"}, {"ts": "t2"}]})
+    assert two["j5_blocks_activation"], "two unignited claims must lock"
+    assert two["j5_locked_cards"] == ["B-T-01"], "locked card named"
+    assert two["j5_per_card"]["B-T-01"]["claims"] == 2, "claim count kept"
+    assert any("J5 LOCKED" in f for f in two["findings"]), "lock finding text"
+    # claims before the window ends are not evidence of a stuck card
+    pre = build_review(pair, today=datetime.date(2026, 10, 1),
+                       claims={"B-T-01": [{"ts": "t1"}, {"ts": "t2"}]})
+    assert not pre["j5_blocks_activation"], "pre-end claims must not lock"
+    # a card that left STOCKED is not locked, even with two cleared claims
+    moved = build_review(
+        [_fixture(), _fixture(base={"batch_id": "B-T-02", "status": "RUNNING"})],
+        today=datetime.date(2026, 10, 20),
+        claims={"B-T-02": [{"ts": "t1"}, {"ts": "t2"}]})
+    assert not moved["j5_blocks_activation"], \
+        "a card in a non-STOCKED status is not locked"
+    assert not moved["j5_per_card"]["B-T-02"]["locked"], \
+        "in-flight card never locked"
+    # refusals are visible but never lock a card (gate said no -> nothing taken)
+    refused_rev = build_review(
+        pair, today=datetime.date(2026, 10, 20),
+        claims={}, refusals={"B-T-01": [{"ts": "t1"}, {"ts": "t2"},
+                                        {"ts": "t3"}]})
+    assert not refused_rev["j5_blocks_activation"], \
+        "refused attempts must not lock (nothing was claimed)"
+    assert refused_rev["j5_per_card"]["B-T-01"]["refused"] == 3, \
+        "refusals still reported per card"
+    assert refused_rev["j5_per_card"]["B-T-01"]["claims"] == 0, \
+        "refusals are not claims"
+    # claims are attributed per card, never shared between cards
+    per = build_review(
+        pair, today=datetime.date(2026, 10, 20),
+        claims={"B-T-01": [{"ts": "t1"}], "B-T-02": [{"ts": "t2"}]})
+    assert not per["j5_blocks_activation"], "claims must not be pooled together"
+    assert per["j5_per_card"]["B-T-01"]["claims"] == 1, "per-card claim count"
+    # claim log parsing: batch_id field and the legacy consumer form both count,
+    # unreadable lines are skipped and never invented
+    import tempfile
+    tmp_log = os.path.join(tempfile.mkdtemp(), "gate.jsonl")
+    with open(tmp_log, "w", encoding="utf-8", newline="\n") as f:
+        f.write(json.dumps({"batch_id": "B-T-01", "gate_exit": 0,
+                            "verdict": "OPEN", "ts": "t1"}) + "\n")
+        f.write(json.dumps({"consumer": "batch-pool:B-T-02", "gate_exit": 0,
+                            "verdict": "OPEN", "ts": "t2"}) + "\n")
+        f.write(json.dumps({"consumer": "batch-pool:B-T-02", "gate_exit": 2,
+                            "verdict": "CLOSED", "ts": "t3"}) + "\n")
+        f.write(json.dumps({"consumer": "gpu-dispatch-pointer", "gate_exit": 2,
+                            "ts": "t4"}) + "\n")
+        f.write("not json\n")
+    parsed = load_claims(tmp_log)
+    assert sorted(parsed) == ["B-T-01", "B-T-02"], \
+        "claims attributed only to named cards (legacy consumer form included)"
+    assert len(parsed["B-T-01"]) == 1 and len(parsed["B-T-02"]) == 1, \
+        "one cleared claim per card; the CLOSED line is a refusal"
+    parsed_c, parsed_r = load_claims(tmp_log, with_refusals=True)
+    assert len(parsed_r.get("B-T-02", [])) == 1, \
+        "refused attempt kept separate from claims"
+    assert load_claims(os.path.join(os.path.dirname(tmp_log), "absent.jsonl")) == {}, \
+        "missing claim log is empty, not an error"
     early = build_review(pair, today=datetime.date(2026, 10, 1))
     assert not early["dry_run_overdue"] and not early["j5_blocks_activation"], \
         "review pre-end must not flag blocker"
@@ -411,8 +603,15 @@ def cmd_selftest():
     r1.pop("generated_at")
     r2.pop("generated_at")
     assert r1 == r2, "review determinism"
-    print("selftest PASS (J1-J6 + gate lane map + review + determinism, %d checks)"
-          % 20)
+    c1 = build_review(pair, today=datetime.date(2026, 10, 20),
+                      claims={"B-T-01": [{"ts": "t1"}, {"ts": "t2"}]})
+    c2 = build_review(pair, today=datetime.date(2026, 10, 20),
+                      claims={"B-T-01": [{"ts": "t1"}, {"ts": "t2"}]})
+    c1.pop("generated_at")
+    c2.pop("generated_at")
+    assert c1 == c2, "claim-based lock determinism"
+    print("selftest PASS (J1-J6 + gate lane map + review + J5 claim rule "
+          "+ claim log + determinism, %d checks)" % 34)
     return 0
 
 
