@@ -31,6 +31,7 @@ import glob
 import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -412,12 +413,60 @@ def _git_last_commit(root, relpath):
         return ""
 
 
+_DATE_IN_NAME = re.compile(r"(20\d{2})[-_]?(\d{2})[-_]?(\d{2})")
+
+
+def _name_date(name):
+    """文件名里的日期（YYYY-MM-DD=三态之一）。读不到=空串，不猜。"""
+    m = _DATE_IN_NAME.search(os.path.splitext(name)[0])
+    return "%s-%s-%s" % m.groups() if m else ""
+
+
+def _json_signature(path):
+    """候选件内部声明的 (node, id)。读不到/非 JSON/非对象一律空，不猜。"""
+    try:
+        with open(path, "r", encoding="utf-8", errors="replace") as fh:
+            obj = json.load(fh)
+    except Exception:  # noqa: BLE001 - 签名读取失败只降级，不使 triage 崩
+        return "", ""
+    if not isinstance(obj, dict):
+        return "", ""
+    node = str(obj.get("node") or obj.get("host") or "")
+    rid = str(obj.get("id") or "")
+    return node, rid
+
+
+def _confirm(expected, cand):
+    """候选与缺失件是否同一次工作（三要素：node / 内部 id / 日期）。
+
+    返回 CONFIRMED / PARTIAL / NODE-CONFLICT / DATE-DIFF / ID-DIFF / NO-STATE。
+    只有 CONFIRMED 才是「可改收据路径」的候选；冲突态是明确的反证，必须挡住——
+    否则同名词干的别机/别次件会被当成路径笔误，催出一次错误的改路径动作。
+    """
+    known = 0
+    for key in ("node", "id", "date"):
+        exp, got = expected.get(key) or "", cand.get(key) or ""
+        if not exp or not got:
+            continue
+        known += 1
+        if exp != got:
+            return {"node": "NODE-CONFLICT", "id": "ID-DIFF",
+                    "date": "DATE-DIFF"}[key]
+    if known >= 2:
+        return "CONFIRMED"
+    return "PARTIAL" if known == 1 else "NO-STATE"
+
+
 def triage_missing(payload, root, hist_fn=None):
-    """MISSING-LOCAL 逐条定性（BC-P-211）。
+    """MISSING-LOCAL 逐条定性（BC-P-211·BC-P-213 签名加固）。
 
     红本身不告诉任何人该怎么办：件不在盘，可能是「曾入过库后被删」「名字漂移」
     或「从来就没有」。三类处置完全不同（找回/改收据路径/作废收据），所以把
     git 全分支历史与同目录近名件作为判据显式出数，禁用人读猜。
+
+    近名件同理不能只凭共享词干：11-07 实测 5 件 NAME-DRIFT 里 4 件是别机/别次
+    的件被同名词干吸进来。故候选必须带内部签名（node/内部 id/日期）与缺失件
+    对照，只有三要素无冲突且至少两项相符（CONFIRMED）才标 actionable。
     """
     hist_fn = hist_fn or _git_last_commit
     items = []
@@ -428,13 +477,17 @@ def triage_missing(payload, root, hist_fn=None):
         if not rel:
             items.append({"id": item.get("id"), "node": item.get("node"),
                           "deliverable": "", "class": "NO-PATH",
-                          "hist": "", "variants": []})
+                          "hist": "", "variants": [], "candidates": [],
+                          "actionable": []})
             continue
         hist = hist_fn(root, rel)
         d = os.path.dirname(os.path.join(root, rel))
         base = os.path.basename(rel)
+        expected = {"node": str(item.get("node") or ""),
+                    "id": str(item.get("id") or ""),
+                    "date": _name_date(base)}
         stem_tokens = os.path.splitext(base)[0].lower().split("-")
-        variants = []
+        candidates = []
         if os.path.isdir(d):
             cands = []
             for name in os.listdir(d):
@@ -451,7 +504,16 @@ def triage_missing(payload, root, hist_fn=None):
                 # 共享词干越多越像同一个件；排序只定展示先后，不做判定
                 cands.append((-shared, name))
             cands.sort()
-            variants = [n for _s, n in cands[:5]]
+            for _s, name in cands[:5]:
+                path = os.path.join(d, name)
+                node, rid = _json_signature(path) if os.path.isfile(path) else ("", "")
+                cand = {"name": name, "node": node, "id": rid,
+                        "date": _name_date(name)}
+                cand["confirm"] = _confirm(expected, cand)
+                candidates.append(cand)
+        variants = [c["name"] for c in candidates]
+        actionable = [c["name"] for c in candidates
+                      if c["confirm"] == "CONFIRMED"]
         if hist:
             cls = "IN-HISTORY-REMOVED"
         elif variants:
@@ -460,7 +522,8 @@ def triage_missing(payload, root, hist_fn=None):
             cls = "NEVER-EXISTED"
         items.append({"id": item.get("id"), "node": item.get("node"),
                       "deliverable": rel, "class": cls, "hist": hist,
-                      "variants": variants})
+                      "variants": variants, "candidates": candidates,
+                      "actionable": actionable})
     return items
 
 
@@ -469,16 +532,21 @@ def report_triage(items):
         _out("MISSING-TRIAGE none")
         return
     tally = {}
+    actionable = 0
     for it in items:
         tally[it["class"]] = tally.get(it["class"], 0) + 1
-    _out("MISSING-TRIAGE %d 件  分类=%s"
-         % (len(items), " ".join("%s:%d" % (k, tally[k]) for k in sorted(tally))))
+        actionable += len(it.get("actionable") or [])
+    _out("MISSING-TRIAGE %d 件  分类=%s  可改路径候选=%d"
+         % (len(items), " ".join("%s:%d" % (k, tally[k]) for k in sorted(tally)),
+            actionable))
     for it in items:
         extra = ("  hist=%s" % it["hist"][:60]) if it["hist"] else ""
-        var = ("  near=%s" % ",".join(it["variants"])) if it["variants"] else ""
-        _out("  %-22s %-6s %-18s %s%s%s"
-             % (it["class"], it["node"], it["id"][:18], it["deliverable"],
-                extra, var))
+        _out("  %-22s %-6s %-18s %s%s"
+             % (it["class"], it["node"], it["id"][:18], it["deliverable"], extra))
+        for cand in it.get("candidates") or []:
+            _out("    cand %-42s confirm=%-13s node=%-5s id=%-18s date=%s"
+                 % (cand["name"], cand["confirm"], cand["node"] or "-",
+                    cand["id"][:18] or "-", cand["date"] or "-"))
 
 
 def report(payload, show_list=False):
@@ -706,6 +774,17 @@ def selftest():
         with open(os.path.join(tdir, "model-radar-bm-a-20261104.json"), "w",
                   encoding="utf-8") as fh:
             fh.write("{}")
+        # 签名加固夹具：同词干但内部 node 是他机 → 不是同一件，不可改路径
+        with open(os.path.join(tdir, "node-radar-bm-b-20261103.json"), "w",
+                  encoding="utf-8") as fh:
+            json.dump({"node": "bm-b", "id": "E-CONFLICT"}, fh)
+        # 三要素齐（node 同 / 同日期 / 内部 id 同）→ 唯一可改路径候选
+        with open(os.path.join(tdir, "node-radar-bm-a-20261102.json"), "w",
+                  encoding="utf-8") as fh:
+            json.dump({"node": "bm-a", "id": "F-MATCH"}, fh)
+        with open(os.path.join(tdir, "node-radar-bm-a-20261102-v2.json"), "w",
+                  encoding="utf-8") as fh:
+            json.dump({"node": "bm-a", "id": "F-MATCH"}, fh)
         tpay = {"skipped": [
             {"id": "A-NEVER", "node": "bm-a", "reason": "MISSING-LOCAL",
              "deliverable": os.path.join("cph4", "fleet", "queue-receipts",
@@ -718,11 +797,18 @@ def selftest():
                                          "old.json")},
             {"id": "D-REMOTE", "node": "bm-b", "reason": "REMOTE-UNVERIF",
              "deliverable": os.path.join("cph4", "fleet", "queue-receipts",
-                                         "x.json")}]}
+                                         "x.json")},
+            {"id": "E-CONFLICT", "node": "bm-a", "reason": "MISSING-LOCAL",
+             "deliverable": os.path.join("cph4", "fleet", "queue-receipts",
+                                         "node-radar-bm-a-20261103.json")},
+            {"id": "F-MATCH", "node": "bm-a", "reason": "MISSING-LOCAL",
+             "deliverable": os.path.join("cph4", "fleet", "queue-receipts",
+                                         "node-radar-bm-a-20261102.json")}]}
         tri = triage_missing(
             tpay, td,
             hist_fn=lambda r, p: "abc1234 add" if p.endswith("old.json") else "")
         kinds = {i["id"]: i["class"] for i in tri}
+        by_id = {i["id"]: i for i in tri}
         want("S25 从未入过库且无近名件 → NEVER-EXISTED",
              kinds.get("A-NEVER") == "NEVER-EXISTED")
         want("S26 未入过库但同目录有近名件 → NAME-DRIFT 并列出近名件",
@@ -732,7 +818,23 @@ def selftest():
         want("S27 曾有提交 → IN-HISTORY-REMOVED（可找回）",
              kinds.get("C-HIST") == "IN-HISTORY-REMOVED")
         want("S28 只对 MISSING-LOCAL 定性，其余跳过项不入表",
-             len(tri) == 3 and "D-REMOTE" not in kinds)
+             len(tri) == 5 and "D-REMOTE" not in kinds)
+        e_cands = {c["name"]: c["confirm"]
+                  for c in by_id["E-CONFLICT"]["candidates"]}
+        want("S29 近名件内部 node 是他机 → NODE-CONFLICT 且不列可改路径",
+             e_cands.get("node-radar-bm-b-20261103.json") == "NODE-CONFLICT"
+             and by_id["E-CONFLICT"]["actionable"] == [])
+        b_cands = {c["name"]: c["confirm"]
+                  for c in by_id["B-DRIFT"]["candidates"]}
+        want("S30 仅同词干、日期不同 → DATE-DIFF，不算可改路径",
+             b_cands.get("model-radar-bm-a-20261104.json") == "DATE-DIFF"
+             and by_id["B-DRIFT"]["actionable"] == [])
+        f_cands = {c["name"]: c["confirm"]
+                  for c in by_id["F-MATCH"]["candidates"]}
+        want("S31 node+内部 id+日期三项相符 → CONFIRMED 且列入可改路径",
+             f_cands.get("node-radar-bm-a-20261102-v2.json") == "CONFIRMED"
+             and by_id["F-MATCH"]["actionable"]
+             == ["node-radar-bm-a-20261102-v2.json"])
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 
