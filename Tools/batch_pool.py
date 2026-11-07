@@ -545,7 +545,7 @@ def cmd_review(path, as_json=False, write=True):
     review["registry"] = os.path.relpath(path, ROOT)
     review["claims_source"] = os.path.relpath(CLAIM_LOG, ROOT)
     print("REVIEW cards=%d lanes=%d named=%d placeholder=%d dispatchable=%d "
-          "consumer_named=%d/%d mismatch=%d badtype=%d "
+          "consumer_named=%d/%d valid=%d mismatch=%d badtype=%d "
           "in_flight=%d dry_run_end=%s overdue=%s claims=%d refused=%d "
           "locked=%d j5_blocks_activation=%s"
           % (review["cards"], len(review["lanes"]),
@@ -553,6 +553,12 @@ def cmd_review(path, as_json=False, write=True):
              len(review["consumer_plan_placeholder"]),
              review["dispatchable"],
              len(review["consumer_named_declared_true"]),
+             # M165: the denominator is the card count, not "cards that happen
+             # to declare a bool" - the old N/M silently shrank the M the
+             # moment one card wrote the flag as a string, so 4/6 became 3/5
+             # and the same pool looked differently sized. valid/badtype sit
+             # beside it instead of moving the denominator.
+             review["cards"],
              len(review["consumer_named_declared_true"])
              + len(review["consumer_named_declared_false"]),
              len(review["consumer_named_mismatch"]),

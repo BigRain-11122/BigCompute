@@ -105,6 +105,10 @@ HEARTBEAT_WRITER_TOKENS = (
     "pool_fresh",
     "pool_self_stale",
     "pool_lane_mm",
+    # M163: our own stocked cards' dispatchable count, a different pool from
+    # pool_* (which reads the fleet backlog). Emitted as n/a when the registry
+    # cannot be read, never as 0.
+    "stock_dispatchable",
     "breach_eff",
     "lane8090",
     "c1c4_line",
@@ -1028,6 +1032,44 @@ def supply_gate_value(face, pool):
     return face["effective_ignitable"] if face["readable"] else pool
 
 
+STOCK_POOL_REGISTRY = os.path.join(
+    PROJECT, "docs", "ops", "batch-pool-stock-v1.jsonl")
+
+
+def probe_stock_dispatchable(path=None):
+    """M163: how many of *our* stocked cards could be dispatched right now.
+
+    This is a second, separate pool from the `pool_*` face: `pool_*` reads the
+    fleet backlog ("what could be handed to me"), while this reads our own
+    registry through batch_pool's own judgement (named consumer + not locked +
+    not in flight). The number was real from M161 onward but only visible to a
+    human running the CLI; writing it into the heartbeat must not be done by
+    reusing pool_* (that would silently redefine the supply face).
+
+    Returns (count|None, note). Every unreadable state is None + a note - a
+    registry that is missing or broken must not read as "0 dispatchable cards".
+    """
+    path = path or STOCK_POOL_REGISTRY
+    if not os.path.exists(path):
+        return None, "registry-absent"
+    try:
+        tools = os.path.join(PROJECT, "Tools")
+        if tools not in sys.path:
+            sys.path.insert(0, tools)
+        import batch_pool
+        rows = batch_pool.load_rows(path)
+        claims, refused = batch_pool.load_claims(with_refusals=True)
+        review = batch_pool.build_review(rows, claims=claims, refusals=refused)
+        return int(review["dispatchable"]), ""
+    except Exception as e:                      # noqa: BLE001 - probe must not raise
+        return None, "error:%s" % type(e).__name__
+
+
+def stock_dispatchable_label(value):
+    """M163: heartbeat token. Missing = n/a, and 0 stays a legal reading."""
+    return "stock_dispatchable=%s" % ("n/a" if value is None else int(value))
+
+
 POOL_RAW_TOKEN = "pool_rows_candidate"
 POOL_LEGACY_TOKEN = "pool_claimable"
 
@@ -1053,6 +1095,7 @@ def check():
     cpu_idle = classify_cpu_lane_idle(ram_pct)
     pool = count_pool_claimable()
     face = ignitable_face()
+    stock_disp, stock_disp_note = probe_stock_dispatchable()
     # D-20261024-14 ① + T128：饥饿判定/心跳一律走 effective 口径（本机陈旧自占
     # 与跨司机错占不算新供给，否则「无单可领」面假绿）；读数不可得时回退池行数
     # （fail-open，不因探针坏而误报供给缺口）。ready_ignitable 仍作诊断列输出。
@@ -1120,6 +1163,10 @@ def check():
                        "pool_effective": pool_ign,
                        "pool_ignitable": (face["ready_ignitable"]
                                           if face["readable"] else pool),
+                       # M163：本司备货卡可派面（batch_pool 自己的判据），
+                       # 与 pool_*（机队 backlog）不同池，禁互相替换。
+                       "stock_dispatchable": stock_disp,
+                       "stock_dispatchable_note": stock_disp_note,
                        "supply_floor": face,
                        "serve_alive": serve_alive, "serve_detail": serve_detail,
                        "lane8090": lane8090,
@@ -1139,7 +1186,8 @@ def check():
             " pool_ignitable=%d"
             " pool_foreign_silent=%d pool_owner_unknown=%d"
             " pool_fresh=%d pool_self_stale=%d pool_lane_mm=%d"
-            " breach_eff=%s lane8090=%s c1c4_line=%s hq_line=%s"
+            " breach_eff=%s stock_dispatchable=%s"
+            " lane8090=%s c1c4_line=%s hq_line=%s"
             % (time.strftime("%Y-%m-%d %H:%M:%S"), verdict, ram_pct,
                vram_mb, py_cpu_pair_label(py_cpu, py_cpu_ps),
                str(cpu_idle).lower(), load_label,
@@ -1152,6 +1200,7 @@ def check():
                face["ready_owner_unknown"], face["ready_fresh"],
                face["ready_self_stale"], face["lane_mismatch"],
                str(face["breach_effective"]).lower(),
+               "n/a" if stock_disp is None else int(stock_disp),
                lane8090, c1c4_line["token"], hq_line["token"]))
     code, msg = append_heartbeat(line)
     print(line)
@@ -1631,6 +1680,18 @@ def selftest():
     ok &= v_fake_deg[0] is False and v_fake_deg[1].startswith("DEGRADED[")
     ok &= v_boom[0] is False and v_boom[1].startswith("RESAMPLE-FAIL")
     ok &= SERVE_RESAMPLE_SETTLE_S >= 45.0   # 预注册：窗口不得短于 45s
+    # J20 备货卡可派面（M163）：走 batch_pool 自己的判据，不与 pool_* 混面；
+    # 登记簿缺失一律 n/a（禁填 0 冒充「无可派卡」），且池标签一字不改。
+    d_live, d_live_err = probe_stock_dispatchable(STOCK_POOL_REGISTRY)
+    d_abs, d_abs_err = probe_stock_dispatchable(
+        os.path.join(PROJECT, "docs", "ops", "no-such-registry-20261108.jsonl"))
+    print("J20 stock dispatchable: live=%r/%r absent=%r/%r"
+          % (d_live, d_live_err, d_abs, d_abs_err))
+    ok &= isinstance(d_live, int) and d_live >= 0 and d_live_err == ""
+    ok &= d_abs is None and d_abs_err == "registry-absent"
+    ok &= stock_dispatchable_label(0) == "stock_dispatchable=0"
+    ok &= stock_dispatchable_label(None) == "stock_dispatchable=n/a"
+    ok &= supply_label(1, 0) == "%s=1 pool_effective=0" % POOL_RAW_TOKEN
     print("SELFTEST %s" % ("PASS" if ok else "FAIL"))
     return 0 if ok else 1
 

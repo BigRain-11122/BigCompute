@@ -742,3 +742,5 @@ P2：同轮自捉假动作——首版 overlay 只搜 `--root`（集团根）的
 - P2：B-CITY3D-01 两次快照均为 gate CLOSED（vram_free=1407MiB），属算力不可用而非卡片缺陷，如实单列为 refused=2 不计入锁。
 本轮日清（11-08 01:4x 令牌轮）：M164 收口——consumer_named 类型守卫实装（J7 warning 级 + CONSUMER-NAMED-BAD-TYPE finding），selftest 59 checks，六卡 badtype=0，负控点名 B-CITY3D-01:string。
 P2=text_integrity 本仓零缺陷，但列数族 new_ext=13 全在集团只读台账（decisions.md 并发改写中）——本司只报警不改，供 @HQ 参考。
+- 03:2x 收口（M163 + M165 同窗毕）：心跳行新增 `stock_dispatchable=4`，与 `pool_effective=0` 并排出现——本司 4 张备货卡可派、机队可领 0，两池不同一这件事此前只有跑 `batch_pool review` 的人看得见；登记簿读不到时一律 `n/a`，不填 0 冒充「无可派卡」。`review` 分母改为恒定 `cards`，字符串错标不再让分母悄悄从 6 变 5（实跑 `consumer_named=4/6 valid=6 badtype=0`）。
+- P2（外部面）：集团 `decisions.md` 第 49 批新行 `table_new=11`，列数与表头不符（本司只报警不改他司台账），供 @HQ 修；本司 `new_local=0`。

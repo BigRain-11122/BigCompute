@@ -690,6 +690,11 @@ HEARTBEAT_GUARDED_TOKENS = (
     (POOL_CANDIDATE_TOKEN, "count"),
     ("pool_effective", "count"),
     ("pool_ignitable", "count"),
+    # M163: our own stocked cards' dispatchable count. A second pool, not a
+    # refinement of pool_*; "n/a" is a legal writer form (registry missing or
+    # unreadable) and 0 is a legal reading, so neither may stand in for the
+    # other - same rule as py_cpu_psutil.
+    ("stock_dispatchable", "count_or_na"),
     # T170 batch 1: enum/boolean faces. These carry lane and alert state,
     # so a silent value drift (e.g. task_face=paused instead of
     # pause-exempt) reads as "something" to a human but matches no branch
@@ -790,8 +795,8 @@ def heartbeat_token_guard(line):
         raw = fields.get(name)
         if raw is None:
             return False, "%s missing (writer renamed or dropped it)" % name
-        if kind in ("pct", "count", "pct_or_na"):
-            if kind == "pct_or_na" and raw == "n/a":
+        if kind in ("pct", "count", "pct_or_na", "count_or_na"):
+            if kind.endswith("_or_na") and raw == "n/a":
                 seen.append("%s=%s" % (name, raw))
                 continue
             try:
@@ -2051,12 +2056,12 @@ def selftest_heartbeat_tokens():
             "agenda_starved=false serve_alive=true task_face=ok "
             "model_drift=DRIFT(m=2,a=0) breach_eff=true "
             "cpu_load_line=PASS(psutil=20.6<70.0,ref=53.0) "
-            "pool_ignitable=3 lane8090=DARK[DOWN] "
+            "pool_ignitable=3 stock_dispatchable=4 lane8090=DARK[DOWN] "
             "c1c4_line=FRESH(rounds_ago=0,verdict=C1C4-GREEN) "
             "hq_line=FRESH(age_h=0.4,date=2026-10-29)")
 
     r1 = heartbeat_token_guard(good)
-    check("S1 healthy row -> PASS", r1[0] and "guarded=20" in r1[1])
+    check("S1 healthy row -> PASS", r1[0] and "guarded=21" in r1[1])
 
     r2 = heartbeat_token_guard(good.replace("ram_free_pct=", "ram_pct="))
     check("S2 renamed token -> FAIL naming it",
@@ -2209,6 +2214,29 @@ def selftest_heartbeat_tokens():
         writer[0], heartbeat_fields(good + " stray_token=1"))
     check("S33 live token nobody declared -> FAIL",
           (not c32[0]) and "stray_token" in c32[1])
+
+    # M163: the stocked-card dispatchable count is its own pool face. "n/a" is
+    # what the writer emits when the registry cannot be read, so it must pass;
+    # bare "na" and a negative count are drift and must not.
+    r34 = heartbeat_token_guard(
+        good.replace("stock_dispatchable=4", "stock_dispatchable=n/a"))
+    check("S34 stock_dispatchable=n/a accepted (unreadable registry is not 0)",
+          r34[0] and "stock_dispatchable=n/a" in r34[1])
+
+    r35 = heartbeat_token_guard(
+        good.replace("stock_dispatchable=4", "stock_dispatchable=na"))
+    check("S35 stock_dispatchable=na (no slash) -> FAIL not numeric",
+          (not r35[0]) and "stock_dispatchable not numeric" in r35[1])
+
+    r36 = heartbeat_token_guard(
+        good.replace("stock_dispatchable=4", "stock_dispatchable=-1"))
+    check("S36 stock_dispatchable negative -> FAIL",
+          (not r36[0]) and "stock_dispatchable negative" in r36[1])
+
+    r37 = heartbeat_token_guard(
+        good.replace("stock_dispatchable=4 ", ""))
+    check("S37 stock_dispatchable dropped -> FAIL naming it",
+          (not r37[0]) and "stock_dispatchable missing" in r37[1])
 
     print("selftest heartbeat-token verdict: %d/%d PASS"
           % (len([r for r in results if r]), len(results)))

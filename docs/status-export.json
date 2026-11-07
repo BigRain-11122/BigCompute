@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-11-08 01:48",
- "current_activity": "2026-11-08 01:48 令牌轮：M164 备货卡 consumer_named 类型守卫——把「写成字符串的标注」从「没说过」里拆出来（J7 warning 级点名不判红 + review 增 CONSUMER-NAMED-BAD-TYPE），实读六卡 badtype=0，负控点名 B-CITY3D-01:string [via BigCompute-OSLoop]",
- "latest_artifact": "Tools/batch_pool.py（selftest 59 checks PASS，01:43）+ state/m164-consumer-named-type-20261108.txt/.json（五条实跑含负控）+ state/batch-pool-review-20261108-014359.json",
- "next_milestone": "48h 内：M165 review 分母改为 cards 恒定并另给 valid/badtype 两列（当前 bad-type 会让分母悄悄从 6 变 5）；阻断面=M25 烘焙实弹（vram_free 551MiB 不足，净窗不可得）"
+ "updated_at": "2026-11-08 03:25",
+ "current_activity": "2026-11-08 03:1x-03:2x 令牌轮：M163 把「本司备货卡可派数」接进心跳——心跳行现在并排 stock_dispatchable=4 ／ pool_effective=0（两池不同一：4 张卡可派但未登记进机队池），M165 同时修掉 review 分母随类型漂移（consumer_named=4/6 valid=6）[via BigCompute-OSLoop]",
+ "latest_artifact": "Tools/idle_selfcheck.py + Tools/qa_smoke.py（selftest 全绿，心跳实跑 stock_dispatchable=4）+ Tools/batch_pool.py（review 分母恒定 cards，selftest 59 checks）+ qa/smoke-20261108-0319.log（27/28，唯一红=no.22 既有回执产物面）+ state/c1c4-20261108-032052.json（C1C4-GREEN 4/4）",
+ "next_milestone": "48h 内：M166 把两池数（可派 4 ／ 机队可领 0）固定进本实况面并挂 T-20261105-96 对账结论，让倒挂不只在心跳里可见；阻断面=M25 烘焙实弹（vram_free ~4.2GB 不足批次需，净窗未开）"
 }
