@@ -148,3 +148,5 @@
 | M153 | **打赏域两域并行判据落地检查单**：外部直播间打赏永禁兑换虚拟资产·不解锁功能性权益（波⑥①）逐条可检化 | BLUEPRINT §一 波⑥① | **open**（11-07 12:2x 补stock） |
 | M154 | **三线数据口径统一表（GMV/净额/结算额）**：直播/小店/私域三源同口径定义与不可混算判据 | BLUEPRINT §一 收款出口统辖(D-09/D-10) | **open**（11-07 12:2x 补stock） |
 | M155 | **回执签名义务交付单（T218 实弹出数转派 @HQ）**：148 件不可解析回执按文件名前缀分流（mv 47 / lora 18 / biz 13 / asset 10 / char 8 / face 8 / drama 7 …），把「回执必须自带 node+id」写成生产者一页交付单，随 lane agent 模板下发；本司只读不代写对方仓 | T218 普查件 state/receipt-sig-census-20261107.json + docs/ops 交付单 | **open**（11-07 12:4x stock▸） |
+| M156 | **「无引号口播行」占比普查（R-67 漏检面量化·只读）**：过检只扫「」内文本，但没人知道真实稿件里有多少口播文本压根不在引号里——扫 livestream-plan §4.1/4.2/4.4/4.6 与 livestream-cart-scripts 全文，按行分类（引号口播/纯文本口播候选/纪律与表格），出占比与未覆盖行清单，量化漏检面是 0 还是真存在 | state/queue/main.md + Tools/banned_words_check.py（只读） | **open**（11-07 12:5x 派生·R-67 量化步） |
+| M157 | **三词源禁用词表交叉一致性（census 现只比『文档↔代码』，未比『文档↔文档』）**：§四 注明三源同源（merchandise-listing §三／livestream-plan §4.4／§五 D），任一侧新增词而另侧未同步时，单源 census 仍报 GREEN——出三源并列表与差集点名 | docs/ops/livestream-cart-scripts-v1.md §四 + state/m152-banned-census-20261107.txt | **open**（11-07 12:5x 派生） |
