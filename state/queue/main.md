@@ -147,3 +147,4 @@
 | M152 | **直播话术禁用词与 v1.1 脚本同步复核**：banned_words_check 三词源对十类讲解词全量过检并留 log | Tools/banned_words_check.py + docs/ops/livestream-cart-scripts-v1.md | **open**（11-07 12:2x 补stock） |
 | M153 | **打赏域两域并行判据落地检查单**：外部直播间打赏永禁兑换虚拟资产·不解锁功能性权益（波⑥①）逐条可检化 | BLUEPRINT §一 波⑥① | **open**（11-07 12:2x 补stock） |
 | M154 | **三线数据口径统一表（GMV/净额/结算额）**：直播/小店/私域三源同口径定义与不可混算判据 | BLUEPRINT §一 收款出口统辖(D-09/D-10) | **open**（11-07 12:2x 补stock） |
+| M155 | **回执签名义务交付单（T218 实弹出数转派 @HQ）**：148 件不可解析回执按文件名前缀分流（mv 47 / lora 18 / biz 13 / asset 10 / char 8 / face 8 / drama 7 …），把「回执必须自带 node+id」写成生产者一页交付单，随 lane agent 模板下发；本司只读不代写对方仓 | T218 普查件 state/receipt-sig-census-20261107.json + docs/ops 交付单 | **open**（11-07 12:4x stock▸） |
