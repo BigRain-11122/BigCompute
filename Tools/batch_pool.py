@@ -71,6 +71,12 @@ CLAIM_LOG = os.path.join(ROOT, "state", "dispatch-gate.jsonl")
 # artefact instead of a finding.
 J5_LOCK_STREAK = 2
 
+# A consumer_plan counts as "named" only when it names who takes the work.
+# Placeholder forms keep J4's non-empty check satisfied while naming nobody, so
+# they must never inflate the dispatchable reading (M161, BC-P-219).
+CONSUMER_PLACEHOLDER_MARKERS = ("待对接", "随协作市场表建面", "待定",
+                                "TBD", "tbd", "无指名")
+
 
 def load_rows(path):
     rows = []
@@ -341,6 +347,18 @@ def j5_lock_state(rows, claims=None, today=None, refusals=None):
     }
 
 
+def is_named_consumer(plan):
+    """True only when consumer_plan names a consumer, not merely non-empty.
+
+    "消费对接随协作市场表建面" passes J4 but nobody is on the hook for the
+    work, so it must not count toward the dispatchable reading.
+    """
+    text = str(plan or "").strip()
+    if not text:
+        return False
+    return not any(m in text for m in CONSUMER_PLACEHOLDER_MARKERS)
+
+
 def build_review(rows, today=None, claims=None, refusals=None):
     """Assemble the M66 monthly review snapshot from stocked cards.
 
@@ -364,11 +382,25 @@ def build_review(rows, today=None, claims=None, refusals=None):
         statuses[st] = statuses.get(st, 0) + 1
         md = str(row.get("dispatch_mode", "?") or "?")
         modes[md] = modes.get(md, 0) + 1
-        if str(row.get("consumer_plan", "") or "").strip():
+        if is_named_consumer(row.get("consumer_plan")):
             named += 1
     in_flight = sum(statuses.get(s, 0) for s in IN_FLIGHT_STATUSES)
     lock = j5_lock_state(rows, claims, today, refusals)
     overdue = lock["dry_run_overdue"]
+    # M161: "right now, how many cards could really be dispatched" = someone is
+    # named to take it AND it is neither locked nor already in flight.
+    dispatchable, placeholder = [], []
+    for row in rows:
+        bid = str(row.get("batch_id") or "")
+        if not bid or not str(row.get("consumer_plan", "") or "").strip():
+            continue
+        if not is_named_consumer(row.get("consumer_plan")):
+            placeholder.append(bid)
+            continue
+        st = str(row.get("status", "?")).upper() or "?"
+        if st in IN_FLIGHT_STATUSES or lock["per_card"].get(bid, {}).get("locked"):
+            continue
+        dispatchable.append(bid)
     findings = []
     if overdue and not lock["locked_cards"]:
         findings.append(
@@ -385,6 +417,15 @@ def build_review(rows, today=None, claims=None, refusals=None):
     if named < len(rows):
         findings.append(
             "consumer_plan named on %d/%d cards (备货律指名)" % (named, len(rows)))
+    if placeholder:
+        findings.append(
+            "consumer_plan names nobody on %d card(s) [%s]: placeholder text "
+            "keeps J4 non-empty but there is no consumer to take the work"
+            % (len(placeholder), ", ".join(placeholder)))
+    if dispatchable:
+        findings.append(
+            "dispatchable now = %d card(s) [%s] (named + not locked + not "
+            "in flight)" % (len(dispatchable), ", ".join(dispatchable)))
     if problems:
         findings.append("validate reported %d problem(s)" % len(problems))
     return {
@@ -393,6 +434,9 @@ def build_review(rows, today=None, claims=None, refusals=None):
         "statuses": statuses,
         "dispatch_modes": modes,
         "consumer_plan_named": named,
+        "consumer_plan_placeholder": placeholder,
+        "dispatchable": len(dispatchable),
+        "dispatchable_cards": dispatchable,
         "in_flight": in_flight,
         "dry_run_end": DRY_RUN_END,
         "dry_run_age_days": lock["dry_run_age_days"],
@@ -419,10 +463,13 @@ def cmd_review(path, as_json=False, write=True):
     review = build_review(rows, claims=claims, refusals=refused)
     review["registry"] = os.path.relpath(path, ROOT)
     review["claims_source"] = os.path.relpath(CLAIM_LOG, ROOT)
-    print("REVIEW cards=%d lanes=%d named=%d in_flight=%d dry_run_end=%s "
-          "overdue=%s claims=%d refused=%d locked=%d j5_blocks_activation=%s"
+    print("REVIEW cards=%d lanes=%d named=%d placeholder=%d dispatchable=%d "
+          "in_flight=%d dry_run_end=%s overdue=%s claims=%d refused=%d "
+          "locked=%d j5_blocks_activation=%s"
           % (review["cards"], len(review["lanes"]),
-             review["consumer_plan_named"], review["in_flight"],
+             review["consumer_plan_named"],
+             len(review["consumer_plan_placeholder"]),
+             review["dispatchable"], review["in_flight"],
              review["dry_run_end"], review["dry_run_overdue"],
              review["j5_claims_total"], review["j5_refusals_total"],
              len(review["j5_locked_cards"]),
@@ -610,8 +657,35 @@ def cmd_selftest():
     c1.pop("generated_at")
     c2.pop("generated_at")
     assert c1 == c2, "claim-based lock determinism"
+    # M161: "dispatchable" must mean somebody is actually named to take it -
+    # passing J4's non-empty check is not the same thing.
+    assert is_named_consumer("cp") and not is_named_consumer("  "), \
+        "named basic (text vs blank)"
+    assert not is_named_consumer("消费对接随协作市场表建面"), \
+        "placeholder form is not a named consumer"
+    assert not is_named_consumer("待对接·协作市场表"), "pending form no"
+    ph = build_review(
+        [_fixture(), _fixture(base={"batch_id": "B-T-02",
+                                    "consumer_plan": "随协作市场表建面"})],
+        today=datetime.date(2026, 10, 20))
+    assert ph["consumer_plan_named"] == 1, "placeholder not counted as named"
+    assert ph["consumer_plan_placeholder"] == ["B-T-02"], "placeholder listed"
+    assert ph["dispatchable"] == 1 and ph["dispatchable_cards"] == ["B-T-01"], \
+        "dispatchable excludes placeholder"
+    assert any("names nobody" in f for f in ph["findings"]), \
+        "placeholder finding text"
+    locked_disp = build_review(pair, today=datetime.date(2026, 10, 20),
+                               claims={"B-T-01": [{"ts": "t1"}, {"ts": "t2"}]})
+    assert locked_disp["dispatchable"] == 1 and \
+        locked_disp["dispatchable_cards"] == ["B-T-02"], \
+        "a locked card is not dispatchable"
+    busy = build_review(
+        [_fixture(), _fixture(base={"batch_id": "B-T-02", "status": "RUNNING"})],
+        today=datetime.date(2026, 10, 20))
+    assert busy["dispatchable"] == 1 and busy["dispatchable_cards"] == ["B-T-01"], \
+        "an in-flight card is not dispatchable"
     print("selftest PASS (J1-J6 + gate lane map + review + J5 claim rule "
-          "+ claim log + determinism, %d checks)" % 34)
+          "+ claim log + determinism + dispatchable, %d checks)" % 43)
     return 0
 
 

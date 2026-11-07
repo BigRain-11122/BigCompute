@@ -1,7 +1,7 @@
 {
-  "company": "BigCompute",
-  "updated_at": "2026-11-07 22:53",
-  "current_activity": "2026-11-07 22:53 夜班轮：M156 口播引号覆盖率普查 + M155 回执签名义务交付单双收口（coverage 子命令 selftest 17/17，实跑 2146 字/引号外 15.6%/裸文本口播 0 行；148 件双缺回执分 22 组，91.2% 文件名认不出生产机器）[via BigCompute-OSLoop]",
-  "latest_artifact": "docs/ops/quote-coverage-census-20261107.md + state/m156-quote-coverage-20261107.txt（22:52 落盘）；同轮 docs/ops/sig-obligation-notice-20261107.md + state/m155-sig-obligations-20261107.json（22:53）",
-  "next_milestone": "48h 内：M159 纪律行豁免形态机械化（4 处禁令自述假阳归零，真违禁夹具不得失效）+ M150 成本账本周对账日报模板；净窗开则 M25 烘焙实弹（GPU 近 30min 实测 82.3% busy=无净窗）"
+ "company": "BigCompute",
+ "updated_at": "2026-11-08 00:22",
+ "current_activity": "2026-11-08 00:22 令牌轮：M161 可派活面读数落地——batch_pool review 增 dispatchable 列（consumer_plan 实名 且 未锁 且 不在途），6 卡实读 named=4 placeholder=2 dispatchable=4 locked=1，纠正上轮「可点火 5」读数 [via BigCompute-OSLoop]",
+ "latest_artifact": "state/batch-pool-review-20261108-001722.json（00:17 实跑）+ Tools/batch_pool.py（selftest 43 checks PASS，00:2x）",
+ "next_milestone": "48h 内：M162 备货卡消费方实名化（占位卡标 consumer_named=false + J4 拆非空/实名两档提案 BC-P-220）+ M163 dispatchable 进心跳；阻断面=M25 烘焙实弹（GPU vram_free 232MB，净窗不可得）"
 }
