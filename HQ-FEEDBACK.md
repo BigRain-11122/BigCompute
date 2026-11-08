@@ -795,3 +795,8 @@ P2=text_integrity 本仓零缺陷，但列数族 new_ext=13 全在集团只读�
 - 实物：派工闸的每条判决现在自带来源——dispatch_precheck 增 `reading=live/file`，文件读数且闸判过期时显式打 `NOT-MEASURED`，CLI 增 `--live-on-stale`；GPU 采集器的派工面改现测。自检 14→19 检全 PASS。
 - P1（当轮修）：轮内发现 lane_gate 现测探针抛异常会崩掉整条闸（调用方连 CLOSED 都看不到），已改 fail-closed 保 STALE 并点名 probe-unavailable。
 - P2：冒烟 28/29（唯一红=no.22 M96 既有面，随 7 日窗滚出）；本司索引表列 new_local=0，另 25 行表列漂移在集团台账（只报不改）。M172 判据帧实渲仍未跑：该卡 lane=gpu，实测 vram_free=700<6144 车道关，原门控「任一车道 OPEN」对卡不成立已勘正。
+
+## 日清 2026-11-09（06:1x 令牌轮）
+- 实物：冒烟 no.26 的丢行读数可审计了——每条丢行带文件名+id，计数与已点名数并列（`named=k/n`，不齐即 `UNEXPLAINED-PERMANENT`），并钉住 `as_of` 提交；census 自检 24/24、夹具 10/10 全绿。
+- 更正（06:00 决策轮 D-20261109-02）：00:20 轮把「三个 jsonl 队列 21 条永久丢行」写成「集团台账丢行」是口径错误，且 01:07 复跑 permanent=0（那批卡被重新追加）——瞬时判决不得当持久事实引用；本司只报不改的边界不变。
+- P2：smoke 28/29（唯一红=no.22 M96 既有面）；集团侧表列漂移 table_mismatch=30/new=26 属外部面，只报不改。

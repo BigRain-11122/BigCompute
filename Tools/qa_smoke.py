@@ -2857,20 +2857,39 @@ def row_loss_judge(payload):
         return False, ("verdict=%s window=%d scanned=0 n/a=%d -- no target "
                        "had comparable commits, absence is not health"
                        % (verdict, window, na_total))
+    # 11-09: a loss count must be auditable by file.  The 00:20 round reported
+    # "permanent=21" while naming four ids and no target at all -- an unexplainable
+    # number is the same defect class as an unexplainable gap.  Name the file with
+    # every id, print how many were named out of the claimed total, and pin the
+    # reading to the commit it was judged at (a "permanent" loss seen at sha X is
+    # local to X: those ids came back by 01:07, so the label must never be reused
+    # as a durable fact without re-running).
     ids = []
+    named_permanent = 0
+    as_of = []
     for t in (payload.get("targets") or []):
-        for item in (t.get("lost_alive_ids") or [])[:4]:
-            ids.append("%s id=%s %s->%s" % (
+        rows = t.get("lost_alive_ids") or []
+        permanent_rows = [i for i in rows if not i.get("readded")]
+        named_permanent += len(permanent_rows)
+        if permanent_rows or rows:
+            as_of.append("%s@%s" % (t.get("target"), t.get("newest_commit") or "?"))
+        for item in rows[:6]:
+            ids.append("%s %s id=%s %s->%s" % (
                 "TRANSIENT" if item.get("readded") else "PERMANENT",
-                item.get("id"), item.get("older_commit"),
+                t.get("target"), item.get("id"), item.get("older_commit"),
                 item.get("newer_commit")))
     tail = (" " + " ".join(ids)) if ids else ""
+    pin = (" as_of=" + ",".join(as_of)) if as_of else ""
     if permanent:
-        return False, ("verdict=%s window=%d permanent=%d transient=%d%s"
-                       % (verdict, window, permanent, transient, tail))
+        detail = ("verdict=%s window=%d permanent=%d transient=%d named=%d/%d%s%s"
+                  % (verdict, window, permanent, transient,
+                     named_permanent, permanent, pin, tail))
+        if named_permanent < permanent:
+            detail += " UNEXPLAINED-PERMANENT=%d" % (permanent - named_permanent)
+        return False, detail
     if transient:
-        return True, ("verdict=%s window=%d permanent=0 transient=%d n/a=%d%s"
-                      % (verdict, window, transient, na_total, tail))
+        return True, ("verdict=%s window=%d permanent=0 transient=%d n/a=%d%s%s"
+                      % (verdict, window, transient, na_total, pin, tail))
     return True, ("verdict=%s window=%d permanent=0 transient=0 scanned=%d "
                   "n/a=%d" % (verdict, window, scanned, na_total))
 
@@ -2970,6 +2989,33 @@ def selftest_row_loss():
 
     ok, det = row_loss_judge(None)
     check("S8 no payload -> UNVERIFIED FAIL", (not ok) and "UNVERIFIED" in det)
+
+    # 11-09: a count must be auditable by file, and a momentary verdict must be
+    # pinned to the commit it was judged at.
+    two = payload("ROW-LOSS-FOUND",
+                  [tgt("q.jsonl", "ROW-LOSS-FOUND", lost=[
+                      {"id": "MV-3", "readded": False,
+                       "older_commit": "e1e1e1e", "newer_commit": "f2f2f2f"}]),
+                   tgt("lane.jsonl", "ROW-LOSS-FOUND", lost=[
+                       {"id": "MV-4", "readded": False,
+                        "older_commit": "e1e1e1e", "newer_commit": "f2f2f2f"}])],
+                  2, 0, permanent=2)
+    for t in two["targets"]:
+        t["newest_commit"] = "f2f2f2f"
+    ok, det = row_loss_judge(two)
+    check("S9 FOUND -> FAIL names file+id and pins as_of",
+          (not ok) and "q.jsonl" in det and "lane.jsonl" in det
+          and "named=2/2" in det and "as_of=" in det and "f2f2f2f" in det
+          and "UNEXPLAINED" not in det)
+
+    short = payload("ROW-LOSS-FOUND",
+                    [tgt("q.jsonl", "ROW-LOSS-FOUND", lost=[
+                        {"id": "MV-5", "readded": False,
+                         "older_commit": "c1c1c1c", "newer_commit": "d2d2d2d"}])],
+                    1, 0, permanent=21)
+    ok, det = row_loss_judge(short)
+    check("S10 count without named ids -> UNEXPLAINED, never a bare number",
+          (not ok) and "named=1/21" in det and "UNEXPLAINED-PERMANENT=20" in det)
 
     print("selftest row-loss verdict: %d/%d PASS"
           % (len([r for r in results if r]), len(results)))

@@ -121,6 +121,7 @@ def census_target(repo, path, window):
         "target": path,
         "tracked": False,
         "commits_scanned": 0,
+        "newest_commit": "",
         "not_scanned_older": 0,
         "unreadable": [],
         "transitions": 0,
@@ -146,6 +147,7 @@ def census_target(repo, path, window):
         result["why"] = "no-commits-in-window"
         return result
     result["commits_scanned"] = len(shas)
+    result["newest_commit"] = shas[0][:8]
     rc, out = _git(repo, "rev-list", "--count", "HEAD", "--", path)
     total = int(out.decode("utf-8", "replace").strip() or 0) if rc == 0 else 0
     result["not_scanned_older"] = max(0, total - len(shas))
@@ -239,7 +241,13 @@ def census(repo, targets, window):
         "na": na,
         "na_total": len(na),
         "not_scanned": "commits older than window=%d are outside this judgement" % window,
-        "scope_note": "row loss = id present in older commit, absent from newer commit; terminal-state removal is counted separately; a row that returns in the newest scanned commit is LOST-TRANSIENT (hole visible to concurrent readers), otherwise LOST-PERMANENT",
+        "as_of": ",".join(sorted({r["newest_commit"] for r in per if r["newest_commit"]})),
+        "scope_note": ("row loss = id present in older commit, absent from newer commit; "
+                       "terminal-state removal is counted separately; a row that returns "
+                       "in the newest scanned commit is LOST-TRANSIENT (hole visible to "
+                       "concurrent readers), otherwise LOST-PERMANENT. A verdict is pinned "
+                       "to the as_of commits: 'permanent' is local to that commit and must "
+                       "be re-run before being quoted as a durable fact"),
         "lost_alive_total": agg_lost,
         "lost_transient_total": agg_transient,
         "lost_permanent_total": agg_permanent,
@@ -250,14 +258,20 @@ def census(repo, targets, window):
 def render(report, limit=12):
     lines = []
     lines.append("VERDICT=%s window=%d %s" % (report["verdict"], report["window"], report["domain"]))
+    lines.append("as_of=%s" % (report.get("as_of") or "-"))
     lines.append("n/a=%d %s" % (report.get("na_total", 0),
                                 ",".join(report.get("na") or []) or "-"))
     lines.append("not_scanned=%s" % report["not_scanned"])
     for r in report["targets"]:
-        lines.append("[%s] %s commits=%d transitions=%d removed_terminal=%d lost_alive=%d (permanent=%d transient=%d) bad_lines=%d %s" % (
+        lines.append("[%s] %s commits=%d transitions=%d removed_terminal=%d lost_alive=%d (permanent=%d transient=%d) bad_lines=%d %s%s" % (
             r["verdict"], r["target"], r["commits_scanned"], r["transitions"],
             r["removed_terminal"], r["lost_alive"], r["lost_permanent"], r["lost_transient"],
-            r["bad_lines"], ("why=" + r["why"]) if r["why"] else ""))
+            r["bad_lines"], ("why=" + r["why"]) if r["why"] else "",
+            (" as_of=" + r["newest_commit"]) if r.get("newest_commit") else ""))
+        named = len([i for i in r["lost_alive_ids"] if not i.get("readded")])
+        if r["lost_permanent"] and named < r["lost_permanent"]:
+            lines.append("  UNEXPLAINED-PERMANENT=%d named=%d/%d"
+                         % (r["lost_permanent"] - named, named, r["lost_permanent"]))
         for item in r["lost_alive_ids"][:limit]:
             lines.append("  %s id=%s state=%s %s->%s" % (
                 "LOST-TRANSIENT" if item.get("readded") else "LOST-PERMANENT",
@@ -333,6 +347,10 @@ def cmd_selftest():
         ok("S3 lost", [i["id"] for i in t["lost_alive_ids"]] == ["C"], str(t["lost_alive_ids"]))
         ok("S3 terminal", t["removed_terminal"] == 1, str(t["removed_terminal"]))
         ok("S3 pairs", t["transitions"] == 2, str(t["transitions"]))
+        # 11-09: the verdict must be pinned to a commit, and render must print it.
+        ok("S3 as_of", rep["as_of"] == shas[-1][:8] and t["newest_commit"] == shas[-1][:8],
+           str((rep["as_of"], t["newest_commit"], shas[-1][:8])))
+        ok("S3 render as_of", "as_of=" + shas[-1][:8] in render(rep), render(rep)[:200])
 
         # S4: window=1 has no comparable pair -> NA-ONLY, not a clean pass and not "unreadable"
         rep1 = census(repo, [target], 1)
