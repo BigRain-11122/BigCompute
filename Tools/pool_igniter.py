@@ -228,17 +228,121 @@ def tick():
     return 0
 
 
-def status():
+def payload_of(batch_id):
+    """Local executable payload for a card, or None when this box cannot run it.
+
+    A card can be dispatchable (named consumer, unlocked, not in flight) and
+    still be non-runnable here - no payload on this box means the ignition
+    chain has nothing to execute, and that must be a named reading rather than
+    a silent skip inside tick().
+    """
+    return RUNNERS.get(batch_id)
+
+
+def receipt_rows():
+    if not os.path.exists(RECEIPTS):
+        return []
     rows = []
-    if os.path.exists(RECEIPTS):
-        with open(RECEIPTS, encoding="utf-8") as f:
-            rows = [json.loads(x) for x in f if x.strip()]
-    for batch_id in sorted(RUNNERS):
-        lane, state = lane_verdict(batch_id)
-        print("%s lane=%s gate=%s" % (batch_id, lane, state))
-    print("receipts=%d ok=%d last=%s"
-          % (len(rows), sum(1 for r in rows if r.get("ok")),
-             rows[-1]["ts"] if rows else "-"))
+    with open(RECEIPTS, encoding="utf-8") as f:
+        for line in f:
+            if line.strip():
+                try:
+                    rows.append(json.loads(line))
+                except json.JSONDecodeError:
+                    rows.append({"ok": False, "ts": "-", "corrupt": True})
+    return rows
+
+
+def last_tick_age_min():
+    """Minutes since the last tick() line.  None when the log is unreadable.
+
+    The watcher is only useful if it is actually ticking; a dead watcher and a
+    permanently closed lane look identical from the pool's `effective=0`.
+    """
+    if not os.path.exists(LOG):
+        return None
+    try:
+        with open(LOG, encoding="utf-8", errors="replace") as f:
+            lines = [x for x in f.read().splitlines() if x.strip()]
+    except OSError:
+        return None
+    if not lines:
+        return None
+    parts = lines[-1].split(" ", 2)
+    if len(parts) < 2:
+        return None
+    try:
+        ts = datetime.datetime.strptime(parts[0] + " " + parts[1],
+                                       "%Y-%m-%d %H:%M:%S")
+    except ValueError:
+        return None
+    return round((now() - ts).total_seconds() / 60.0, 1)
+
+
+def readout():
+    """Two-pool honesty readout for the ignition chain.
+
+    `dispatchable` comes from batch_pool's own rule (single source); `runnable`
+    counts cards with a payload on this box.  The gap is the part of the pool
+    that no watcher can ever ignite, however long the window stays open.
+    """
+    import batch_pool
+    rows = batch_pool.load_rows(batch_pool.REGISTRY)
+    review = batch_pool.build_review(rows)
+    cards = []
+    for r in rows:
+        bid = r.get("batch_id")
+        lane, gate = lane_verdict(bid)
+        cards.append({
+            "batch_id": bid,
+            "lane": lane,
+            "gate": gate,
+            "payload": payload_of(bid),
+            "consumer_named": r.get("consumer_named"),
+        })
+    runnable = [c["batch_id"] for c in cards if c["payload"]]
+    dispatchable = review.get("dispatchable")
+    receipts = receipt_rows()
+    return {
+        "ts": now().strftime("%Y-%m-%d %H:%M:%S"),
+        "dispatchable": dispatchable,
+        "dispatchable_cards": review.get("dispatchable_cards"),
+        "runnable": len(runnable),
+        "runnable_cards": runnable,
+        "not_runnable": [c["batch_id"] for c in cards
+                         if c["payload"] is None],
+        "gap": (dispatchable or 0) - len(runnable),
+        "igniter": {
+            "last_tick_age_min": last_tick_age_min(),
+            "receipts": len(receipts),
+            "receipts_ok": sum(1 for r in receipts if r.get("ok")),
+            "last_receipt": receipts[-1]["ts"] if receipts else None,
+        },
+        "cards": cards,
+    }
+
+
+def status(as_json=False, out=None):
+    rd = readout()
+    if as_json or out:
+        doc = json.dumps(rd, ensure_ascii=False, indent=2, sort_keys=True)
+        if out:
+            os.makedirs(os.path.dirname(os.path.abspath(out)), exist_ok=True)
+            with open(out, "w", encoding="utf-8", newline="\n") as f:
+                f.write(doc + "\n")
+        if as_json:
+            print(doc)
+        return 0
+    for c in rd["cards"]:
+        print("%s lane=%s gate=%s payload=%s"
+              % (c["batch_id"], c["lane"], c["gate"],
+                 c["payload"] or "none"))
+    ign = rd["igniter"]
+    print("dispatchable=%s runnable=%s gap=%s receipts=%s ok=%s "
+          "last_tick_age_min=%s"
+          % (rd["dispatchable"], rd["runnable"], rd["gap"],
+             ign["receipts"], ign["receipts_ok"],
+             ign["last_tick_age_min"]))
     return 0
 
 
@@ -246,7 +350,9 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description="gate-then-run pool igniter")
     sub = ap.add_subparsers(dest="cmd", required=True)
     sub.add_parser("tick")
-    sub.add_parser("status")
+    p_s = sub.add_parser("status")
+    p_s.add_argument("--json", action="store_true", help="machine-readable")
+    p_s.add_argument("--out", help="write the JSON readout to this path")
     p_r = sub.add_parser("run")
     p_r.add_argument("--batch-id", required=True)
     p_r.add_argument("--force", action="store_true",
@@ -255,7 +361,7 @@ def main(argv=None):
     if args.cmd == "tick":
         return tick()
     if args.cmd == "status":
-        return status()
+        return status(as_json=args.json, out=args.out)
     ok, receipt = ignite(args.batch_id, force=args.force)
     print(json.dumps(receipt, ensure_ascii=False, indent=2, sort_keys=True))
     return 0 if ok else 1

@@ -761,3 +761,8 @@ P2=text_integrity 本仓零缺陷，但列数族 new_ext=13 全在集团只读�
 - 收口：D-20261106-05 / D-20261108-03 的交付回执已落 `cph4/fleet/queue-receipts/d05-j5-relock-20261108.json`（按 D-20261108-05 自带 node=bm-a + id + 三件 deliverable 逐件 sha256 与 exists）；同刻实跑 `batch_pool review` = cards=6 claims=3 refused=2 locked=1 dispatchable=4。
 - P2：D-08-03 的第二腿（四卡登记进 `quant/BigMoney/fleet/backlog.md`）属跨仓写，本司只出请求件 `state/batch-pool-registration-20261105.txt`，实际入池须集团侧执行。
 - 收口：M169 coverage 假红解除——`COVERAGE_TARGETS` 原指不存在的 §4.6（§四 只有 4.1-4.4），改指 4.3 后 `VERDICT=QUOTE-COVERAGE-PARSE-SUSPECT` → `QUOTE-COVERAGE-GAP`（sections 6/6，selftest 22/22 PASS）；缺节负控 S12 仍在。
+
+## 日清 2026-11-08（12:0x 令牌轮·周日）
+- 如实未达成：D-20261108-09 死线 12:00 要求 >=1 件真点火，实测 0/1——两车道全关（cpu ram_free=35.1%<40 / gpu vram_free=260MiB<6144），按让路律不抢产线；守候链活性已实证（15min 任务、上次 rc=0、last_tick_age=9.3min、receipts=0）＝**链在跑但从未触发过点火**。
+- P1（结构性·新发现）：dispatchable=4 里 **runnable=1（gap=3）**——只有 B-CITY3D-01 本机有可执行载荷，B-CITY3D-02/B-XIDUDU-02 无载荷、B-XIDUDU-01 lane-unresolved；即车道打开也最多只能点 1 张。建议此后「池面」按 runnable 读，dispatchable 只作上限。
+- P2：点火器任务 LogonType=Interactive（违「本机车道任务一律 S4U」判例），本会话 Set-ScheduledTask 改 S4U 被拒（拒绝访问），任务 XML 已备份 %TEMP%\\bc-pooligniter-backup-20261108-120337.xml，提权会话重跑一次即成。
