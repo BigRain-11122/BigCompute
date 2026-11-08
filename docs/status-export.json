@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
  "updated_at": "2026-11-09 00:25",
- "current_activity": "2026-11-09 00:2x 令牌轮：点火失败必须点名日志错误行（tech T222）。失败回执此前只有空 artifacts 与秒数，昨晚 6 次 exit=1 的真正原因 error CS1061（BakeSpike.cs:169 LightingSettings.aoEnabled）一直躺在 tuanjie-bake.log 里没人读。本轮 pool_igniter 增 extract_log_errors + 回执 runner.log/runner.error + compile_stale_guard（同一 CS 错误且源码未改则拒绝再烧一次编辑器），selftest 21/21 PASS",
- "latest_artifact": "state/t222-log-error-evidence.txt（2026-11-09 00:2x；13 份真实日志回填抽取 with_errors=6 with_cs=6，6 份逐字命中 CS1061 = 11-08 那 6 次失败，其余 7 份为修复后成功运行的 no-error-line-in-log）+ state/t222-log-error-evidence.json",
- "next_milestone": "①T223 失败原因上到看板：pool_igniter status 增 last_failure 行（窗 ≤24h）②B-CITY3D-02 判据帧六帧真渲：待 GPU 车道 vram_free ≥6144（本轮 741MiB 全关，按让路律不抢；窗 ≤48h 视产线让出）③B-CITY3D-01 下一次真实点火的回执应自带 error 字段（无失败时为空）"
+ "current_activity": "2026-11-09 00:2x 令牌轮：点火链装上回归网（M170）。pool_igniter 是把备货卡变成产物的唯一执行体，昨晚连死六次才第一次跑通，而它的 21 条自检此前只有人手动跑。本轮接成冒烟探针 no.30：自检必须真跑出计数行且 ≥21、池面 gap 必须等于 dispatchable-runnable 且每张 gap 卡具名、最近回执 ok=true 无产物或 ok=false 无错误文本即判红；车道关闭不判红（让路律正常态）。smoke 26/29，no.30 与 no.24 均 PASS",
+ "latest_artifact": "qa/smoke-20261109-0020.log + .png（2026-11-09 00:20；no.30 ignition chain PASS，smoke 26/29）+ Tools/qa_smoke.py 新增 igniter_judge/probe_igniter/selftest_igniter（12 夹具）+ docs/qa-smoke-test-charter.md §三 第 30 条",
+ "next_milestone": "①M176 集团共享台账 21 条永久丢行经文档总线通知 @HQ（窗 ≤24h，本司只报警不改）②B-CITY3D-02 判据帧六帧真渲：待 GPU vram_free ≥6144（本轮 799MiB 全关，让路律不抢；窗 ≤48h）③M172 City3DBatchRender.cs 在 Tuanjie 2022.3.62t15 下的编译仍未证"
 }

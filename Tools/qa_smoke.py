@@ -3428,6 +3428,196 @@ def selftest_money_guard():
     return 0 if all(results) else 1
 
 
+IGNITER_MIN_SELFTEST = 21
+
+
+def igniter_judge(selftest_rc, selftest_out, readout, last_receipt=None):
+    """Judge the ignition chain (no.30 / M170).
+
+    The chain is the only thing that turns a stocked card into artifacts, and
+    it only produced its first successful ignition on 2026-11-08 after six
+    runs died with `exit=1`, empty artifacts and an unread `error CS1061` in
+    the log.  Three honesty rules come straight out of that failure:
+
+      * the tool's own fixtures must still pass **and the count must be read**
+        - `rc=0` without a count line means nothing was measured;
+      * the pool's `gap` must be arithmetically consistent and every gap card
+        named - an unexplained gap is the "conclusion overshoots the reading"
+        family (D-20);
+      * a receipt claiming `ok=true` with no artifacts, or `ok=false` with no
+        error text, cannot be audited -> red.  That is exactly the shape the
+        six 11-08 failures had.
+    """
+    out = selftest_out or ""
+    m = re.search(r"(\d+)/(\d+)\s+PASS", out)
+    got = total = None
+    counts = "selftest=rc%s" % (selftest_rc,)
+    if m:
+        got, total = int(m.group(1)), int(m.group(2))
+        counts = "selftest=%d/%d" % (got, total)
+    if selftest_rc != 0:
+        return False, ("%s -- pool_igniter fixtures failed (rc=%s)"
+                       % (counts, selftest_rc))
+    if got is None:
+        return False, ("%s -- rc=0 but no fixture count line: nothing was "
+                       "measured" % counts)
+    if total < IGNITER_MIN_SELFTEST or got != total:
+        return False, ("%s -- below the pinned floor %d or not all green"
+                       % (counts, IGNITER_MIN_SELFTEST))
+    if not isinstance(readout, dict):
+        return False, "%s -- pool readout UNREADABLE" % counts
+
+    disp = readout.get("dispatchable")
+    runnable = readout.get("runnable")
+    gap = readout.get("gap")
+    named = (len(readout.get("declared_unready") or [])
+             + len(readout.get("not_runnable") or []))
+    ign = readout.get("igniter") or {}
+    counts += (" dispatchable=%s runnable=%s gap=%s named=%s receipts=%s "
+               "ok=%s tick_age=%s" % (
+                   disp, runnable, gap, named, ign.get("receipts"),
+                   ign.get("receipts_ok"), ign.get("last_tick_age_min")))
+    if disp is None or runnable is None or gap is None:
+        return False, counts + " -- dispatchable/runnable/gap unreadable"
+    if gap != disp - runnable:
+        return False, ("%s -- gap arithmetic broken (gap=%s != %s-%s)"
+                       % (counts, gap, disp, runnable))
+    if gap > 0 and named < gap:
+        return False, ("%s -- %d card(s) of the gap are not named: an "
+                       "unexplained gap is not a reading" % (counts, gap - named))
+    if ign.get("last_tick_age_min") is None:
+        return False, (counts + " -- watcher log unreadable, the chain "
+                       "cannot self-report")
+    if (ign.get("receipts") or 0) > 0 and last_receipt is None:
+        return False, (counts + " -- receipts counted but the last row is "
+                       "unreadable")
+    if last_receipt is not None:
+        ok_flag = last_receipt.get("ok")
+        runner = last_receipt.get("runner") or {}
+        if not isinstance(ok_flag, bool):
+            return False, (counts + " -- last receipt carries no boolean `ok`: "
+                           "unauditable")
+        if ok_flag and not (runner.get("artifacts") or []):
+            return False, (counts + " -- last receipt says ok=true with no "
+                           "artifacts")
+        if (not ok_flag) and not runner.get("error"):
+            return False, (counts + " -- last receipt says ok=false with no "
+                           "error text")
+    return True, counts
+
+
+def probe_igniter():
+    """Probe no.30 (M170): the ignition chain's own net still passes."""
+    script = os.path.join(ROOT, "Tools", "pool_igniter.py")
+    if not os.path.exists(script):
+        return False, "pool_igniter.py missing"
+    try:
+        proc = subprocess.run([sys.executable, script, "selftest"],
+                              capture_output=True, text=True, encoding="utf-8",
+                              errors="replace", timeout=300)
+        self_out = (proc.stdout or "") + (proc.stderr or "")
+        sel_rc = proc.returncode
+    except Exception as e:  # noqa: BLE001 - probe must report, not crash
+        return False, "pool_igniter selftest raised: %r" % e
+    if HERE not in sys.path:
+        sys.path.insert(0, HERE)
+    try:
+        import pool_igniter as pi
+        rd = pi.readout()
+        rows = pi.receipt_rows()
+        last = rows[-1] if rows else None
+    except Exception as e:  # noqa: BLE001
+        return False, "pool_igniter readout raised: %r" % e
+    return igniter_judge(sel_rc, self_out, rd, last)
+
+
+def selftest_igniter():
+    """M170 fixtures: green / fixtures dead / silent count / gap / receipts."""
+    results = []
+
+    def check(name, cond, detail=""):
+        results.append(bool(cond))
+        print(("[%s] S%d %s%s" % ("PASS" if cond else "FAIL",
+                                  len(results), name,
+                                  "" if cond else " :: " + str(detail))))
+
+    good_out = "\n".join(["PASS S%d fixture" % i for i in range(21)]
+                         + ["21/21 PASS"])
+
+    def rd(**kw):
+        doc = {"dispatchable": 4, "runnable": 2, "gap": 2,
+               "declared_unready": [{"batch_id": "B-X", "reason": "project-missing"}],
+               "not_runnable": ["B-Y"],
+               "igniter": {"receipts": 11, "receipts_ok": 5,
+                           "last_tick_age_min": 8.4}}
+        doc.update(kw)
+        return doc
+
+    ok_receipt = {"ok": True,
+                  "runner": {"artifacts": [{"path": "a.exr", "sha256": "x"}]}}
+    fail_receipt = {"ok": False,
+                    "runner": {"error": {"present": True,
+                                         "lines": ["error CS1061"]}}}
+
+    ok, det = igniter_judge(0, good_out, rd(), ok_receipt)
+    check("clean chain -> PASS and reports pool + fixture readings",
+          ok and "selftest=21/21" in det and "gap=2" in det
+          and "receipts=11" in det, det)
+
+    ok, det = igniter_judge(1, "20/21 PASS", rd(), ok_receipt)
+    check("failing fixtures -> FAIL naming rc",
+          (not ok) and "rc=1" in det, det)
+
+    ok, det = igniter_judge(0, "PASS S1 fixture", rd(), ok_receipt)
+    check("rc=0 without a count line -> UNVERIFIED FAIL",
+          (not ok) and "nothing was measured" in det, det)
+
+    ok, det = igniter_judge(0, "10/10 PASS", rd(), ok_receipt)
+    check("count below the pinned floor -> FAIL",
+          (not ok) and "pinned floor" in det, det)
+
+    ok, det = igniter_judge(0, good_out, rd(gap=1), ok_receipt)
+    check("gap arithmetic broken -> FAIL",
+          (not ok) and "arithmetic broken" in det, det)
+
+    ok, det = igniter_judge(0, good_out,
+                            rd(declared_unready=[], not_runnable=["B-Y"]),
+                            ok_receipt)
+    check("arithmetically sane gap with an unnamed card -> FAIL",
+          (not ok) and "not named" in det and "arithmetic" not in det, det)
+
+    ok, det = igniter_judge(0, good_out,
+                            rd(igniter={"receipts": 0, "receipts_ok": 0,
+                                        "last_tick_age_min": None}),
+                            None)
+    check("watcher log unreadable -> FAIL even with zero receipts",
+          (not ok) and "cannot self-report" in det, det)
+
+    ok, det = igniter_judge(0, good_out, rd(), {"ok": True, "runner": {}})
+    check("ok=true with no artifacts -> FAIL",
+          (not ok) and "no artifacts" in det, det)
+
+    ok, det = igniter_judge(0, good_out, rd(), {"ok": False, "runner": {}})
+    check("ok=false with no error text -> FAIL",
+          (not ok) and "no error text" in det, det)
+
+    ok, det = igniter_judge(0, good_out, rd(), {"runner": {}})
+    check("receipt without a boolean ok -> FAIL (unauditable)",
+          (not ok) and "unauditable" in det, det)
+
+    ok, det = igniter_judge(0, good_out, rd(), fail_receipt)
+    check("a properly explained failure is not mistaken for a broken chain",
+          ok, det)
+
+    first = igniter_judge(0, good_out, rd(), ok_receipt)
+    second = igniter_judge(0, good_out, rd(), ok_receipt)
+    check("deterministic on the same input", first == second, str(first))
+
+    print("selftest igniter verdict: %d/%d PASS"
+          % (sum(results), len(results)))
+    return 0 if all(results) else 1
+
+
 def probe_probe_registry():
     """Probe no.24 (T190 / BC-P-169): probe numbering single-source census.
 
@@ -3479,6 +3669,7 @@ PROBE_REGISTRY = [
     (27, "aftersale rails judgeable (M115)", probe_aftersale_rails),
     (28, "drill planted-set census (T205)", probe_drill_sets),
     (29, "money-face writer guards (T209)", probe_money_guard),
+    (30, "ignition chain fixtures + pool gap naming (M170)", probe_igniter),
 ]
 
 
@@ -3562,7 +3753,8 @@ def main():
                 | selftest_receipt_product_law() | selftest_serve_health()
                 | selftest_write_encoding() | selftest_row_loss()
                 | selftest_aftersale_rails() | selftest_drill_sets()
-                | selftest_money_guard() | selftest_argv())
+                | selftest_money_guard() | selftest_igniter()
+                | selftest_argv())
     os.makedirs(QA_DIR, exist_ok=True)
     ts = datetime.datetime.now().strftime("%Y%m%d-%H%M")
     log_path = os.path.join(QA_DIR, "smoke-%s.log" % ts)
