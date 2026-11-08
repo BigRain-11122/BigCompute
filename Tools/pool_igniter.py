@@ -54,6 +54,14 @@ RUNNERS = {
     "B-CITY3D-01": "bake_spike",
 }
 
+# What a payload must find on disk before it counts as runnable.  Declaring a
+# runner is not evidence the runner can execute: on 2026-11-08 the labbench
+# bake project existed as an empty Assets/ tree (no City3DBakeSpike entry
+# script), so B-CITY3D-01 read `runnable` while every ignition would have
+# launched Tuanjie into `-executeMethod` with nothing to call.  Readiness is
+# checked here, not assumed.
+BAKE_ENTRY_MARKER = "City3DBakeSpike"
+
 
 def now():
     return datetime.datetime.now()
@@ -165,6 +173,10 @@ def ignite(batch_id, force=False):
     """Gate, claim, run, receipt.  Returns (ok, receipt dict)."""
     if batch_id not in RUNNERS:
         return False, {"batch_id": batch_id, "skipped": "no-local-payload"}
+    _name, ready, reason = payload_readiness(batch_id)
+    if not ready and not force:
+        log("ignite refused %s payload-%s" % (batch_id, reason))
+        return False, {"batch_id": batch_id, "skipped": "payload-not-ready:" + reason}
     lane, state = lane_verdict(batch_id)
     if lane is None:
         return False, {"batch_id": batch_id, "skipped": state}
@@ -210,6 +222,10 @@ def tick():
         os.remove(LOCK)
     tried = []
     for batch_id in sorted(RUNNERS):
+        _name, ready, reason = payload_readiness(batch_id)
+        if not ready:
+            tried.append("%s:payload-%s" % (batch_id, reason))
+            continue
         lane, state = lane_verdict(batch_id)
         if lane is None or not state.startswith("OPEN"):
             tried.append("%s:%s" % (batch_id, state))
@@ -237,6 +253,58 @@ def payload_of(batch_id):
     a silent skip inside tick().
     """
     return RUNNERS.get(batch_id)
+
+
+def find_entry_script(project_root, marker=BAKE_ENTRY_MARKER, max_files=4000):
+    """Path of the first .cs under Assets/ that declares `marker`, or None."""
+    assets = os.path.join(project_root, "Assets")
+    if not os.path.isdir(assets):
+        return None
+    seen = 0
+    for base, _dirs, files in os.walk(assets):
+        for fn in files:
+            if not fn.lower().endswith(".cs"):
+                continue
+            seen += 1
+            if seen > max_files:
+                return None
+            path = os.path.join(base, fn)
+            try:
+                with open(path, encoding="utf-8", errors="replace") as f:
+                    if marker in f.read(200000):
+                        return path
+            except OSError:
+                continue
+    return None
+
+
+def payload_readiness(batch_id, project_root=None):
+    """(payload name|None, ready: bool, reason) - readiness verified on disk.
+
+    Reasons are the vocabulary the CEO face and the log use, so a gap card is
+    always explainable: no-local-payload / project-missing /
+    entry-script-missing / runner-unknown / ok.
+    """
+    name = payload_of(batch_id)
+    if name is None:
+        return None, False, "no-local-payload"
+    if name == "bake_spike":
+        root = project_root or BAKE_PROJECT
+        if not os.path.isdir(root):
+            return name, False, "project-missing"
+        if find_entry_script(root) is None:
+            return name, False, "entry-script-missing"
+        return name, True, "ok"
+    return name, False, "runner-unknown:%s" % name
+
+
+def render_card(c):
+    """One card line; a declared-but-unready payload must never look green."""
+    payload = c.get("payload") or "none"
+    if c.get("payload") and not c.get("payload_ready"):
+        payload = "%s[NOT-READY:%s]" % (c["payload"], c.get("payload_reason"))
+    return "%s lane=%s gate=%s payload=%s" % (
+        c.get("batch_id"), c.get("lane"), c.get("gate"), payload)
 
 
 def receipt_rows():
@@ -293,14 +361,19 @@ def readout():
     for r in rows:
         bid = r.get("batch_id")
         lane, gate = lane_verdict(bid)
+        name, ready, reason = payload_readiness(bid)
         cards.append({
             "batch_id": bid,
             "lane": lane,
             "gate": gate,
-            "payload": payload_of(bid),
+            "payload": name,
+            "payload_ready": ready,
+            "payload_reason": reason,
             "consumer_named": r.get("consumer_named"),
         })
-    runnable = [c["batch_id"] for c in cards if c["payload"]]
+    runnable = [c["batch_id"] for c in cards if c["payload_ready"]]
+    unready = [{"batch_id": c["batch_id"], "reason": c["payload_reason"]}
+               for c in cards if c["payload"] is not None and not c["payload_ready"]]
     dispatchable = review.get("dispatchable")
     receipts = receipt_rows()
     return {
@@ -309,6 +382,7 @@ def readout():
         "dispatchable_cards": review.get("dispatchable_cards"),
         "runnable": len(runnable),
         "runnable_cards": runnable,
+        "declared_unready": unready,
         "not_runnable": [c["batch_id"] for c in cards
                          if c["payload"] is None],
         "gap": (dispatchable or 0) - len(runnable),
@@ -334,22 +408,94 @@ def status(as_json=False, out=None):
             print(doc)
         return 0
     for c in rd["cards"]:
-        print("%s lane=%s gate=%s payload=%s"
-              % (c["batch_id"], c["lane"], c["gate"],
-                 c["payload"] or "none"))
+        print(render_card(c))
     ign = rd["igniter"]
     print("dispatchable=%s runnable=%s gap=%s receipts=%s ok=%s "
           "last_tick_age_min=%s"
           % (rd["dispatchable"], rd["runnable"], rd["gap"],
              ign["receipts"], ign["receipts_ok"],
              ign["last_tick_age_min"]))
+    for u in rd["declared_unready"]:
+        print("unready %s reason=%s" % (u["batch_id"], u["reason"]))
     return 0
+
+
+def selftest():
+    """Fixtures for the readiness rule - a declared runner is not a runnable one."""
+    import tempfile
+    import shutil
+    checks = []
+
+    def chk(name, cond, detail=""):
+        checks.append((name, bool(cond), detail))
+
+    tmp = tempfile.mkdtemp(prefix="pool-igniter-selftest-")
+    try:
+        empty = os.path.join(tmp, "empty")
+        os.makedirs(os.path.join(empty, "Assets"), exist_ok=True)
+        filled = os.path.join(tmp, "filled")
+        os.makedirs(os.path.join(filled, "Assets", "Editor"), exist_ok=True)
+        with open(os.path.join(filled, "Assets", "Editor", "Entry.cs"),
+                  "w", encoding="utf-8") as f:
+            f.write("public static class Entry { public static void Run() {} }\n"
+                    "// namespace City3DBakeSpike.Entry\n")
+        decoy = os.path.join(tmp, "decoy")
+        os.makedirs(os.path.join(decoy, "Assets"), exist_ok=True)
+        with open(os.path.join(decoy, "Assets", "Other.cs"),
+                  "w", encoding="utf-8") as f:
+            f.write("public class Other {}\n")
+
+        n, r, why = payload_readiness("B-UNKNOWN-99")
+        chk("S1 unknown card -> no-local-payload", n is None and not r
+            and why == "no-local-payload", why)
+
+        n, r, why = payload_readiness("B-CITY3D-01", os.path.join(tmp, "nope"))
+        chk("S2 missing project -> project-missing",
+            n == "bake_spike" and not r and why == "project-missing", why)
+
+        n, r, why = payload_readiness("B-CITY3D-01", empty)
+        chk("S3 empty Assets -> entry-script-missing",
+            n == "bake_spike" and not r and why == "entry-script-missing", why)
+
+        n, r, why = payload_readiness("B-CITY3D-01", decoy)
+        chk("S4 .cs without marker stays entry-script-missing",
+            not r and why == "entry-script-missing", why)
+
+        n, r, why = payload_readiness("B-CITY3D-01", filled)
+        chk("S5 entry script present -> ready",
+            n == "bake_spike" and r and why == "ok", why)
+
+        line = render_card({"batch_id": "B-X", "lane": "cpu", "gate": "OPEN",
+                            "payload": "bake_spike", "payload_ready": False,
+                            "payload_reason": "entry-script-missing"})
+        chk("S6 unready card line carries NOT-READY reason",
+            "NOT-READY:entry-script-missing" in line, line)
+
+        line = render_card({"batch_id": "B-Y", "lane": "cpu", "gate": "OPEN",
+                            "payload": "bake_spike", "payload_ready": True,
+                            "payload_reason": "ok"})
+        chk("S7 ready card line has no NOT-READY", "NOT-READY" not in line, line)
+
+        line = render_card({"batch_id": "B-Z", "lane": None, "gate": "x",
+                            "payload": None, "payload_ready": False,
+                            "payload_reason": "no-local-payload"})
+        chk("S8 payload-less card renders as none", "payload=none" in line, line)
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+    failed = [c for c in checks if not c[1]]
+    for name, ok, detail in checks:
+        print("%s %s%s" % ("PASS" if ok else "FAIL", name,
+                           "" if ok else " :: " + str(detail)))
+    print("%d/%d PASS" % (len(checks) - len(failed), len(checks)))
+    return 0 if not failed else 1
 
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description="gate-then-run pool igniter")
     sub = ap.add_subparsers(dest="cmd", required=True)
     sub.add_parser("tick")
+    sub.add_parser("selftest")
     p_s = sub.add_parser("status")
     p_s.add_argument("--json", action="store_true", help="machine-readable")
     p_s.add_argument("--out", help="write the JSON readout to this path")
@@ -360,6 +506,8 @@ def main(argv=None):
     args = ap.parse_args(argv)
     if args.cmd == "tick":
         return tick()
+    if args.cmd == "selftest":
+        return selftest()
     if args.cmd == "status":
         return status(as_json=args.json, out=args.out)
     ok, receipt = ignite(args.batch_id, force=args.force)
