@@ -778,3 +778,8 @@ P2=text_integrity 本仓零缺陷，但列数族 new_ext=13 全在集团只读�
 - 实物：查清池面 34 天零点火首因=闸在读过期（心跳中位 30min／均值 132.5min／最长 1440min 才写一次，闸只认 ≤30min；守候器 28 次 tick 里 19 次报 STALE=瞎跑）；lane_gate 过期即用生产者同源探针现测，并接守候器与领取面两侧（默认关，既有读者逐字不变），夹具 18/59/12 全绿；证据 state/pool-lane-freshness-20261108.txt。
 - P1：修完仍未点火——车道是真关（cpu ram 26.7%／gpu vram 162MiB）；且六卡中 runnable=2，其余 4 卡无本机载荷或 lane 未定。「等窗口」不是唯一条件：窗口与载荷是两条独立约束，缺一条都点不着。
 - P2：smoke 27/28（唯一红=no.22 既有回执产物面）；textintegrity=EXTERNAL-DAMAGED（本仓 damaged=0／cats 7-7，集团只读台账新表行 30 条只点名不拦）。
+
+## 日清 2026-11-08（22:5x 令牌轮）
+- 实物（P1 结案）：点火链真打通——`BakeSpike.cs` L169 `LightingSettings.aoEnabled` 在 Tuanjie 2022.3.62t15 编译不过（error CS1061），六次点火 exit=1 全因这一个编译错误；出生地改为 AO 三态写入后，守候器 22:56:41 正式点火 **ok=true/exit=0**，产出 2 张 Lightmap EXR（6.78MB/5.96MB）+ bake-metrics.json，三件均带 sha256。
+- 逾期如实：D-20261108-18 要求 21:00 前点火 ≥1 件，实际 22:56 达成，记一次逾期；根因是编译缺陷不是等待窗口。
+- 余留（P2）：守候器失败时不解析 `tuanjie-bake.log` 错误行，`payload_readiness` 也不查能否编译——这类「工具能跑但活出不来」的洞已立 tech T222，不新增巡检卡。

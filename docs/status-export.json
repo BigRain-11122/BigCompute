@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-11-08 18:15",
- "current_activity": "2026-11-08 18:1x 令牌轮：查清池面 34 天零点火的首因——不是车道关，是闸在读过期（心跳生产者中位 30min/均值 132.5min/最长 1440min 才写一次，闸只认 ≤30min；守候器 28 次 tick 里 19 次报 STALE=瞎跑）。修法=lane_gate 过期即用生产者同源探针现测，并接到守候器与领取面两侧（默认关，既有读者逐字不变） ｜ 修完仍未点火：车道是真关（cpu ram 26.7%／gpu vram 162MiB）",
- "latest_artifact": "state/pool-lane-freshness-20261108.txt + .json（2026-11-08 18:15，含 343 条心跳间隔统计、28 次 tick 中 19 次 STALE、同一过期读数 STALE↔FRESH 双证）；冒烟证据 qa/smoke-20261108-1810.log+png（27/28，唯一红=no.22 既有回执产物面）",
- "next_milestone": "真点火（M172）：任一车道 OPEN 时 pool_igniter 自动跑 B-CITY3D-02 出 6 帧 PNG+render-metrics.json，把「载荷在盘」升成「跑过并出帧」——窗 ≤48h；同窗观察修后 tick 是否首次读到 OPEN"
+ "updated_at": "2026-11-08 22:58",
+ "current_activity": "2026-11-08 22:5x 令牌轮：点火链端到端打通——6 次点火 exit=1 的唯一成因是 BakeSpike.cs L169 `LightingSettings.aoEnabled` 在 Tuanjie 2022.3.62t15 编译不过（error CS1061），编辑器根本没进烘焙。出生地改为 AO 三态写入（序列化属性 → obsolete 通道 → 都不可用则写 api-absent 不静默降质）",
+ "latest_artifact": "state/bake-spike-cs1061-fix-20261108.txt（2026-11-08 22:56，含根因行原文/修法/产物 sha256 三件）+ state/pool-ignitions.jsonl 末行 ok=true（22:56:41 正式点火，exit=0，50.8s，bake_seconds=23.962，Lightmap-0/1_comp_light.exr 6.78MB/5.96MB）",
+ "next_milestone": "①守候器失败时从 tuanjie-bake.log 抽错误行写进回执、就绪判据加编译面（tech T222，窗 ≤48h）②B-CITY3D-02 判据帧 6 帧 PNG 真渲：待 GPU 道 vram_free ≥6144（本轮 302~777MiB 全关）"
 }

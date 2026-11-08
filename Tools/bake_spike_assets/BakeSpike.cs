@@ -166,7 +166,23 @@ namespace City3DBakeSpike
                 "ProgressiveGPU", StringComparison.OrdinalIgnoreCase);
             var s = new LightingSettings();
             s.lightmapper = useGpu ? LightingSettings.Lightmapper.ProgressiveGPU : LightingSettings.Lightmapper.ProgressiveCPU;
-            s.aoEnabled = true; // J3：AO 随烘焙
+            // J3：AO 随烘焙。Tuanjie 2022.3.62t15 的 LightingSettings 无 aoEnabled 成员（CS1061 实锚），
+            // 先走序列化属性，属性名不可得时兜底 obsolete 的 LightmapEditorSettings 通道（同一后端）。
+            var so = new SerializedObject(s);
+            var aoProp = so.FindProperty("m_EnableAO") ?? so.FindProperty("m_AmbientOcclusion");
+            if (aoProp != null)
+            {
+                aoProp.boolValue = true;
+                so.ApplyModifiedPropertiesWithoutUndo();
+                M["ao_enabled_via"] = aoProp.name;
+            }
+            else
+            {
+#pragma warning disable 0618
+                LightmapEditorSettings.enableAmbientOcclusion = true;
+#pragma warning restore 0618
+                M["ao_enabled_via"] = "LightmapEditorSettings(obsolete)";
+            }
             Lightmapping.lightingSettings = s;
             Lightmapping.bakedGI = true;
 
