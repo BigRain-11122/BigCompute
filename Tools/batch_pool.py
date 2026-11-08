@@ -41,6 +41,7 @@ Usage:
   python Tools/batch_pool.py selftest
 """
 import argparse
+import datetime
 import json
 import os
 import sys
@@ -235,7 +236,7 @@ def cmd_gate(path, batch_id, consumer=None, exempt=None, as_json=False):
     if HERE not in sys.path:
         sys.path.insert(0, HERE)
     import dispatch_precheck
-    lane = dispatch_precheck.lane_for_category(card.get("category"))
+    lane = dispatch_precheck.lane_for_card(card)[0]
     if lane is None:
         print("FAIL category '%s' has no pre-registered lane "
               "(BC-P-144: refuse to guess; pass --lane via dispatch_precheck)"
@@ -410,6 +411,54 @@ def declared_named_type(row):
     return type(val).__name__
 
 
+IGNITION_LOG = os.path.join(ROOT, "state", "pool-ignitions.jsonl")
+
+
+def ignition_stats(log_path=None, hours=24, now=None):
+    """D-20261108-09: the pool's effective face = runs that really happened.
+
+    `dispatchable` counts cards that *look* runnable (named + not locked + not
+    in flight); it never consulted the lane gate, so 4 cards read dispatchable
+    for days while effective stayed 0 and the GPU was busy the whole time.
+    Receipts written by pool_igniter.py are the only evidence that a card
+    actually ran, so this is what "effective" must be read from.
+    Unreadable lines are skipped, never guessed; a missing log is 0 receipts.
+    """
+    log_path = log_path or IGNITION_LOG
+    now = now or datetime.datetime.now()
+    cutoff = now - datetime.timedelta(hours=hours)
+    stats = {"total": 0, "ok": 0, "ok_24h": 0, "last_ts": None,
+             "cards_ok_24h": [], "unreadable": 0}
+    if not os.path.exists(log_path):
+        return stats
+    with open(log_path, "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                row = json.loads(line)
+            except json.JSONDecodeError:
+                stats["unreadable"] += 1
+                continue
+            stats["total"] += 1
+            if not row.get("ok"):
+                continue
+            stats["ok"] += 1
+            stats["last_ts"] = row.get("ts")
+            try:
+                ts = datetime.datetime.strptime(str(row.get("ts")),
+                                                "%Y-%m-%d %H:%M:%S")
+            except ValueError:
+                continue
+            if ts >= cutoff:
+                stats["ok_24h"] += 1
+                bid = str(row.get("batch_id") or "?")
+                if bid not in stats["cards_ok_24h"]:
+                    stats["cards_ok_24h"].append(bid)
+    return stats
+
+
 def build_review(rows, today=None, claims=None, refusals=None):
     """Assemble the M66 monthly review snapshot from stocked cards.
 
@@ -505,6 +554,13 @@ def build_review(rows, today=None, claims=None, refusals=None):
             "in flight)" % (len(dispatchable), ", ".join(dispatchable)))
     if problems:
         findings.append("validate reported %d problem(s)" % len(problems))
+    ign = ignition_stats()
+    if dispatchable and not ign["ok_24h"]:
+        findings.append(
+            "effective=0 while %d card(s) read dispatchable [%s]: dispatchable "
+            "ignores the lane gate; receipts in %s are the real supply face"
+            % (len(dispatchable), ", ".join(dispatchable),
+               os.path.relpath(IGNITION_LOG, ROOT)))
     return {
         "cards": len(rows),
         "lanes": lanes,
@@ -518,6 +574,10 @@ def build_review(rows, today=None, claims=None, refusals=None):
         "consumer_named_bad_type": bad_type,
         "dispatchable": len(dispatchable),
         "dispatchable_cards": dispatchable,
+        "ignited_24h": ign["ok_24h"],
+        "ignited_24h_cards": ign["cards_ok_24h"],
+        "ignitions_total": ign["ok"],
+        "last_ignition_ts": ign["last_ts"],
         "in_flight": in_flight,
         "dry_run_end": DRY_RUN_END,
         "dry_run_age_days": lock["dry_run_age_days"],
@@ -568,6 +628,11 @@ def cmd_review(path, as_json=False, write=True):
              review["j5_claims_total"], review["j5_refusals_total"],
              len(review["j5_locked_cards"]),
              review["j5_blocks_activation"]))
+    # D-20261108-09: dispatchable is a look, ignition is a fact. Print both.
+    print("EFFECTIVE ignited_24h=%d cards=%s total_ok=%d last=%s"
+          % (review["ignited_24h"],
+             ",".join(review["ignited_24h_cards"]) or "-",
+             review["ignitions_total"], review["last_ignition_ts"] or "-"))
     for f in review["findings"]:
         print("FINDING " + f)
     if as_json:

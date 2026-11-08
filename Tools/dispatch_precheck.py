@@ -83,6 +83,24 @@ def lane_for_category(category):
     return CATEGORY_LANE.get(str(category or "").strip())
 
 
+def lane_for_card(card):
+    """Resolve a card's lane -> (lane|None, source).
+
+    A card that *declares* its lane in the registry wins over the category
+    table: that is an explicit statement by the stocking sheet, not a guess.
+    Precedence exists because a category is a coarse bucket - `3d_offline_render`
+    maps to gpu, yet the same bake runs on ProgressiveCPU with zero VRAM need,
+    and the category-only rule left 4/4 dispatchable cards blocked whenever the
+    GPU was busy (D-20261108-09 池面假绿). An invalid declared value is refused
+    (None), never silently demoted to the category lane.
+    """
+    declared = str((card or {}).get("dispatch_lane", "") or "").strip().lower()
+    if declared:
+        return (declared if declared in VALID_LANES else None, "card-lane")
+    inferred = lane_for_category((card or {}).get("category"))
+    return (inferred, "category" if inferred else "-")
+
+
 def card_by_id(batch_id, registry=REGISTRY):
     """Read the stocking sheet and return the card dict (or None)."""
     if not os.path.exists(registry):
@@ -200,12 +218,16 @@ def cmd_check(args):
         if card is None:
             print("FAIL batch_id not found in registry: %s" % args.batch_id)
             return EXIT_USAGE
-        inferred = lane_for_category(card.get("category"))
-        if lane and inferred and lane != inferred:
-            print("FAIL --lane %s contradicts registry lane %s for %s"
-                  % (lane, inferred, args.batch_id))
+        resolved, lane_source = lane_for_card(card)
+        if resolved is None and str(card.get("dispatch_lane", "") or "").strip():
+            print("FAIL card declares dispatch_lane=%r which is not cpu|gpu (%s)"
+                  % (card.get("dispatch_lane"), args.batch_id))
             return EXIT_USAGE
-        lane = lane or inferred
+        if lane and resolved and lane != resolved:
+            print("FAIL --lane %s contradicts registry lane %s (%s, source=%s)"
+                  % (lane, resolved, args.batch_id, lane_source))
+            return EXIT_USAGE
+        lane = lane or resolved
         if consumer is None:
             consumer = "batch-pool:%s" % args.batch_id
     if lane is None:
@@ -219,6 +241,9 @@ def cmd_check(args):
     result, exit_code = evaluate(lane, consumer, args.exempt,
                                  heartbeat=args.heartbeat,
                                  max_age_min=args.max_age_min)
+    if args.batch_id:
+        # 审计面：这张卡的 lane 是登记簿声明的还是类别表推出来的，必须可追溯。
+        result["lane_source"] = lane_source
     log_path = append_snapshot(result, args.log)
     result["snapshot"] = os.path.relpath(log_path, ROOT)
     lg = result.get("lane_gate", {})
@@ -313,6 +338,21 @@ def selftest():
         # 8 an unknown category is not guessed by the CLI path
         chk("unknown-category-refused",
             lane_for_category("mystery_batch") is None)
+
+        # 8b card-declared lane wins over the category bucket; a bogus value is
+        # refused rather than demoted (D-20261108-09: category-only rule blocked
+        # 4/4 dispatchable cards while the GPU was busy).
+        chk("card-lane-wins",
+            lane_for_card({"category": "3d_offline_render", "dispatch_lane": "cpu"})
+            == ("cpu", "card-lane"))
+        chk("card-lane-absent-falls-back",
+            lane_for_card({"category": "3d_offline_render"})
+            == ("gpu", "category"))
+        chk("card-lane-invalid-refused",
+            lane_for_card({"category": "3d_offline_render", "dispatch_lane": "tpu"})
+            == (None, "card-lane"))
+        chk("card-lane-unknown-category-none",
+            lane_for_card({"category": "mystery_batch"}) == (None, "-"))
 
         # 9 determinism: same inputs -> same verdict/exit
         a = evaluate("cpu", "t9", heartbeat=fresh_hb)

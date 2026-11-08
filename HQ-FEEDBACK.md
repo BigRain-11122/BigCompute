@@ -2,6 +2,9 @@
 
 > 治理=docs/governance.md §7 反馈通道；收取 SLA=周轮必扫·未处理超两周升级 CEO；决策轮日清=每日 23:00 前写本面（cph4/decision.md 节律四拍）。
 ## 日清区（决策轮上报面·最新在前）
+- 2026-11-08 11:5x（OSLoop 逾期件轮·承 **D-20261108-09** 池面点火·12:00 死线）：**结果先行=点火 0/1 未达，4 件 gate 理由逐名给全，根因当轮修掉**。①根因实测=类别桶把 4/4 可派卡钉死在 gpu 道：`nvidia-smi` vram_free **223MiB/66% util**（krea2 LoRA 训练 17.4GB 自 11:17 起＋他司 Tuanjie 编辑器 10.3GB，均为他司在制活·按让路律不动），CPU 道 `ram_free=36.9%<40%` 亦 CLOSED → **两条车道实际全关**；故 `stock_dispatchable=4` 是「没问闸的计数」，`pool_effective` 恒 0 是闸的结论而非卡的错判。
+- ②修法（可跑件 2 分·零跨仓写）= `dispatch_precheck.lane_for_card` 支持**卡级 `dispatch_lane` 显式声明**（登记簿写死、非法值拒绝、`--lane` 仍不许推翻登记；selftest 13/13 PASS）＋`batch_pool review` 增真供给面 `EFFECTIVE ignited_24h=/cards/total_ok/last` 并多一条 finding 直指该假绿（selftest 59 checks PASS）＋新件 `Tools/pool_igniter.py`（gate→claim→run→回执含产物 sha256；车道不开=静默 no-op）+`BigCompute-PoolIgniter` 15min 静默任务**已注册 Ready**（Interactive/Limited=本机既有 BigCompute-* 约定；S4U 需提权，本会话被拒如实记）。③4 件理由：**B-CITY3D-01** 两车道皆关（cpu ram 36.9%<40%；已声明 dispatch_lane=cpu 待窗）｜**B-CITY3D-02** gpu 关＋本机无 City3D 工程（仅 labbench 样板间）｜**B-XIDUDU-01** `build_batch` 不在 CATEGORY_LANE 表→gate exit 64「拒猜车道」（真缺陷，须先定口径才可点火）｜**B-XIDUDU-02** GUI 会话档＋他司 Tuanjie 会话占位（让路律）。
+- ④下一步=车道一开 igniter 自动点火 B-CITY3D-01，产物=Lightmap EXR+`bake-metrics.json`+`state/pool-ignitions.jsonl` 回执（窗 ≤48h）。QA 27/28（唯一红=no.22 历史面）；C1C4-GREEN 4/4；textintegrity:EXTERNAL-DAMAGED。
 - 2026-11-07 18:5x（OSLoop 令牌轮）：产物侧签名普查收口（T221/BC-P-216 ①）——7 日窗 778 张回执、可带签名件数 **115** / 实际带签名 **0（0.0%）**，gate=STOP，产物侧 overlay 不做（先出数再谈建库）。**P1 真缺口**=115 件里 **95 件「产物」就存放在回执目录**（产物=回执，补 node/id 等于给回执补，消费侧零新增信息），真独立产物仅 20 件且 19 无签 1 半签 → 写侧两件小事：产物内顶层加 `node`+`id`、产物别落回执目录（提案 BC-P-217，派 @HQ 分诊）。
 - **边界如实**=media 可检件 **0**，全部落在 373 条他机回执里——成片/关键帧带不带签名，本机既不能证实也不能证伪（此前任何按「媒体没签名」的判断都越界）。顺带修真缺陷：`collect` 把带 Z 的时间戳与 naive now 比较，`--days` 直接 TypeError（既有 census 同病）。
 - 冒烟 27/28（唯一红=no.22 回执产物面·既有历史面）；C1C4-GREEN 4/4；textintegrity:CLEAN。
