@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-11-08 12:07",
- "current_activity": "2026-11-08 12:00 轮：T-20261108-2 D-20261108-09 死线 12:00 复核（点火 0/1 如实未达·两车道全关全关按让路律不抢）+ 新发现 dispatchable=4 但 runnable=1（gap=3）+ pool_igniter status 读数化（dispatchable/runnable/gap/逐卡 payload/守候链活性）+ S4U 改版被拒已备份 XML gpu:bm-a n=145 avg=69.9% ｜ 两池：本司备货可派 4 ／ 机队可领 0（两个不同池，本司卡未登记进机队池）",
- "latest_artifact": "qa/smoke-20261108-1205.png（mtime 2026-11-08 12:07）",
- "next_milestone": "M25 室内烘焙批步 2：labbench 烘焙样板间实弹（AD-021 模块壳围合+AD-035 灯板光池→Tuanjie 批模式烘焙·GPU/CPU 双路时长/峰值/质量三指标实测·J1-J4 判据窗·labbench 隔离区零碰司仓〔O-023 先例〕·编辑器启动窗承接）（队列状态=open（**步 2 机械链预建毕 09-29 22:43）"
+ "updated_at": "2026-11-08 12:55",
+ "current_activity": "2026-11-08 12:5x 排程轮（周日）：B-CITY3D-02 判据帧批渲染执行器落地（Tools/batch_render/City3DBatchRender.cs → 部署 labbench）+ pool_igniter 改按载荷（非按工程）判就绪（selftest 12/12）→ 池面 runnable 1→2、gap 3→2；两车道仍全关（cpu ram 29.5%<40 / gpu vram 288MiB<6144），首帧实渲如实未证 ｜ 两池：本司备货可派 4 ／ 机队可领 0",
+ "latest_artifact": "state/render-executor-20261108.txt + Tools/batch_render/City3DBatchRender.cs（2026-11-08 12:55）；本轮冒烟证据 qa/smoke-20261108-1245.log+png",
+ "next_milestone": "M172 判据帧首帧实渲证据：任一车道 OPEN（LaneGate CPU/GPU）即跑 pool_igniter run --batch-id B-CITY3D-02，出 6 帧 PNG + render-metrics.json，把「载荷在盘」升成「跑过并出帧」——窗 ≤48h"
 }

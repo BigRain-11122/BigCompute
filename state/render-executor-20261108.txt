@@ -1,0 +1,25 @@
+render executor enablement (T-20261108-4 / B-CITY3D-02) - 2026-11-08 12:5x
+source: Tools/batch_render/City3DBatchRender.cs
+deployed: C:\Users\sjs20\Desktop\FluxGroup\.codely-cli\labbench\city3d-bake-spike\BakeSpike\Assets\Editor\City3DBatchRender.cs
+entry: Tuanjie.exe -batchmode -projectPath <labbench> -executeMethod City3DBatchRender.Entry.Run -logFile <log>
+  env: RENDER_OUT=<metrics.json> RENDER_DIR=<frames/> RENDER_W=1280 RENDER_H=720 RENDER_VIEWS=6
+deliverable: judgement-frame PNG sequence (6 fixed views: four eye-level + top-down + oblique) + render-metrics.json frame-check record
+frame-check rule (fails closed):
+  - frame_count must equal notebooks on disk (pool_igniter cross-check)
+  - blank frame = luminance std < 2.0/255 -> counted, blocks render_ok
+  - duplicate frame = sha256 collision between views -> counted, blocks render_ok
+  - render_ok = frame_count == views AND blank == 0 AND duplicate == 0
+scene: reuses Assets/BakeRoom.unity when the bake card already ran; otherwise builds a minimal lit room so the render face is never scene-dependent
+pool_igniter wiring: RUNNERS[B-CITY3D-02]=render_spike; PAYLOAD_SPECS adds per-payload entry marker City3DBatchRender
+  (readiness is per payload, not per project: one labbench project now serves two cards and each is judged separately)
+selftest: 12/12 PASS  (new S9 render card in bake-only project -> entry-script-missing / S10 deployed -> ready /
+                       S11 project missing -> project-missing / S12 every declared runner has spec + function)
+pool readout before: dispatchable=4 runnable=1 gap=3
+pool readout after : dispatchable=4 runnable=2 gap=2
+  B-CITY3D-01 lane=cpu gate=CLOSED/cpu_lane_idle=false,ram=29.5 payload=bake_spike
+  B-CITY3D-02 lane=gpu gate=CLOSED/vram_free=288<6144 payload=render_spike
+NOT VERIFIED (honest boundary): the editor was never launched this round.
+  Both lanes are closed (cpu ram_free=29.5% < 40 threshold; gpu vram_free=288MiB < 6144) and the production lines
+  hold the box, so per the 让路律 no ignition was attempted. C# compilation and the first real frame render remain
+  unproven until a window opens; readiness here means "the payload is on disk", not "the run has been proven".
+boundary: zero card status changes (all 6 STOCKED), zero writes to the group tree, zero lane overrides.

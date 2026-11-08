@@ -52,6 +52,10 @@ EDITOR_TIMEOUT_S = 1800
 # Everything else stays a named gate reason instead of a fake ignition.
 RUNNERS = {
     "B-CITY3D-01": "bake_spike",
+    # T-20261108-4: judgment-frame batch render (O-20260929-007's second
+    # 3D-offline-render card).  Same labbench project: the bake card builds
+    # the room, the render card shoots fixed six-view judgment frames.
+    "B-CITY3D-02": "render_spike",
 }
 
 # What a payload must find on disk before it counts as runnable.  Declaring a
@@ -61,6 +65,14 @@ RUNNERS = {
 # launched Tuanjie into `-executeMethod` with nothing to call.  Readiness is
 # checked here, not assumed.
 BAKE_ENTRY_MARKER = "City3DBakeSpike"
+
+# runner -> (project root, entry-script marker).  Readiness is per payload, not
+# per project: two runners may live in one labbench project but only one of
+# them may have had its entry script deployed.
+PAYLOAD_SPECS = {
+    "bake_spike": ("BAKE_PROJECT", "City3DBakeSpike"),
+    "render_spike": ("BAKE_PROJECT", "City3DBatchRender"),
+}
 
 
 def now():
@@ -169,6 +181,83 @@ def run_bake_spike(outdir):
     }
 
 
+def run_render_spike(outdir):
+    """B-CITY3D-02 payload: fixed six-view judgment frames + frame-check record.
+
+    The card's deliverable is "PNG 序列 + 帧检记录", so `ok` requires the
+    metrics file to carry render_ok from the editor side: frame count reached,
+    no blank frame (luminance std floor), no duplicate frame (sha collision).
+    A run that produced zero PNGs must never read as ok.
+    """
+    os.makedirs(outdir, exist_ok=True)
+    frames_dir = os.path.join(outdir, "frames")
+    os.makedirs(frames_dir, exist_ok=True)
+    metrics = os.path.join(outdir, "render-metrics.json")
+    logfile = os.path.join(outdir, "tuanjie-render.log")
+    exe = TUANJIE if os.path.exists(TUANJIE) else "Tuanjie.exe"
+    env = dict(os.environ)
+    env["RENDER_OUT"] = metrics
+    env["RENDER_DIR"] = frames_dir
+    env["RENDER_W"] = env.get("RENDER_W", "1280")
+    env["RENDER_H"] = env.get("RENDER_H", "720")
+    env["RENDER_VIEWS"] = env.get("RENDER_VIEWS", "6")
+    cmd = [exe, "-batchmode", "-projectPath", BAKE_PROJECT,
+           "-executeMethod", "City3DBatchRender.Entry.Run", "-logFile", logfile]
+    started = time.time()
+    with open(os.path.join(outdir, "runner.txt"), "w", encoding="utf-8",
+              newline="\n") as f:
+        f.write("cmd: %s\nenv: RENDER_OUT=%s RENDER_DIR=%s RENDER_W=%s RENDER_H=%s\n"
+                "project: %s\nstarted: %s\n"
+                % (" ".join(cmd), metrics, frames_dir, env["RENDER_W"],
+                   env["RENDER_H"], BAKE_PROJECT,
+                   now().strftime("%Y-%m-%d %H:%M:%S")))
+    try:
+        proc = subprocess.run(cmd, env=env, cwd=outdir,
+                              timeout=EDITOR_TIMEOUT_S,
+                              stdout=subprocess.DEVNULL,
+                              stderr=subprocess.STDOUT)
+        code = proc.returncode
+    except subprocess.TimeoutExpired:
+        code = 124
+    except OSError as e:
+        code = 125
+        with open(os.path.join(outdir, "runner.txt"), "a", encoding="utf-8",
+                  newline="\n") as f:
+            f.write("spawn-error: %s\n" % e)
+    elapsed = round(time.time() - started, 1)
+    pngs = sorted(glob.glob(os.path.join(frames_dir, "*.png")))
+    artifacts = []
+    for p in [metrics] + pngs:
+        if os.path.exists(p):
+            artifacts.append({"path": os.path.relpath(p, ROOT).replace("\\", "/"),
+                              "bytes": os.path.getsize(p),
+                              "sha256": sha256(p)})
+    metrics_doc = {}
+    if os.path.exists(metrics):
+        try:
+            with open(metrics, encoding="utf-8") as f:
+                metrics_doc = json.load(f)
+        except (json.JSONDecodeError, OSError):
+            metrics_doc = {}
+    ok = (code == 0 and bool(metrics_doc.get("render_ok"))
+          and int(metrics_doc.get("frame_count") or 0) > 0
+          and len(pngs) == int(metrics_doc.get("frame_count") or -1))
+    return {
+        "kind": "render_spike",
+        "exit": code,
+        "seconds": elapsed,
+        "ok": ok,
+        "metrics": metrics_doc,
+        "artifacts": artifacts,
+    }
+
+
+RUNNER_FUNCS = {
+    "bake_spike": run_bake_spike,
+    "render_spike": run_render_spike,
+}
+
+
 def ignite(batch_id, force=False):
     """Gate, claim, run, receipt.  Returns (ok, receipt dict)."""
     if batch_id not in RUNNERS:
@@ -190,7 +279,7 @@ def ignite(batch_id, force=False):
         return False, {"batch_id": batch_id, "skipped": "claim-refused:%s" % gate_code}
     stamp = now().strftime("%Y%m%d-%H%M%S")
     outdir = os.path.join(OUT_ROOT, batch_id, stamp)
-    result = run_bake_spike(outdir) if RUNNERS[batch_id] == "bake_spike" else {}
+    result = RUNNER_FUNCS[RUNNERS[batch_id]](outdir)
     receipt = {
         "ts": now().strftime("%Y-%m-%d %H:%M:%S"),
         "batch_id": batch_id,
@@ -288,14 +377,15 @@ def payload_readiness(batch_id, project_root=None):
     name = payload_of(batch_id)
     if name is None:
         return None, False, "no-local-payload"
-    if name == "bake_spike":
-        root = project_root or BAKE_PROJECT
-        if not os.path.isdir(root):
-            return name, False, "project-missing"
-        if find_entry_script(root) is None:
-            return name, False, "entry-script-missing"
-        return name, True, "ok"
-    return name, False, "runner-unknown:%s" % name
+    spec = PAYLOAD_SPECS.get(name)
+    if spec is None:
+        return name, False, "runner-unknown:%s" % name
+    root = project_root or BAKE_PROJECT
+    if not os.path.isdir(root):
+        return name, False, "project-missing"
+    if find_entry_script(root, marker=spec[1]) is None:
+        return name, False, "entry-script-missing"
+    return name, True, "ok"
 
 
 def render_card(c):
@@ -464,6 +554,27 @@ def selftest():
         n, r, why = payload_readiness("B-CITY3D-01", filled)
         chk("S5 entry script present -> ready",
             n == "bake_spike" and r and why == "ok", why)
+
+        # per-payload readiness: the same labbench project can satisfy the bake
+        # card while the render card has no entry script yet (T-20261108-4).
+        n, r, why = payload_readiness("B-CITY3D-02", filled)
+        chk("S9 render card in bake-only project -> entry-script-missing",
+            n == "render_spike" and not r and why == "entry-script-missing", why)
+
+        with open(os.path.join(filled, "Assets", "Editor", "City3DBatchRender.cs"),
+                  "w", encoding="utf-8") as f:
+            f.write("namespace City3DBatchRender { public static class Entry {} }\n")
+        n, r, why = payload_readiness("B-CITY3D-02", filled)
+        chk("S10 render entry deployed -> ready",
+            n == "render_spike" and r and why == "ok", why)
+
+        n, r, why = payload_readiness("B-CITY3D-02", os.path.join(tmp, "nope"))
+        chk("S11 render card project missing -> project-missing",
+            not r and why == "project-missing", why)
+
+        missing = [b for b, run in RUNNERS.items()
+                   if run not in PAYLOAD_SPECS or run not in RUNNER_FUNCS]
+        chk("S12 every declared runner has spec + function", not missing, missing)
 
         line = render_card({"batch_id": "B-X", "lane": "cpu", "gate": "OPEN",
                             "payload": "bake_spike", "payload_ready": False,

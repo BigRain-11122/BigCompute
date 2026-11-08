@@ -769,3 +769,7 @@ P2=text_integrity 本仓零缺陷，但列数族 new_ext=13 全在集团只读�
 - 如实未达成：D-20261108-09 死线 12:00 要求 >=1 件真点火，实测 0/1——两车道全关（cpu ram_free=35.1%<40 / gpu vram_free=260MiB<6144），按让路律不抢产线；守候链活性已实证（15min 任务、上次 rc=0、last_tick_age=9.3min、receipts=0）＝**链在跑但从未触发过点火**。
 - P1（结构性·新发现）：dispatchable=4 里 **runnable=1（gap=3）**——只有 B-CITY3D-01 本机有可执行载荷，B-CITY3D-02/B-XIDUDU-02 无载荷、B-XIDUDU-01 lane-unresolved；即车道打开也最多只能点 1 张。建议此后「池面」按 runnable 读，dispatchable 只作上限。
 - P2：点火器任务 LogonType=Interactive（违「本机车道任务一律 S4U」判例），本会话 Set-ScheduledTask 改 S4U 被拒（拒绝访问），任务 XML 已备份 %TEMP%\\bc-pooligniter-backup-20261108-120337.xml，提权会话重跑一次即成。
+## 日清 2026-11-08（12:4x 排程轮·周日）
+- 实物：B-CITY3D-02 判据帧批渲染执行器落地（Tools/batch_render/City3DBatchRender.cs + 部署 labbench），池面 runnable 1→2、gap 3→2；pool_igniter selftest 12/12。**未证**：编辑器未启动（两车道全关按让路律），首帧实渲与 C# 编译仍待窗（M172）。
+- P1（新发现·仪器口径分裂）：同一台 row_loss_census，qa 探针（window=4）报 ROW-LOSS-FOUND permanent=4 并点名集团两本台账行 id，run（window=40）报 UNVERIFIED unreadable=3——两个读数不在同一口径上，已立 M173 先定性后改；集团侧丢行本司只报警不改。
+- P2：周日底座自检三绿（cost_ledger PASS / fulfillment 44/44 / census selftest 12/12 + verdict COST-CONTRACT-GREEN）；smoke 26/28（红项=no.22 历史回执产物面 + no.26 上述集团丢行）；编码普查 textintegrity=EXTERNAL-DAMAGED（本仓 damaged=0，外部台账新行 25）。
