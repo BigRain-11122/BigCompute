@@ -135,6 +135,12 @@ def evaluate(lane, consumer=None, exempt=None, heartbeat=HEARTBEAT,
     gate, source = lane_gate.run(**kwargs)
     gate_exit = int(gate.get("exit", EXIT_UNPARSED))
     lane_state = gate.get("%s_lane" % lane, {}) or {}
+    # M175: every verdict must say whether it was measured now or merely read
+    # off a file.  A line the producer wrote hours ago is not a measurement of
+    # the present -- readers may act on CLOSED, but must not mistake "nobody
+    # re-measured" for "we looked".
+    src = source or gate.get("source") or {}
+    reading = "live" if src.get("live") else "file"
 
     if exempt is not None:
         reason = str(exempt).strip()
@@ -146,6 +152,8 @@ def evaluate(lane, consumer=None, exempt=None, heartbeat=HEARTBEAT,
                 "verdict": "UNPARSED",
                 "reason": "EXEMPT-REASON-EMPTY(BC-P-144: exempt must be justified)",
                 "gate_exit": EXIT_USAGE,
+                "reading": reading,
+                "live_sample": gate.get("live_sample"),
                 "lane_gate": {"verdict": gate.get("verdict"), "exit": gate_exit},
             }, EXIT_USAGE)
         verdict = "EXEMPT"
@@ -170,6 +178,8 @@ def evaluate(lane, consumer=None, exempt=None, heartbeat=HEARTBEAT,
         "verdict": verdict,
         "reason": reason,
         "gate_exit": exit_code,
+        "reading": reading,
+        "live_sample": gate.get("live_sample"),
         "lane_gate": {
             "verdict": gate.get("verdict"),
             "exit": gate_exit,
@@ -191,12 +201,19 @@ def append_snapshot(result, log_path=GATE_LOG):
 
 def render_line(r):
     lg = r.get("lane_gate", {})
+    # 未现测就是未现测：STALE 的文件读数要一眼看得出「这不是刚量过」。
+    measured = r.get("reading", "file")
+    if measured == "file" and lg.get("verdict") == "STALE":
+        measured = "file(NOT-MEASURED)"
+    if r.get("live_sample") == "unavailable":
+        measured += "+probe-unavailable"
     return ("dispatch-precheck: lane=%s verdict=%s exit=%d consumer=%s "
-            "reason=%s | lane-gate=%s/%s src=%s age=%s"
+            "reason=%s | lane-gate=%s/%s src=%s age=%s reading=%s"
             % (r.get("lane"), r.get("verdict"), r.get("gate_exit", -1),
                r.get("consumer"), r.get("reason"), lg.get("verdict"),
                lg.get("exit"),
-               (lg.get("source") or {}).get("ts", "-"), lg.get("age_min")))
+               (lg.get("source") or {}).get("ts", "-"), lg.get("age_min"),
+               measured))
 
 
 def _emit_scope(domain, not_scanned=(), unreadable=()):
@@ -242,7 +259,8 @@ def cmd_check(args):
 
     result, exit_code = evaluate(lane, consumer, args.exempt,
                                  heartbeat=args.heartbeat,
-                                 max_age_min=args.max_age_min)
+                                 max_age_min=args.max_age_min,
+                                 live_on_stale=args.live_on_stale)
     if args.batch_id:
         # 审计面：这张卡的 lane 是登记簿声明的还是类别表推出来的，必须可追溯。
         result["lane_source"] = lane_source
@@ -256,6 +274,12 @@ def cmd_check(args):
         [] if result.get("verdict") != "UNPARSED"
         else ["heartbeat:%s" % result.get("reason")])
     print("scope_note=本闸只裁一条车道的当下可点火性；他车道、排队次序与卡片内容不在本判决内")
+    if result.get("reading") == "file" and lg.get("verdict") == "STALE":
+        print("reading_note=本判决基于文件读数(age_min=%s)，未现测——"
+              "自动派工请加 --live-on-stale 现测" % lg.get("age_min"))
+    elif result.get("live_sample") == "unavailable":
+        print("reading_note=心跳过期且现测探针不可用(probe-unavailable)，"
+              "已按 STALE 判 CLOSED，未据此放行")
     if args.json:
         print(json.dumps(result, ensure_ascii=False, indent=2))
     else:
@@ -361,6 +385,39 @@ def selftest():
         b = evaluate("cpu", "t9", heartbeat=fresh_hb)
         chk("determinism", a[1] == b[1] and a[0]["verdict"] == b[0]["verdict"])
 
+        # 9b M175: the reading source must be visible, and live_on_stale must
+        # actually re-measure instead of trusting a stale file.
+        import lane_gate
+        orig_live = lane_gate.live_sample
+        try:
+            r, code = evaluate("cpu", "t11a", heartbeat=stale_hb)
+            chk("stale-reading-labelled-file",
+                r["reading"] == "file" and code == 2
+                and r["lane_gate"]["verdict"] == "STALE")
+            chk("stale-line-renders-not-measured",
+                "NOT-MEASURED" in render_line(r))
+
+            lane_gate.live_sample = lambda: {"ram_free_pct": 55.3,
+                                             "vram_free_mb": 1458,
+                                             "cpu_lane_idle": "true"}
+            r, code = evaluate("cpu", "t11b", heartbeat=stale_hb,
+                               live_on_stale=True)
+            chk("live-on-stale-remeasures",
+                r["reading"] == "live" and r["verdict"] == "OPEN" and code == 0)
+            chk("live-reading-not-marked",
+                "NOT-MEASURED" not in render_line(r))
+
+            def _boom():
+                raise RuntimeError("probe down")
+            lane_gate.live_sample = _boom
+            r, code = evaluate("cpu", "t11c", heartbeat=stale_hb,
+                               live_on_stale=True)
+            chk("probe-failure-stays-stale",
+                r["verdict"] == "CLOSED" and code == 2
+                and r.get("live_sample") == "unavailable")
+        finally:
+            lane_gate.live_sample = orig_live
+
         # 10 thresholds come from lane_gate, not a copy here
         import lane_gate
         own = sys.modules[__name__]
@@ -391,6 +448,9 @@ def main(argv=None):
     p_c.add_argument("--exempt", help="exemption reason (artifact-arrival paths)")
     p_c.add_argument("--heartbeat", default=HEARTBEAT)
     p_c.add_argument("--max-age-min", type=float, default=None)
+    p_c.add_argument("--live-on-stale", action="store_true",
+                     help="re-measure when the heartbeat line is stale "
+                          "(automated dispatch; default reads the file only)")
     p_c.add_argument("--log", default=GATE_LOG)
     p_c.add_argument("--json", action="store_true")
     sub.add_parser("selftest", help="offline fixtures")

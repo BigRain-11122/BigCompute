@@ -227,7 +227,12 @@ def run(path=HEARTBEAT, max_age_min=MAX_AGE_MIN, now=None,
                          "ts": parsed["ts"].strftime(TS_FMT)}
 
     if live_on_stale and verdict.get("verdict") == "STALE":
-        tokens = (live_probe or live_sample)()
+        # 探针抛异常不等于「车道忙」，更不许把整条闸崩掉（崩=调用方看不见
+        # 任何判决）。与 live_sample 内部的 None 同口径：留 STALE 并点名。
+        try:
+            tokens = (live_probe or live_sample)()
+        except Exception:
+            tokens = None
         if tokens:
             fresh = judge(tokens, 0.0, ram_min, vram_min, max_age_min)
             fresh["source"] = {"file": None, "line": None, "live": True,

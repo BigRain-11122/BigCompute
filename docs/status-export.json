@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-11-09 00:38",
- "current_activity": "2026-11-09 00:3x 令牌轮：点火看板补『为什么失败』（T223）。此前 status 只出 receipts=11 ok=5，失败链和从不点火长得一样。本轮 readout 增 last_failure（最新一条失败回执的 ts/batch/exit/首条错误行），无失败时显式打印 last_failure=none；预 T222 回执无错误信封时写 not-captured 而不是伪装成『日志干净』。冒烟探针 no.30 同步加判据：readout 缺 last_failure 字段即红（CEO 面失明），夹具下限 21→25。selftest 25/25、no.30 探针 14/14 PASS",
- "latest_artifact": "qa/smoke-20261109-0031.log + .png（2026-11-09 00:34；no.30 PASS，smoke 27/29，两红=no.16 GPU 争用超时 + no.22 M96 历史面）+ Tools/pool_igniter.py 新增 last_failure()（S22-S25 四夹具）+ Tools/qa_smoke.py 探针 no.30 增 last_failure 判据",
- "next_milestone": "①R-069 重复点火守卫（同一卡每 15min 重烧、两次三件产物 sha256 全同＝零增量夹具循环维持 effective≥1）：改 once-per-batch + SKIP-ALREADY-IGNITED + status 报 repeat_count，窗 ≤24h ②B-CITY3D-02 判据帧六帧真渲：待 GPU vram_free ≥6144（本轮 814MiB 全关，让路律不抢；窗 ≤48h）③M172 City3DBatchRender.cs 在 Tuanjie 2022.3.62t15 下的编译仍未证"
+ "updated_at": "2026-11-09 01:10",
+ "current_activity": "2026-11-09 01:00 轮：M175 partial-done=派工判决自带读数来源（dispatch_precheck reading 字段 live/file + NOT-MEASURED 标记 + CLI --live-on-stale + gpu 采集器派工面改现测·selftest 14→19 PASS·轮内修 lane_gate 探针异常崩闸→fail-closed 保 STALE）+ M177 新立（reading 字段无人守） gpu:7d ｜ 两池：本司备货可派 3 ／ 机队可领 0（两个不同池，本司卡未登记进机队池）",
+ "latest_artifact": "state/clean-window-log.jsonl（mtime 2026-11-09 01:10）",
+ "next_milestone": "M25 室内烘焙批步 2：labbench 烘焙样板间实弹（AD-021 模块壳围合+AD-035 灯板光池→Tuanjie 批模式烘焙·GPU/CPU 双路时长/峰值/质量三指标实测·J1-J4 判据窗·labbench 隔离区零碰司仓〔O-023 先例〕·编辑器启动窗承接）（队列状态=open（**步 2 机械链预建毕 09-29 22:43）"
 }

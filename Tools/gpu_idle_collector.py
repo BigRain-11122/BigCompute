@@ -584,7 +584,10 @@ def dispatch_gate(consumer="gpu-dispatch-pointer"):
         sys.path.insert(0, HERE)
     try:
         import dispatch_precheck
-        result, code = dispatch_precheck.evaluate("gpu", consumer=consumer)
+        # 自动派工面统一现测（M175）：心跳是几小时才写一次的产物，
+        # 把它读成「车道忙」等于瞎跑；这里与 pool_igniter/batch_pool 同口径。
+        result, code = dispatch_precheck.evaluate(
+            "gpu", consumer=consumer, live_on_stale=True)
         dispatch_precheck.append_snapshot(result)
     except Exception as exc:  # gate missing/broken must not read as permission
         return ("UNPARSED", 64, "gate unavailable: %s" % exc.__class__.__name__)
