@@ -12,6 +12,7 @@ clean_window_probe.py
 cloud_attribution_audit.py
 compliance_gate_check.py
 cost_contract_census.py
+cost_daily_reconcile.py
 cost_ledger.py
 cpu_effective_hours.py
 cpu_read_ab_probe.py
