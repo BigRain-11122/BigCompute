@@ -745,7 +745,12 @@ P2=text_integrity 本仓零缺陷，但列数族 new_ext=13 全在集团只读�
 - 03:2x 收口（M163 + M165 同窗毕）：心跳行新增 `stock_dispatchable=4`，与 `pool_effective=0` 并排出现——本司 4 张备货卡可派、机队可领 0，两池不同一这件事此前只有跑 `batch_pool review` 的人看得见；登记簿读不到时一律 `n/a`，不填 0 冒充「无可派卡」。`review` 分母改为恒定 `cards`，字符串错标不再让分母悄悄从 6 变 5（实跑 `consumer_named=4/6 valid=6 badtype=0`）。
 - P2（外部面）：集团 `decisions.md` 第 49 批新行 `table_new=11`，列数与表头不符（本司只报警不改他司台账），供 @HQ 修；本司 `new_local=0`。
 
-日清（11-08 06:1x 令牌轮）：
+## 日清 2026-11-08（06:1x 令牌轮）：
 - 收口：M166 两池读数进 CEO 实况面——心跳是单一真源，两池并列不合并，缺字段或心跳超 45 分钟一律 n/a；CEO 只读 docs/status-export.json 即可见「本司备货可派 4 ／ 机队可领 0」。
 - P2（外部面）：集团 decisions.md mtime 06:09 晚于上轮 03:26 但零新决策行=并发重写；按 mtime 唤醒会空跑，本司 M167/BC-P-222 提行集 hash 判据，只读不改集团台账。
 - 已知红：no.22 M96 历史回执产物面（多轮既有）+ text_integrity new_ext=11 全在集团只读台账（本司 new_local=0）。
+
+## 日清 2026-11-08（09:3x 排程轮）：
+- 收口：M159 纪律自述豁免机械化——coverage 引号外 4 处假阳归零（§4.2 三处／§4.4 一处），resolved 由 GAP-HIT→GAP，selftest 17→22/22 PASS；豁免按「否定词之后·句读之前」的区间判定而非整行，故「禁止赌博，这款保证升值」仍判命中（S14/S15b 负控）。
+- P2（外部面）：decisions.md 09:16 新增 D-20261108-07/08 均非本司域（@HQ 工具席 secret-scan 自排／@BigLife 反馈面），其中 D-08 引本司 HQ-FEEDBACK 615KB/11-08 06:17 作健康样本；本司无需动作。
+- 已知红：no.22 M96 历史回执产物面；coverage 的 PARSE-SUSPECT 源自 plan 文档引用不存在的 §4.6（已立 M169 收口）。

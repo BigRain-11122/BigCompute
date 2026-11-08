@@ -52,6 +52,34 @@ ALLOW_PHRASES = [
     "非投资建议",
 ]
 
+# 纪律自述豁免（M159）：`禁运势/算命/预测/八字（…）` 这类「禁令列出被禁词」
+# 的纪律行，禁词本身就是规则内容而非违禁用法。判据=禁词落在否定词后、句读前的
+# 同一段内才算豁免；否定段在标点处终止，故「禁止赌博，这里保证升值」仍判命中。
+DISCIPLINE_MARKERS = (
+    "禁止", "严禁", "禁用", "杜绝", "避免", "拒绝",
+    "不得", "不许", "不能", "不可", "不做", "不要", "不准", "勿", "禁",
+)
+DISCIPLINE_TERMINATORS = "。；！？，,;!?：:（）()「」【】\n"
+DISCIPLINE_RE = re.compile("|".join(DISCIPLINE_MARKERS))
+
+
+def _discipline_spans(text):
+    """返回「否定词之后、句读之前」的字符区间列表（半开区间）。"""
+    spans = []
+    for m in DISCIPLINE_RE.finditer(text):
+        i = m.end()
+        if i >= len(text) or text[i] in DISCIPLINE_TERMINATORS:
+            continue  # 否定词后紧跟句读=不是列举禁用词
+        j = i
+        while j < len(text) and text[j] not in DISCIPLINE_TERMINATORS:
+            j += 1
+        spans.append((i, j))
+    return spans
+
+
+def _in_spans(pos, spans):
+    return any(a <= pos < b for a, b in spans)
+
 QUOTE_RE = re.compile(r"「([^」]*)」")
 
 # 词表正典（census 用）：§四 禁用词过检总表所在文档
@@ -265,6 +293,7 @@ def coverage(targets=None, min_chars=50):
     rows, missing, total_chars, total_quoted = [], [], 0, 0
     hits, samples = [], []
     bare_lines_total = 0
+    discipline_exempt_total = 0
     for path, selector in targets:
         try:
             sections = _sections(path)
@@ -278,16 +307,23 @@ def coverage(targets=None, min_chars=50):
             continue
         speech = _speech_lines(block)
         chars, qchars, uchars, per_line, rem = _scan_quotes(speech)
-        sec_hits = []
+        sec_hits, sec_exempt = [], 0
         for lineno2, in_q, un_q, bare_txt in per_line:
             cleaned = bare_txt
             for allow in ALLOW_PHRASES:
                 cleaned = cleaned.replace(allow, "")
+            spans = _discipline_spans(cleaned)
             for w in BANNED:
-                if w in cleaned:
+                occ = [m.start() for m in re.finditer(re.escape(w), cleaned)]
+                if not occ:
+                    continue
+                live = [p for p in occ if not _in_spans(p, spans)]
+                sec_exempt += len(occ) - len(live)
+                if live:
                     sec_hits.append({"word": w, "line": lineno2, "text": bare_txt[:48]})
                     hits.append("%s §%s L%d: 引号外命中 [%s] 上下文=%s"
                                 % (os.path.basename(path), selector, lineno2, w, bare_txt[:40]))
+        discipline_exempt_total += sec_exempt
         bare = [p for p in per_line if p[2] and not p[1]]
         partial = [p for p in per_line if p[2] and p[1]]
         for lineno2, in_q, un_q, bare_txt in (bare + partial)[:12]:
@@ -300,7 +336,7 @@ def coverage(targets=None, min_chars=50):
             "speech_lines": len(speech), "chars": chars,
             "quoted_chars": qchars, "unquoted_chars": uchars,
             "bare_lines": len(bare), "partial_lines": len(partial),
-            "hits": sec_hits,
+            "hits": sec_hits, "discipline_exempt": sec_exempt,
         })
         total_chars += chars
         total_quoted += qchars
@@ -331,6 +367,7 @@ def coverage(targets=None, min_chars=50):
         "unquoted_rate": round(unq / total_chars, 4) if total_chars else 0.0,
         "bare_lines": bare_lines_total,
         "hits": hits, "samples": samples,
+        "discipline_exempt": discipline_exempt_total,
     }
     return verdict, payload
 
@@ -339,18 +376,20 @@ def render_coverage(verdict, p):
     out = ["[quote-coverage] VERDICT=%s" % verdict]
     out.append("[quote-coverage] resolved-only=%s（缺节不影响已解析节的读数·缺节另计）"
                % p.get("resolved_verdict", "-"))
-    out.append("[quote-coverage] domain: speech_chars=%d quoted=%d unquoted=%d rate=%.1f%% bare_lines=%d sections=%d/%d"
+    out.append("[quote-coverage] domain: speech_chars=%d quoted=%d unquoted=%d rate=%.1f%% bare_lines=%d discipline_exempt=%d sections=%d/%d"
                % (p["speech_chars"], p["quoted_chars"], p["unquoted_chars"],
-                  p["unquoted_rate"] * 100, p.get("bare_lines", 0), len(p["rows"]),
+                  p["unquoted_rate"] * 100, p.get("bare_lines", 0),
+                  p.get("discipline_exempt", 0), len(p["rows"]),
                   len(p["rows"]) + len(p["missing_sections"])))
     for r in p["rows"]:
         if "error" in r:
             out.append("  %s §%s ERROR %s" % (r["path"], r["selector"], r["error"]))
             continue
-        out.append("  %s §%s L%d lines=%d chars=%d quoted=%d unquoted=%d bare=%d partial=%d hits=%d"
+        out.append("  %s §%s L%d lines=%d chars=%d quoted=%d unquoted=%d bare=%d partial=%d hits=%d exempt=%d"
                    % (r["path"], r["selector"], r["line"], r["speech_lines"],
                       r["chars"], r["quoted_chars"], r["unquoted_chars"],
-                      r["bare_lines"], r["partial_lines"], len(r["hits"])))
+                      r["bare_lines"], r["partial_lines"], len(r["hits"]),
+                      r.get("discipline_exempt", 0)))
     for m in p["missing_sections"]:
         out.append("  MISSING-SECTION %s" % m)
     if p["hits"]:
@@ -457,6 +496,22 @@ def selftest():
     # S12 节号不存在 -> PARSE-SUSPECT（禁静默跳过）
     cov_case("S12 缺节->PARSE-SUSPECT", sec.format("欢迎来到直播间", ""),
              "QUOTE-COVERAGE-PARSE-SUSPECT", selector="4.6")
+    # S13 纪律自述行（禁令列举被禁词）-> 不判命中，且豁免计数>0（M159）
+    p = cov_case("S13 纪律自述->豁免不判命中",
+                 sec.format("欢迎来到直播间", "> 禁运势/算命/预测/八字（封号重灾区）"),
+                 "QUOTE-COVERAGE-GAP")
+    cases.append((p["hits"] == [] and p["discipline_exempt"] == 3,
+                  "S13b 纪律自述豁免计数=3", p["discipline_exempt"], 3))
+    # S14 同一句里禁令段之后仍有真违禁 -> 仍 GAP-HIT（豁免不越句读）
+    cov_case("S14 禁令后真违禁->GAP-HIT",
+             sec.format("欢迎来到直播间", "> 禁止赌博，这款保证升值"),
+             "QUOTE-COVERAGE-GAP-HIT")
+    # S15 S10 的禁词前无否定词 -> 豁免计数必须为 0（负控：豁免不能变成静音）
+    p = cov_case("S15 无否定词不豁免",
+                 sec.format("欢迎来到直播间", "> 这款藏品保证升值翻倍"),
+                 "QUOTE-COVERAGE-GAP-HIT")
+    cases.append((p["discipline_exempt"] == 0,
+                  "S15b 无否定词时豁免计数=0", p["discipline_exempt"], 0))
 
     failed = 0
     for ok, name, got, want in cases:

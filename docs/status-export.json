@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-11-08 06:18",
- "current_activity": "2026-11-08 06:00 轮：M166 done=两池读数进 CEO 实况面（心跳为单一真源·两池并列不合并不按 0 兜底·selftest 17->23 PASS·实跑 两池：本司备货可派 4 ／ 机队可领 0 + EXPORT-GREEN）+M167 新立=台账唤醒按 mtime 会空跑（decisions 06:09 mtime 新但零新行）·轮内真发现三处同窗修（blocked 行当里程碑／overrides 无新鲜度闸致 11-03 旧句贴 11-08 ｜ 两池：本司备货可派 4 ／ 机队可领 0（两个不同池，本司卡未登记进机队池）",
- "latest_artifact": "qa/smoke-20261108-0615.png（mtime 2026-11-08 06:16）",
+ "updated_at": "2026-11-08 09:27",
+ "current_activity": "2026-11-08 09:00 轮：M159 done=纪律自述豁免机械化（DISCIPLINE_MARKERS+_discipline_spans 落 banned_words_check.py；payload/render 增 discipline_exempt；selftest 17→22/22 PASS；实跑 4 处假阳归零 §4.2 3→0/§4.4 1→0，resolved GAP-HIT→GAP）+M169 新立（§4.6 引用断裂使 coverage 恒 ｜ 两池：本司备货可派 4 ／ 机队可领 0（两个不同池，本司卡未登记进机队池）",
+ "latest_artifact": "state/c1c4-20261108-092650.json（mtime 2026-11-08 09:26）",
  "next_milestone": "M25 室内烘焙批步 2：labbench 烘焙样板间实弹（AD-021 模块壳围合+AD-035 灯板光池→Tuanjie 批模式烘焙·GPU/CPU 双路时长/峰值/质量三指标实测·J1-J4 判据窗·labbench 隔离区零碰司仓〔O-023 先例〕·编辑器启动窗承接）（队列状态=open（**步 2 机械链预建毕 09-29 22:43）"
 }
