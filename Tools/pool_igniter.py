@@ -550,6 +550,37 @@ def last_tick_age_min():
     return round((now() - ts).total_seconds() / 60.0, 1)
 
 
+def last_failure(receipts):
+    """Latest failed ignition receipt, flattened for a CEO-facing line.
+
+    `receipts=N ok=M` cannot tell a chain that fails every tick from one that
+    never fires: both look like a small M.  The reason of the newest failure is
+    named here; None means "no failure in the ledger", which status prints as
+    `last_failure=none` instead of omitting the field so "no failure" and "not
+    measured" stay distinguishable.
+    """
+    for r in reversed(receipts):
+        if r.get("ok"):
+            continue
+        runner = r.get("runner") or {}
+        err = runner.get("error")
+        if err is None:
+            # Receipts written before T222 carry no error envelope at all; say
+            # that instead of "no error text", which would read as a clean log.
+            reason = "not-captured(writer-predates-error-capture)"
+        else:
+            lines = err.get("lines") or []
+            reason = lines[0] if lines else (err.get("note") or "no-error-text")
+        return {
+            "batch_id": r.get("batch_id"),
+            "ts": r.get("ts"),
+            "exit": runner.get("exit"),
+            "error": reason,
+            "lane_gate": r.get("lane_gate"),
+        }
+    return None
+
+
 def readout():
     """Two-pool honesty readout for the ignition chain.
 
@@ -594,6 +625,7 @@ def readout():
             "receipts": len(receipts),
             "receipts_ok": sum(1 for r in receipts if r.get("ok")),
             "last_receipt": receipts[-1]["ts"] if receipts else None,
+            "last_failure": last_failure(receipts),
         },
         "cards": cards,
     }
@@ -620,6 +652,12 @@ def status(as_json=False, out=None):
              ign["last_tick_age_min"]))
     for u in rd["declared_unready"]:
         print("unready %s reason=%s" % (u["batch_id"], u["reason"]))
+    lf = ign["last_failure"]
+    if lf:
+        print("last_failure ts=%s batch=%s exit=%s error=%s"
+              % (lf["ts"], lf["batch_id"], lf["exit"], lf["error"]))
+    else:
+        print("last_failure=none")
     return 0
 
 
@@ -779,6 +817,37 @@ def selftest():
                                            rows=[no_cs_row])
         chk("S21 non-compile failure is not blocked by this guard",
             allowed and why == "no-compile-error", why)
+
+        # --- T223: the newest failure must be readable from the readout ------
+        old_fail = {"batch_id": "B-OLD", "ok": False, "ts": "2026-11-08 10:00:00",
+                    "lane_gate": "OPEN/x",
+                    "runner": {"exit": 1,
+                               "error": {"lines": ["error CS1061: old"]}}}
+        new_fail = {"batch_id": "B-NEW", "ok": False, "ts": "2026-11-08 11:00:00",
+                    "lane_gate": "CLOSED/y",
+                    "runner": {"exit": 1,
+                               "error": {"lines": ["error CS0246: new"]}}}
+        ok_after = {"batch_id": "B-NEW", "ok": True, "ts": "2026-11-08 12:00:00",
+                    "runner": {}}
+        lf = last_failure([old_fail, new_fail, ok_after])
+        chk("S22 last_failure picks the newest failure, not the newest receipt",
+            lf and lf["batch_id"] == "B-NEW" and "CS0246" in lf["error"], lf)
+
+        silent = {"batch_id": "B-SILENT", "ok": False, "ts": "2026-11-08 09:00:00",
+                  "runner": {"exit": 2, "error": {"lines": [],
+                                                  "note": "log-missing"}}}
+        lf = last_failure([silent])
+        chk("S23 failure without error lines still names a reason",
+            lf and lf["error"] == "log-missing" and lf["exit"] == 2, lf)
+
+        chk("S24 no failure -> None (status prints last_failure=none)",
+            last_failure([ok_after]) is None and last_failure([]) is None, None)
+
+        legacy = {"batch_id": "B-LEGACY", "ok": False, "ts": "2026-11-07 01:00:00",
+                  "runner": {"exit": 1}}
+        lf = last_failure([legacy])
+        chk("S25 receipt without error envelope says not-captured, not clean",
+            lf and lf["error"].startswith("not-captured"), lf)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 

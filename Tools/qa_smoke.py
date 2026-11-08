@@ -3428,7 +3428,7 @@ def selftest_money_guard():
     return 0 if all(results) else 1
 
 
-IGNITER_MIN_SELFTEST = 21
+IGNITER_MIN_SELFTEST = 25
 
 
 def igniter_judge(selftest_rc, selftest_out, readout, last_receipt=None):
@@ -3488,6 +3488,11 @@ def igniter_judge(selftest_rc, selftest_out, readout, last_receipt=None):
     if ign.get("last_tick_age_min") is None:
         return False, (counts + " -- watcher log unreadable, the chain "
                        "cannot self-report")
+    if "last_failure" not in ign:
+        return False, (counts + " -- readout has no last_failure field: the "
+                       "newest failure reason is invisible on the CEO face")
+    lf = ign.get("last_failure")
+    counts += " last_failure=%s" % ("none" if lf is None else lf.get("ts"))
     if (ign.get("receipts") or 0) > 0 and last_receipt is None:
         return False, (counts + " -- receipts counted but the last row is "
                        "unreadable")
@@ -3541,14 +3546,15 @@ def selftest_igniter():
                                   len(results), name,
                                   "" if cond else " :: " + str(detail))))
 
-    good_out = "\n".join(["PASS S%d fixture" % i for i in range(21)]
-                         + ["21/21 PASS"])
+    good_out = "\n".join(["PASS S%d fixture" % i for i in range(25)]
+                         + ["25/25 PASS"])
 
     def rd(**kw):
         doc = {"dispatchable": 4, "runnable": 2, "gap": 2,
                "declared_unready": [{"batch_id": "B-X", "reason": "project-missing"}],
                "not_runnable": ["B-Y"],
                "igniter": {"receipts": 11, "receipts_ok": 5,
+                           "last_failure": None,
                            "last_tick_age_min": 8.4}}
         doc.update(kw)
         return doc
@@ -3561,8 +3567,8 @@ def selftest_igniter():
 
     ok, det = igniter_judge(0, good_out, rd(), ok_receipt)
     check("clean chain -> PASS and reports pool + fixture readings",
-          ok and "selftest=21/21" in det and "gap=2" in det
-          and "receipts=11" in det, det)
+          ok and "selftest=25/25" in det and "gap=2" in det
+          and "receipts=11" in det and "last_failure=none" in det, det)
 
     ok, det = igniter_judge(1, "20/21 PASS", rd(), ok_receipt)
     check("failing fixtures -> FAIL naming rc",
@@ -3608,6 +3614,20 @@ def selftest_igniter():
     ok, det = igniter_judge(0, good_out, rd(), fail_receipt)
     check("a properly explained failure is not mistaken for a broken chain",
           ok, det)
+
+    blind = rd(igniter={"receipts": 11, "receipts_ok": 5,
+                        "last_tick_age_min": 8.4})
+    ok, det = igniter_judge(0, good_out, blind, ok_receipt)
+    check("readout without last_failure -> FAIL (CEO face blind to failures)",
+          (not ok) and "last_failure field" in det, det)
+
+    with_fail = rd(igniter={"receipts": 11, "receipts_ok": 5,
+                            "last_tick_age_min": 8.4,
+                            "last_failure": {"ts": "2026-11-08 22:24:54",
+                                             "error": "x"}})
+    ok, det = igniter_judge(0, good_out, with_fail, ok_receipt)
+    check("a named failure is surfaced in the same line",
+          ok and "last_failure=2026-11-08 22:24:54" in det, det)
 
     first = igniter_judge(0, good_out, rd(), ok_receipt)
     second = igniter_judge(0, good_out, rd(), ok_receipt)
