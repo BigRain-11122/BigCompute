@@ -296,6 +296,10 @@ def coverage(targets=None, min_chars=50):
     hits, samples = [], []
     bare_lines_total = 0
     discipline_exempt_total = 0
+    # M170: 空节（有标题无口播文本）与缺节是两件事——缺节让 verdict 变
+    # PARSE-SUSPECT，空节什么都不影响，却会把 sections=n/n 读成「覆盖齐全」。
+    # 这里只让它可见（判据不动）。
+    empty_sections = []
     for path, selector in targets:
         try:
             sections = _sections(path)
@@ -339,7 +343,10 @@ def coverage(targets=None, min_chars=50):
             "quoted_chars": qchars, "unquoted_chars": uchars,
             "bare_lines": len(bare), "partial_lines": len(partial),
             "hits": sec_hits, "discipline_exempt": sec_exempt,
+            "empty": chars == 0,
         })
+        if chars == 0:
+            empty_sections.append("%s §%s (空节·不计字数)" % (path, selector))
         total_chars += chars
         total_quoted += qchars
         bare_lines_total += len(bare)
@@ -370,6 +377,7 @@ def coverage(targets=None, min_chars=50):
         "bare_lines": bare_lines_total,
         "hits": hits, "samples": samples,
         "discipline_exempt": discipline_exempt_total,
+        "empty_sections": empty_sections,
     }
     return verdict, payload
 
@@ -378,22 +386,26 @@ def render_coverage(verdict, p):
     out = ["[quote-coverage] VERDICT=%s" % verdict]
     out.append("[quote-coverage] resolved-only=%s（缺节不影响已解析节的读数·缺节另计）"
                % p.get("resolved_verdict", "-"))
-    out.append("[quote-coverage] domain: speech_chars=%d quoted=%d unquoted=%d rate=%.1f%% bare_lines=%d discipline_exempt=%d sections=%d/%d"
+    out.append("[quote-coverage] domain: speech_chars=%d quoted=%d unquoted=%d rate=%.1f%% bare_lines=%d discipline_exempt=%d empty_sections=%d sections=%d/%d"
                % (p["speech_chars"], p["quoted_chars"], p["unquoted_chars"],
                   p["unquoted_rate"] * 100, p.get("bare_lines", 0),
-                  p.get("discipline_exempt", 0), len(p["rows"]),
+                  p.get("discipline_exempt", 0), len(p.get("empty_sections") or []),
+                  len(p["rows"]),
                   len(p["rows"]) + len(p["missing_sections"])))
     for r in p["rows"]:
         if "error" in r:
             out.append("  %s §%s ERROR %s" % (r["path"], r["selector"], r["error"]))
             continue
-        out.append("  %s §%s L%d lines=%d chars=%d quoted=%d unquoted=%d bare=%d partial=%d hits=%d exempt=%d"
+        out.append("  %s §%s L%d lines=%d chars=%d quoted=%d unquoted=%d bare=%d partial=%d hits=%d exempt=%d%s"
                    % (r["path"], r["selector"], r["line"], r["speech_lines"],
                       r["chars"], r["quoted_chars"], r["unquoted_chars"],
                       r["bare_lines"], r["partial_lines"], len(r["hits"]),
-                      r.get("discipline_exempt", 0)))
+                      r.get("discipline_exempt", 0),
+                      " EMPTY" if r.get("empty") else ""))
     for m in p["missing_sections"]:
         out.append("  MISSING-SECTION %s" % m)
+    for m in (p.get("empty_sections") or []):
+        out.append("  EMPTY-SECTION %s" % m)
     if p["hits"]:
         out.append("  引号外命中（真漏检·禁判 0 命中）:")
         out.extend("    " + h for h in p["hits"])
@@ -514,6 +526,34 @@ def selftest():
                  "QUOTE-COVERAGE-GAP-HIT")
     cases.append((p["discipline_exempt"] == 0,
                   "S15b 无否定词时豁免计数=0", p["discipline_exempt"], 0))
+
+    # S16/S17 空节 ≠ 缺节 ≠ 成绩（M170）：真实文档里 §4.3 是占位节（有标题无
+    # 口播），它把 sections 撑成 n/n 却不贡献一个字；而缺节仍必须 PARSE-SUSPECT。
+    tmpdir = tempfile.mkdtemp(prefix="bwc-cov-")
+    path = os.path.join(tmpdir, "plan.md")
+    with open(path, "w", encoding="utf-8") as fh:
+        fh.write("### 4.1 开场白\n\n> 「欢迎来到直播间」\n"
+                 "### 4.3 商品讲解话术（占位）\n\n"
+                 "### 4.4 反诈\n\n> 「别转账」\n")
+    v16, p16 = coverage([(path, "4.1"), (path, "4.3")], min_chars=1)
+    ok = (v16 == "QUOTE-COVERAGE-FULL"
+          and len(p16.get("empty_sections") or []) == 1
+          and p16["missing_sections"] == []
+          and p16["speech_chars"] > 0)
+    cases.append((ok, "S16 空节点名但不改判据（≠缺节≠成绩）",
+                  "%s empty=%d missing=%d"
+                  % (v16, len(p16.get("empty_sections") or []),
+                     len(p16["missing_sections"])),
+                  "FULL empty=1 missing=0"))
+    v17, p17 = coverage([(path, "4.1"), (path, "4.9")], min_chars=1)
+    ok = (v17 == "QUOTE-COVERAGE-PARSE-SUSPECT"
+          and (p17.get("empty_sections") or []) == []
+          and len(p17["missing_sections"]) == 1)
+    cases.append((ok, "S17 缺节仍 PARSE-SUSPECT 且不被读成空节",
+                  "%s empty=%d missing=%d"
+                  % (v17, len(p17.get("empty_sections") or []),
+                     len(p17["missing_sections"])),
+                  "SUSPECT empty=0 missing=1"))
 
     failed = 0
     for ok, name, got, want in cases:
