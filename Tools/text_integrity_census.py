@@ -135,6 +135,11 @@ FFFD = "FFFD-DAMAGE"
 DOUBLE = "DOUBLE-DAMAGE"
 NOT_UTF8 = "NOT-UTF8"
 CONFLICT = "CONFLICT-MARKER"
+# M168 (2026-11-08): a UTF-8 BOM is invisible to every reader that strips it and
+# a stray U+FEFF to every reader that does not. runbook says the ledgers are
+# written as explicit UTF-8 without BOM, so a BOM on a *local* ledger is a
+# write-path defect — reported at file level, not as a damaged line.
+BOM = "BOM-HEADER"
 # T212: a table row whose cell count disagrees with its header is a different
 # defect from a corrupted line -- the bytes are intact, the row is unreadable.
 COLUMN_OVER = "COLUMN-OVERFLOW"
@@ -380,6 +385,7 @@ def census(paths, baseline=None):
                          "error": "%s at byte %d" % (e.reason, e.start)})
             continue
         lines = text.splitlines()
+        has_bom = raw.startswith(b"\xef\xbb\xbf")
         fenced = _fence_mask(lines)
         damaged_map = {}
         for i, line in enumerate(lines, 1):
@@ -407,7 +413,8 @@ def census(paths, baseline=None):
             d["note"] = baseline.get((fkey, d["row_id"]), "")
         rows.append({
             "path": p, "external": ext,
-            "status": "DAMAGED" if damaged else "CLEAN",
+            "status": "DAMAGED" if (damaged or has_bom) else "CLEAN",
+            "bom": has_bom,
             "bytes": len(raw), "lines": len(lines), "damaged_lines": damaged,
             "conflict_blocks": len(blocks),
             "conflict_marker_lines": len({n for b in blocks for n in b["marker_lines"]}),
@@ -581,6 +588,40 @@ def _selftest():
                     "external": True, "status": "ABSENT-EXTERNAL"}])
     run("S13 absent-external-ok",
         s["verdict"] == "TEXT-INTEGRITY-CLEAN" and len(s["absent_external"]) == 1,
+        s["verdict"])
+
+    # S14 (M168) a UTF-8 BOM on a local ledger is a write-path defect judged at
+    # FILE level: no line is corrupted, the header bytes are. damaged_lines must
+    # stay 0 or the reader will hunt for a bad row that does not exist.
+    fd, tmp = tempfile.mkstemp(suffix=".md")
+    os.write(fd, "正常行\n".encode("utf-8-sig"))
+    os.close(fd)
+    row = census([tmp])[0]
+    s = summarize([row])
+    os.unlink(tmp)
+    run("S14 local BOM -> NEEDS-FIX (file level, zero damaged lines)",
+        s["verdict"] == "TEXT-INTEGRITY-NEEDS-FIX" and s["files_damaged"] == 1
+        and s["damaged_lines"] == 0 and row.get("bom") is True,
+        "%s files=%d lines=%d bom=%s" % (s["verdict"], s["files_damaged"],
+                                         s["damaged_lines"], row.get("bom")))
+
+    # S14b negative control: same bytes without BOM must stay CLEAN, otherwise
+    # the new check would be satisfied by "every file reds the verdict".
+    fd, tmp = tempfile.mkstemp(suffix=".md")
+    os.write(fd, "正常行\n".encode("utf-8"))
+    os.close(fd)
+    row = summarize(census([tmp]))["rows"][0]
+    os.unlink(tmp)
+    run("S14b no BOM -> CLEAN", row.get("bom") is False and row["status"] == "CLEAN")
+
+    # S15 a BOM on a group read-only ledger is visible but never claimed as this
+    # company's defect -- we cannot write there, so we cannot fix it either.
+    s = summarize([{"path": os.path.join(group_root(), "docs", "x.md"),
+                    "external": True, "status": "DAMAGED", "bom": True,
+                    "lines": 2, "damaged_lines": []}])
+    run("S15 external BOM -> visible, not local",
+        s["verdict"] == "TEXT-INTEGRITY-EXTERNAL-DAMAGED"
+        and s["files_damaged"] == 0 and s["external_files_damaged"] == 1,
         s["verdict"])
 
     # C1 (T195) a real half-merged ledger -- opener + closer at column 0 with a
@@ -844,6 +885,9 @@ def main(argv=None):
                         % (d["line"], ",".join(d["classes"]), d["qmark_runs"], d["preview"]))
         if len(r["damaged_lines"]) > 6:
             _print_safe("        ... %d more damaged lines" % (len(r["damaged_lines"]) - 6))
+        if r.get("bom"):
+            _print_safe("        BOM-HEADER file starts with EF BB BF "
+                        "(runbook: explicit UTF-8 without BOM)")
     _print_safe("VERDICT %s files_scanned=%d files_damaged=%d damaged_lines=%d"
                 " ext_damaged_files=%d ext_absent=%d unreadable=%d cats=%d/%d"
                 % (s["verdict"], s["files_scanned"], s["files_damaged"],
