@@ -2,6 +2,9 @@
 
 > 治理=docs/governance.md §7 反馈通道；收取 SLA=周轮必扫·未处理超两周升级 CEO；决策轮日清=每日 23:00 前写本面（cph4/decision.md 节律四拍）。
 ## 日清区（决策轮上报面·最新在前）
+- 2026-11-09 00:2x（OSLoop 令牌轮·承 T-20261108-7 派生 tech T222）：**P1 产品增量=点火失败点名日志错误行（可跑件+真实出数 2 分件）**——昨晚 6 次点火 exit=1 只回写空 artifacts 与秒数，真正原因 `Assets\Editor\BakeSpike.cs(169,15): error CS1061: 'LightingSettings' does not contain 'aoEnabled'` 一直躺在 `tuanjie-bake.log` 里，没有任何回执读过它。本轮 `Tools/pool_igniter.py` 增 `extract_log_errors()`（4 类错误模式·限尾 6 行）+ 两 runner 回执带 `runner.log`/`runner.error`（抽不到必说明是 `log-missing` 还是 `no-error-line-in-log`）+ `compile_stale_guard()`（同一 CS 错误且 `.cs` 未改 → 拒绝再烧一次编辑器）。selftest **21/21 PASS**。
+- 实物读数=对磁盘上 **13 份真实日志**回填抽取：`with_errors=6 with_cs=6`，6 份逐字命中上述 CS1061，正好对应 11-08 那 6 次失败；其余 7 份 `no-error-line-in-log`（22:55 修好后的成功运行）——「日志干净」与「抽不到」在本仪器下分得开。守卫现网 B-CITY3D-01=`last-run-ok`、B-CITY3D-02=`no-prior-run`，不误拦。证据 `state/t222-log-error-evidence.txt/.json`。
+- **P2 如实**=①11-08 六条历史回执写入时没有 `error` 字段，守卫对它们读到 `no-compile-error`，本修只对新回执生效、历史不回头改写；②点火仍 0 新增（cpu ram_free=33.9%<40、gpu vram_free=741MiB<6144，按让路律不抢）；③冒烟 27/28（唯一红=no.22 M96 既有历史面），C1C4-GREEN 4/4，textintegrity:EXTERNAL-DAMAGED（本司 damaged=0，集团只读台账新表行只点名不拦）。
 - 2026-11-08 12:1x（OSLoop 令牌轮·承 D-20261108-09 池面点火）：**产物先行=池面点火器载荷就绪实检**——`runnable` 此前只查 `RUNNERS` 字典有无登记、不查磁盘载荷能否执行，labbench 项目一被清空就会读成「可点」而白烧一次编辑器启动；本轮改成实检（项目目录+入口脚本标记），未就绪一律渲染 `NOT-READY:<原因>`，tick/ignite 不启动编辑器。`selftest` **8/8 PASS**（夹具覆盖 no-local-payload/project-missing/entry-script-missing/无标记 .cs/在位），实跑 dispatchable=4 / runnable=1 / gap=3，B-CITY3D-01 真就绪（项目 7755 文件、`Assets/Editor/BakeSpike.cs` 在位）。
 - **P1 未闭面（如实）**=gap 3 卡是产能缺口不是窗口问题：B-CITY3D-02（判据帧批渲染）执行器待建，B-XIDUDU-01/02 项目本体不在本机（跨司载荷供位）。点火仍 0/1——两车道全关（cpu_lane_idle=false,ram=31.5；vram_free<6144），按让路律不抢。→ T-20261108-4 ACTIVE。
 - **P2 新增**=smoke no.26 转红（ROW-LOSS-FOUND window=4 permanent=4：`R-TRIAGE-BIGDOMAIN-BMB-20261108`、`biggame-accept-2026-11-08` 两 id 在他司共享 jsonl 里行丢失）。非本司仓、只读登记，供集团面处置；smoke 26/28（另红=no.22 既有历史面）。

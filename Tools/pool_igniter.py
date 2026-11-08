@@ -29,6 +29,7 @@ import glob
 import hashlib
 import json
 import os
+import re
 import subprocess
 import sys
 import time
@@ -127,6 +128,55 @@ def sha256(path):
     return h.hexdigest()
 
 
+# A failed editor launch used to leave an empty artifacts list and nothing else:
+# on 2026-11-08 six ignitions failed with exit=1 while the actual cause
+# (`error CS1061`) sat unread in tuanjie-bake.log.  A failure receipt has to
+# name the reason it failed, not just the fact that it did.
+LOG_ERROR_PATTERNS = (
+    re.compile(r"error CS\d+"),           # C# compiler diagnostic
+    re.compile(r"^\s*(?:Error|ERROR)\b"),  # editor / engine fatal line
+    re.compile(r"\bException\b"),
+    re.compile(r"^error:"),
+)
+CS_ERROR_RE = LOG_ERROR_PATTERNS[0]
+LOG_ERROR_MAX = 6
+LOG_ERROR_WIDTH = 300
+
+
+def extract_log_errors(logfile, limit=LOG_ERROR_MAX):
+    """Pull the error lines out of an editor log, or say why none were found.
+
+    Returns dict(present, lines, note, bytes).  `lines=[]` is never silent:
+    the note distinguishes "no log at all" from "log clean of error lines",
+    which are different facts about a failed run.
+    """
+    out = {"present": os.path.exists(logfile), "lines": [], "note": "",
+           "bytes": 0}
+    if not out["present"]:
+        out["note"] = "log-missing"
+        return out
+    try:
+        out["bytes"] = os.path.getsize(logfile)
+        with open(logfile, encoding="utf-8", errors="replace") as f:
+            raw = f.readlines()
+    except OSError as e:
+        out["note"] = "log-unreadable:%s" % e.__class__.__name__
+        return out
+    hits = []
+    for line in raw:
+        text = line.rstrip("\r\n")
+        if len(text) > LOG_ERROR_WIDTH:
+            text = text[:LOG_ERROR_WIDTH] + "..."
+        if any(p.search(text) for p in LOG_ERROR_PATTERNS):
+            hits.append(text.strip())
+    # keep the tail: the last lines are the ones that ended the run
+    out["lines"] = hits[-limit:]
+    out["note"] = "ok" if out["lines"] else "no-error-line-in-log"
+    if len(hits) > limit:
+        out["note"] = "ok(%d of %d shown)" % (limit, len(hits))
+    return out
+
+
 def run_bake_spike(outdir):
     """B-CITY3D-01 payload: CPU lightmapper bake in the labbench spike project."""
     os.makedirs(outdir, exist_ok=True)
@@ -179,6 +229,8 @@ def run_bake_spike(outdir):
         "exit": code,
         "seconds": elapsed,
         "ok": ok,
+        "log": os.path.relpath(logfile, ROOT).replace("\\", "/"),
+        "error": None if ok else extract_log_errors(logfile),
         "metrics": metrics_doc,
         "artifacts": artifacts,
     }
@@ -250,6 +302,8 @@ def run_render_spike(outdir):
         "exit": code,
         "seconds": elapsed,
         "ok": ok,
+        "log": os.path.relpath(logfile, ROOT).replace("\\", "/"),
+        "error": None if ok else extract_log_errors(logfile),
         "metrics": metrics_doc,
         "artifacts": artifacts,
     }
@@ -269,6 +323,11 @@ def ignite(batch_id, force=False):
     if not ready and not force:
         log("ignite refused %s payload-%s" % (batch_id, reason))
         return False, {"batch_id": batch_id, "skipped": "payload-not-ready:" + reason}
+    if not force:
+        allowed, why_compile = compile_stale_guard(batch_id)
+        if not allowed:
+            log("ignite refused %s %s" % (batch_id, why_compile))
+            return False, {"batch_id": batch_id, "skipped": why_compile}
     lane, state = lane_verdict(batch_id)
     if lane is None:
         return False, {"batch_id": batch_id, "skipped": state}
@@ -412,6 +471,57 @@ def receipt_rows():
                 except json.JSONDecodeError:
                     rows.append({"ok": False, "ts": "-", "corrupt": True})
     return rows
+
+
+def last_receipt(batch_id, rows=None, ok_only=False):
+    """Most recent receipt for one card (ok_only=False keeps failures)."""
+    for r in reversed(rows if rows is not None else receipt_rows()):
+        if r.get("batch_id") != batch_id:
+            continue
+        if ok_only and not r.get("ok"):
+            continue
+        return r
+    return None
+
+
+def compile_stale_guard(batch_id, project_root=None, rows=None):
+    """(allowed: bool, reason) - don't burn another editor launch on the same CS error.
+
+    A compile failure is only worth re-attempting if a source file changed since
+    that failed run.  Repeating the identical launch turns a 30-second answer
+    into a 50-second non-answer six times in a row (2026-11-08).
+    """
+    rec = last_receipt(batch_id, rows=rows, ok_only=False)
+    if rec is None:
+        return True, "no-prior-run"
+    if rec.get("ok"):
+        return True, "last-run-ok"
+    err = ((rec.get("runner") or {}).get("error") or {})
+    cs_lines = [ln for ln in (err.get("lines") or []) if CS_ERROR_RE.search(ln)]
+    if not cs_lines:
+        return True, "no-compile-error"
+    root = project_root or BAKE_PROJECT
+    log_rel = (rec.get("runner") or {}).get("log") or ""
+    log_path = os.path.join(ROOT, log_rel.replace("/", os.sep)) if log_rel else ""
+    try:
+        log_mtime = os.path.getmtime(log_path) if log_path else 0
+    except OSError:
+        log_mtime = 0
+    newest, cs_count = 0, 0
+    assets = os.path.join(root, "Assets")
+    for base, _dirs, files in os.walk(assets):
+        for fn in files:
+            if not fn.lower().endswith(".cs"):
+                continue
+            cs_count += 1
+            try:
+                newest = max(newest, os.path.getmtime(os.path.join(base, fn)))
+            except OSError:
+                continue
+    if log_mtime and newest <= log_mtime:
+        return False, ("last-run-compile-error-unchanged(%d cs; %s)"
+                       % (cs_count, cs_lines[0][:120]))
+    return True, "compile-error-but-sources-changed"
 
 
 def last_tick_age_min():
@@ -594,6 +704,81 @@ def selftest():
                             "payload": None, "payload_ready": False,
                             "payload_reason": "no-local-payload"})
         chk("S8 payload-less card renders as none", "payload=none" in line, line)
+
+        # --- T222: a failure receipt must name the error line -------------
+        log_ok = os.path.join(tmp, "with-error.log")
+        with open(log_ok, "w", encoding="utf-8") as f:
+            f.write("Initialize engine version: 2022.3.62t15\n"
+                    "Assets/Editor/BakeSpike.cs(169,17): error CS1061: "
+                    "'LightingSettings' does not contain 'aoEnabled'\n"
+                    "Aborting batchmode due to failure\n")
+        got = extract_log_errors(log_ok)
+        chk("S13 CS error line is quoted into the receipt",
+            got["present"] and len(got["lines"]) == 1
+            and "error CS1061" in got["lines"][0], got)
+
+        log_clean = os.path.join(tmp, "clean.log")
+        with open(log_clean, "w", encoding="utf-8") as f:
+            f.write("Initialize engine version\nBatchmode quit with code 1\n")
+        got = extract_log_errors(log_clean)
+        chk("S14 log without error lines says so instead of staying silent",
+            got["present"] and got["lines"] == []
+            and got["note"] == "no-error-line-in-log", got)
+
+        got = extract_log_errors(os.path.join(tmp, "absent.log"))
+        chk("S15 missing log is named, not reported as clean",
+            not got["present"] and got["note"] == "log-missing", got)
+
+        long_log = os.path.join(tmp, "many.log")
+        with open(long_log, "w", encoding="utf-8") as f:
+            for i in range(10):
+                f.write("error CS%04d: fake %d\n" % (i, i))
+        got = extract_log_errors(long_log)
+        chk("S16 only the tail of a long error list is kept",
+            len(got["lines"]) == LOG_ERROR_MAX
+            and "CS0009" in got["lines"][-1], got["note"])
+
+        # --- compile-stale guard: same error + same sources = don't relaunch --
+        old = (now() - datetime.timedelta(hours=2)).strftime("%Y-%m-%d %H:%M:%S")
+        guarded = os.path.join(tmp, "guarded.log")
+        with open(guarded, "w", encoding="utf-8") as f:
+            f.write("error CS1061: nope\n")
+        os.utime(guarded, (time.time() - 7200, time.time() - 7200))
+        proj = os.path.join(tmp, "proj")
+        os.makedirs(os.path.join(proj, "Assets", "Editor"), exist_ok=True)
+        cs = os.path.join(proj, "Assets", "Editor", "Spike.cs")
+        with open(cs, "w", encoding="utf-8") as f:
+            f.write("// spike\n")
+        os.utime(cs, (time.time() - 10800, time.time() - 10800))
+        fail_row = {"batch_id": "B-T", "ok": False, "ts": old,
+                    "runner": {"log": os.path.relpath(guarded, ROOT),
+                               "error": extract_log_errors(guarded)}}
+        allowed, why = compile_stale_guard("B-T", project_root=proj,
+                                           rows=[fail_row])
+        chk("S17 unchanged sources after a CS failure -> refuse relaunch",
+            not allowed and why.startswith("last-run-compile-error-unchanged"),
+            why)
+
+        os.utime(cs, (time.time(), time.time()))
+        allowed, why = compile_stale_guard("B-T", project_root=proj,
+                                           rows=[fail_row])
+        chk("S18 edited source -> relaunch allowed", allowed
+            and why == "compile-error-but-sources-changed", why)
+
+        allowed, why = compile_stale_guard("B-T", project_root=proj, rows=[])
+        chk("S19 no prior run -> allowed", allowed and why == "no-prior-run", why)
+
+        ok_row = {"batch_id": "B-T", "ok": True, "ts": old, "runner": {}}
+        allowed, why = compile_stale_guard("B-T", project_root=proj,
+                                           rows=[ok_row])
+        chk("S20 last run ok -> allowed", allowed and why == "last-run-ok", why)
+
+        no_cs_row = {"batch_id": "B-T", "ok": False, "ts": old,
+                     "runner": {"log": "", "error": {"lines": ["something else"]}}}
+        allowed, why = compile_stale_guard("B-T", project_root=proj,
+                                           rows=[no_cs_row])
+        chk("S21 non-compile failure is not blocked by this guard",
+            allowed and why == "no-compile-error", why)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 

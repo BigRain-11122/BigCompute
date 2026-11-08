@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-11-08 22:58",
- "current_activity": "2026-11-08 22:5x 令牌轮：点火链端到端打通——6 次点火 exit=1 的唯一成因是 BakeSpike.cs L169 `LightingSettings.aoEnabled` 在 Tuanjie 2022.3.62t15 编译不过（error CS1061），编辑器根本没进烘焙。出生地改为 AO 三态写入（序列化属性 → obsolete 通道 → 都不可用则写 api-absent 不静默降质）",
- "latest_artifact": "state/bake-spike-cs1061-fix-20261108.txt（2026-11-08 22:56，含根因行原文/修法/产物 sha256 三件）+ state/pool-ignitions.jsonl 末行 ok=true（22:56:41 正式点火，exit=0，50.8s，bake_seconds=23.962，Lightmap-0/1_comp_light.exr 6.78MB/5.96MB）",
- "next_milestone": "①守候器失败时从 tuanjie-bake.log 抽错误行写进回执、就绪判据加编译面（tech T222，窗 ≤48h）②B-CITY3D-02 判据帧 6 帧 PNG 真渲：待 GPU 道 vram_free ≥6144（本轮 302~777MiB 全关）"
+ "updated_at": "2026-11-09 00:25",
+ "current_activity": "2026-11-09 00:2x 令牌轮：点火失败必须点名日志错误行（tech T222）。失败回执此前只有空 artifacts 与秒数，昨晚 6 次 exit=1 的真正原因 error CS1061（BakeSpike.cs:169 LightingSettings.aoEnabled）一直躺在 tuanjie-bake.log 里没人读。本轮 pool_igniter 增 extract_log_errors + 回执 runner.log/runner.error + compile_stale_guard（同一 CS 错误且源码未改则拒绝再烧一次编辑器），selftest 21/21 PASS",
+ "latest_artifact": "state/t222-log-error-evidence.txt（2026-11-09 00:2x；13 份真实日志回填抽取 with_errors=6 with_cs=6，6 份逐字命中 CS1061 = 11-08 那 6 次失败，其余 7 份为修复后成功运行的 no-error-line-in-log）+ state/t222-log-error-evidence.json",
+ "next_milestone": "①T223 失败原因上到看板：pool_igniter status 增 last_failure 行（窗 ≤24h）②B-CITY3D-02 判据帧六帧真渲：待 GPU 车道 vram_free ≥6144（本轮 741MiB 全关，按让路律不抢；窗 ≤48h 视产线让出）③B-CITY3D-01 下一次真实点火的回执应自带 error 字段（无失败时为空）"
 }
