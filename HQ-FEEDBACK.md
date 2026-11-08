@@ -773,3 +773,8 @@ P2=text_integrity 本仓零缺陷，但列数族 new_ext=13 全在集团只读�
 - 实物：B-CITY3D-02 判据帧批渲染执行器落地（Tools/batch_render/City3DBatchRender.cs + 部署 labbench），池面 runnable 1→2、gap 3→2；pool_igniter selftest 12/12。**未证**：编辑器未启动（两车道全关按让路律），首帧实渲与 C# 编译仍待窗（M172）。
 - P1（新发现·仪器口径分裂）：同一台 row_loss_census，qa 探针（window=4）报 ROW-LOSS-FOUND permanent=4 并点名集团两本台账行 id，run（window=40）报 UNVERIFIED unreadable=3——两个读数不在同一口径上，已立 M173 先定性后改；集团侧丢行本司只报警不改。
 - P2：周日底座自检三绿（cost_ledger PASS / fulfillment 44/44 / census selftest 12/12 + verdict COST-CONTRACT-GREEN）；smoke 26/28（红项=no.22 历史回执产物面 + no.26 上述集团丢行）；编码普查 textintegrity=EXTERNAL-DAMAGED（本仓 damaged=0，外部台账新行 25）。
+
+## 日清 2026-11-08（18:1x 令牌轮）
+- 实物：查清池面 34 天零点火首因=闸在读过期（心跳中位 30min／均值 132.5min／最长 1440min 才写一次，闸只认 ≤30min；守候器 28 次 tick 里 19 次报 STALE=瞎跑）；lane_gate 过期即用生产者同源探针现测，并接守候器与领取面两侧（默认关，既有读者逐字不变），夹具 18/59/12 全绿；证据 state/pool-lane-freshness-20261108.txt。
+- P1：修完仍未点火——车道是真关（cpu ram 26.7%／gpu vram 162MiB）；且六卡中 runnable=2，其余 4 卡无本机载荷或 lane 未定。「等窗口」不是唯一条件：窗口与载荷是两条独立约束，缺一条都点不着。
+- P2：smoke 27/28（唯一红=no.22 既有回执产物面）；textintegrity=EXTERNAL-DAMAGED（本仓 damaged=0／cats 7-7，集团只读台账新表行 30 条只点名不拦）。
