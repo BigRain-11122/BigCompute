@@ -181,8 +181,10 @@ PLAN_DOC = "docs/ops/livestream-plan-v1.md"
 COVERAGE_TARGETS = [
     (PLAN_DOC, "4.1"),
     (PLAN_DOC, "4.2"),
+    # M169（11-08）：原列 "4.6"，实测 §四 只有 4.1-4.4，缺节把整份 VERDICT 恒拉成
+    # PARSE-SUSPECT、真信号被遮蔽；按事实改为 4.3＝§四 四节全覆盖。缺节负控仍由 S12 夹具把守。
+    (PLAN_DOC, "4.3"),
     (PLAN_DOC, "4.4"),
-    (PLAN_DOC, "4.6"),  # 队列行引用的节号；文档里不存在=必须如实报缺，禁静默跳过
     (DEFAULT_DOC, "二、十类挂载讲解词"),
     (DEFAULT_DOC, "三、禁挂两类口播位"),
 ]
