@@ -172,8 +172,39 @@ def judge(tokens, age_min, ram_min, vram_min, max_age_min=MAX_AGE_MIN):
     return out
 
 
-def run(path=HEARTBEAT, max_age_min=MAX_AGE_MIN, now=None):
-    """Read the newest heartbeat line, judge it, return (verdict, source)."""
+def live_sample():
+    """Take a fresh reading with the producer's own probes and classifier.
+
+    The heartbeat line is written by idle_selfcheck, which runs a few times a
+    day (rounds + anomaly ticks).  A consumer that ticks every 15 minutes
+    therefore sees STALE on almost every tick -- not because the lanes are busy,
+    but because nobody re-measured.  Re-measuring here keeps the gate's intent
+    (never act on an old reading) while removing the blindness: the sample is
+    fresher than any line, and it uses the same probes/classifier as the
+    producer so the two can never disagree on what "idle" means.
+    """
+    try:
+        import idle_selfcheck
+        ram = idle_selfcheck.probe_ram_free_pct()
+        vram = idle_selfcheck.probe_vram_free_mb()
+        if ram is None or ram < 0 or vram is None or vram < 0:
+            return None
+        flag = idle_selfcheck.classify_cpu_lane_idle(ram)
+        return {"ram_free_pct": ram, "vram_free_mb": vram,
+                "cpu_lane_idle": "true" if flag else "false"}
+    except Exception:
+        return None
+
+
+def run(path=HEARTBEAT, max_age_min=MAX_AGE_MIN, now=None,
+        live_on_stale=False, live_probe=None):
+    """Read the newest heartbeat line, judge it, return (verdict, source).
+
+    live_on_stale: when the newest line is too old, measure now instead of
+    reporting STALE.  Off by default so existing readers keep their exact
+    behaviour; the automated dispatcher opts in (a watcher must not be blind
+    just because the producer is slow).
+    """
     ram_min, vram_min = load_thresholds()
     line, lineno = last_idle_line(path)
     if line is None:
@@ -194,6 +225,17 @@ def run(path=HEARTBEAT, max_age_min=MAX_AGE_MIN, now=None):
     verdict = judge(parsed["tokens"], age_min, ram_min, vram_min, max_age_min)
     verdict["source"] = {"file": os.path.relpath(path, ROOT), "line": lineno,
                          "ts": parsed["ts"].strftime(TS_FMT)}
+
+    if live_on_stale and verdict.get("verdict") == "STALE":
+        tokens = (live_probe or live_sample)()
+        if tokens:
+            fresh = judge(tokens, 0.0, ram_min, vram_min, max_age_min)
+            fresh["source"] = {"file": None, "line": None, "live": True,
+                               "ts": now.strftime(TS_FMT),
+                               "stale_line_age_min": round(float(age_min), 1)}
+            return fresh, fresh["source"]
+        verdict["live_sample"] = "unavailable"
+
     return verdict, verdict["source"]
 
 
@@ -211,6 +253,7 @@ def cmd_run(args):
     path = HEARTBEAT
     max_age = MAX_AGE_MIN
     as_json = "--json" in args
+    live_on_stale = "--live-on-stale" in args
     json_out = None
     for i, a in enumerate(args):
         if a == "--file" and i + 1 < len(args):
@@ -219,7 +262,7 @@ def cmd_run(args):
             max_age = float(args[i + 1])
         elif a == "--json-out" and i + 1 < len(args):
             json_out = args[i + 1]
-    verdict, _ = run(path, max_age)
+    verdict, _ = run(path, max_age, live_on_stale=live_on_stale)
     if json_out:
         out_path = json_out if os.path.isabs(json_out) else os.path.join(ROOT, json_out)
         with open(out_path, "w", encoding="utf-8", newline="\n") as f:
@@ -310,6 +353,42 @@ def selftest():
             and src["line"] == 3 and v["age_min"] == 9.0)
         v, src = run(tmp, 30.0, now=datetime.datetime(2026, 10, 30, 21, 0, 0))
         chk("file-run-stale", v["verdict"] == "STALE" and v["exit"] == 2)
+
+        # 9b live-on-stale: re-measure instead of calling a slow producer "closed"
+        old = datetime.datetime(2026, 10, 30, 21, 0, 0)
+        live_tok = {"ram_free_pct": str(ram_min + 15.0),
+                    "vram_free_mb": str(vram_min + 100),
+                    "cpu_lane_idle": "true"}
+        v, src = run(tmp, 30.0, now=old, live_on_stale=True,
+                     live_probe=lambda: live_tok)
+        chk("live-on-stale-refreshes", v["verdict"] == "FRESH"
+            and v["cpu_lane"]["verdict"] == "OPEN"
+            and src.get("live") is True and v["age_min"] == 0.0
+            and src.get("stale_line_age_min") == 69.0)
+
+        # 9c probe unavailable -> STALE kept, explicitly named (no silent green)
+        v, src = run(tmp, 30.0, now=old, live_on_stale=True,
+                     live_probe=lambda: None)
+        chk("live-probe-fail-keeps-stale", v["verdict"] == "STALE"
+            and v["live_sample"] == "unavailable" and v["exit"] == 2)
+
+        # 9d a fresh line must not trigger the live probe at all
+        calls = []
+        run(tmp, 30.0, now=datetime.datetime(2026, 10, 30, 19, 55, 0),
+            live_on_stale=True,
+            live_probe=lambda: calls.append(1) or live_tok)
+        chk("fresh-line-skips-live-probe", not calls)
+
+        # 9e opt-in only: default stays byte-identical
+        v, _ = run(tmp, 30.0, now=old)
+        chk("live-off-default-stale", v["verdict"] == "STALE"
+            and "live_sample" not in v)
+
+        # 9f the real probe must speak the producer's contract or say nothing
+        s = live_sample()
+        chk("live-sample-contract", s is None or (
+            set(s) == {"ram_free_pct", "vram_free_mb", "cpu_lane_idle"}
+            and str(s["cpu_lane_idle"]) in ("true", "false")))
     finally:
         if os.path.exists(tmp):
             os.remove(tmp)

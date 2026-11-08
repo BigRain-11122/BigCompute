@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-11-08 12:55",
- "current_activity": "2026-11-08 12:5x 排程轮（周日）：B-CITY3D-02 判据帧批渲染执行器落地（Tools/batch_render/City3DBatchRender.cs → 部署 labbench）+ pool_igniter 改按载荷（非按工程）判就绪（selftest 12/12）→ 池面 runnable 1→2、gap 3→2；两车道仍全关（cpu ram 29.5%<40 / gpu vram 288MiB<6144），首帧实渲如实未证 ｜ 两池：本司备货可派 4 ／ 机队可领 0",
- "latest_artifact": "state/render-executor-20261108.txt + Tools/batch_render/City3DBatchRender.cs（2026-11-08 12:55）；本轮冒烟证据 qa/smoke-20261108-1245.log+png",
- "next_milestone": "M172 判据帧首帧实渲证据：任一车道 OPEN（LaneGate CPU/GPU）即跑 pool_igniter run --batch-id B-CITY3D-02，出 6 帧 PNG + render-metrics.json，把「载荷在盘」升成「跑过并出帧」——窗 ≤48h"
+ "updated_at": "2026-11-08 18:15",
+ "current_activity": "2026-11-08 18:1x 令牌轮：查清池面 34 天零点火的首因——不是车道关，是闸在读过期（心跳生产者中位 30min/均值 132.5min/最长 1440min 才写一次，闸只认 ≤30min；守候器 28 次 tick 里 19 次报 STALE=瞎跑）。修法=lane_gate 过期即用生产者同源探针现测，并接到守候器与领取面两侧（默认关，既有读者逐字不变） ｜ 修完仍未点火：车道是真关（cpu ram 26.7%／gpu vram 162MiB）",
+ "latest_artifact": "state/pool-lane-freshness-20261108.txt + .json（2026-11-08 18:15，含 343 条心跳间隔统计、28 次 tick 中 19 次 STALE、同一过期读数 STALE↔FRESH 双证）；冒烟证据 qa/smoke-20261108-1810.log+png（27/28，唯一红=no.22 既有回执产物面）",
+ "next_milestone": "真点火（M172）：任一车道 OPEN 时 pool_igniter 自动跑 B-CITY3D-02 出 6 帧 PNG+render-metrics.json，把「载荷在盘」升成「跑过并出帧」——窗 ≤48h；同窗观察修后 tick 是否首次读到 OPEN"
 }

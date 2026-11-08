@@ -110,7 +110,10 @@ def lane_verdict(batch_id):
     if lane is None:
         return None, "lane-unresolved"
     import lane_gate
-    gate, _src = lane_gate.run()
+    # live_on_stale: the producer writes a reading a few times per day, so a
+    # 15-minute watcher would otherwise read STALE on almost every tick and
+    # never fire.  Re-measure instead of mistaking silence for a busy lane.
+    gate, _src = lane_gate.run(live_on_stale=True)
     state = gate.get("%s_lane" % lane) or {}
     return lane, "%s/%s" % (state.get("verdict", "?"),
                             state.get("reason", gate.get("verdict", "?")))

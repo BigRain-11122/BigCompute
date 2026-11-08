@@ -246,7 +246,8 @@ def cmd_gate(path, batch_id, consumer=None, exempt=None, as_json=False):
         print("WARN %s status=%s is in-flight (J5); gate reads resources only"
               % (batch_id, card.get("status")))
     result, exit_code = dispatch_precheck.evaluate(
-        lane, consumer or "batch-pool:%s" % batch_id, exempt)
+        lane, consumer or "batch-pool:%s" % batch_id, exempt,
+        live_on_stale=True)
     # batch_id must be in the snapshot itself: without it a claim cannot be
     # attributed back to a card, and the J5 claim rule has nothing to read.
     result["batch_id"] = batch_id

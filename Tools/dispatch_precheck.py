@@ -120,14 +120,16 @@ def card_by_id(batch_id, registry=REGISTRY):
 
 
 def evaluate(lane, consumer=None, exempt=None, heartbeat=HEARTBEAT,
-             max_age_min=None):
+             max_age_min=None, live_on_stale=False):
     """Run the gate in-process and return (result dict, exit code).
 
     Pure with respect to lane_gate: all reading/threshold logic is delegated.
+    live_on_stale: re-measure when the heartbeat line is too old (automated
+    dispatch opts in).  Default off keeps every existing reader unchanged.
     """
     import lane_gate
 
-    kwargs = {"path": heartbeat}
+    kwargs = {"path": heartbeat, "live_on_stale": bool(live_on_stale)}
     if max_age_min is not None:
         kwargs["max_age_min"] = float(max_age_min)
     gate, source = lane_gate.run(**kwargs)
