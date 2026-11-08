@@ -79,6 +79,7 @@ scope_proof.py
 score_validation.py
 sec_fulltext_screen.py
 self_drive_metrics.py
+sentinel_wake_judge.py
 serve_concurrency_probe.py
 serve_contract_audit.py
 serve_health.py
