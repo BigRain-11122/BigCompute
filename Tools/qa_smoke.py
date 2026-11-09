@@ -3474,7 +3474,7 @@ def selftest_money_guard():
     return 0 if all(results) else 1
 
 
-IGNITER_MIN_SELFTEST = 25
+IGNITER_MIN_SELFTEST = 55
 
 
 def igniter_judge(selftest_rc, selftest_out, readout, last_receipt=None):
@@ -3541,6 +3541,15 @@ def igniter_judge(selftest_rc, selftest_out, readout, last_receipt=None):
                        "newest failure reason is invisible on the CEO face")
     lf = ign.get("last_failure")
     counts += " last_failure=%s" % ("none" if lf is None else lf.get("ts"))
+    # The bake card's deliverable is the lightmap atlas.  Until now a bake was
+    # counted deliverable with nothing ever opening the EXR, so an all-black
+    # atlas read as a successful run.  The face must carry the atlas reading -
+    # "no bake yet" is an explicit None, not an absent key.
+    if "bake_quality" not in ign:
+        return False, (counts + " -- readout has no bake_quality field: baked "
+                       "atlases are counted deliverable with nobody reading them")
+    bq = ign.get("bake_quality")
+    counts += " bake=%s" % ("none" if bq is None else bq.get("qc_verdict"))
     # T229: after T226 split `ok` from `deliverable_ok`, a face that prints only
     # `ok=N` again reads "ran fine" as "produced something usable".
     if "receipts_deliverable" not in ign:
@@ -3604,8 +3613,8 @@ def selftest_igniter():
                                   len(results), name,
                                   "" if cond else " :: " + str(detail))))
 
-    good_out = "\n".join(["PASS S%d fixture" % i for i in range(25)]
-                         + ["25/25 PASS"])
+    good_out = "\n".join(["PASS S%d fixture" % i for i in range(55)]
+                         + ["55/55 PASS"])
 
     def rd(**kw):
         doc = {"dispatchable": 4, "runnable": 2, "gap": 2,
@@ -3614,6 +3623,7 @@ def selftest_igniter():
                "igniter": {"receipts": 11, "receipts_ok": 5,
                            "receipts_deliverable": 4,
                            "last_failure": None,
+                           "bake_quality": None,
                            "last_tick_age_min": 8.4}}
         doc.update(kw)
         return doc
@@ -3626,7 +3636,7 @@ def selftest_igniter():
 
     ok, det = igniter_judge(0, good_out, rd(), ok_receipt)
     check("clean chain -> PASS and reports pool + fixture readings",
-          ok and "selftest=25/25" in det and "gap=2" in det
+          ok and "selftest=55/55" in det and "gap=2" in det
           and "receipts=11" in det and "last_failure=none" in det, det)
 
     ok, det = igniter_judge(1, "20/21 PASS", rd(), ok_receipt)
@@ -3682,6 +3692,7 @@ def selftest_igniter():
 
     with_fail = rd(igniter={"receipts": 11, "receipts_ok": 5,
                             "receipts_deliverable": 5,
+                            "bake_quality": None,
                             "last_tick_age_min": 8.4,
                             "last_failure": {"ts": "2026-11-08 22:24:54",
                                              "error": "x"}})
@@ -3691,6 +3702,7 @@ def selftest_igniter():
 
     blind_deliv = rd(igniter={"receipts": 11, "receipts_ok": 5,
                               "last_failure": None,
+                              "bake_quality": None,
                               "last_tick_age_min": 8.4})
     ok, det = igniter_judge(0, good_out, blind_deliv, ok_receipt)
     check("readout without receipts_deliverable -> FAIL (ok reads as usable)",
@@ -3699,10 +3711,28 @@ def selftest_igniter():
     impossible = rd(igniter={"receipts": 11, "receipts_ok": 5,
                              "receipts_deliverable": 6,
                              "last_failure": None,
+                             "bake_quality": None,
                              "last_tick_age_min": 8.4})
     ok, det = igniter_judge(0, good_out, impossible, ok_receipt)
     check("deliverable > ok -> FAIL (impossible arithmetic)",
           (not ok) and "impossible" in det, det)
+
+    no_bake = rd(igniter={"receipts": 11, "receipts_ok": 5,
+                          "receipts_deliverable": 5,
+                          "last_failure": None,
+                          "last_tick_age_min": 8.4})
+    ok, det = igniter_judge(0, good_out, no_bake, ok_receipt)
+    check("readout without bake_quality -> FAIL (atlas never read)",
+          (not ok) and "bake_quality" in det, det)
+
+    with_bake = rd(igniter={"receipts": 11, "receipts_ok": 5,
+                            "receipts_deliverable": 5,
+                            "last_failure": None,
+                            "last_tick_age_min": 8.4,
+                            "bake_quality": {"qc_verdict": "LIGHTMAP-QC-PASS"}})
+    ok, det = igniter_judge(0, good_out, with_bake, ok_receipt)
+    check("atlas verdict is surfaced in the same line",
+          ok and "bake=LIGHTMAP-QC-PASS" in det, det)
 
     first = igniter_judge(0, good_out, rd(), ok_receipt)
     second = igniter_judge(0, good_out, rd(), ok_receipt)

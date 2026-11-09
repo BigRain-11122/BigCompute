@@ -831,3 +831,8 @@ P2=text_integrity 本仓零缺陷，但列数族 new_ext=13 全在集团只读�
 - 实物（产品优先律 2 分件）：洋红占位**真因定谳**——不是管线失配，是场景里 FloorSlab/CeilSlab 指向的材质 guid `31321ba1…` 在工程内零命中（悬空材质引用，Unity 画洋红兜底）。取证=18:25 那次带修复的渲染 `pipeline=builtin/srp_active=0/materials_standard=50` 全正常仍 5/6 帧洋红；逐帧看图只有地板/天花板洋红，墙门灯板正常；旁证=纯洋红亮度 72.6 恰等于被判「空白」的 frame_05 均匀帧（一个根因两个症状）。修复=建 `SlabMat.mat` 改两处引用 + 渲染前 `RepairMissingMaterials()` fail-closed（拿不到兜底材质即不渲染）+ 新增离线普查器 `scene_material_census.py`（selftest 9/9，实跑修前 UNRESOLVED 2 点名 FloorSlab/CeilSlab→修后 CLEAN）。
 - 勘正：本轮推翻 15:0x 日清「管线与材质不匹配」的结论，TASKS 里那句「假说已定因为真」已就地改为「已被现网数据推翻」；教训=离线普查只看磁盘 .mat、从不看场景引用，于是缺的那份材质既不被计数也不被判异常。
 - P2 如实：判据③（复跑渲染出 placeholder_frames=0）**未达成**——GPU 余量 2304MiB<6144 按让路律不抢，入口 sha 已变故指纹改变，车道一开守候器自动重渲；C# 本轮未过编译器、手写材质 YAML 待下次真渲确认。冒烟 29/31（两红=no.16 GPU 争用 /ask、no.22 M96 既有面，无新增红）。另一真发现=`sop_coverage_check` 复跑转红仅因 `docs/qa-smoke-test-charter.md` 28,005B>25KB 轻量闸（条款逐轮追加所致）——**未给自己开豁免**，转 tech 拆分待办。
+
+## 日清 2026-11-09（20:4x 令牌轮）
+- 实物（产品优先律 2 分件）：烘焙卡的交付物第一次有了内容读数——`pool_igniter status` 新增 `bake_quality`，直读 EXR 头 + 线性浮点统计，19:09 那批 **2 张 1024×1024 图集**（lit 100%、mean_lin 0.221、std 0.047-0.057）判 **LIGHTMAP-QC-PASS dark=none**；此前「bake_ok=true」即等于「可交付」，全黑图集也过。
+- 关键判断：这次没造新工具也没立新闸——把读数接回既有守候器与既有探针 no.30（夹具 14→18、下限 25→55），并让探针拒绝一个「没有烘焙读数」的 CEO 面（缺字段=红，不是 none）。
+- P2 如实：该读数只证「图集里有光」，不证「光照质量」（无标定）；bake 的 `deliverable_ok`/三态仍未接 QC（M180）；冒烟 **29/31**（no.16 GPU 争用 /ask、no.22 M96 既有面）；洋红复跑（M179）仍被 GPU 道关闭阻塞，让路律不抢。

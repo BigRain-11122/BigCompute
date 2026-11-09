@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-11-09 19:10",
- "current_activity": "2026-11-09 19:1x 令牌轮：T-20261109-7 真因定谳——18:25 带 A 路修复的渲染在 pipeline=builtin/srp_active=0/materials_standard=50 全正常的情况下仍 5/6 帧洋红，推翻「URP 与内置 shader 失配」假说；逐帧看图只有地板/天花板洋红、墙门灯板正常，离线取证证实 FloorSlab/CeilSlab 指向的材质 guid 31321ba1… 全工程零命中=悬空材质引用（纯洋红亮度 72.6 正好等于被判「空白」的 frame_05 均匀帧，一个根因两个症状）。已建 SlabMat.mat 修两处引用 + 渲染前 RepairMissingMaterials fail-closed + 新增离线普查器（selftest 9/9，修前 UNRESOLVED 2 点名两对象→修后 CLEAN）。 gpu:7d n=1401 avg=54.2% AT-OR-ABOVE-BENCH（50% 差距线）·30min 12.0% IDLE；qa:smoke-20261109-1906 29/31（no.16 GPU 争用、no.22 M96 既有面）",
- "latest_artifact": "docs/ops/magenta-root-cause-2-20261109.md（+ Tools/scene_material_census.py 与 state/scene-material-census-20261109.json；qa/smoke-20261109-1906.log+png）",
- "next_milestone": "M179 洋红修复实跑复验（T-20261109-7 判据③）：门控=GPU 道 vram_free≥6144；入口 sha 已变故指纹改变，窗口一开 BigCompute-PoolIgniter 自动重渲 B-CITY3D-02，验收 placeholder_frames=0 且 qc_verdict=FRAME-QC-PASS（窗 ≤48h，随车道让路律）"
+ "updated_at": "2026-11-09 20:47",
+ "current_activity": "2026-11-09 20:4x 令牌轮：烘焙卡交付物首次可判——`pool_igniter` 新增 lightmap QC（EXR 头取尺寸 + ffmpeg 线性浮点统计），实跑 19:09 那批 2 张 1024×1024 图集：lit=100.0%、mean_lin=0.2214、std=0.0565/0.0476 → LIGHTMAP-QC-PASS（dark=none）；此前 bake_ok=true 即算可交付，全黑图集同样会过。qs no.30 新增该字段守卫（夹具 14→18、下限 25→55），冒烟 29/31（两红=no.16 GPU 争用、no.22 M96 既有面）。GPU 7d n=1421 avg=53.7% AT-OR-ABOVE-BENCH · 30min 14.3% IDLE；GPU 道 vram_free=1585MiB 仍低于 6144 门限（他司产线占用），洋红复跑继续让路。",
+ "latest_artifact": "state/pool-igniter-status-20261109-2047.json（bake_quality 两项真数）+ Tools/pool_igniter.py lightmap QC + Tools/qa_smoke.py no.30 字段守卫；qa/smoke-20261109-2047.log+png",
+ "next_milestone": "M180 bake 面三态化（下一轮有界步）：把 lightmap QC 接进 deliverable_ok/receipt_deliverable_state，使黑图集不再计作可交付（窗 ≤24h，离线可做）；并行候窗=M179 洋红修复实跑复验（门控 GPU vram_free≥6144，窗口一开守候器自动重渲）"
 }

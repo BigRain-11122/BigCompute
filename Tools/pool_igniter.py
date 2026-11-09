@@ -30,6 +30,7 @@ import hashlib
 import json
 import os
 import re
+import struct
 import subprocess
 import sys
 import time
@@ -208,9 +209,10 @@ def run_bake_spike(outdir):
                   newline="\n") as f:
             f.write("spawn-error: %s\n" % e)
     elapsed = round(time.time() - started, 1)
+    lightmaps = sorted(glob.glob(os.path.join(
+        BAKE_PROJECT, "Assets", "**", "Lightmap-*.exr"), recursive=True))
     artifacts = []
-    for p in [metrics] + sorted(glob.glob(os.path.join(
-            BAKE_PROJECT, "Assets", "**", "Lightmap-*.exr"), recursive=True)):
+    for p in [metrics] + lightmaps:
         if os.path.exists(p):
             artifacts.append({"path": os.path.relpath(p, ROOT).replace("\\", "/"),
                               "bytes": os.path.getsize(p),
@@ -224,6 +226,21 @@ def run_bake_spike(outdir):
             metrics_doc = {}
     ok = (code == 0 and bool(metrics_doc.get("bake_ok"))
           and int(metrics_doc.get("lightmap_files") or 0) > 0)
+    # The atlas is the deliverable, so "bake reported ok" and "there is light
+    # in the atlas" are two claims; the second one is now measured and stored
+    # beside the metrics rather than assumed.
+    quality = lightmap_quality_report(lightmaps) if (ok and lightmaps) else None
+    if quality:
+        qpath = os.path.join(outdir, "lightmap-quality.json")
+        try:
+            with open(qpath, "w", encoding="utf-8", newline="\n") as f:
+                f.write(json.dumps(quality, ensure_ascii=False, indent=2,
+                                   sort_keys=True) + "\n")
+            artifacts.append({"path": os.path.relpath(qpath, ROOT).replace("\\", "/"),
+                              "bytes": os.path.getsize(qpath),
+                              "sha256": sha256(qpath)})
+        except OSError:
+            pass
     return {
         "kind": "bake_spike",
         "exit": code,
@@ -232,6 +249,7 @@ def run_bake_spike(outdir):
         "log": os.path.relpath(logfile, ROOT).replace("\\", "/"),
         "error": None if ok else extract_log_errors(logfile),
         "metrics": metrics_doc,
+        "lightmap_quality": quality,
         "artifacts": artifacts,
     }
 
@@ -873,6 +891,151 @@ def last_render_quality(rows=None):
     return None
 
 
+# --- lightmap QC (the bake card's deliverable) ---------------------------
+# A successful bake writes Lightmap-*.exr and was counted deliverable without
+# anyone ever opening one: an all-black atlas would have passed every check we
+# had.  These readings answer one question only - is there light in the file -
+# and report it as numbers.  No quality threshold is invented here: a bright
+# atlas and a dim atlas both read CONTENT-OK, because nothing has calibrated
+# "bright enough" for a City3D interior.
+LIGHTMAP_BLACK_LIN = 1e-4
+FFMPEG = "ffmpeg"
+
+
+def exr_dimensions(path):
+    """Width/height off the EXR header (dataWindow) - no image library needed."""
+    try:
+        with open(path, "rb") as f:
+            head = f.read(4096)
+    except OSError:
+        return None
+    if not head.startswith(b"\x76\x2f\x31\x01"):
+        return None  # not an EXR magic
+    i = head.find(b"dataWindow\x00box2i\x00")
+    if i < 0 or len(head) < i + 30:
+        return None
+    try:
+        x0, y0, x1, y1 = struct.unpack("<4i", head[i + 21:i + 37])
+    except struct.error:
+        return None
+    w, h = x1 - x0 + 1, y1 - y0 + 1
+    if w <= 0 or h <= 0:
+        return None
+    return w, h
+
+
+def lightmap_stats(path):
+    """Linear-light readings for one baked lightmap; None when unreadable."""
+    dims = exr_dimensions(path)
+    if not dims:
+        return None
+    try:
+        out = subprocess.run(
+            [FFMPEG, "-v", "error", "-i", path, "-f", "rawvideo",
+             "-pix_fmt", "grayf32le", "-"],
+            capture_output=True, timeout=120)
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if out.returncode != 0 or not out.stdout:
+        return None
+    import numpy as np
+    a = np.frombuffer(out.stdout, dtype="<f4")
+    if a.size == 0:
+        return None
+    lit = float((a > LIGHTMAP_BLACK_LIN).mean())
+    return {
+        "file": os.path.basename(path),
+        "width": dims[0],
+        "height": dims[1],
+        "pixels": int(a.size),
+        "mean_lin": round(float(a.mean()), 6),
+        "std_lin": round(float(a.std()), 6),
+        "max_lin": round(float(a.max()), 6),
+        "p01_lin": round(float(np.percentile(a, 1)), 6),
+        "p99_lin": round(float(np.percentile(a, 99)), 6),
+        "lit_ratio_pct": round(lit * 100.0, 2),
+    }
+
+
+def judge_lightmap_stats(stats):
+    """One of four readings; never a fabricated green."""
+    if not stats:
+        return "LIGHTMAP-UNREADABLE"
+    if stats["max_lin"] <= LIGHTMAP_BLACK_LIN:
+        return "LIGHTMAP-EMPTY"
+    if stats["std_lin"] <= 0.0:
+        return "LIGHTMAP-UNIFORM"
+    return "LIGHTMAP-CONTENT-OK"
+
+
+def lightmap_quality_report(paths, source=None, reader=None):
+    """Read every baked lightmap and name the ones with no light in them.
+
+    `reader` exists so fixtures can supply pixel readings without an EXR file;
+    production always uses lightmap_stats (ffmpeg + numpy).
+    """
+    read = reader or lightmap_stats
+    paths = [p for p in (paths or []) if p]
+    files = []
+    for p in paths:
+        st = read(p)
+        entry = {"path": os.path.relpath(p, ROOT).replace("\\", "/")
+                 if os.path.isabs(p) else p}
+        if st:
+            entry.update(st)
+            entry["verdict"] = judge_lightmap_stats(st)
+        else:
+            entry["verdict"] = "LIGHTMAP-UNREADABLE"
+        files.append(entry)
+    if not paths:
+        return {"files_read": 0, "files": [], "unreadable": "no-lightmaps",
+                "qc_verdict": "LIGHTMAP-QC-NO-INPUT",
+                "source": source or "recomputed-from-lightmaps"}
+    readable = [f for f in files if f["verdict"] != "LIGHTMAP-UNREADABLE"]
+    bad = [f["file"] for f in readable if f["verdict"] != "LIGHTMAP-CONTENT-OK"]
+    if not readable:
+        qc = "LIGHTMAP-QC-UNREADABLE"
+    elif bad:
+        qc = "LIGHTMAP-QC-INSUFFICIENT"
+    else:
+        qc = "LIGHTMAP-QC-PASS"
+    return {
+        "files_read": len(files),
+        "files": files,
+        "dark_files": bad,
+        "min_lit_pct": min([f["lit_ratio_pct"] for f in readable], default=None),
+        "mean_lin": (round(sum(f["mean_lin"] for f in readable)
+                           / len(readable), 6) if readable else None),
+        "qc_verdict": qc,
+        "source": source or "recomputed-from-lightmaps",
+    }
+
+
+def last_bake_quality(rows=None):
+    """Lightmap reading for the newest ok bake receipt (receipt first)."""
+    rows = rows if rows is not None else receipt_rows()
+    for r in reversed(rows):
+        run = r.get("runner") or {}
+        if run.get("kind") != "bake_spike" or not r.get("ok"):
+            continue
+        q = r.get("lightmap_quality")
+        if not q:
+            paths = [a.get("path") for a in (run.get("artifacts") or [])
+                     if str(a.get("path", "")).lower().endswith(".exr")]
+            paths = [p for p in paths
+                     if p and os.path.exists(os.path.join(ROOT, p))]
+            if not paths:
+                return None
+            q = lightmap_quality_report([os.path.join(ROOT, p) for p in paths])
+        else:
+            q = dict(q)
+            q["source"] = "receipt"
+        q["outdir"] = r.get("outdir")
+        q["ts"] = r.get("ts")
+        return q
+    return None
+
+
 def readout():
     """Two-pool honesty readout for the ignition chain.
 
@@ -925,6 +1088,7 @@ def readout():
             "duplicate_window_h": DUPLICATE_WINDOW_H,
             "duplicate_skips_today": duplicate_skips_today(),
             "frame_quality": last_render_quality(receipts),
+            "bake_quality": last_bake_quality(receipts),
         },
         "cards": cards,
     }
@@ -965,6 +1129,16 @@ def status(as_json=False, out=None):
         print("frame_quality unreadable=%s" % fq.get("unreadable", "?"))
     else:
         print("frame_quality=none(no ok render yet)")
+    bq = ign.get("bake_quality")
+    if bq and bq.get("files_read"):
+        print("bake_quality files=%s min_lit=%s%% mean_lin=%s dark=%s qc=%s source=%s"
+              % (bq["files_read"], bq.get("min_lit_pct"), bq.get("mean_lin"),
+                 ",".join(bq.get("dark_files") or []) or "none",
+                 bq.get("qc_verdict"), bq.get("source")))
+    elif bq:
+        print("bake_quality %s" % bq.get("unreadable", "no-lightmaps"))
+    else:
+        print("bake_quality=none(no ok bake yet)")
     for u in rd["declared_unready"]:
         print("unready %s reason=%s" % (u["batch_id"], u["reason"]))
     lf = ign["last_failure"]
@@ -1301,6 +1475,71 @@ def selftest():
         chk("S43 clean frame set -> QC-PASS with zero placeholder",
             rep_ok["qc_verdict"] == "FRAME-QC-PASS"
             and rep_ok["placeholder_frames"] == 0, rep_ok["qc_verdict"])
+
+        # lightmap QC: the bake card's atlas was counted deliverable for weeks
+        # without anything reading it.  These fixtures pin the four readings.
+        good_st = {"file": "a.exr", "mean_lin": 0.21, "std_lin": 0.05,
+                   "max_lin": 0.28, "lit_ratio_pct": 100.0, "pixels": 16}
+        chk("S44a lit atlas -> CONTENT-OK",
+            judge_lightmap_stats(good_st) == "LIGHTMAP-CONTENT-OK")
+        chk("S44b black atlas -> EMPTY",
+            judge_lightmap_stats({"file": "b.exr", "mean_lin": 0.0,
+                                  "std_lin": 0.0, "max_lin": 0.0,
+                                  "lit_ratio_pct": 0.0, "pixels": 16})
+            == "LIGHTMAP-EMPTY")
+        chk("S44c flat atlas -> UNIFORM",
+            judge_lightmap_stats({"file": "c.exr", "mean_lin": 0.5,
+                                  "std_lin": 0.0, "max_lin": 0.5,
+                                  "lit_ratio_pct": 100.0, "pixels": 16})
+            == "LIGHTMAP-UNIFORM")
+        chk("S44d missing reading -> UNREADABLE, never green",
+            judge_lightmap_stats(None) == "LIGHTMAP-UNREADABLE")
+
+        synth = os.path.join(tmp, "synth.exr")
+        with open(synth, "wb") as f:
+            f.write(b"\x76\x2f\x31\x01" + b"\x00" * 10
+                    + b"dataWindow\x00box2i\x00" + struct.pack("<i", 16)
+                    + struct.pack("<4i", 0, 0, 1023, 1023))
+        chk("S45a EXR header yields dataWindow size",
+            exr_dimensions(synth) == (1024, 1024), exr_dimensions(synth))
+        chk("S45b non-EXR file -> None", exr_dimensions(bad) is None)
+
+        rep_none = lightmap_quality_report([])
+        chk("S46 no lightmaps -> QC-NO-INPUT with named reason",
+            rep_none["qc_verdict"] == "LIGHTMAP-QC-NO-INPUT"
+            and rep_none["unreadable"] == "no-lightmaps", rep_none["qc_verdict"])
+
+        rep_unread = lightmap_quality_report([os.path.join(tmp, "nope.exr")])
+        chk("S47 unreadable atlas -> QC-UNREADABLE and named",
+            rep_unread["qc_verdict"] == "LIGHTMAP-QC-UNREADABLE"
+            and rep_unread["files"][0]["verdict"] == "LIGHTMAP-UNREADABLE",
+            rep_unread["qc_verdict"])
+
+        def _fake(dark):
+            def _r(p):
+                if "dark" in p:
+                    return {"file": "dark.exr", "mean_lin": 0.0,
+                            "std_lin": 0.0, "max_lin": 0.0,
+                            "lit_ratio_pct": 0.0, "pixels": 16}
+                return dict(good_st)
+            return _r
+
+        rep_lit = lightmap_quality_report([os.path.join(tmp, "lit-a.exr"),
+                                           os.path.join(tmp, "lit-b.exr")],
+                                          reader=_fake(False))
+        chk("S48 two lit atlases -> QC-PASS with min_lit reported",
+            rep_lit["qc_verdict"] == "LIGHTMAP-QC-PASS"
+            and rep_lit["min_lit_pct"] == 100.0, rep_lit["qc_verdict"])
+
+        rep_dark = lightmap_quality_report([os.path.join(tmp, "lit-a.exr"),
+                                           os.path.join(tmp, "dark-b.exr")],
+                                           reader=_fake(True))
+        chk("S49 one black atlas -> QC-INSUFFICIENT and names it",
+            rep_dark["qc_verdict"] == "LIGHTMAP-QC-INSUFFICIENT"
+            and rep_dark["dark_files"] == ["dark.exr"], rep_dark)
+
+        chk("S50 no bake receipt -> last_bake_quality is None, not a zero read",
+            last_bake_quality([]) is None)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 
