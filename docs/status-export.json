@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-11-10 01:12",
- "current_activity": "2026-11-10 01:00 轮：T-20261110-1 unknown 态收敛落地（pool_igniter unknown-converge：32 回执 unknown=25 -> 可证 3(pass=2 fail=1)/不可证 22/known_bad 0·回执字节零变更·selftest 69->77）+ 轮内连带真缺陷修复（qa no.30 夹具把健康自检硬编码成 55/55… ｜ 两池：本司备货可派 2 ／ 机队可领 4（两个不同池，本司卡未登记进机队池）",
- "latest_artifact": "Tools/status_export_check.py（mtime 2026-11-10 01:12）",
+ "updated_at": "2026-11-10 03:34",
+ "current_activity": "2026-11-10 03:00 轮：T231 unknown 收敛读数守门探针（qa no.33·sidecar 缺席/缺键/计数不闭合/回执 sha 不符→FAIL·判据①原写纯钟阈值改按输入判新鲜并说明理由·selftest 9/9）+ 首跑即抓到真条件（sidecar 停在 01:04，01:29:56 又点火 B-CITY3D-01 LIGHTMAP-QC-PASS→STALE… ｜ 两池：本司备货可派 2 ／ 机队可领 4（两个不同池，本司卡未登记进机队池）",
+ "latest_artifact": "state/c1c4-20261110-033319.json（mtime 2026-11-10 03:33）",
  "next_milestone": "M25 室内烘焙批步 2：labbench 烘焙样板间实弹（AD-021 模块壳围合+AD-035 灯板光池→Tuanjie 批模式烘焙·GPU/CPU 双路时长/峰值/质量三指标实测·J1-J4 判据窗·labbench 隔离区零碰司仓〔O-023 先例〕·编辑器启动窗承接）（队列状态=open（**步 2 机械链预建毕 09-29 22:43…）"
 }

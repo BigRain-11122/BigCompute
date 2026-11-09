@@ -858,3 +858,8 @@ P2=text_integrity 本仓零缺陷，但列数族 new_ext=13 全在集团只读�
 - 实物（产品优先律 2 分件）：`unknown` 态终于能离开——`pool_igniter unknown-converge` 按今日盘上字节把 25 条「不可判」拆成可证 3（pass=2 / fail=1）/ 不可证 22 / 过期降级 0；回执字节零变更，只写 sidecar，CEO 面（status 与 batch_pool review）读同一份数；selftest 69->77。证据 `state/unknown-converge-20261110.txt/.json`。
 - 读数更正（对 CEO 有意义）：11-09 10:15 那批六机位判据帧从「不知道能不能用」变成**明确不可用**（现算 FRAME-QC-INSUFFICIENT-PLACEHOLDER，5/6 帧洋红占位），另两条烘焙图集现算 LIGHTMAP-QC-PASS；22 条烘焙读数永久丢失（labbench 图集被后续烘焙覆盖、sha 不符），「文件在」不算证据。
 - P2（自伤型常红，已修）：qa no.30 的「健康自检」夹具把计数硬编码成 `55/55`，M180/M181 把下限抬到 69 后 18 条夹具全红，而 live 冒烟照绿——红的是夹具自己；已改为由下限派生，`--selftest` 复归 exit=0。冒烟 **29/31**（两红同源已知：no.22 M96 既有回执面、no.26 集团侧丢行，只报警不改）。
+
+## 日清 2026-11-10（03:3x 令牌轮）
+- 实物（产品优先律 2 分件）：`unknown` 收敛读数接进常驻探针 **no.33**（charter 第 33 条在件）——sidecar 缺席/缺计数字段/三数不闭合/回执 sha 与 sidecar 记录不符一律判红，`n/a(no unknown receipts)` 与「unknown 为空」不混；判据①原写「sidecar 超 N 小时即判过期」，**改按输入判新鲜**（回执逐字节未变则旧读数仍成立）并写明理由：纯钟阈值在车道久关时只会造出修不了的常红。selftest 9/9。
+- 首跑即抓到真条件：sidecar 停在 01:04，而 **01:29:56 守候器又点火了一次 B-CITY3D-01**（ok=true 309.7s·LIGHTMAP-QC-PASS）→ 直接报 STALE-SIDECAR；重跑 `unknown-converge` 后 **computable 3→2 / unprovable 22→23**——同一张卡重烧写同一 outdir 会把上一次的图集覆盖，可证集合随每次重烧单调缩小（这是会持续发生的证据损耗，不只是历史噪音）。
+- P2：冒烟 **30/32**（两红同源已知：no.22 M96 既有回执面、no.26 集团侧丢行 27 条外部只读只报警不改），无新增红；GPU 3 日 60.9%（n=590）/7 日 55.4%（n=1334）均高于 30% 唯一点名线。

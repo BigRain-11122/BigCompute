@@ -4013,6 +4013,180 @@ def probe_probe_registry():
 
 # Single source of probe numbers (T190).  The verdict line and the charter
 # census both derive from this table; never re-declare a number elsewhere.
+# --- probe no.33: the published unknown-split must still describe disk (T231) ---
+# T230 published a sidecar (computable / unprovable / known_bad) so `unknown`
+# receipts stop being quiet garbage.  Two faces read it (pool_igniter status,
+# batch_pool review) but nothing checks that the numbers still describe the
+# *current* receipt log: receipts can be appended without ever re-running the
+# convergence, and both faces keep printing the old split.
+#
+# Freshness is judged against the inputs, not the clock: if the receipt log is
+# byte-identical to what the sidecar was computed from, an old reading is still
+# a true reading.  A time-only threshold would go red whenever the lane stays
+# shut for days -- a red nobody can fix, the trap already caught in probe
+# no.31's legacy branch and in M173/M174.
+UNKNOWN_SIDE_CAR = os.path.join(ROOT, "state", "unknown-converge.json")
+UNKNOWN_SIDECAR_KEYS = ("ts", "unknown", "computable_count",
+                        "computable_pass_count", "computable_fail_count",
+                        "unprovable_count", "known_bad_count",
+                        "receipts_sha256_after")
+
+
+def unknown_sidecar_judge(unknown_now, sidecar, receipts_sha_now, error=""):
+    """T231: an `unknown` set with a stale/absent split is silent, not honest."""
+    if error:
+        return False, "sidecar unreadable: %s" % error
+    if not isinstance(unknown_now, int):
+        return False, ("current unknown count is not an int (%r): cannot tell "
+                       "whether the reading still applies" % (unknown_now,))
+    sidecar = sidecar if isinstance(sidecar, dict) else None
+    if unknown_now == 0:
+        return True, ("n/a(no unknown receipts) sidecar=%s"
+                      % ("absent" if sidecar is None
+                         else sidecar.get("ts")))
+    if sidecar is None:
+        return False, ("unknown=%d receipts but no convergence sidecar: the "
+                       "computable/unprovable split has never been computed "
+                       "(faces print n/a and the set reads as empty)"
+                       % unknown_now)
+    missing = [k for k in UNKNOWN_SIDECAR_KEYS if sidecar.get(k) is None]
+    if missing:
+        return False, ("sidecar lacks %s: a face reading it cannot tell "
+                       "pass/fail apart" % ",".join(missing))
+    if not receipts_sha_now:
+        return False, "receipt log unreadable: cannot prove the reading applies"
+    if sidecar.get("receipts_sha256_after") != receipts_sha_now:
+        return False, ("STALE-SIDECAR as_of=%s: the receipt log changed after "
+                       "the convergence ran (sidecar=%s now=%s) -- re-run "
+                       "`pool_igniter unknown-converge`; do not read old counts"
+                       % (sidecar.get("ts"),
+                          (sidecar.get("receipts_sha256_after") or "")[:8],
+                          receipts_sha_now[:8]))
+    if sidecar.get("receipts_unchanged") is False:
+        return False, ("sidecar as_of=%s was computed while the receipt log "
+                       "changed under it (before!=after): the split is not a "
+                       "single snapshot" % sidecar.get("ts"))
+    total = ((sidecar.get("computable_count") or 0)
+             + (sidecar.get("unprovable_count") or 0)
+             + (sidecar.get("known_bad_count") or 0))
+    if total != sidecar.get("unknown"):
+        return False, ("counts do not add up: computable=%s unprovable=%s "
+                       "known_bad=%s != unknown=%s"
+                       % (sidecar.get("computable_count"),
+                          sidecar.get("unprovable_count"),
+                          sidecar.get("known_bad_count"),
+                          sidecar.get("unknown")))
+    try:
+        ts = datetime.datetime.strptime(sidecar["ts"], "%Y-%m-%d %H:%M:%S")
+        age = " age_h=%.1f" % (
+            (datetime.datetime.now() - ts).total_seconds() / 3600.0)
+    except (ValueError, TypeError):
+        age = " age_h=?"
+    return True, ("reading=current as_of=%s%s unknown=%d computable=%d(p=%d/f=%d) "
+                  "unprovable=%d known_bad=%d sha=%s"
+                  % (sidecar.get("ts"), age, sidecar.get("unknown"),
+                     sidecar.get("computable_count"),
+                     sidecar.get("computable_pass_count"),
+                     sidecar.get("computable_fail_count"),
+                     sidecar.get("unprovable_count"),
+                     sidecar.get("known_bad_count"),
+                     (receipts_sha_now or "")[:8]))
+
+
+def _sha256_file_or_empty(path):
+    import hashlib
+    try:
+        h = hashlib.sha256()
+        with open(path, "rb") as f:
+            for chunk in iter(lambda: f.read(65536), b""):
+                h.update(chunk)
+        return h.hexdigest()
+    except OSError:
+        return ""
+
+
+def probe_unknown_sidecar():
+    """Probe no.33 (T231): the published unknown-split still describes disk."""
+    if HERE not in sys.path:
+        sys.path.insert(0, HERE)
+    try:
+        import batch_pool as bp
+        import pool_igniter as pi
+        raw = None
+        if os.path.exists(bp.UNKNOWN_CONVERGE_SIDECAR):
+            with open(bp.UNKNOWN_CONVERGE_SIDECAR, encoding="utf-8") as f:
+                raw = json.load(f)
+        unknown_now = pi.readout()["igniter"]["receipts_uncertified"]
+        sha = _sha256_file_or_empty(pi.RECEIPTS)
+    except Exception as e:  # noqa: BLE001 - probe reports, never crashes
+        return False, "unknown-sidecar probe raised: %r" % e
+    # The shared reader drops receipts_sha256_after/receipts_unchanged, which
+    # are exactly what staleness needs; read the file here, the verdict stays
+    # one (the reader is still the single source for every displayed number).
+    return unknown_sidecar_judge(unknown_now, raw, sha)
+
+
+def selftest_unknown_sidecar():
+    """T231 fixtures: absent / stale / moved-under / counts / clean / n/a."""
+    results = []
+
+    def check(name, cond, detail=""):
+        results.append(bool(cond))
+        print(("[%s] S%d %s%s" % ("PASS" if cond else "FAIL", len(results),
+                                  name, "" if cond else " :: " + str(detail))))
+
+    def doc(**kw):
+        d = {"ts": "2026-11-10 01:04:42", "unknown": 25,
+             "computable_count": 3, "computable_pass_count": 2,
+             "computable_fail_count": 1, "unprovable_count": 22,
+             "known_bad_count": 0, "receipts_sha256_after": "a" * 64,
+             "receipts_unchanged": True}
+        d.update(kw)
+        return d
+
+    ok, det = unknown_sidecar_judge(25, doc(), "a" * 64)
+    check("current reading -> PASS with the pass/fail split",
+          ok and "computable=3(p=2/f=1)" in det, det)
+
+    ok, det = unknown_sidecar_judge(0, None, "")
+    check("no unknown receipts -> n/a, absent sidecar is not a red",
+          ok and "n/a(no unknown receipts)" in det, det)
+
+    ok, det = unknown_sidecar_judge(25, None, "a" * 64)
+    check("unknown receipts but never converged -> FAIL",
+          not ok and "no convergence sidecar" in det, det)
+
+    ok, det = unknown_sidecar_judge(26, doc(), "b" * 64)
+    check("receipt log changed after the run -> STALE-SIDECAR",
+          not ok and "STALE-SIDECAR" in det, det)
+
+    ok, det = unknown_sidecar_judge(25, doc(receipts_unchanged=False),
+                                    "a" * 64)
+    check("receipts moved under the run -> FAIL (not a snapshot)",
+          not ok and "changed under it" in det, det)
+
+    ok, det = unknown_sidecar_judge(25, doc(known_bad_count=2), "a" * 64)
+    check("counts do not add up -> FAIL",
+          not ok and "do not add up" in det, det)
+
+    ok, det = unknown_sidecar_judge(25, doc(computable_fail_count=None),
+                                    "a" * 64)
+    check("a count a face reads is missing -> FAIL names the key",
+          not ok and "computable_fail_count" in det, det)
+
+    ok, det = unknown_sidecar_judge(None, doc(), "a" * 64)
+    check("unknown count unreadable -> FAIL, never guessed",
+          not ok and "not an int" in det, det)
+
+    ok, det = unknown_sidecar_judge(25, ["not", "a", "dict"], "a" * 64)
+    check("sidecar of the wrong shape -> FAIL (absent), not a crash",
+          not ok and "no convergence sidecar" in det, det)
+
+    print("selftest unknown-sidecar verdict: %d/%d PASS"
+          % (len([r for r in results if r]), len(results)))
+    return 0 if all(results) else 1
+
+
 PROBE_REGISTRY = [
     (1, "gpu collector", probe_gpu),
     (2, "ollama response", probe_ollama),
@@ -4050,6 +4224,8 @@ PROBE_REGISTRY = [
      probe_frame_quality),
     (32, "dispatch verdict reading declared (M177)",
      probe_dispatch_reading),
+    (33, "unknown-converge reading still applies (T231)",
+     probe_unknown_sidecar),
 ]
 
 
@@ -4135,7 +4311,7 @@ def main():
                 | selftest_aftersale_rails() | selftest_drill_sets()
                 | selftest_money_guard() | selftest_igniter()
                 | selftest_frame_quality() | selftest_dispatch_reading()
-                | selftest_argv())
+                | selftest_unknown_sidecar() | selftest_argv())
     os.makedirs(QA_DIR, exist_ok=True)
     ts = datetime.datetime.now().strftime("%Y%m%d-%H%M")
     log_path = os.path.join(QA_DIR, "smoke-%s.log" % ts)
