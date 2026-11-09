@@ -323,6 +323,14 @@ def ignite(batch_id, force=False):
     if not ready and not force:
         log("ignite refused %s payload-%s" % (batch_id, reason))
         return False, {"batch_id": batch_id, "skipped": "payload-not-ready:" + reason}
+    fp, fp_parts = payload_fingerprint(batch_id)
+    if not force:
+        allowed, why_dup = duplicate_guard(batch_id, fingerprint=fp)
+        if not allowed:
+            log("ignite skipped %s duplicate:%s" % (batch_id, why_dup))
+            return False, {"batch_id": batch_id,
+                           "skipped": "duplicate:" + why_dup,
+                           "fingerprint": fp}
     if not force:
         allowed, why_compile = compile_stale_guard(batch_id)
         if not allowed:
@@ -348,6 +356,8 @@ def ignite(batch_id, force=False):
         "lane": lane,
         "lane_gate": state,
         "claim_exit": gate_code,
+        "fingerprint": fp,
+        "fingerprint_parts": fp_parts,
         "outdir": os.path.relpath(outdir, ROOT).replace("\\", "/"),
         "ok": bool(result.get("ok")),
         "runner": result,
@@ -385,12 +395,17 @@ def tick():
             f.write(str(os.getpid()))
         try:
             ok, receipt = ignite(batch_id)
-            return 0 if ok else 1
         finally:
             try:
                 os.remove(LOCK)
             except OSError:
                 pass
+        # A duplicate skip is not a failure: the card is already built, so let
+        # the next card in the pool have the window instead of reporting red.
+        if str((receipt or {}).get("skipped", "")).startswith("duplicate:"):
+            tried.append("%s:duplicate" % batch_id)
+            continue
+        return 0 if ok else 1
     log("tick idle: " + "; ".join(tried))
     return 0
 
@@ -524,6 +539,99 @@ def compile_stale_guard(batch_id, project_root=None, rows=None):
     return True, "compile-error-but-sources-changed"
 
 
+# tech T224 / R-069: on 2026-11-09 the watcher re-burned B-CITY3D-01 every 15
+# minutes from 08:11 to 10:11 - ten editor launches, each producing a
+# byte-identical 410-byte bake-metrics.json.  A chain that reruns identical work
+# is not producing anything new; it holds the editor and the CPU hostage.  Same
+# card + same payload fingerprint inside the window = SKIP, naming the run it
+# duplicates.
+DUPLICATE_WINDOW_H = 6.0
+FINGERPRINT_SCHEME = "card+entry+cs-newest"
+
+
+def payload_fingerprint(batch_id, project_root=None):
+    """Stable hash of what decides one card's output, plus its components.
+
+    Three parts, because a changed output can only come from one of them: the
+    card row (what to build), the entry script bytes (where it starts), and the
+    newest .cs under Assets/ with the file count (whether how-it-builds
+    changed).  Components are returned so a mismatch stays explainable.
+    """
+    row = card(batch_id)
+    if row is None:
+        return None, {"reason": "card-not-found"}
+    row_text = json.dumps(row, ensure_ascii=False, sort_keys=True)
+    spec = PAYLOAD_SPECS.get(RUNNERS.get(batch_id) or "")
+    marker = spec[1] if spec else BAKE_ENTRY_MARKER
+    root = project_root or BAKE_PROJECT
+    entry = find_entry_script(root, marker=marker)
+    entry_sha = sha256(entry) if entry else ""
+    newest, cs_count = 0, 0
+    assets = os.path.join(root, "Assets")
+    for base, _dirs, files in os.walk(assets):
+        for fn in files:
+            if not fn.lower().endswith(".cs"):
+                continue
+            cs_count += 1
+            try:
+                newest = max(newest, int(os.path.getmtime(os.path.join(base, fn))))
+            except OSError:
+                continue
+    h = hashlib.sha256()
+    for part in (FINGERPRINT_SCHEME, batch_id, row_text, entry_sha,
+                 str(cs_count), str(newest)):
+        h.update(part.encode("utf-8"))
+        h.update(b"\x1f")
+    return h.hexdigest()[:16], {
+        "scheme": FINGERPRINT_SCHEME,
+        "card": hashlib.sha256(row_text.encode("utf-8")).hexdigest()[:16],
+        "entry": entry_sha[:16] if entry_sha else "absent",
+        "cs_count": cs_count,
+        "cs_newest": newest,
+    }
+
+
+def _receipt_age_h(ts):
+    try:
+        return (now() - datetime.datetime.strptime(
+            ts, "%Y-%m-%d %H:%M:%S")).total_seconds() / 3600.0
+    except (TypeError, ValueError):
+        return None
+
+
+def duplicate_guard(batch_id, rows=None, hours=DUPLICATE_WINDOW_H,
+                    project_root=None, fingerprint=None):
+    """(allowed: bool, reason) - don't rebuild a card whose payload is unchanged.
+
+    Only an `ok=true` receipt can be a baseline: re-running after a failure is
+    the retry path, not a duplicate.  A baseline written before fingerprints
+    existed cannot prove anything, so it lets one more run through and says so
+    instead of silently claiming the card is fresh.
+    """
+    rows = rows if rows is not None else receipt_rows()
+    fp = fingerprint
+    if fp is None:
+        fp, _parts = payload_fingerprint(batch_id, project_root=project_root)
+    if fp is None:
+        return True, "no-card"
+    for r in reversed(rows):
+        if r.get("batch_id") != batch_id or not r.get("ok"):
+            continue
+        prev = r.get("fingerprint")
+        age = _receipt_age_h(r.get("ts"))
+        if not prev:
+            return True, "baseline-without-fingerprint(%s)" % r.get("ts")
+        if age is None:
+            return True, "baseline-ts-unreadable(%s)" % r.get("ts")
+        if age > hours:
+            return True, "baseline-stale(%.1fh>%gh)" % (age, hours)
+        if prev != fp:
+            return True, "payload-changed(%s->%s)" % (prev, fp)
+        return False, ("same-payload-within-%gh(last ok %s fp=%s)"
+                       % (hours, r.get("ts"), fp))
+    return True, "no-ok-baseline"
+
+
 def last_tick_age_min():
     """Minutes since the last tick() line.  None when the log is unreadable.
 
@@ -581,6 +689,27 @@ def last_failure(receipts):
     return None
 
 
+def duplicate_skips_today():
+    """How many identical re-burns the guard stopped today (0 when unreadable).
+
+    The guard's value is invisible from `receipts=N`: a skipped card writes no
+    receipt by design.  This reads the watcher log so the CEO face can show the
+    editor launches that did *not* happen.
+    """
+    if not os.path.exists(LOG):
+        return 0
+    stamp = now().strftime("%Y-%m-%d")
+    n = 0
+    try:
+        with open(LOG, encoding="utf-8", errors="replace") as f:
+            for line in f:
+                if line.startswith(stamp) and "duplicate:" in line:
+                    n += 1
+    except OSError:
+        return 0
+    return n
+
+
 def readout():
     """Two-pool honesty readout for the ignition chain.
 
@@ -626,6 +755,8 @@ def readout():
             "receipts_ok": sum(1 for r in receipts if r.get("ok")),
             "last_receipt": receipts[-1]["ts"] if receipts else None,
             "last_failure": last_failure(receipts),
+            "duplicate_window_h": DUPLICATE_WINDOW_H,
+            "duplicate_skips_today": duplicate_skips_today(),
         },
         "cards": cards,
     }
@@ -650,6 +781,8 @@ def status(as_json=False, out=None):
           % (rd["dispatchable"], rd["runnable"], rd["gap"],
              ign["receipts"], ign["receipts_ok"],
              ign["last_tick_age_min"]))
+    print("duplicate_guard=window%gh skips_today=%s"
+          % (ign["duplicate_window_h"], ign["duplicate_skips_today"]))
     for u in rd["declared_unready"]:
         print("unready %s reason=%s" % (u["batch_id"], u["reason"]))
     lf = ign["last_failure"]
@@ -848,6 +981,57 @@ def selftest():
         lf = last_failure([legacy])
         chk("S25 receipt without error envelope says not-captured, not clean",
             lf and lf["error"].startswith("not-captured"), lf)
+
+        # --- duplicate-ignition guard (tech T224 / R-069) -------------------
+        fp, parts = payload_fingerprint("B-CITY3D-01", project_root=proj)
+        chk("S26 fingerprint is stable and names its parts",
+            isinstance(fp, str) and len(fp) == 16
+            and parts.get("scheme") == FINGERPRINT_SCHEME
+            and parts.get("entry") == "absent", parts)
+
+        fp2, _ = payload_fingerprint("B-CITY3D-01", project_root=proj)
+        chk("S27 same payload -> same fingerprint", fp == fp2, (fp, fp2))
+
+        fp_unknown, _ = payload_fingerprint("B-NOT-IN-REGISTRY-99")
+        chk("S28 card not in registry -> no fingerprint", fp_unknown is None,
+            fp_unknown)
+
+        allowed, why = duplicate_guard("B-CITY3D-01", rows=[], fingerprint=fp)
+        chk("S29 no ok baseline -> allowed", allowed and why == "no-ok-baseline",
+            why)
+
+        recent = (now() - datetime.timedelta(hours=1)).strftime(
+            "%Y-%m-%d %H:%M:%S")
+        same = {"batch_id": "B-CITY3D-01", "ok": True, "ts": recent,
+                "fingerprint": fp, "runner": {}}
+        allowed, why = duplicate_guard("B-CITY3D-01", rows=[same], fingerprint=fp)
+        chk("S30 same card + same payload within window -> skip",
+            not allowed and why.startswith("same-payload-within-"), why)
+
+        moved = dict(same, fingerprint="deadbeefdeadbeef")
+        allowed, why = duplicate_guard("B-CITY3D-01", rows=[moved], fingerprint=fp)
+        chk("S31 payload changed -> allowed", allowed
+            and why.startswith("payload-changed"), why)
+
+        old_ok = dict(same, ts=(now() - datetime.timedelta(hours=7)).strftime(
+            "%Y-%m-%d %H:%M:%S"))
+        allowed, why = duplicate_guard("B-CITY3D-01", rows=[old_ok], fingerprint=fp)
+        chk("S32 baseline older than the window -> allowed", allowed
+            and why.startswith("baseline-stale"), why)
+
+        failed = {"batch_id": "B-CITY3D-01", "ok": False, "ts": recent,
+                  "fingerprint": fp, "runner": {"error": {"lines": ["x"]}}}
+        allowed, why = duplicate_guard("B-CITY3D-01", rows=[failed],
+                                       fingerprint=fp)
+        chk("S33 a failure is not a baseline (retry stays allowed)",
+            allowed and why == "no-ok-baseline", why)
+
+        pre_fp = {"batch_id": "B-CITY3D-01", "ok": True, "ts": recent,
+                  "runner": {}}
+        allowed, why = duplicate_guard("B-CITY3D-01", rows=[pre_fp],
+                                       fingerprint=fp)
+        chk("S34 legacy ok receipt without fingerprint lets one run through",
+            allowed and why.startswith("baseline-without-fingerprint"), why)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 
