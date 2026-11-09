@@ -246,6 +246,7 @@ def run_bake_spike(outdir):
         "exit": code,
         "seconds": elapsed,
         "ok": ok,
+        "deliverable_ok": bake_deliverable_ok(ok, quality),
         "log": os.path.relpath(logfile, ROOT).replace("\\", "/"),
         "error": None if ok else extract_log_errors(logfile),
         "metrics": metrics_doc,
@@ -1049,6 +1050,17 @@ def lightmap_quality_report(paths, source=None, reader=None):
     }
 
 
+def bake_deliverable_ok(ok, quality):
+    """M180: a clean bake is not a usable atlas.
+
+    `ok` says the editor exited and reported bake_ok with N lightmaps on disk;
+    the atlas itself can still be uniformly dark.  Both claims are needed
+    before a bake receipt may count as supply.
+    """
+    return bool(ok) and bool(quality) \
+        and quality.get("qc_verdict") == "LIGHTMAP-QC-PASS"
+
+
 def last_bake_quality(rows=None):
     """Lightmap reading for the newest ok bake receipt (receipt first)."""
     rows = rows if rows is not None else receipt_rows()
@@ -1620,6 +1632,13 @@ def selftest():
 
         chk("S50 no bake receipt -> last_bake_quality is None, not a zero read",
             last_bake_quality([]) is None)
+
+        chk("S51 M180: a clean bake with a black atlas is not deliverable",
+            bake_deliverable_ok(True, rep_dark) is False
+            and bake_deliverable_ok(True, None) is False)
+        chk("S52 M180: only a lit atlas certifies the bake",
+            bake_deliverable_ok(True, rep_lit) is True
+            and bake_deliverable_ok(False, rep_lit) is False)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 

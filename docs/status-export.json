@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-11-09 20:47",
- "current_activity": "2026-11-09 20:4x 令牌轮：烘焙卡交付物首次可判——`pool_igniter` 新增 lightmap QC（EXR 头取尺寸 + ffmpeg 线性浮点统计），实跑 19:09 那批 2 张 1024×1024 图集：lit=100.0%、mean_lin=0.2214、std=0.0565/0.0476 → LIGHTMAP-QC-PASS（dark=none）；此前 bake_ok=true 即算可交付，全黑图集同样会过。qs no.30 新增该字段守卫（夹具 14→18、下限 25→55），冒烟 29/31（两红=no.16 GPU 争用、no.22 M96 既有面）。GPU 7d n=1421 avg=53.7% AT-OR-ABOVE-BENCH · 30min 14.3% IDLE；GPU 道 vram_free=1585MiB 仍低于 6144 门限（他司产线占用），洋红复跑继续让路。",
- "latest_artifact": "state/pool-igniter-status-20261109-2047.json（bake_quality 两项真数）+ Tools/pool_igniter.py lightmap QC + Tools/qa_smoke.py no.30 字段守卫；qa/smoke-20261109-2047.log+png",
- "next_milestone": "M180 bake 面三态化（下一轮有界步）：把 lightmap QC 接进 deliverable_ok/receipt_deliverable_state，使黑图集不再计作可交付（窗 ≤24h，离线可做）；并行候窗=M179 洋红修复实跑复验（门控 GPU vram_free≥6144，窗口一开守候器自动重渲）"
+ "updated_at": "2026-11-10 00:16",
+ "current_activity": "2026-11-09 22:57 轮：账本行摘要不可用（非 UTF-8 或空，原行见 state/rounds.log） ｜ 两池：本司备货可派 2 ／ 机队可领 4（两个不同池，本司卡未登记进机队池）",
+ "latest_artifact": "qa/smoke-20261110-0014.png（mtime 2026-11-10 00:15）",
+ "next_milestone": "M25 室内烘焙批步 2：labbench 烘焙样板间实弹（AD-021 模块壳围合+AD-035 灯板光池→Tuanjie 批模式烘焙·GPU/CPU 双路时长/峰值/质量三指标实测·J1-J4 判据窗·labbench 隔离区零碰司仓〔O-023 先例〕·编辑器启动窗承接）（队列状态=open（**步 2 机械链预建毕 09-29 22:43）"
 }

@@ -453,9 +453,19 @@ def receipt_deliverable_state(row):
     q = row.get("frame_quality") or run.get("frame_quality")
     if isinstance(q, dict) and q.get("qc_verdict"):
         return "yes" if q["qc_verdict"] == "FRAME-QC-PASS" else "no"
+    if run.get("kind") == "bake_spike":
+        # M180: the bake's deliverable is the lightmap atlas, and since
+        # T-20261109-11 it has its own verdict.  A black atlas once read
+        # "deliverable" purely because bake_ok was true; receipts written
+        # before that verdict existed cannot prove either way, so they are
+        # unknown rather than supply.
+        lq = row.get("lightmap_quality") or run.get("lightmap_quality")
+        if isinstance(lq, dict) and lq.get("qc_verdict"):
+            return "yes" if lq["qc_verdict"] == "LIGHTMAP-QC-PASS" else "no"
+        return "unknown"
     if run.get("kind") == "render_spike":
         # QC is a render-only concept; without its verdict nothing certifies
-        # the frames.  Bakes have no such gate, so they fall through to ok.
+        # the frames.
         return "unknown"
     return "yes"
 
@@ -990,7 +1000,18 @@ def cmd_selftest():
     assert receipt_deliverable(
         {"ok": True, "frame_quality": {"qc_verdict": "FRAME-QC-PASS"}}) is True
     assert receipt_deliverable({"ok": True}) is True, \
-        "no QC data at all -> ok decides (bakes have no QC gate)"
+        "no runner kind at all -> ok decides (not a card with a quality gate)"
+    assert receipt_deliverable_state(
+        {"ok": True, "runner": {"kind": "bake_spike",
+                                "lightmap_quality": {"qc_verdict": "LIGHTMAP-QC-INSUFFICIENT"}}}
+    ) == "no", "M180: a dark atlas is not a deliverable"
+    assert receipt_deliverable_state(
+        {"ok": True, "runner": {"kind": "bake_spike",
+                                "lightmap_quality": {"qc_verdict": "LIGHTMAP-QC-PASS"}}}
+    ) == "yes", "M180: a lit atlas certifies the bake"
+    assert receipt_deliverable_state(
+        {"ok": True, "runner": {"kind": "bake_spike"}}) == "unknown", \
+        "M180: a bake receipt written before lightmap QC proves nothing"
     assert receipt_deliverable_state(
         {"ok": True, "runner": {"kind": "render_spike"}}) == "unknown", \
         "pre-split render receipt is unknown, not supply"
@@ -1001,7 +1022,7 @@ def cmd_selftest():
         "a failed run is never deliverable"
     print("selftest PASS (J1-J7 + gate lane map + review + J5 claim rule "
           "+ claim log + determinism + dispatchable + consumer_named "
-          "+ receipt deliverable tri-state, %d checks)" % 68)
+          "+ receipt deliverable tri-state + bake atlas tri-state, %d checks)" % 71)
     return 0
 
 
