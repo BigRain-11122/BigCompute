@@ -30,6 +30,7 @@ import hashlib
 import json
 import os
 import re
+import shutil
 import struct
 import subprocess
 import sys
@@ -178,6 +179,30 @@ def extract_log_errors(logfile, limit=LOG_ERROR_MAX):
     return out
 
 
+def preserve_lightmaps(lightmaps, outdir):
+    """Copy a bake's atlases into the run directory before the receipt is written.
+
+    Unity writes Lightmap-*.exr into the project's Assets, a path every later
+    bake overwrites.  A receipt that advertises those paths stops matching its
+    own sha256 as soon as the next run lands, so the earlier delivery silently
+    becomes unprovable (T232: the provable set shrank 3 -> 2 after one re-bake).
+    Copies live under <run>/lightmaps/ and the project path is kept as `source`
+    so the origin stays readable.  A failed copy is skipped, never faked.
+    """
+    dest_dir = os.path.join(outdir, "lightmaps")
+    kept = []
+    for p in lightmaps:
+        try:
+            os.makedirs(dest_dir, exist_ok=True)
+            dest = os.path.join(dest_dir, os.path.basename(p))
+            shutil.copy2(p, dest)
+        except OSError:
+            continue
+        kept.append({"path": dest, "source": p,
+                     "bytes": os.path.getsize(dest), "sha256": sha256(dest)})
+    return kept
+
+
 def run_bake_spike(outdir):
     """B-CITY3D-01 payload: CPU lightmapper bake in the labbench spike project."""
     os.makedirs(outdir, exist_ok=True)
@@ -211,12 +236,20 @@ def run_bake_spike(outdir):
     elapsed = round(time.time() - started, 1)
     lightmaps = sorted(glob.glob(os.path.join(
         BAKE_PROJECT, "Assets", "**", "Lightmap-*.exr"), recursive=True))
+    # The project's Assets are shared mutable state: the next bake overwrites
+    # them.  Snapshot first, then advertise only the snapshot (T232).
+    preserved = preserve_lightmaps(lightmaps, outdir)
+    qc_paths = [k["path"] for k in preserved] if preserved else lightmaps
     artifacts = []
-    for p in [metrics] + lightmaps:
+    for p in [metrics] + qc_paths:
         if os.path.exists(p):
             artifacts.append({"path": os.path.relpath(p, ROOT).replace("\\", "/"),
                               "bytes": os.path.getsize(p),
                               "sha256": sha256(p)})
+    for k in preserved:
+        for a in artifacts:
+            if a["path"] == os.path.relpath(k["path"], ROOT).replace("\\", "/"):
+                a["source"] = os.path.relpath(k["source"], ROOT).replace("\\", "/")
     metrics_doc = {}
     if os.path.exists(metrics):
         try:
@@ -229,7 +262,7 @@ def run_bake_spike(outdir):
     # The atlas is the deliverable, so "bake reported ok" and "there is light
     # in the atlas" are two claims; the second one is now measured and stored
     # beside the metrics rather than assumed.
-    quality = lightmap_quality_report(lightmaps) if (ok and lightmaps) else None
+    quality = lightmap_quality_report(qc_paths) if (ok and qc_paths) else None
     if quality:
         qpath = os.path.join(outdir, "lightmap-quality.json")
         try:
@@ -251,6 +284,7 @@ def run_bake_spike(outdir):
         "error": None if ok else extract_log_errors(logfile),
         "metrics": metrics_doc,
         "lightmap_quality": quality,
+        "lightmaps_preserved": len(preserved),
         "artifacts": artifacts,
     }
 
@@ -2133,6 +2167,42 @@ def selftest():
                                                  {"qc_verdict": "FRAME-QC-PASS"}}}])
         chk("S67 T230: certificated receipts stay out of the unknown set",
             conv_none["unknown"] == 0 and conv_none["computable_count"] == 0)
+
+        # T232: the bake writes its atlases into the project's Assets, which the
+        # next bake overwrites. A receipt pointing there stops matching its own
+        # sha256, so the run must snapshot the bytes first.
+        proj_assets = os.path.join(tmp, "proj", "Assets")
+        os.makedirs(proj_assets, exist_ok=True)
+        exr_a = os.path.join(proj_assets, "Lightmap-0_comp_light.exr")
+        with open(exr_a, "wb") as f:
+            f.write(b"EXR-A" * 16)
+        run1 = os.path.join(tmp, "run1")
+        kept1 = preserve_lightmaps([exr_a], run1)
+        chk("S69 T232: atlas is copied into the run directory",
+            len(kept1) == 1 and os.path.exists(kept1[0]["path"])
+            and kept1[0]["path"].startswith(run1)
+            and kept1[0]["source"] == exr_a, kept1)
+        sha_before = kept1[0]["sha256"]
+        chk("S70 T232: copy hash equals the source bytes at snapshot time",
+            sha_before == _file_sha256(exr_a), sha_before)
+
+        # the next bake overwrites the project atlas - the snapshot must not move
+        with open(exr_a, "wb") as f:
+            f.write(b"EXR-B" * 16)
+        chk("S71 T232: later bake overwriting the project atlas leaves the "
+            "snapshot provable",
+            _file_sha256(kept1[0]["path"]) == sha_before
+            and _file_sha256(exr_a) != sha_before, "snapshot drifted")
+
+        run2 = os.path.join(tmp, "run2")
+        kept2 = preserve_lightmaps([exr_a], run2)
+        chk("S72 T232: two consecutive runs each keep their own provable copy",
+            len(kept2) == 1 and kept2[0]["path"] != kept1[0]["path"]
+            and _file_sha256(kept1[0]["path"]) == sha_before
+            and _file_sha256(kept2[0]["path"]) == _file_sha256(exr_a),
+            "second run invalidated the first")
+        chk("S73 T232: unreadable source is skipped, not recorded as a copy",
+            preserve_lightmaps([os.path.join(tmp, "nope.exr")], run2) == [])
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 
