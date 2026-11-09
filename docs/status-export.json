@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-11-09 12:58",
- "current_activity": "2026-11-09 12:5x 窗：T-20261109-6（帧质检接探针 no.31）+ T-20261109-8（ok/deliverable 消费侧审计）双件 done｜供给面首次三态读数 ok=23 deliverable=22 uncertified=1｜两池：本司备货可派 3 ／ 机队可领 4｜GPU 道 vram_free<6144 关=按让路律不抢",
- "latest_artifact": "qa/smoke-20261109-1256.log（28/30 PASS·no.30 出 ok/deliverable/uncertified 三数·mtime 2026-11-09 12:56）",
- "next_milestone": "B-CITY3D-02 洋红材质修复（首步=只含 1 个 cube 的最小隔离实验，判「工程缺 URP 资产」还是「材质过期」；复跑须 placeholder_frames=0 且 qc=FRAME-QC-PASS）＋下一次 render 点火即 no.31 由 pending 转首判（窗 ≤48h，门控=GPU/编辑器净窗）"
+ "updated_at": "2026-11-09 15:54",
+ "current_activity": "2026-11-09 15:00 轮：M179/B-CITY3D-02 洋红定因+修复落盘（51/51 材质=内置 Standard·管线改回内置+出生地 fail-closed 审计·部署 sha 一致） gpu:7d 基线未复跑（本轮零 GPU 动作·车道关 ram 6.0%/vram 332MiB） qa:smoke-20261109-1531 28/30（no.19 由本轮 5 列队列行触发→改 4 列后 new_local=0；no.22 M96 既有面） ｜ 两池：n/a（心跳 48 分钟未更新，超 45 分钟上限）",
+ "latest_artifact": "state/gpu-util/samples.jsonl（mtime 2026-11-09 15:53）",
+ "next_milestone": "M25 室内烘焙批步 2：labbench 烘焙样板间实弹（AD-021 模块壳围合+AD-035 灯板光池→Tuanjie 批模式烘焙·GPU/CPU 双路时长/峰值/质量三指标实测·J1-J4 判据窗·labbench 隔离区零碰司仓〔O-023 先例〕·编辑器启动窗承接）（队列状态=open（**步 2 机械链预建毕 09-29 22:43）"
 }
