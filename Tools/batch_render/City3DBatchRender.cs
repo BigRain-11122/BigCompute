@@ -15,7 +15,6 @@ using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.Rendering;
-using URP = UnityEngine.Rendering.Universal;
 
 namespace City3DBatchRender
 {
@@ -30,8 +29,9 @@ namespace City3DBatchRender
             {
                 M["ts"] = DateTime.Now.ToString("o");
                 M["editor"] = Application.unityVersion;
-                SetupUrp();
+                UseBuiltInPipeline();
                 LoadScene();
+                AuditShaderPipeline();
                 RenderFrames();
             }
             catch (Exception e)
@@ -47,31 +47,61 @@ namespace City3DBatchRender
             }
         }
 
-        static void SetupUrp()
+        // 2026-11-09 洋红占位定因修复（T-20261109-7）。
+        // 本工程 51 份材质全部指向内置 Standard shader（m_Shader fileID=46 /
+        // guid 0000000000000000f000000000000000，离线普查实证），而 11-08 那一批渲染在
+        // 进程内把默认管线切到 URP -> 内置 shader 没有 URP 通道，Unity 回退洋红 (255,0,255)。
+        // 判据帧只做几何/光照比对、不依赖任何 SRP 特性，故改为坚持内置管线；管线资产
+        // 仍留在工程里（不删），只是不再被挂上默认管线位。
+        static void UseBuiltInPipeline()
         {
             try
             {
-                var post = AssetDatabase.LoadAssetAtPath<URP.PostProcessData>(
-                    "Packages/com.unity.render-pipelines.universal/Runtime/Data/PostProcessData.asset");
-                var rd = ScriptableObject.CreateInstance<URP.UniversalRendererData>();
-                if (post != null) rd.postProcessData = post;
-                if (!AssetDatabase.IsValidFolder("Assets/URP")) AssetDatabase.CreateFolder("Assets", "URP");
-                if (!File.Exists("Assets/URP/RenderSpikeRendererData.asset"))
-                    AssetDatabase.CreateAsset(rd, "Assets/URP/RenderSpikeRendererData.asset");
-                var saved = AssetDatabase.LoadAssetAtPath<URP.UniversalRendererData>(
-                    "Assets/URP/RenderSpikeRendererData.asset");
-                var urp = URP.UniversalRenderPipelineAsset.Create(saved != null ? (URP.ScriptableRendererData)saved : rd);
-                urp.shadowDistance = 80f;
-                if (!File.Exists("Assets/URP/RenderSpikePipeline.asset"))
-                    AssetDatabase.CreateAsset(urp, "Assets/URP/RenderSpikePipeline.asset");
-                var pipe = AssetDatabase.LoadAssetAtPath<URP.UniversalRenderPipelineAsset>(
-                    "Assets/URP/RenderSpikePipeline.asset");
-                GraphicsSettings.defaultRenderPipeline = pipe != null ? pipe : urp;
-                M["urp_setup"] = "ok";
+                GraphicsSettings.defaultRenderPipeline = null;
+                // 质量档可能另行挂管线，渲染前读一次实际生效值（currentRenderPipeline 为
+                // 2018 起既有 API，避免引入本编辑器版本未验证的成员）
+                var cur = GraphicsSettings.currentRenderPipeline;
+                M["pipeline"] = cur == null ? "builtin" : ("still-srp:" + cur.name);
             }
             catch (Exception e)
             {
-                M["urp_setup"] = "fail:" + e.Message;
+                M["pipeline"] = "fail:" + e.Message;
+            }
+        }
+
+        // 管线 x 材质一致性审计（只读·fail-closed）。
+        // 目的是让 11-08 那种「能跑、帧也在、但是洋红」的产出不能再静默通过：一旦默认管线
+        // 是 SRP 而仍有材质用内置 Standard shader，本轮不渲染直接报错，把缺陷挡在出生地。
+        static void AuditShaderPipeline()
+        {
+            int standard = 0, urp = 0, srpActive = 0;
+            try
+            {
+                srpActive = GraphicsSettings.currentRenderPipeline != null ? 1 : 0;
+                foreach (var guid in AssetDatabase.FindAssets("t:Material", new[] { "Assets" }))
+                {
+                    var path = AssetDatabase.GUIDToAssetPath(guid);
+                    var mat = AssetDatabase.LoadAssetAtPath<Material>(path);
+                    if (mat == null || mat.shader == null) continue;
+                    if (mat.shader.name == "Standard") standard++;
+                    else if (mat.shader.name.StartsWith("Universal Render Pipeline")) urp++;
+                }
+                M["materials_standard"] = standard;
+                M["materials_urp"] = urp;
+                M["srp_active"] = srpActive;
+                if (srpActive == 1 && standard > 0)
+                    throw new InvalidOperationException(
+                        "shader_pipeline_mismatch: SRP active with " + standard
+                        + " material(s) on built-in Standard shader -> magenta risk");
+            }
+            catch (InvalidOperationException)
+            {
+                M["shader_audit"] = "mismatch";
+                throw;
+            }
+            catch (Exception e)
+            {
+                M["shader_audit"] = "fail:" + e.Message;
             }
         }
 

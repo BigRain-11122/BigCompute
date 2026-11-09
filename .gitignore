@@ -43,3 +43,5 @@ __pycache__/
 !state/receipt-seals-*
 # T226 帧质检两读数实读件（产品面实物：洋红占位/有效几何读数 + qc 判定；D-20261109-08 回执面）
 !state/t226-frame-quality-*
+# T228 洋红占位离线定因件（产品面实物：51/51 材质=内置 Standard 的实测读数 + 修复说明 + 诚实边界）
+!state/t228-magenta-rootcause-*

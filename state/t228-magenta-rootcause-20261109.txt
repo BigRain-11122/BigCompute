@@ -1,0 +1,56 @@
+B-CITY3D-02 洋红占位 离线定因（T-20261109-7 步①）· 2026-11-09 15:1x · bm-a
+================================================================================
+方法：不开编辑器、不占 GPU 车道。对 labbench 渲染工程做纯离线静态普查
+      （材质 -> shader GUID、材质 -> 贴图 GUID、ProjectSettings 默认管线引用），
+      与 11-09 10:16 那批判据帧的实测读数对读。
+工程：C:\Users\sjs20\Desktop\FluxGroup\.codely-cli\labbench\city3d-bake-spike\BakeSpike
+
+一、材质 × 管线实测（Assets 下全部 .mat）
+  材质总数          51
+  m_Shader = 内置 Standard（guid 0000000000000000f000000000000000 / fileID 46）
+                    51  (100%)
+  m_Shader = URP（Universal Render Pipeline/*）
+                     0
+  贴图引用          82 个，可解析 82，不可解析 0
+  → 材质资产本身是完好的：颜色/贴图/关键词齐全，只是 shader 全部是内置 Standard。
+
+二、管线侧
+  ProjectSettings/GraphicsSettings.asset: m_CustomRenderPipeline
+     修复前 = {fileID: 11400000, guid: de72b78f33ede32408b3b33a533672e0}
+     该 GUID 在 Assets 与 Library 两处 *.meta 双查 0 命中 -> 悬挂引用（编辑器每次启动都会
+     报缺失管线资产并回落内置管线；它本身不是洋红来源）
+  真正来源 = City3DBatchRender.cs 的 SetupUrp()：渲染进程内
+     GraphicsSettings.defaultRenderPipeline = Assets/URP/RenderSpikePipeline.asset
+  即：把 51 份内置 Standard 材质放到 URP 管线下渲染 -> 内置 shader 没有 URP 通道
+     -> Unity 回退错误材质洋红 (255,0,255)。
+
+三、与帧读数对读（state/t226-frame-quality-20261109.json）
+  6 帧中 5 帧含洋红：frame_01 54.36% / 02 15.94% / 03 64.84% / 04 54.68% / 06 24.28%，
+  frame_05 0.00%（该机位只拍到暗背景，无几何体）。
+  洋红与几何体严格对应：frame_03 目视=大块墙体/楼体纯洋红，地面与天空为暗部正常渲染
+  （天空盒不依赖 SRP 通道），与「材质 shader 失配」这一因完全一致，而与「贴图丢失」
+  （应为白/灰或黑）不一致——贴图 82/82 可解析也独立排除了后者。
+
+四、本轮修复（两处，均已落盘）
+  1) Tools/batch_render/City3DBatchRender.cs
+     - 删 SetupUrp()，改为 UseBuiltInPipeline()：defaultRenderPipeline = null，
+       并把实际生效管线写进 metrics（pipeline=builtin / still-srp:<name>）
+     - 新增 AuditShaderPipeline()：读当前生效管线 + 全工程材质 shader 名，
+       若 SRP 生效且仍有 Standard 材质 -> M["shader_pipeline_mismatch"] 并抛错，
+       本轮不渲染直接 exit 1。目的是让「跑成功、帧也在、但是洋红」不能再静默通过。
+     - 已同步部署到工程 Assets/Editor/City3DBatchRender.cs（sha 一致 a965004d3ecbb8e5）
+  2) 工程 ProjectSettings/GraphicsSettings.asset
+     - m_CustomRenderPipeline 的悬挂 GUID 清除为 {fileID: 0}（不再每次启动报缺失）
+
+五、诚实边界（未证的部分，不许当已修好）
+  - 编辑器本轮未启动（车道 RAM 6.0% / VRAM 332MiB 全关，按让路律不抢他司产线），
+    故：C# 未经编译验证、修复后未重渲、洋红是否消失尚未实测。
+  - T-20261109-7 判据③（复跑渲染卡 placeholder_frames=0 且 qc_verdict=FRAME-QC-PASS）
+    维持未达成，等车道窗口。
+  - 判据②的「二选一修」本司选的是 A（坚持内置管线），未做材质升 URP 的 B 路；
+    理由=51 份材质是第三方 Polygon 包原件，改它会污染共享资产且无收益（判据帧不需要 SRP）。
+
+六、下一步（窗口一开即可执行，一条命令）
+  python Tools/pool_igniter.py run --batch-id B-CITY3D-02
+  -> 读回执 render-metrics.json 的 pipeline/materials_standard/srp_active 三键
+  -> 复跑帧质检（洋红占比应为 0，qc_verdict=FRAME-QC-PASS 才算过）
