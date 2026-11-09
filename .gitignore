@@ -41,3 +41,5 @@ __pycache__/
 # T192 回执指纹封存面（产品面实物：人读出数 + 机读审计 + 可被写侧 owner 直取的封存册）
 !state/receipt-seal-*
 !state/receipt-seals-*
+# T226 帧质检两读数实读件（产品面实物：洋红占位/有效几何读数 + qc 判定；D-20261109-08 回执面）
+!state/t226-frame-quality-*

@@ -281,8 +281,20 @@ def run_render_spike(outdir):
             f.write("spawn-error: %s\n" % e)
     elapsed = round(time.time() - started, 1)
     pngs = sorted(glob.glob(os.path.join(frames_dir, "*.png")))
+    # T226: two readings that blank/duplicate cannot see (magenta fallback
+    # materials, near-empty framing).  Written beside the metrics as their own
+    # record so the frame set stays self-describing.
+    quality = frame_quality_report(frames_dir) if pngs else None
+    if quality:
+        qpath = os.path.join(outdir, "frame-quality.json")
+        try:
+            with open(qpath, "w", encoding="utf-8", newline="\n") as f:
+                f.write(json.dumps(quality, ensure_ascii=False, indent=2,
+                                   sort_keys=True) + "\n")
+        except OSError:
+            qpath = None
     artifacts = []
-    for p in [metrics] + pngs:
+    for p in [metrics] + ([qpath] if quality and qpath else []) + pngs:
         if os.path.exists(p):
             artifacts.append({"path": os.path.relpath(p, ROOT).replace("\\", "/"),
                               "bytes": os.path.getsize(p),
@@ -297,14 +309,19 @@ def run_render_spike(outdir):
     ok = (code == 0 and bool(metrics_doc.get("render_ok"))
           and int(metrics_doc.get("frame_count") or 0) > 0
           and len(pngs) == int(metrics_doc.get("frame_count") or -1))
+    # D-20261109-08: the frame set is the card's deliverable, so "ran fine" and
+    # "usable frames" are two different claims and get two different fields.
+    qc_ok = bool(quality) and quality.get("qc_verdict") == "FRAME-QC-PASS"
     return {
         "kind": "render_spike",
         "exit": code,
         "seconds": elapsed,
         "ok": ok,
+        "deliverable_ok": ok and qc_ok,
         "log": os.path.relpath(logfile, ROOT).replace("\\", "/"),
         "error": None if ok else extract_log_errors(logfile),
         "metrics": metrics_doc,
+        "frame_quality": quality,
         "artifacts": artifacts,
     }
 
@@ -710,6 +727,132 @@ def duplicate_skips_today():
     return n
 
 
+# --- frame quality (tech T226) -------------------------------------------
+# The judgment-frame check only asked "blank?" and "duplicate?", so two
+# different defects read as passing frames: a frame whose materials fell back
+# to Unity's magenta error shader, and a near-empty overhead frame
+# (luma_std=9.63, barely over the 2.0 floor).  These two readings exist to be
+# *seen*, not to gate: no threshold is introduced here before real numbers
+# exist on real frames (T226 判据④).  Measured from the same PNG bytes the
+# editor wrote, so no editor run is needed to read an existing frame set.
+MAGENTA_MIN_R = 200      # Unity missing-material magenta ~ (255, 0, 255)
+MAGENTA_MIN_B = 200
+MAGENTA_MAX_G = 80
+BG_TOL = 6               # per-channel tolerance when matching the clear colour
+CLEAR_RGB_DEFAULT = (13, 13, 15)   # Color(0.05, 0.05, 0.06) at 8bpc, 0-255
+
+
+def frame_quality(path, clear_rgb=None):
+    """Read one PNG -> {magenta_pct, geom_pct, bg_rgb, bg_source} or None.
+
+    `geom_pct` = share of pixels that are *not* the camera background, i.e.
+    something was actually drawn there.  When the caller cannot declare the
+    clear colour, the modal colour is used instead and labelled `modal`; the
+    two estimates are never mixed silently, because on a top-down view the
+    modal colour is the floor - reading it as "background" would turn a
+    full-floor frame into "nothing drawn".
+    """
+    try:
+        from PIL import Image
+    except ImportError:
+        return None
+    try:
+        im = Image.open(path).convert("RGB")
+        data = im.tobytes()          # raw RGB triples, no per-pixel objects
+    except (OSError, ValueError):
+        return None
+    n = len(data) // 3
+    if not n:
+        return None
+    if clear_rgb:
+        cr, cg, cb = clear_rgb
+        source = "declared"
+    else:
+        from collections import Counter
+        cr, cg, cb = Counter(data[i:i + 3] for i in range(0, n * 3, 3)
+                             ).most_common(1)[0][0]
+        source = "modal"
+    mag = 0
+    bg = 0
+    for i in range(0, n * 3, 3):
+        r, g, b = data[i], data[i + 1], data[i + 2]
+        if r >= MAGENTA_MIN_R and b >= MAGENTA_MIN_B and g <= MAGENTA_MAX_G:
+            mag += 1
+        if (abs(r - cr) <= BG_TOL and abs(g - cg) <= BG_TOL
+                and abs(b - cb) <= BG_TOL):
+            bg += 1
+    return {
+        "magenta_pct": round(100.0 * mag / n, 2),
+        "geom_pct": round(100.0 * (n - bg) / n, 2),
+        "bg_rgb": [cr, cg, cb],
+        "bg_source": source,
+    }
+
+
+def frame_quality_report(frames_dir, clear_rgb=CLEAR_RGB_DEFAULT):
+    """Aggregate the two readings over a frame set; worst frame is named."""
+    frames = []
+    for p in sorted(glob.glob(os.path.join(frames_dir, "*.png"))):
+        q = frame_quality(p, clear_rgb=clear_rgb)
+        if q is None:
+            return {"frames_read": 0, "unreadable": os.path.basename(p)}
+        q["file"] = os.path.basename(p)
+        frames.append(q)
+    if not frames:
+        return {"frames_read": 0, "unreadable": "no-frames"}
+    worst_m = max(frames, key=lambda f: f["magenta_pct"])
+    worst_g = min(frames, key=lambda f: f["geom_pct"])
+    placeholder = [f["file"] for f in frames if f["magenta_pct"] > 0]
+    # D-20261109-08 ①: an acceptance object with placeholder material may not
+    # be judged PASS.  The rule is "zero error-shader pixels", not a tuned
+    # percentage, and it is a reading-level verdict - the run-level `ok`
+    # (count/blank/duplicate) is left exactly as it was so the ignition
+    # retry/baseline contract does not silently change meaning.
+    qc = "FRAME-QC-PASS" if not placeholder else \
+        "FRAME-QC-INSUFFICIENT-PLACEHOLDER"
+    return {
+        "frames_read": len(frames),
+        "clear_rgb": list(clear_rgb) if clear_rgb else None,
+        "magenta_max_pct": worst_m["magenta_pct"],
+        "magenta_max_frame": worst_m["file"],
+        "geom_min_pct": worst_g["geom_pct"],
+        "geom_min_frame": worst_g["file"],
+        "placeholder_frames": len(placeholder),
+        "placeholder_files": placeholder,
+        "qc_verdict": qc,
+        "frames": frames,
+    }
+
+
+def last_render_quality(rows=None):
+    """Frame-quality reading for the newest ok render_spike receipt.
+
+    Prefers numbers already stored in the receipt; falls back to reading the
+    frame set on disk so receipts written before this existed are still
+    readable.  Never returns a fabricated zero: "no render yet" is None.
+    """
+    rows = rows if rows is not None else receipt_rows()
+    for r in reversed(rows):
+        run = r.get("runner") or {}
+        if run.get("kind") != "render_spike" or not r.get("ok"):
+            continue
+        q = r.get("frame_quality")
+        if not q:
+            outdir = r.get("outdir")
+            if not outdir:
+                return None
+            frames_dir = os.path.join(ROOT, outdir, "frames")
+            q = frame_quality_report(frames_dir)
+            q["source"] = "recomputed-from-frames"
+        else:
+            q = dict(q)
+            q["source"] = "receipt"
+        q["outdir"] = r.get("outdir")
+        q["ts"] = r.get("ts")
+        return q
+    return None
+
+
 def readout():
     """Two-pool honesty readout for the ignition chain.
 
@@ -757,6 +900,7 @@ def readout():
             "last_failure": last_failure(receipts),
             "duplicate_window_h": DUPLICATE_WINDOW_H,
             "duplicate_skips_today": duplicate_skips_today(),
+            "frame_quality": last_render_quality(receipts),
         },
         "cards": cards,
     }
@@ -783,6 +927,18 @@ def status(as_json=False, out=None):
              ign["last_tick_age_min"]))
     print("duplicate_guard=window%gh skips_today=%s"
           % (ign["duplicate_window_h"], ign["duplicate_skips_today"]))
+    fq = ign.get("frame_quality")
+    if fq and fq.get("frames_read"):
+        print("frame_quality frames=%s magenta_max=%s%%(%s) geom_min=%s%%(%s) "
+              "placeholder_frames=%s qc=%s source=%s"
+              % (fq["frames_read"], fq["magenta_max_pct"],
+                 fq["magenta_max_frame"], fq["geom_min_pct"],
+                 fq["geom_min_frame"], fq.get("placeholder_frames"),
+                 fq.get("qc_verdict"), fq.get("source")))
+    elif fq:
+        print("frame_quality unreadable=%s" % fq.get("unreadable", "?"))
+    else:
+        print("frame_quality=none(no ok render yet)")
     for u in rd["declared_unready"]:
         print("unready %s reason=%s" % (u["batch_id"], u["reason"]))
     lf = ign["last_failure"]
@@ -1032,6 +1188,93 @@ def selftest():
                                        fingerprint=fp)
         chk("S34 legacy ok receipt without fingerprint lets one run through",
             allowed and why.startswith("baseline-without-fingerprint"), why)
+
+        # --- frame quality (tech T226) ------------------------------------
+        # Two synthetic frames whose defect blank/duplicate cannot see: a
+        # magenta fallback-material frame and a near-empty frame that is
+        # 99.7% background yet still passes the luma-std floor.
+        from PIL import Image
+        fq_dir = os.path.join(tmp, "frames")
+        os.makedirs(fq_dir, exist_ok=True)
+        mag = Image.new("RGB", (100, 100), (255, 0, 255))
+        mag.save(os.path.join(fq_dir, "frame_01.png"))
+        sparse = Image.new("RGB", (100, 100), (13, 13, 15))
+        for x in range(10):
+            for y in range(10):
+                sparse.putpixel((x, y), (255, 255, 255))
+        sparse.save(os.path.join(fq_dir, "frame_02.png"))
+        ok_dir = os.path.join(tmp, "frames-ok")
+        os.makedirs(ok_dir, exist_ok=True)
+        good = Image.new("RGB", (100, 100), (13, 13, 15))
+        for x in range(100):
+            for y in range(20, 80):
+                good.putpixel((x, y), (110, 120, 90))
+        good.save(os.path.join(ok_dir, "frame_01.png"))
+
+        q = frame_quality(os.path.join(fq_dir, "frame_01.png"))
+        chk("S35 all-magenta frame reads magenta=100/geom=0",
+            q["magenta_pct"] == 100.0 and q["geom_pct"] == 0.0, q)
+
+        rep = frame_quality_report(fq_dir)
+        chk("S36 magenta frame and sparse frame are named by their own metric",
+            rep["magenta_max_frame"] == "frame_01.png"
+            and rep["magenta_max_pct"] == 100.0
+            and rep["geom_min_frame"] == "frame_02.png"
+            and rep["geom_min_pct"] == 1.0, rep)
+
+        # A magenta frame is *drawn* (100% geometry) with broken material, so
+        # the two readings must be read together - geom alone would pass it.
+        q_mag = frame_quality(os.path.join(fq_dir, "frame_01.png"),
+                              clear_rgb=CLEAR_RGB_DEFAULT)
+        chk("S36b magenta frame shows up in geom as drawn (why both are needed)",
+            q_mag["geom_pct"] == 100.0 and q_mag["magenta_pct"] == 100.0, q_mag)
+
+        q_sparse = frame_quality(os.path.join(fq_dir, "frame_02.png"),
+                                 clear_rgb=CLEAR_RGB_DEFAULT)
+        chk("S37 near-empty frame reads geom=1.0% against declared clear",
+            q_sparse["geom_pct"] == 1.0 and q_sparse["bg_source"] == "declared",
+            q_sparse)
+
+        q_good = frame_quality(os.path.join(ok_dir, "frame_01.png"),
+                               clear_rgb=CLEAR_RGB_DEFAULT)
+        chk("S38 normal frame reads geom=60.0% and magenta=0",
+            q_good["geom_pct"] == 60.0 and q_good["magenta_pct"] == 0.0, q_good)
+
+        # declared vs modal must stay distinguishable: on the good frame the
+        # modal colour is the clear colour anyway, so use a floor-dominated
+        # frame to prove the two estimates differ and are labelled.
+        floor = Image.new("RGB", (100, 100), (13, 13, 15))
+        for x in range(100):
+            for y in range(0, 90):
+                floor.putpixel((x, y), (60, 60, 60))
+        floor.save(os.path.join(fq_dir, "frame_03.png"))
+        q_decl = frame_quality(os.path.join(fq_dir, "frame_03.png"),
+                              clear_rgb=CLEAR_RGB_DEFAULT)
+        q_modal = frame_quality(os.path.join(fq_dir, "frame_03.png"))
+        chk("S39 declared vs modal background are labelled and differ",
+            q_decl["bg_source"] == "declared" and q_modal["bg_source"] == "modal"
+            and q_decl["geom_pct"] == 90.0 and q_modal["geom_pct"] == 10.0,
+            (q_decl, q_modal))
+
+        bad = os.path.join(tmp, "not-a-png.png")
+        with open(bad, "w", encoding="utf-8") as f:
+            f.write("not a png\n")
+        chk("S40 unreadable frame returns None instead of a zero reading",
+            frame_quality(bad) is None)
+        chk("S41 empty frame dir -> frames_read=0 and named reason",
+            frame_quality_report(os.path.join(tmp, "empty-frames"))
+            .get("unreadable") == "no-frames")
+
+        # D-20261109-08: a frame set with placeholder material may not be
+        # judged PASS, and the run-level ok must not be redefined silently.
+        rep_bad = frame_quality_report(fq_dir)
+        chk("S42 placeholder frames -> QC-INSUFFICIENT, not PASS",
+            rep_bad["qc_verdict"] == "FRAME-QC-INSUFFICIENT-PLACEHOLDER"
+            and rep_bad["placeholder_frames"] == 1, rep_bad["qc_verdict"])
+        rep_ok = frame_quality_report(ok_dir)
+        chk("S43 clean frame set -> QC-PASS with zero placeholder",
+            rep_ok["qc_verdict"] == "FRAME-QC-PASS"
+            and rep_ok["placeholder_frames"] == 0, rep_ok["qc_verdict"])
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 

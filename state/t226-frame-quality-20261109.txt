@@ -1,0 +1,48 @@
+T226 判据帧材质/光照缺口 实读件（BigCompute 2026-11-09 12:3x 午班轮）
+生成时点：2026-11-09 12:32:33（读数由 Tools/pool_igniter.py 现读，非手工转录）
+
+一、为什么要加这两个读数
+  旧帧检只问 blank(luma_std<2.0) 与 duplicate(sha 相同)，于是两种完全不同的缺陷都读成合格帧：
+  ①材质缺失回退成 Unity 洋红错误材质（几何在、颜色全错）；②低对比近空帧（俯视帧 luma_std=9.63，仅过 2.0 下限）。
+  补两个可判量：magenta_pct=洋红像素占比（r>=200,b>=200,g<=80）；geom_pct=非相机背景像素占比（真的画了东西）。
+
+二、集团判决对应（D-20261109-08 · 2026-11-09 12:00 即过即生效）
+  ①要求验收物质检项同时含 a.占位材质占比 b.有效几何覆盖率 c.既有 blank/duplicate —— 本件三项齐；
+  ②本司承诺 2026-11-10 18:00 前落地并回报一行 —— 本轮 12:3x 提前交付；
+  ③「三项缺一记质检不足，不得据此判 PASS」—— 本件给出 qc_verdict 字段，本批为 FRAME-QC-INSUFFICIENT-PLACEHOLDER。
+
+三、源码面
+  Tools/pool_igniter.py 增 frame_quality()/frame_quality_report()/last_render_quality()；
+  render_spike 跑完即从同一批 PNG 写 frame-quality.json 并落回执 frame_quality；status 增一行；
+  运行成败与交付可用拆两字段：`ok`（帧数/blank/duplicate，原语义不动）+ `deliverable_ok`/`qc_verdict`。
+  自检 34→44/44 PASS（S35-S43 九夹具）。
+  诚实边界：本轮未改 Tools/batch_render/City3DBatchRender.cs —— GPU 道关(1240<6144)，改 .cs 无法当场验编译，
+  且入口脚本一变就变载荷指纹、下一次 tick 即重烧。读数取自编辑器写出的同一批 PNG 字节，两路等价。
+
+四、实跑真数（11-09 10:15:56 首次点火出的六帧，逐帧）
+  帧目录：media/pool-ignite/B-CITY3D-02/20261109-101556
+   frame_01.png  magenta= 54.36%  geom= 86.14%
+   frame_02.png  magenta= 15.94%  geom= 76.57%
+   frame_03.png  magenta= 64.84%  geom= 91.32%
+   frame_04.png  magenta= 54.68%  geom= 85.79%
+   frame_05.png  magenta=  0.00%  geom=100.00%
+   frame_06.png  magenta= 24.28%  geom= 82.23%
+  汇总：magenta_max=64.84%（frame_03.png） geom_min=76.57%（frame_02.png） placeholder_frames=5/6 bg_source=declared(13,13,15)
+
+五、洋红判定不是误报（主色直方图核对）
+  frame_03 主色=纯 (255,0,255) 占 64.84%；frame_01 主色=纯 (255,0,255) 占 54.36%
+  → Unity 缺材质错误材质的整块面积，不是粉调内容。
+  frame_05（俯视）主色为 (43,43,42) 一族灰面、分布均匀，geom=100%：
+  → 它「看着空」是低对比（luma_std 9.63），不是没画东西。geom 读数不支持「近空帧」假说，如实记录不硬套。
+
+六、结论
+  ① 该帧集不得作为合格判据帧交付：6 帧中 5 帧含 16.24%-64.84% 洋红占位，材质缺失是主缺陷。
+  ② 旧 render_ok=true 只证明「6 帧都画了点东西且互不相同」，不证明材质正确。
+  ③ 待验假说（未做隔离实验，不作因果断言）：SetupUrp 在本工程新建 URP 管线资产，
+     而复用的 Assets/BakeRoom.unity 材质来自烘焙工程既有资产，缺 URP 版 shader 即回退洋红。
+  ④ 交付面（M178）据此更正：产物指针必须带这两个读数与「材质缺」结论，City3D 消费方不得当合格帧用。
+
+七、证据链
+  机读：state/t226-frame-quality-20261109.json
+  自检：44/44 PASS
+  帧集：media/pool-ignite/B-CITY3D-02/20261109-101556/frames/（gitignored media）

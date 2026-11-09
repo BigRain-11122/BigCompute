@@ -1,0 +1,101 @@
+{
+  "ts": "2026-11-09 12:32:33",
+  "source_receipt_ts": "2026-11-09 10:16:15",
+  "outdir": "media/pool-ignite/B-CITY3D-02/20261109-101556",
+  "summary": {
+    "frames_read": 6,
+    "clear_rgb": [
+      13,
+      13,
+      15
+    ],
+    "magenta_max_pct": 64.84,
+    "magenta_max_frame": "frame_03.png",
+    "geom_min_pct": 76.57,
+    "geom_min_frame": "frame_02.png",
+    "placeholder_frames": 5,
+    "placeholder_files": [
+      "frame_01.png",
+      "frame_02.png",
+      "frame_03.png",
+      "frame_04.png",
+      "frame_06.png"
+    ],
+    "qc_verdict": "FRAME-QC-INSUFFICIENT-PLACEHOLDER",
+    "source": "recomputed-from-frames",
+    "outdir": "media/pool-ignite/B-CITY3D-02/20261109-101556",
+    "ts": "2026-11-09 10:16:15"
+  },
+  "frames": [
+    {
+      "magenta_pct": 54.36,
+      "geom_pct": 86.14,
+      "bg_rgb": [
+        13,
+        13,
+        15
+      ],
+      "bg_source": "declared",
+      "file": "frame_01.png"
+    },
+    {
+      "magenta_pct": 15.94,
+      "geom_pct": 76.57,
+      "bg_rgb": [
+        13,
+        13,
+        15
+      ],
+      "bg_source": "declared",
+      "file": "frame_02.png"
+    },
+    {
+      "magenta_pct": 64.84,
+      "geom_pct": 91.32,
+      "bg_rgb": [
+        13,
+        13,
+        15
+      ],
+      "bg_source": "declared",
+      "file": "frame_03.png"
+    },
+    {
+      "magenta_pct": 54.68,
+      "geom_pct": 85.79,
+      "bg_rgb": [
+        13,
+        13,
+        15
+      ],
+      "bg_source": "declared",
+      "file": "frame_04.png"
+    },
+    {
+      "magenta_pct": 0.0,
+      "geom_pct": 100.0,
+      "bg_rgb": [
+        13,
+        13,
+        15
+      ],
+      "bg_source": "declared",
+      "file": "frame_05.png"
+    },
+    {
+      "magenta_pct": 24.28,
+      "geom_pct": 82.23,
+      "bg_rgb": [
+        13,
+        13,
+        15
+      ],
+      "bg_source": "declared",
+      "file": "frame_06.png"
+    }
+  ],
+  "verdict": "FRAME-QC-INSUFFICIENT-PLACEHOLDER",
+  "reading_note": "magenta/geom are readings; no numeric threshold introduced; run-level ok unchanged, deliverable_ok added (T226 c4 + D-20261109-08 ①)",
+  "magenta_confirmed_by": "top-colour histogram: pure (255,0,255) is the modal colour of frame_01/frame_03",
+  "decision": "D-20261109-08"
+}
