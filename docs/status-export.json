@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-11-09 12:48",
- "current_activity": "2026-11-09 12:43 午班轮：T-20261109-6 帧质检读数接常驻探针（qa_smoke no.31 落地·6/6 夹具·live PASS·charter 第 31 条在件）｜两池：本司备货可派 3 ／ 机队可领 4（两个不同池，本司卡未登记进机队池）｜GPU 道 vram_free=2254MiB<6144 关=按让路律不抢，洋红材质修复待净窗",
- "latest_artifact": "qa/smoke-20261109-1246.log（28/30 PASS·no.31 首次在册·mtime 2026-11-09 12:46）",
+ "updated_at": "2026-11-09 12:58",
+ "current_activity": "2026-11-09 12:5x 窗：T-20261109-6（帧质检接探针 no.31）+ T-20261109-8（ok/deliverable 消费侧审计）双件 done｜供给面首次三态读数 ok=23 deliverable=22 uncertified=1｜两池：本司备货可派 3 ／ 机队可领 4｜GPU 道 vram_free<6144 关=按让路律不抢",
+ "latest_artifact": "qa/smoke-20261109-1256.log（28/30 PASS·no.30 出 ok/deliverable/uncertified 三数·mtime 2026-11-09 12:56）",
  "next_milestone": "B-CITY3D-02 洋红材质修复（首步=只含 1 个 cube 的最小隔离实验，判「工程缺 URP 资产」还是「材质过期」；复跑须 placeholder_frames=0 且 qc=FRAME-QC-PASS）＋下一次 render 点火即 no.31 由 pending 转首判（窗 ≤48h，门控=GPU/编辑器净窗）"
 }

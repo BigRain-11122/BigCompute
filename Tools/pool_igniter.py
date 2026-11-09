@@ -377,6 +377,10 @@ def ignite(batch_id, force=False):
         "fingerprint_parts": fp_parts,
         "outdir": os.path.relpath(outdir, ROOT).replace("\\", "/"),
         "ok": bool(result.get("ok")),
+        # T229: mirrored at the top level so a reader cannot take "ran fine"
+        # for "produced something usable" without opening `runner`.
+        "deliverable_ok": bool(result.get("deliverable_ok",
+                                         result.get("ok"))),
         "runner": result,
     }
     os.makedirs(os.path.dirname(RECEIPTS), exist_ok=True)
@@ -503,6 +507,22 @@ def receipt_rows():
                 except json.JSONDecodeError:
                     rows.append({"ok": False, "ts": "-", "corrupt": True})
     return rows
+
+
+def receipt_deliverable(row):
+    """Is this receipt's product usable, not merely a clean run?
+
+    The rule itself lives in batch_pool (single source, since pool_igniter
+    already depends on it and the dependency must not run backwards).
+    """
+    import batch_pool
+    return batch_pool.receipt_deliverable(row)
+
+
+def receipt_state(row):
+    """'yes' | 'no' | 'unknown' -- see batch_pool.receipt_deliverable_state."""
+    import batch_pool
+    return batch_pool.receipt_deliverable_state(row)
 
 
 def last_receipt(batch_id, rows=None, ok_only=False):
@@ -896,6 +916,10 @@ def readout():
             "last_tick_age_min": last_tick_age_min(),
             "receipts": len(receipts),
             "receipts_ok": sum(1 for r in receipts if r.get("ok")),
+            "receipts_deliverable": sum(1 for r in receipts
+                                        if receipt_deliverable(r)),
+            "receipts_uncertified": sum(1 for r in receipts
+                                        if receipt_state(r) == "unknown"),
             "last_receipt": receipts[-1]["ts"] if receipts else None,
             "last_failure": last_failure(receipts),
             "duplicate_window_h": DUPLICATE_WINDOW_H,
@@ -921,9 +945,11 @@ def status(as_json=False, out=None):
         print(render_card(c))
     ign = rd["igniter"]
     print("dispatchable=%s runnable=%s gap=%s receipts=%s ok=%s "
-          "last_tick_age_min=%s"
+          "deliverable=%s uncertified=%s last_tick_age_min=%s"
           % (rd["dispatchable"], rd["runnable"], rd["gap"],
              ign["receipts"], ign["receipts_ok"],
+             ign.get("receipts_deliverable", "?"),
+             ign.get("receipts_uncertified", "?"),
              ign["last_tick_age_min"]))
     print("duplicate_guard=window%gh skips_today=%s"
           % (ign["duplicate_window_h"], ign["duplicate_skips_today"]))

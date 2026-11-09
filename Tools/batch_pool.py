@@ -415,6 +415,51 @@ def declared_named_type(row):
 IGNITION_LOG = os.path.join(ROOT, "state", "pool-ignitions.jsonl")
 
 
+def receipt_deliverable(row):
+    """Whether an ignition receipt's product is usable, not merely a clean run.
+
+    T226 (D-20261109-08) split two claims that used to share `ok`: `ok` = the
+    runner exited cleanly and wrote its artifacts; `deliverable_ok` = those
+    artifacts passed frame QC.  Counting `ok` as "the pool produced something"
+    would let the 10:15:56 batch (5 of 6 frames magenta placeholder) stand as
+    effective supply.
+
+    Receipts written before the split carry no `deliverable_ok`; for those the
+    QC data they did carry decides, and only when there is no QC data at all do
+    we fall back to `ok`.  Reading a pre-split receipt as deliverable just
+    because `ok=true` would re-create exactly the false green this split exists
+    to kill.
+
+    Single source: pool_igniter.receipt_deliverable delegates here.
+    """
+    return receipt_deliverable_state(row) == "yes"
+
+
+def receipt_deliverable_state(row):
+    """'yes' | 'no' | 'unknown' for one ignition receipt (T229).
+
+    `unknown` is a real state, not a polite yes: a render receipt written before
+    T226 carries no QC verdict, so the ledger cannot say whether its frames are
+    usable.  Counting it as supply is how the 10:15:56 batch (5 of 6 frames
+    magenta placeholder) would keep reading as "effective".  Counting it as a
+    failure would be the opposite lie -- the run did exit cleanly.
+    """
+    if not row.get("ok"):
+        return "no"
+    run = row.get("runner") or {}
+    for holder in (row, run):
+        if isinstance(holder.get("deliverable_ok"), bool):
+            return "yes" if holder["deliverable_ok"] else "no"
+    q = row.get("frame_quality") or run.get("frame_quality")
+    if isinstance(q, dict) and q.get("qc_verdict"):
+        return "yes" if q["qc_verdict"] == "FRAME-QC-PASS" else "no"
+    if run.get("kind") == "render_spike":
+        # QC is a render-only concept; without its verdict nothing certifies
+        # the frames.  Bakes have no such gate, so they fall through to ok.
+        return "unknown"
+    return "yes"
+
+
 def ignition_stats(log_path=None, hours=24, now=None):
     """D-20261108-09: the pool's effective face = runs that really happened.
 
@@ -429,7 +474,11 @@ def ignition_stats(log_path=None, hours=24, now=None):
     now = now or datetime.datetime.now()
     cutoff = now - datetime.timedelta(hours=hours)
     stats = {"total": 0, "ok": 0, "ok_24h": 0, "last_ts": None,
-             "cards_ok_24h": [], "unreadable": 0}
+             "cards_ok_24h": [], "unreadable": 0,
+             # T229: "ran", "produced something usable" and "cannot be proven either
+             # way" are three distinct counts.
+             "deliv": 0, "deliv_24h": 0, "cards_deliv_24h": [],
+             "unknown": 0, "unknown_24h": 0}
     if not os.path.exists(log_path):
         return stats
     with open(log_path, "r", encoding="utf-8") as f:
@@ -446,6 +495,12 @@ def ignition_stats(log_path=None, hours=24, now=None):
             if not row.get("ok"):
                 continue
             stats["ok"] += 1
+            state = receipt_deliverable_state(row)
+            deliverable = state == "yes"
+            if deliverable:
+                stats["deliv"] += 1
+            elif state == "unknown":
+                stats["unknown"] += 1
             stats["last_ts"] = row.get("ts")
             try:
                 ts = datetime.datetime.strptime(str(row.get("ts")),
@@ -457,6 +512,12 @@ def ignition_stats(log_path=None, hours=24, now=None):
                 bid = str(row.get("batch_id") or "?")
                 if bid not in stats["cards_ok_24h"]:
                     stats["cards_ok_24h"].append(bid)
+                if deliverable and bid not in stats["cards_deliv_24h"]:
+                    stats["cards_deliv_24h"].append(bid)
+                if deliverable:
+                    stats["deliv_24h"] += 1
+                elif state == "unknown":
+                    stats["unknown_24h"] += 1
     return stats
 
 
@@ -562,6 +623,18 @@ def build_review(rows, today=None, claims=None, refusals=None):
             "ignores the lane gate; receipts in %s are the real supply face"
             % (len(dispatchable), ", ".join(dispatchable),
                os.path.relpath(IGNITION_LOG, ROOT)))
+    if ign["ok_24h"] > ign["deliv_24h"]:
+        findings.append(
+            "%d ignition(s) in %dh ran clean but produced no usable product "
+            "(ok=%d deliverable=%d): read effective_24h, not ignited_24h"
+            % (ign["ok_24h"] - ign["deliv_24h"], 24,
+               ign["ok_24h"], ign["deliv_24h"]))
+    if ign["unknown_24h"]:
+        findings.append(
+            "%d clean run(s) in %dh cannot be certified either way (no QC "
+            "verdict in receipt): counted as neither supply nor failure; "
+            "read `pool_igniter status` frame_quality for the recomputed numbers"
+            % (ign["unknown_24h"], 24))
     return {
         "cards": len(rows),
         "lanes": lanes,
@@ -577,7 +650,15 @@ def build_review(rows, today=None, claims=None, refusals=None):
         "dispatchable_cards": dispatchable,
         "ignited_24h": ign["ok_24h"],
         "ignited_24h_cards": ign["cards_ok_24h"],
+        # T229: supply that can actually be consumed. `ignited_24h` only says
+        # a runner exited cleanly; the 11-09 10:15 batch did that and still had
+        # 5 of 6 judgment frames full of magenta placeholder.
+        "effective_24h": ign["deliv_24h"],
+        "effective_24h_cards": ign["cards_deliv_24h"],
+        "uncertified_24h": ign["unknown_24h"],
         "ignitions_total": ign["ok"],
+        "deliverable_total": ign["deliv"],
+        "uncertified_total": ign["unknown"],
         "last_ignition_ts": ign["last_ts"],
         "in_flight": in_flight,
         "dry_run_end": DRY_RUN_END,
@@ -630,10 +711,14 @@ def cmd_review(path, as_json=False, write=True):
              len(review["j5_locked_cards"]),
              review["j5_blocks_activation"]))
     # D-20261108-09: dispatchable is a look, ignition is a fact. Print both.
-    print("EFFECTIVE ignited_24h=%d cards=%s total_ok=%d last=%s"
-          % (review["ignited_24h"],
-             ",".join(review["ignited_24h_cards"]) or "-",
-             review["ignitions_total"], review["last_ignition_ts"] or "-"))
+    print("EFFECTIVE ignited_24h=%d deliverable_24h=%d uncertified_24h=%d "
+          "cards=%s total_ok=%d total_deliverable=%d total_uncertified=%d last=%s"
+          % (review["ignited_24h"], review["effective_24h"],
+             review["uncertified_24h"],
+             ",".join(review["effective_24h_cards"]) or "-",
+             review["ignitions_total"], review["deliverable_total"],
+             review["uncertified_total"],
+             review["last_ignition_ts"] or "-"))
     for f in review["findings"]:
         print("FINDING " + f)
     if as_json:
@@ -892,9 +977,31 @@ def cmd_selftest():
         "bad-type finding text"
     assert not any("CONSUMER-NAMED-BAD-TYPE" in f for f in agree["findings"]), \
         "boolean labels raise no bad-type finding"
+    # T229: "ran clean" and "produced something usable" are two counts.
+    assert receipt_deliverable({"ok": True, "deliverable_ok": True}) is True
+    assert receipt_deliverable({"ok": True, "deliverable_ok": False}) is False
+    assert receipt_deliverable(
+        {"ok": True, "runner": {"deliverable_ok": False}}) is False, \
+        "runner-level flag decides when the top level is absent"
+    assert receipt_deliverable(
+        {"ok": True,
+         "frame_quality": {"qc_verdict": "FRAME-QC-INSUFFICIENT-PLACEHOLDER"}}
+    ) is False, "pre-split receipt with failed QC is not deliverable"
+    assert receipt_deliverable(
+        {"ok": True, "frame_quality": {"qc_verdict": "FRAME-QC-PASS"}}) is True
+    assert receipt_deliverable({"ok": True}) is True, \
+        "no QC data at all -> ok decides (bakes have no QC gate)"
+    assert receipt_deliverable_state(
+        {"ok": True, "runner": {"kind": "render_spike"}}) == "unknown", \
+        "pre-split render receipt is unknown, not supply"
+    assert receipt_deliverable({"ok": True,
+                                "runner": {"kind": "render_spike"}}) is False, \
+        "unknown is never counted as deliverable"
+    assert receipt_deliverable({"ok": False, "deliverable_ok": True}) is False, \
+        "a failed run is never deliverable"
     print("selftest PASS (J1-J7 + gate lane map + review + J5 claim rule "
-          "+ claim log + determinism + dispatchable + consumer_named, "
-          "%d checks)" % 59)
+          "+ claim log + determinism + dispatchable + consumer_named "
+          "+ receipt deliverable tri-state, %d checks)" % 68)
     return 0
 
 

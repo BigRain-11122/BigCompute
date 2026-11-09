@@ -3520,9 +3520,11 @@ def igniter_judge(selftest_rc, selftest_out, readout, last_receipt=None):
              + len(readout.get("not_runnable") or []))
     ign = readout.get("igniter") or {}
     counts += (" dispatchable=%s runnable=%s gap=%s named=%s receipts=%s "
-               "ok=%s tick_age=%s" % (
+               "ok=%s deliverable=%s uncertified=%s tick_age=%s" % (
                    disp, runnable, gap, named, ign.get("receipts"),
-                   ign.get("receipts_ok"), ign.get("last_tick_age_min")))
+                   ign.get("receipts_ok"), ign.get("receipts_deliverable"),
+                   ign.get("receipts_uncertified"),
+                   ign.get("last_tick_age_min")))
     if disp is None or runnable is None or gap is None:
         return False, counts + " -- dispatchable/runnable/gap unreadable"
     if gap != disp - runnable:
@@ -3539,6 +3541,16 @@ def igniter_judge(selftest_rc, selftest_out, readout, last_receipt=None):
                        "newest failure reason is invisible on the CEO face")
     lf = ign.get("last_failure")
     counts += " last_failure=%s" % ("none" if lf is None else lf.get("ts"))
+    # T229: after T226 split `ok` from `deliverable_ok`, a face that prints only
+    # `ok=N` again reads "ran fine" as "produced something usable".
+    if "receipts_deliverable" not in ign:
+        return False, (counts + " -- readout has no receipts_deliverable field: "
+                       "'ran fine' is readable as 'produced something' again")
+    dels = ign.get("receipts_deliverable")
+    if isinstance(dels, int) and isinstance(ign.get("receipts_ok"), int) \
+            and dels > ign["receipts_ok"]:
+        return False, ("%s -- deliverable=%d > ok=%d is impossible"
+                       % (counts, dels, ign["receipts_ok"]))
     if (ign.get("receipts") or 0) > 0 and last_receipt is None:
         return False, (counts + " -- receipts counted but the last row is "
                        "unreadable")
@@ -3600,6 +3612,7 @@ def selftest_igniter():
                "declared_unready": [{"batch_id": "B-X", "reason": "project-missing"}],
                "not_runnable": ["B-Y"],
                "igniter": {"receipts": 11, "receipts_ok": 5,
+                           "receipts_deliverable": 4,
                            "last_failure": None,
                            "last_tick_age_min": 8.4}}
         doc.update(kw)
@@ -3668,12 +3681,28 @@ def selftest_igniter():
           (not ok) and "last_failure field" in det, det)
 
     with_fail = rd(igniter={"receipts": 11, "receipts_ok": 5,
+                            "receipts_deliverable": 5,
                             "last_tick_age_min": 8.4,
                             "last_failure": {"ts": "2026-11-08 22:24:54",
                                              "error": "x"}})
     ok, det = igniter_judge(0, good_out, with_fail, ok_receipt)
     check("a named failure is surfaced in the same line",
           ok and "last_failure=2026-11-08 22:24:54" in det, det)
+
+    blind_deliv = rd(igniter={"receipts": 11, "receipts_ok": 5,
+                              "last_failure": None,
+                              "last_tick_age_min": 8.4})
+    ok, det = igniter_judge(0, good_out, blind_deliv, ok_receipt)
+    check("readout without receipts_deliverable -> FAIL (ok reads as usable)",
+          (not ok) and "receipts_deliverable" in det, det)
+
+    impossible = rd(igniter={"receipts": 11, "receipts_ok": 5,
+                             "receipts_deliverable": 6,
+                             "last_failure": None,
+                             "last_tick_age_min": 8.4})
+    ok, det = igniter_judge(0, good_out, impossible, ok_receipt)
+    check("deliverable > ok -> FAIL (impossible arithmetic)",
+          (not ok) and "impossible" in det, det)
 
     first = igniter_judge(0, good_out, rd(), ok_receipt)
     second = igniter_judge(0, good_out, rd(), ok_receipt)
