@@ -1,0 +1,654 @@
+{
+  "certifiable": [
+    {
+      "batch_id": "B-CITY3D-01",
+      "exr_declared": 2,
+      "exr_missing": [],
+      "exr_overwritten": [],
+      "files": [
+        {
+          "declared_sha256": "514a49bf37ec5f74b5a067bbda3f0f635685e6eb1227c5902d239c5a6f802da4",
+          "lit_ratio_pct": 100.0,
+          "max_lin": 0.279667,
+          "mean_lin": 0.218778,
+          "on_disk_sha256": "514a49bf37ec5f74b5a067bbda3f0f635685e6eb1227c5902d239c5a6f802da4",
+          "path": "../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-0_comp_light.exr",
+          "state": "sha-match",
+          "std_lin": 0.056477,
+          "verdict": "LIGHTMAP-CONTENT-OK"
+        },
+        {
+          "declared_sha256": "62dac038cb81563f614b3314f74a31e187de4df058345074e6e6dc794c62ea8f",
+          "lit_ratio_pct": 100.0,
+          "max_lin": 0.278584,
+          "mean_lin": 0.224076,
+          "on_disk_sha256": "62dac038cb81563f614b3314f74a31e187de4df058345074e6e6dc794c62ea8f",
+          "path": "../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-1_comp_light.exr",
+          "state": "sha-match",
+          "std_lin": 0.047649,
+          "verdict": "LIGHTMAP-CONTENT-OK"
+        }
+      ],
+      "min_lit_pct": 100.0,
+      "outdir": "media/pool-ignite/B-CITY3D-01/20261109-100943",
+      "qc_verdict": "LIGHTMAP-QC-PASS",
+      "ts": "2026-11-09 10:11:17"
+    },
+    {
+      "batch_id": "B-CITY3D-01",
+      "exr_declared": 2,
+      "exr_missing": [],
+      "exr_overwritten": [],
+      "files": [
+        {
+          "declared_sha256": "514a49bf37ec5f74b5a067bbda3f0f635685e6eb1227c5902d239c5a6f802da4",
+          "lit_ratio_pct": 100.0,
+          "max_lin": 0.279667,
+          "mean_lin": 0.218778,
+          "on_disk_sha256": "514a49bf37ec5f74b5a067bbda3f0f635685e6eb1227c5902d239c5a6f802da4",
+          "path": "../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-0_comp_light.exr",
+          "state": "sha-match",
+          "std_lin": 0.056477,
+          "verdict": "LIGHTMAP-CONTENT-OK"
+        },
+        {
+          "declared_sha256": "62dac038cb81563f614b3314f74a31e187de4df058345074e6e6dc794c62ea8f",
+          "lit_ratio_pct": 100.0,
+          "max_lin": 0.278584,
+          "mean_lin": 0.224076,
+          "on_disk_sha256": "62dac038cb81563f614b3314f74a31e187de4df058345074e6e6dc794c62ea8f",
+          "path": "../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-1_comp_light.exr",
+          "state": "sha-match",
+          "std_lin": 0.047649,
+          "verdict": "LIGHTMAP-CONTENT-OK"
+        }
+      ],
+      "min_lit_pct": 100.0,
+      "outdir": "media/pool-ignite/B-CITY3D-01/20261109-190943",
+      "qc_verdict": "LIGHTMAP-QC-PASS",
+      "ts": "2026-11-09 19:10:31"
+    }
+  ],
+  "certifiable_count": 2,
+  "declared": [],
+  "declared_count": 0,
+  "not_certifiable": [
+    {
+      "batch_id": "B-CITY3D-01",
+      "exr_declared": 2,
+      "exr_missing": [],
+      "exr_overwritten": [
+        "../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-0_comp_light.exr",
+        "../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-1_comp_light.exr"
+      ],
+      "files": [
+        {
+          "declared_sha256": "bac8534ae0e45662db5af8a4dca2f1484b7ebc980ce541541a049062410c7dde",
+          "on_disk_sha256": "514a49bf37ec5f74b5a067bbda3f0f635685e6eb1227c5902d239c5a6f802da4",
+          "path": "../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-0_comp_light.exr",
+          "state": "sha-mismatch(overwritten)"
+        },
+        {
+          "declared_sha256": "f7e9de58ec78624917c0a9d7a31ce829c4dcc8664332528dde15e048ad4b6b8a",
+          "on_disk_sha256": "62dac038cb81563f614b3314f74a31e187de4df058345074e6e6dc794c62ea8f",
+          "path": "../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-1_comp_light.exr",
+          "state": "sha-mismatch(overwritten)"
+        }
+      ],
+      "outdir": "media/pool-ignite/B-CITY3D-01/20261108-225550",
+      "reason": "exr-overwritten(sha-mismatch)",
+      "ts": "2026-11-08 22:56:41"
+    },
+    {
+      "batch_id": "B-CITY3D-01",
+      "exr_declared": 2,
+      "exr_missing": [],
+      "exr_overwritten": [
+        "../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-0_comp_light.exr",
+        "../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-1_comp_light.exr"
+      ],
+      "files": [
+        {
+          "declared_sha256": "ffb75dca5b7e37294b8b3c8d5604348476117ce972aa131e42690906db9796e5",
+          "on_disk_sha256": "514a49bf37ec5f74b5a067bbda3f0f635685e6eb1227c5902d239c5a6f802da4",
+          "path": "../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-0_comp_light.exr",
+          "state": "sha-mismatch(overwritten)"
+        },
+        {
+          "declared_sha256": "a26fe8a921e5036e38f2ae1469b984c61f26ab26fab7a713d8b294e0d7fd37a1",
+          "on_disk_sha256": "62dac038cb81563f614b3314f74a31e187de4df058345074e6e6dc794c62ea8f",
+          "path": "../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-1_comp_light.exr",
+          "state": "sha-mismatch(overwritten)"
+        }
+      ],
+      "outdir": "media/pool-ignite/B-CITY3D-01/20261108-230943",
+      "reason": "exr-overwritten(sha-mismatch)",
+      "ts": "2026-11-08 23:11:24"
+    },
+    {
+      "batch_id": "B-CITY3D-01",
+      "exr_declared": 2,
+      "exr_missing": [],
+      "exr_overwritten": [
+        "../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-1_comp_light.exr"
+      ],
+      "files": [
+        {
+          "declared_sha256": "514a49bf37ec5f74b5a067bbda3f0f635685e6eb1227c5902d239c5a6f802da4",
+          "on_disk_sha256": "514a49bf37ec5f74b5a067bbda3f0f635685e6eb1227c5902d239c5a6f802da4",
+          "path": "../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-0_comp_light.exr",
+          "state": "sha-match"
+        },
+        {
+          "declared_sha256": "f58e352d692042c091a06fbd071c2a06b29b0c7cb338b195fde0929b0d9a64ac",
+          "on_disk_sha256": "62dac038cb81563f614b3314f74a31e187de4df058345074e6e6dc794c62ea8f",
+          "path": "../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-1_comp_light.exr",
+          "state": "sha-mismatch(overwritten)"
+        }
+      ],
+      "outdir": "media/pool-ignite/B-CITY3D-01/20261108-232443",
+      "reason": "exr-overwritten(sha-mismatch)",
+      "ts": "2026-11-08 23:25:47"
+    },
+    {
+      "batch_id": "B-CITY3D-01",
+      "exr_declared": 2,
+      "exr_missing": [],
+      "exr_overwritten": [
+        "../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-1_comp_light.exr"
+      ],
+      "files": [
+        {
+          "declared_sha256": "514a49bf37ec5f74b5a067bbda3f0f635685e6eb1227c5902d239c5a6f802da4",
+          "on_disk_sha256": "514a49bf37ec5f74b5a067bbda3f0f635685e6eb1227c5902d239c5a6f802da4",
+          "path": "../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-0_comp_light.exr",
+          "state": "sha-match"
+        },
+        {
+          "declared_sha256": "258d2765b28922ade138535248f9e6bf7db76209aceef19e6797beba2f85d7ed",
+          "on_disk_sha256": "62dac038cb81563f614b3314f74a31e187de4df058345074e6e6dc794c62ea8f",
+          "path": "../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-1_comp_light.exr",
+          "state": "sha-mismatch(overwritten)"
+        }
+      ],
+      "outdir": "media/pool-ignite/B-CITY3D-01/20261108-233943",
+      "reason": "exr-overwritten(sha-mismatch)",
+      "ts": "2026-11-08 23:40:33"
+    },
+    {
+      "batch_id": "B-CITY3D-01",
+      "exr_declared": 2,
+      "exr_missing": [],
+      "exr_overwritten": [
+        "../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-0_comp_light.exr",
+        "../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-1_comp_light.exr"
+      ],
+      "files": [
+        {
+          "declared_sha256": "bac8534ae0e45662db5af8a4dca2f1484b7ebc980ce541541a049062410c7dde",
+          "on_disk_sha256": "514a49bf37ec5f74b5a067bbda3f0f635685e6eb1227c5902d239c5a6f802da4",
+          "path": "../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-0_comp_light.exr",
+          "state": "sha-mismatch(overwritten)"
+        },
+        {
+          "declared_sha256": "f7e9de58ec78624917c0a9d7a31ce829c4dcc8664332528dde15e048ad4b6b8a",
+          "on_disk_sha256": "62dac038cb81563f614b3314f74a31e187de4df058345074e6e6dc794c62ea8f",
+          "path": "../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-1_comp_light.exr",
+          "state": "sha-mismatch(overwritten)"
+        }
+      ],
+      "outdir": "media/pool-ignite/B-CITY3D-01/20261108-235444",
+      "reason": "exr-overwritten(sha-mismatch)",
+      "ts": "2026-11-08 23:55:33"
+    },
+    {
+      "batch_id": "B-CITY3D-01",
+      "exr_declared": 2,
+      "exr_missing": [],
+      "exr_overwritten": [
+        "../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-0_comp_light.exr",
+        "../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-1_comp_light.exr"
+      ],
+      "files": [
+        {
+          "declared_sha256": "91c8c7001eef8b4385744cc6b97c46331decf8d53c40740b15fdd3149aba9f3b",
+          "on_disk_sha256": "514a49bf37ec5f74b5a067bbda3f0f635685e6eb1227c5902d239c5a6f802da4",
+          "path": "../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-0_comp_light.exr",
+          "state": "sha-mismatch(overwritten)"
+        },
+        {
+          "declared_sha256": "18e3ed693ef8d6e8edea3c87c6ec4b06b3b9fc5c1198dedc80cbef5abc35796d",
+          "on_disk_sha256": "62dac038cb81563f614b3314f74a31e187de4df058345074e6e6dc794c62ea8f",
+          "path": "../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-1_comp_light.exr",
+          "state": "sha-mismatch(overwritten)"
+        }
+      ],
+      "outdir": "media/pool-ignite/B-CITY3D-01/20261109-010943",
+      "reason": "exr-overwritten(sha-mismatch)",
+      "ts": "2026-11-09 01:11:35"
+    },
+    {
+      "batch_id": "B-CITY3D-01",
+      "exr_declared": 2,
+      "exr_missing": [],
+      "exr_overwritten": [
+        "../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-0_comp_light.exr",
+        "../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-1_comp_light.exr"
+      ],
+      "files": [
+        {
+          "declared_sha256": "ffb75dca5b7e37294b8b3c8d5604348476117ce972aa131e42690906db9796e5",
+          "on_disk_sha256": "514a49bf37ec5f74b5a067bbda3f0f635685e6eb1227c5902d239c5a6f802da4",
+          "path": "../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-0_comp_light.exr",
+          "state": "sha-mismatch(overwritten)"
+        },
+        {
+          "declared_sha256": "f7e9de58ec78624917c0a9d7a31ce829c4dcc8664332528dde15e048ad4b6b8a",
+          "on_disk_sha256": "62dac038cb81563f614b3314f74a31e187de4df058345074e6e6dc794c62ea8f",
+          "path": "../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-1_comp_light.exr",
+          "state": "sha-mismatch(overwritten)"
+        }
+      ],
+      "outdir": "media/pool-ignite/B-CITY3D-01/20261109-012443",
+      "reason": "exr-overwritten(sha-mismatch)",
+      "ts": "2026-11-09 01:27:08"
+    },
+    {
+      "batch_id": "B-CITY3D-01",
+      "exr_declared": 2,
+      "exr_missing": [],
+      "exr_overwritten": [
+        "../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-1_comp_light.exr"
+      ],
+      "files": [
+        {
+          "declared_sha256": "514a49bf37ec5f74b5a067bbda3f0f635685e6eb1227c5902d239c5a6f802da4",
+          "on_disk_sha256": "514a49bf37ec5f74b5a067bbda3f0f635685e6eb1227c5902d239c5a6f802da4",
+          "path": "../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-0_comp_light.exr",
+          "state": "sha-match"
+        },
+        {
+          "declared_sha256": "f58e352d692042c091a06fbd071c2a06b29b0c7cb338b195fde0929b0d9a64ac",
+          "on_disk_sha256": "62dac038cb81563f614b3314f74a31e187de4df058345074e6e6dc794c62ea8f",
+          "path": "../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-1_comp_light.exr",
+          "state": "sha-mismatch(overwritten)"
+        }
+      ],
+      "outdir": "media/pool-ignite/B-CITY3D-01/20261109-015443",
+      "reason": "exr-overwritten(sha-mismatch)",
+      "ts": "2026-11-09 01:56:09"
+    },
+    {
+      "batch_id": "B-CITY3D-01",
+      "exr_declared": 2,
+      "exr_missing": [],
+      "exr_overwritten": [
+        "../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-0_comp_light.exr",
+        "../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-1_comp_light.exr"
+      ],
+      "files": [
+        {
+          "declared_sha256": "91c8c7001eef8b4385744cc6b97c46331decf8d53c40740b15fdd3149aba9f3b",
+          "on_disk_sha256": "514a49bf37ec5f74b5a067bbda3f0f635685e6eb1227c5902d239c5a6f802da4",
+          "path": "../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-0_comp_light.exr",
+          "state": "sha-mismatch(overwritten)"
+        },
+        {
+          "declared_sha256": "258d2765b28922ade138535248f9e6bf7db76209aceef19e6797beba2f85d7ed",
+          "on_disk_sha256": "62dac038cb81563f614b3314f74a31e187de4df058345074e6e6dc794c62ea8f",
+          "path": "../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-1_comp_light.exr",
+          "state": "sha-mismatch(overwritten)"
+        }
+      ],
+      "outdir": "media/pool-ignite/B-CITY3D-01/20261109-023944",
+      "reason": "exr-overwritten(sha-mismatch)",
+      "ts": "2026-11-09 02:43:01"
+    },
+    {
+      "batch_id": "B-CITY3D-01",
+      "exr_declared": 2,
+      "exr_missing": [],
+      "exr_overwritten": [
+        "../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-0_comp_light.exr",
+        "../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-1_comp_light.exr"
+      ],
+      "files": [
+        {
+          "declared_sha256": "cb14f369d1d86979a06194f9b613334f557cbce6f890e99e15e5acf7fb173aa9",
+          "on_disk_sha256": "514a49bf37ec5f74b5a067bbda3f0f635685e6eb1227c5902d239c5a6f802da4",
+          "path": "../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-0_comp_light.exr",
+          "state": "sha-mismatch(overwritten)"
+        },
+        {
+          "declared_sha256": "258d2765b28922ade138535248f9e6bf7db76209aceef19e6797beba2f85d7ed",
+          "on_disk_sha256": "62dac038cb81563f614b3314f74a31e187de4df058345074e6e6dc794c62ea8f",
+          "path": "../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-1_comp_light.exr",
+          "state": "sha-mismatch(overwritten)"
+        }
+      ],
+      "outdir": "media/pool-ignite/B-CITY3D-01/20261109-032443",
+      "reason": "exr-overwritten(sha-mismatch)",
+      "ts": "2026-11-09 03:25:59"
+    },
+    {
+      "batch_id": "B-CITY3D-01",
+      "exr_declared": 2,
+      "exr_missing": [],
+      "exr_overwritten": [
+        "../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-0_comp_light.exr",
+        "../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-1_comp_light.exr"
+      ],
+      "files": [
+        {
+          "declared_sha256": "ffb75dca5b7e37294b8b3c8d5604348476117ce972aa131e42690906db9796e5",
+          "on_disk_sha256": "514a49bf37ec5f74b5a067bbda3f0f635685e6eb1227c5902d239c5a6f802da4",
+          "path": "../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-0_comp_light.exr",
+          "state": "sha-mismatch(overwritten)"
+        },
+        {
+          "declared_sha256": "f7e9de58ec78624917c0a9d7a31ce829c4dcc8664332528dde15e048ad4b6b8a",
+          "on_disk_sha256": "62dac038cb81563f614b3314f74a31e187de4df058345074e6e6dc794c62ea8f",
+          "path": "../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-1_comp_light.exr",
+          "state": "sha-mismatch(overwritten)"
+        }
+      ],
+      "outdir": "media/pool-ignite/B-CITY3D-01/20261109-033943",
+      "reason": "exr-overwritten(sha-mismatch)",
+      "ts": "2026-11-09 03:41:01"
+    },
+    {
+      "batch_id": "B-CITY3D-01",
+      "exr_declared": 2,
+      "exr_missing": [],
+      "exr_overwritten": [
+        "../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-0_comp_light.exr",
+        "../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-1_comp_light.exr"
+      ],
+      "files": [
+        {
+          "declared_sha256": "ffb75dca5b7e37294b8b3c8d5604348476117ce972aa131e42690906db9796e5",
+          "on_disk_sha256": "514a49bf37ec5f74b5a067bbda3f0f635685e6eb1227c5902d239c5a6f802da4",
+          "path": "../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-0_comp_light.exr",
+          "state": "sha-mismatch(overwritten)"
+        },
+        {
+          "declared_sha256": "f7e9de58ec78624917c0a9d7a31ce829c4dcc8664332528dde15e048ad4b6b8a",
+          "on_disk_sha256": "62dac038cb81563f614b3314f74a31e187de4df058345074e6e6dc794c62ea8f",
+          "path": "../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-1_comp_light.exr",
+          "state": "sha-mismatch(overwritten)"
+        }
+      ],
+      "outdir": "media/pool-ignite/B-CITY3D-01/20261109-035443",
+      "reason": "exr-overwritten(sha-mismatch)",
+      "ts": "2026-11-09 03:58:21"
+    },
+    {
+      "batch_id": "B-CITY3D-01",
+      "exr_declared": 2,
+      "exr_missing": [],
+      "exr_overwritten": [
+        "../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-0_comp_light.exr",
+        "../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-1_comp_light.exr"
+      ],
+      "files": [
+        {
+          "declared_sha256": "bac8534ae0e45662db5af8a4dca2f1484b7ebc980ce541541a049062410c7dde",
+          "on_disk_sha256": "514a49bf37ec5f74b5a067bbda3f0f635685e6eb1227c5902d239c5a6f802da4",
+          "path": "../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-0_comp_light.exr",
+          "state": "sha-mismatch(overwritten)"
+        },
+        {
+          "declared_sha256": "f7e9de58ec78624917c0a9d7a31ce829c4dcc8664332528dde15e048ad4b6b8a",
+          "on_disk_sha256": "62dac038cb81563f614b3314f74a31e187de4df058345074e6e6dc794c62ea8f",
+          "path": "../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-1_comp_light.exr",
+          "state": "sha-mismatch(overwritten)"
+        }
+      ],
+      "outdir": "media/pool-ignite/B-CITY3D-01/20261109-080944",
+      "reason": "exr-overwritten(sha-mismatch)",
+      "ts": "2026-11-09 08:11:17"
+    },
+    {
+      "batch_id": "B-CITY3D-01",
+      "exr_declared": 2,
+      "exr_missing": [],
+      "exr_overwritten": [
+        "../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-1_comp_light.exr"
+      ],
+      "files": [
+        {
+          "declared_sha256": "514a49bf37ec5f74b5a067bbda3f0f635685e6eb1227c5902d239c5a6f802da4",
+          "on_disk_sha256": "514a49bf37ec5f74b5a067bbda3f0f635685e6eb1227c5902d239c5a6f802da4",
+          "path": "../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-0_comp_light.exr",
+          "state": "sha-match"
+        },
+        {
+          "declared_sha256": "95c9531a999d44c128f57e1a78e0cdef43c4fe65d466a57199cc86b0f600c456",
+          "on_disk_sha256": "62dac038cb81563f614b3314f74a31e187de4df058345074e6e6dc794c62ea8f",
+          "path": "../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-1_comp_light.exr",
+          "state": "sha-mismatch(overwritten)"
+        }
+      ],
+      "outdir": "media/pool-ignite/B-CITY3D-01/20261109-082443",
+      "reason": "exr-overwritten(sha-mismatch)",
+      "ts": "2026-11-09 08:25:21"
+    },
+    {
+      "batch_id": "B-CITY3D-01",
+      "exr_declared": 2,
+      "exr_missing": [],
+      "exr_overwritten": [
+        "../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-0_comp_light.exr",
+        "../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-1_comp_light.exr"
+      ],
+      "files": [
+        {
+          "declared_sha256": "ffb75dca5b7e37294b8b3c8d5604348476117ce972aa131e42690906db9796e5",
+          "on_disk_sha256": "514a49bf37ec5f74b5a067bbda3f0f635685e6eb1227c5902d239c5a6f802da4",
+          "path": "../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-0_comp_light.exr",
+          "state": "sha-mismatch(overwritten)"
+        },
+        {
+          "declared_sha256": "f7e9de58ec78624917c0a9d7a31ce829c4dcc8664332528dde15e048ad4b6b8a",
+          "on_disk_sha256": "62dac038cb81563f614b3314f74a31e187de4df058345074e6e6dc794c62ea8f",
+          "path": "../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-1_comp_light.exr",
+          "state": "sha-mismatch(overwritten)"
+        }
+      ],
+      "outdir": "media/pool-ignite/B-CITY3D-01/20261109-083943",
+      "reason": "exr-overwritten(sha-mismatch)",
+      "ts": "2026-11-09 08:40:24"
+    },
+    {
+      "batch_id": "B-CITY3D-01",
+      "exr_declared": 2,
+      "exr_missing": [],
+      "exr_overwritten": [
+        "../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-0_comp_light.exr",
+        "../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-1_comp_light.exr"
+      ],
+      "files": [
+        {
+          "declared_sha256": "ffb75dca5b7e37294b8b3c8d5604348476117ce972aa131e42690906db9796e5",
+          "on_disk_sha256": "514a49bf37ec5f74b5a067bbda3f0f635685e6eb1227c5902d239c5a6f802da4",
+          "path": "../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-0_comp_light.exr",
+          "state": "sha-mismatch(overwritten)"
+        },
+        {
+          "declared_sha256": "f7e9de58ec78624917c0a9d7a31ce829c4dcc8664332528dde15e048ad4b6b8a",
+          "on_disk_sha256": "62dac038cb81563f614b3314f74a31e187de4df058345074e6e6dc794c62ea8f",
+          "path": "../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-1_comp_light.exr",
+          "state": "sha-mismatch(overwritten)"
+        }
+      ],
+      "outdir": "media/pool-ignite/B-CITY3D-01/20261109-085443",
+      "reason": "exr-overwritten(sha-mismatch)",
+      "ts": "2026-11-09 08:55:22"
+    },
+    {
+      "batch_id": "B-CITY3D-01",
+      "exr_declared": 2,
+      "exr_missing": [],
+      "exr_overwritten": [
+        "../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-1_comp_light.exr"
+      ],
+      "files": [
+        {
+          "declared_sha256": "514a49bf37ec5f74b5a067bbda3f0f635685e6eb1227c5902d239c5a6f802da4",
+          "on_disk_sha256": "514a49bf37ec5f74b5a067bbda3f0f635685e6eb1227c5902d239c5a6f802da4",
+          "path": "../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-0_comp_light.exr",
+          "state": "sha-match"
+        },
+        {
+          "declared_sha256": "f58e352d692042c091a06fbd071c2a06b29b0c7cb338b195fde0929b0d9a64ac",
+          "on_disk_sha256": "62dac038cb81563f614b3314f74a31e187de4df058345074e6e6dc794c62ea8f",
+          "path": "../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-1_comp_light.exr",
+          "state": "sha-mismatch(overwritten)"
+        }
+      ],
+      "outdir": "media/pool-ignite/B-CITY3D-01/20261109-090943",
+      "reason": "exr-overwritten(sha-mismatch)",
+      "ts": "2026-11-09 09:11:21"
+    },
+    {
+      "batch_id": "B-CITY3D-01",
+      "exr_declared": 2,
+      "exr_missing": [],
+      "exr_overwritten": [
+        "../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-0_comp_light.exr",
+        "../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-1_comp_light.exr"
+      ],
+      "files": [
+        {
+          "declared_sha256": "91c8c7001eef8b4385744cc6b97c46331decf8d53c40740b15fdd3149aba9f3b",
+          "on_disk_sha256": "514a49bf37ec5f74b5a067bbda3f0f635685e6eb1227c5902d239c5a6f802da4",
+          "path": "../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-0_comp_light.exr",
+          "state": "sha-mismatch(overwritten)"
+        },
+        {
+          "declared_sha256": "f58e352d692042c091a06fbd071c2a06b29b0c7cb338b195fde0929b0d9a64ac",
+          "on_disk_sha256": "62dac038cb81563f614b3314f74a31e187de4df058345074e6e6dc794c62ea8f",
+          "path": "../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-1_comp_light.exr",
+          "state": "sha-mismatch(overwritten)"
+        }
+      ],
+      "outdir": "media/pool-ignite/B-CITY3D-01/20261109-092443",
+      "reason": "exr-overwritten(sha-mismatch)",
+      "ts": "2026-11-09 09:25:20"
+    },
+    {
+      "batch_id": "B-CITY3D-01",
+      "exr_declared": 2,
+      "exr_missing": [],
+      "exr_overwritten": [
+        "../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-0_comp_light.exr",
+        "../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-1_comp_light.exr"
+      ],
+      "files": [
+        {
+          "declared_sha256": "bac8534ae0e45662db5af8a4dca2f1484b7ebc980ce541541a049062410c7dde",
+          "on_disk_sha256": "514a49bf37ec5f74b5a067bbda3f0f635685e6eb1227c5902d239c5a6f802da4",
+          "path": "../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-0_comp_light.exr",
+          "state": "sha-mismatch(overwritten)"
+        },
+        {
+          "declared_sha256": "f7e9de58ec78624917c0a9d7a31ce829c4dcc8664332528dde15e048ad4b6b8a",
+          "on_disk_sha256": "62dac038cb81563f614b3314f74a31e187de4df058345074e6e6dc794c62ea8f",
+          "path": "../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-1_comp_light.exr",
+          "state": "sha-mismatch(overwritten)"
+        }
+      ],
+      "outdir": "media/pool-ignite/B-CITY3D-01/20261109-093944",
+      "reason": "exr-overwritten(sha-mismatch)",
+      "ts": "2026-11-09 09:40:25"
+    },
+    {
+      "batch_id": "B-CITY3D-01",
+      "exr_declared": 2,
+      "exr_missing": [],
+      "exr_overwritten": [
+        "../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-0_comp_light.exr",
+        "../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-1_comp_light.exr"
+      ],
+      "files": [
+        {
+          "declared_sha256": "bac8534ae0e45662db5af8a4dca2f1484b7ebc980ce541541a049062410c7dde",
+          "on_disk_sha256": "514a49bf37ec5f74b5a067bbda3f0f635685e6eb1227c5902d239c5a6f802da4",
+          "path": "../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-0_comp_light.exr",
+          "state": "sha-mismatch(overwritten)"
+        },
+        {
+          "declared_sha256": "f7e9de58ec78624917c0a9d7a31ce829c4dcc8664332528dde15e048ad4b6b8a",
+          "on_disk_sha256": "62dac038cb81563f614b3314f74a31e187de4df058345074e6e6dc794c62ea8f",
+          "path": "../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-1_comp_light.exr",
+          "state": "sha-mismatch(overwritten)"
+        }
+      ],
+      "outdir": "media/pool-ignite/B-CITY3D-01/20261109-095443",
+      "reason": "exr-overwritten(sha-mismatch)",
+      "ts": "2026-11-09 09:55:23"
+    },
+    {
+      "batch_id": "B-CITY3D-01",
+      "exr_declared": 2,
+      "exr_missing": [],
+      "exr_overwritten": [
+        "../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-0_comp_light.exr",
+        "../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-1_comp_light.exr"
+      ],
+      "files": [
+        {
+          "declared_sha256": "bac8534ae0e45662db5af8a4dca2f1484b7ebc980ce541541a049062410c7dde",
+          "on_disk_sha256": "514a49bf37ec5f74b5a067bbda3f0f635685e6eb1227c5902d239c5a6f802da4",
+          "path": "../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-0_comp_light.exr",
+          "state": "sha-mismatch(overwritten)"
+        },
+        {
+          "declared_sha256": "f7e9de58ec78624917c0a9d7a31ce829c4dcc8664332528dde15e048ad4b6b8a",
+          "on_disk_sha256": "62dac038cb81563f614b3314f74a31e187de4df058345074e6e6dc794c62ea8f",
+          "path": "../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-1_comp_light.exr",
+          "state": "sha-mismatch(overwritten)"
+        }
+      ],
+      "outdir": "media/pool-ignite/B-CITY3D-01/20261109-101443",
+      "reason": "exr-overwritten(sha-mismatch)",
+      "ts": "2026-11-09 10:15:46"
+    },
+    {
+      "batch_id": "B-CITY3D-01",
+      "exr_declared": 2,
+      "exr_missing": [],
+      "exr_overwritten": [
+        "../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-0_comp_light.exr",
+        "../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-1_comp_light.exr"
+      ],
+      "files": [
+        {
+          "declared_sha256": "ffb75dca5b7e37294b8b3c8d5604348476117ce972aa131e42690906db9796e5",
+          "on_disk_sha256": "514a49bf37ec5f74b5a067bbda3f0f635685e6eb1227c5902d239c5a6f802da4",
+          "path": "../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-0_comp_light.exr",
+          "state": "sha-mismatch(overwritten)"
+        },
+        {
+          "declared_sha256": "f7e9de58ec78624917c0a9d7a31ce829c4dcc8664332528dde15e048ad4b6b8a",
+          "on_disk_sha256": "62dac038cb81563f614b3314f74a31e187de4df058345074e6e6dc794c62ea8f",
+          "path": "../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-1_comp_light.exr",
+          "state": "sha-mismatch(overwritten)"
+        }
+      ],
+      "outdir": "media/pool-ignite/B-CITY3D-01/20261109-175444",
+      "reason": "exr-overwritten(sha-mismatch)",
+      "ts": "2026-11-09 17:58:22"
+    }
+  ],
+  "not_certifiable_count": 22,
+  "note": "declared = the receipt itself carries a QC reading; certifiable = no reading, but today's disk bytes are sha-identical to the receipt so the reading is recomputable; the atlas path is shared across bakes",
+  "reasons": {
+    "exr-overwritten(sha-mismatch)": 22
+  },
+  "receipts_sha256_after": "eaeea62a1d7bec42ac1f71957594589f97e0afd07498dc2c5c5002f3e4e56444",
+  "receipts_sha256_before": "eaeea62a1d7bec42ac1f71957594589f97e0afd07498dc2c5c5002f3e4e56444",
+  "receipts_unchanged": true,
+  "ts": "2026-11-10 00:30:07",
+  "unread": 24
+}

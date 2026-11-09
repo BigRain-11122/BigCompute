@@ -3474,7 +3474,7 @@ def selftest_money_guard():
     return 0 if all(results) else 1
 
 
-IGNITER_MIN_SELFTEST = 55
+IGNITER_MIN_SELFTEST = 69
 
 
 def igniter_judge(selftest_rc, selftest_out, readout, last_receipt=None):

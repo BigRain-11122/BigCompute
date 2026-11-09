@@ -447,9 +447,6 @@ def receipt_deliverable_state(row):
     if not row.get("ok"):
         return "no"
     run = row.get("runner") or {}
-    for holder in (row, run):
-        if isinstance(holder.get("deliverable_ok"), bool):
-            return "yes" if holder["deliverable_ok"] else "no"
     q = row.get("frame_quality") or run.get("frame_quality")
     if isinstance(q, dict) and q.get("qc_verdict"):
         return "yes" if q["qc_verdict"] == "FRAME-QC-PASS" else "no"
@@ -467,6 +464,14 @@ def receipt_deliverable_state(row):
         # QC is a render-only concept; without its verdict nothing certifies
         # the frames.
         return "unknown"
+    # Kinds that have no QC concept: the writer's own deliverability flag is
+    # the strongest claim available.  Checked *after* the kind rules because
+    # receipts written before a kind had QC carry `deliverable_ok=true` as a
+    # plain mirror of `ok`; trusting that first let a clean run re-enter
+    # supply as if its product had been inspected (11-09 17:58/19:10 bakes).
+    for holder in (row, run):
+        if isinstance(holder.get("deliverable_ok"), bool):
+            return "yes" if holder["deliverable_ok"] else "no"
     return "yes"
 
 
@@ -1020,9 +1025,22 @@ def cmd_selftest():
         "unknown is never counted as deliverable"
     assert receipt_deliverable({"ok": False, "deliverable_ok": True}) is False, \
         "a failed run is never deliverable"
+    assert receipt_deliverable_state(
+        {"ok": True, "deliverable_ok": True,
+         "runner": {"kind": "bake_spike"}}) == "unknown", \
+        "M181: a bare deliverable_ok mirrors ok and cannot certify an atlas"
+    assert receipt_deliverable_state(
+        {"ok": True, "deliverable_ok": True,
+         "runner": {"kind": "render_spike"}}) == "unknown", \
+        "M181: same for a render receipt without frame QC"
+    assert receipt_deliverable_state(
+        {"ok": True, "deliverable_ok": True,
+         "runner": {"kind": "other_job"}}) == "yes", \
+        "kinds without a quality concept still trust the writer flag"
     print("selftest PASS (J1-J7 + gate lane map + review + J5 claim rule "
           "+ claim log + determinism + dispatchable + consumer_named "
-          "+ receipt deliverable tri-state + bake atlas tri-state, %d checks)" % 71)
+          "+ receipt deliverable tri-state + bake atlas tri-state "
+          "+ QC-before-flag ordering, %d checks)" % 74)
     return 0
 
 

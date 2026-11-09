@@ -402,6 +402,7 @@ def ignite(batch_id, force=False):
                                          result.get("ok"))),
         "runner": result,
     }
+    receipt.update(receipt_extra_fields(result))
     os.makedirs(os.path.dirname(RECEIPTS), exist_ok=True)
     with open(RECEIPTS, "a", encoding="utf-8", newline="\n") as f:
         f.write(json.dumps(receipt, ensure_ascii=False, sort_keys=True) + "\n")
@@ -1086,6 +1087,166 @@ def last_bake_quality(rows=None):
     return None
 
 
+def receipt_extra_fields(result):
+    """Mirror readings written inside `runner` up to the receipt top level.
+
+    Consumers (status/last_bake_quality/tests) read the top level, while the
+    runner functions store the reading next to the artifacts they describe.
+    Without this, a receipt can carry a full QC block that no reader ever sees
+    (11-09 17:58 / 19:10 receipts: `deliverable_ok=true` with the reading
+    nested and therefore invisible).  Old receipts are never rewritten.
+    """
+    extra = {}
+    q = (result or {}).get("lightmap_quality")
+    if q:
+        extra["lightmap_quality"] = q
+    return extra
+
+
+def _file_sha256(path):
+    h = hashlib.sha256()
+    try:
+        with open(path, "rb") as f:
+            for chunk in iter(lambda: f.read(1 << 20), b""):
+                h.update(chunk)
+    except OSError:
+        return None
+    return h.hexdigest()
+
+
+def bake_reconcile(rows=None, reader=None, exists=None, hasher=None):
+    """M181: can the uncertified bake receipts be certified from disk?
+
+    Receipts written before lightmap QC existed carry no reading, so M180 has
+    to call them `unknown`.  Their atlases may still be on disk - but the
+    labbench atlas path is *shared and overwritten* by every bake, so a file
+    that exists today is not evidence about an older run.  Each receipt
+    declares sha256 per artifact, so the only honest test is: present **and**
+    byte-identical to the declared digest.  Two named lists come out; nothing
+    is rewritten, and a mismatch is never read as "dark".
+    """
+    rows = receipt_rows() if rows is None else rows
+    read = reader or lightmap_stats
+    exists = exists or (lambda rel: os.path.exists(
+        os.path.normpath(os.path.join(ROOT, rel))))
+    hasher = hasher or (lambda rel: _file_sha256(
+        os.path.normpath(os.path.join(ROOT, rel))))
+    certifiable, not_certifiable, declared = [], [], []
+    for r in rows:
+        run = r.get("runner") or {}
+        if run.get("kind") != "bake_spike" or not r.get("ok"):
+            continue
+        exrs = [a for a in (run.get("artifacts") or [])
+                if str(a.get("path", "")).lower().endswith(".exr")]
+        q_declared = r.get("lightmap_quality") or run.get("lightmap_quality")
+        if q_declared:
+            # The producer wrote a reading (either layer).  That is evidence in
+            # its own right - no recompute needed - but record whether today's
+            # disk bytes still match, because the atlas path is shared.
+            states = []
+            for a in exrs:
+                rel = a["path"]
+                if not exists(rel):
+                    states.append("missing-on-disk")
+                    continue
+                got = hasher(rel)
+                states.append("sha-match" if (not a.get("sha256") or got == a["sha256"])
+                              else "sha-mismatch(overwritten)")
+            declared.append({"ts": r.get("ts"), "batch_id": r.get("batch_id"),
+                             "outdir": r.get("outdir"),
+                             "qc_verdict": q_declared.get("qc_verdict"),
+                             "min_lit_pct": q_declared.get("min_lit_pct"),
+                             "reading_source": "declared",
+                             "disk_states": states})
+            continue
+        entry = {"ts": r.get("ts"), "batch_id": r.get("batch_id"),
+                 "outdir": r.get("outdir"), "exr_declared": len(exrs),
+                 "files": []}
+        if not exrs:
+            entry["reason"] = "no-exr-in-receipt"
+            not_certifiable.append(entry)
+            continue
+        missing, mismatched, readable = [], [], []
+        for a in exrs:
+            rel = a["path"]
+            item = {"path": rel, "declared_sha256": a.get("sha256")}
+            if not exists(rel):
+                item["state"] = "missing-on-disk"
+                missing.append(rel)
+            else:
+                got = hasher(rel)
+                item["on_disk_sha256"] = got
+                if a.get("sha256") and got and got != a["sha256"]:
+                    item["state"] = "sha-mismatch(overwritten)"
+                    mismatched.append(rel)
+                else:
+                    item["state"] = "sha-match"
+                    readable.append(rel)
+            entry["files"].append(item)
+        entry["exr_missing"] = missing
+        entry["exr_overwritten"] = mismatched
+        if missing:
+            entry["reason"] = "exr-missing-on-disk"
+        elif mismatched:
+            entry["reason"] = "exr-overwritten(sha-mismatch)"
+        else:
+            rep = lightmap_quality_report([os.path.join(ROOT, p) for p in readable],
+                                          reader=read)
+            entry["qc_verdict"] = rep["qc_verdict"]
+            entry["min_lit_pct"] = rep.get("min_lit_pct")
+            for item, f in zip(entry["files"], rep["files"]):
+                item["verdict"] = f["verdict"]
+                item.update({k: f.get(k) for k in
+                             ("mean_lin", "std_lin", "max_lin", "lit_ratio_pct")})
+            if rep["qc_verdict"] == "LIGHTMAP-QC-PASS":
+                certifiable.append(entry)
+                continue
+            entry["reason"] = "lightmap-not-content-ok"
+        not_certifiable.append(entry)
+    reasons = {}
+    for e in not_certifiable:
+        reasons[e.get("reason", "?")] = reasons.get(e.get("reason", "?"), 0) + 1
+    return {
+        "ts": now().strftime("%Y-%m-%d %H:%M:%S"),
+        "unread": len(certifiable) + len(not_certifiable),
+        "declared": declared,
+        "declared_count": len(declared),
+        "certifiable": certifiable,
+        "not_certifiable": not_certifiable,
+        "certifiable_count": len(certifiable),
+        "not_certifiable_count": len(not_certifiable),
+        "reasons": reasons,
+        "note": "declared = the receipt itself carries a QC reading; "
+                "certifiable = no reading, but today's disk bytes are "
+                "sha-identical to the receipt so the reading is recomputable; "
+                "the atlas path is shared across bakes",
+    }
+
+
+def render_bake_reconcile(rec):
+    print("bake_reconcile declared=%s recomputable=%s unrecomputable=%s"
+          % (rec["declared_count"], rec["certifiable_count"],
+             rec["not_certifiable_count"]))
+    if rec["reasons"]:
+        print("reasons " + " ".join("%s=%s" % (k, v)
+                                    for k, v in sorted(rec["reasons"].items())))
+    for e in rec["declared"]:
+        print("DECLARED %s %s qc=%s min_lit=%s%% disk=%s"
+              % (e["ts"], e["batch_id"], e.get("qc_verdict"),
+                 e.get("min_lit_pct"), ",".join(e["disk_states"]) or "-"))
+    for e in rec["certifiable"]:
+        shas = ",".join((f.get("on_disk_sha256") or "")[:8] for f in e["files"])
+        print("CERTIFIABLE %s %s qc=%s min_lit=%s%% files=%s sha=%s"
+              % (e["ts"], e["batch_id"], e.get("qc_verdict"),
+                 e.get("min_lit_pct"), len(e["files"]), shas))
+    for e in rec["not_certifiable"]:
+        print("NOT-CERTIFIABLE %s %s reason=%s missing=%s overwritten=%s"
+              % (e["ts"], e["batch_id"], e.get("reason"),
+                 len(e.get("exr_missing") or []),
+                 len(e.get("exr_overwritten") or [])))
+    return 0
+
+
 def readout():
     """Two-pool honesty readout for the ignition chain.
 
@@ -1639,6 +1800,84 @@ def selftest():
         chk("S52 M180: only a lit atlas certifies the bake",
             bake_deliverable_ok(True, rep_lit) is True
             and bake_deliverable_ok(False, rep_lit) is False)
+
+        # M181: reconciling old receipts.  The labbench atlas path is shared
+        # and rewritten by every bake, so "the file is there" proves nothing;
+        # only a sha256 match ties a file on disk to that receipt's run.
+        def _bake(ts, exrs, quality=None, ok=True, kind="bake_spike"):
+            return {"ts": ts, "batch_id": "B-CITY3D-01", "ok": ok,
+                    "outdir": "media/pool-ignite/B-CITY3D-01/x",
+                    "lightmap_quality": quality,
+                    "runner": {"kind": kind,
+                               "artifacts": [dict(path=p, sha256=s)
+                                             for p, s in exrs]}}
+
+        on_disk = {"a.exr": "aaa", "b.exr": "bbb"}
+        rec_ok = bake_reconcile(
+            [_bake("t1", [("a.exr", "aaa"), ("b.exr", "bbb")])],
+            reader=_fake(False),
+            exists=lambda rel: rel in on_disk,
+            hasher=lambda rel: on_disk[rel])
+        chk("S53 M181: sha-matched lit atlases -> certifiable",
+            rec_ok["certifiable_count"] == 1
+            and rec_ok["not_certifiable_count"] == 0
+            and rec_ok["certifiable"][0]["qc_verdict"] == "LIGHTMAP-QC-PASS",
+            rec_ok["reasons"])
+
+        rec_over = bake_reconcile(
+            [_bake("t2", [("a.exr", "zzz"), ("b.exr", "bbb")])],
+            reader=_fake(False),
+            exists=lambda rel: rel in on_disk,
+            hasher=lambda rel: on_disk[rel])
+        chk("S54 M181: one overwritten atlas -> not certifiable, no fake dark",
+            rec_over["certifiable_count"] == 0
+            and rec_over["reasons"].get("exr-overwritten(sha-mismatch)") == 1,
+            rec_over["reasons"])
+
+        rec_miss = bake_reconcile(
+            [_bake("t3", [("gone.exr", "xxx")])],
+            reader=_fake(False),
+            exists=lambda rel: False,
+            hasher=lambda rel: None)
+        chk("S55 M181: atlas gone from disk -> missing, named",
+            rec_miss["reasons"].get("exr-missing-on-disk") == 1,
+            rec_miss["reasons"])
+
+        rec_dark = bake_reconcile(
+            [_bake("t4", [("dark.exr", "ddd")])],
+            reader=_fake(True),
+            exists=lambda rel: True,
+            hasher=lambda rel: "ddd")
+        chk("S56 M181: all-match but black atlas -> not certifiable, named",
+            rec_dark["reasons"].get("lightmap-not-content-ok") == 1,
+            rec_dark["reasons"])
+
+        rec_skip = bake_reconcile(
+            [_bake("t5", [("a.exr", "aaa")], quality={"qc_verdict": "x"}),
+             _bake("t6", [("a.exr", "aaa")], ok=False),
+             _bake("t7", [("a.exr", "aaa")], kind="render_spike")],
+            reader=_fake(False),
+            exists=lambda rel: True,
+            hasher=lambda rel: "aaa")
+        chk("S57 M181: already-declared, failed and render receipts stay out of the recompute list",
+            rec_skip["unread"] == 0 and rec_skip["declared_count"] == 1,
+            (rec_skip["reasons"], rec_skip["declared_count"]))
+
+        rec_zero = bake_reconcile([], reader=_fake(False))
+        chk("S58 M181: no receipts -> zero, not a fabricated verdict",
+            rec_zero["unread"] == 0 and rec_zero["declared"] == []
+            and rec_zero["certifiable"] == []
+            and rec_zero["not_certifiable"] == [])
+
+        # The reading lives inside `runner` while consumers read the top level;
+        # mirror it or the evidence is invisible to every reader.
+        nested = {"kind": "bake_spike",
+                  "lightmap_quality": {"qc_verdict": "LIGHTMAP-QC-PASS"}}
+        chk("S59 M181: runner-level reading is mirrored to the receipt top level",
+            receipt_extra_fields(nested).get("lightmap_quality", {})
+            .get("qc_verdict") == "LIGHTMAP-QC-PASS")
+        chk("S60 M181: no reading -> nothing mirrored (no invented field)",
+            receipt_extra_fields({"kind": "bake_spike"}) == {})
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 
@@ -1662,6 +1901,9 @@ def main(argv=None):
     p_r.add_argument("--batch-id", required=True)
     p_r.add_argument("--force", action="store_true",
                      help="run even with the lane closed (manual override)")
+    p_c = sub.add_parser("bake-reconcile")
+    p_c.add_argument("--json-out")
+    p_c.add_argument("--txt-out")
     args = ap.parse_args(argv)
     if args.cmd == "tick":
         return tick()
@@ -1669,6 +1911,54 @@ def main(argv=None):
         return selftest()
     if args.cmd == "status":
         return status(as_json=args.json, out=args.out)
+    if args.cmd == "bake-reconcile":
+        before = _file_sha256(RECEIPTS)
+        rec = bake_reconcile()
+        after = _file_sha256(RECEIPTS)
+        rec["receipts_sha256_before"] = before
+        rec["receipts_sha256_after"] = after
+        rec["receipts_unchanged"] = before == after
+        doc = json.dumps(rec, ensure_ascii=False, indent=2, sort_keys=True)
+        if args.json_out:
+            os.makedirs(os.path.dirname(os.path.abspath(args.json_out)),
+                        exist_ok=True)
+            with open(args.json_out, "w", encoding="utf-8", newline="\n") as f:
+                f.write(doc + "\n")
+        if args.txt_out:
+            os.makedirs(os.path.dirname(os.path.abspath(args.txt_out)),
+                        exist_ok=True)
+            with open(args.txt_out, "w", encoding="utf-8", newline="\n") as f:
+                f.write("bake_reconcile %s\n" % rec["ts"])
+                f.write("uncertified=%s declared=%s certifiable=%s not_certifiable=%s\n"
+                        % (rec["unread"], rec["declared_count"],
+                           rec["certifiable_count"],
+                           rec["not_certifiable_count"]))
+                for k, v in sorted(rec["reasons"].items()):
+                    f.write("reason %s=%s\n" % (k, v))
+                for e in rec["declared"]:
+                    f.write("DECLARED %s %s qc=%s min_lit=%s%% disk=%s\n"
+                            % (e["ts"], e["batch_id"], e.get("qc_verdict"),
+                               e.get("min_lit_pct"),
+                               ",".join(e["disk_states"]) or "-"))
+                for e in rec["certifiable"]:
+                    f.write("CERTIFIABLE %s %s qc=%s min_lit=%s%%\n"
+                            % (e["ts"], e["batch_id"], e.get("qc_verdict"),
+                               e.get("min_lit_pct")))
+                    for it in e["files"]:
+                        f.write("  %s sha=%s verdict=%s\n"
+                                % (it["path"], it.get("on_disk_sha256"),
+                                   it.get("verdict")))
+                for e in rec["not_certifiable"]:
+                    f.write("NOT-CERTIFIABLE %s %s reason=%s\n"
+                            % (e["ts"], e["batch_id"], e.get("reason")))
+                    for it in e["files"]:
+                        f.write("  %s state=%s declared=%s on_disk=%s\n"
+                                % (it["path"], it["state"],
+                                   (it.get("declared_sha256") or "")[:16],
+                                   (it.get("on_disk_sha256") or "")[:16]))
+                f.write("receipts_sha256 before=%s after=%s unchanged=%s\n"
+                        % (before, after, rec["receipts_unchanged"]))
+        return render_bake_reconcile(rec)
     ok, receipt = ignite(args.batch_id, force=args.force)
     print(json.dumps(receipt, ensure_ascii=False, indent=2, sort_keys=True))
     return 0 if ok else 1

@@ -1,0 +1,250 @@
+{
+  "cards": [
+    {
+      "batch_id": "B-CITY3D-01",
+      "consumer_named": true,
+      "gate": "OPEN/cpu_lane_idle=true,ram=61.3>=40.0",
+      "lane": "cpu",
+      "payload": "bake_spike",
+      "payload_ready": true,
+      "payload_reason": "ok"
+    },
+    {
+      "batch_id": "B-CITY3D-02",
+      "consumer_named": true,
+      "gate": "CLOSED/vram_free=3724<6144",
+      "lane": "gpu",
+      "payload": "render_spike",
+      "payload_ready": true,
+      "payload_reason": "ok"
+    },
+    {
+      "batch_id": "B-XIDUDU-01",
+      "consumer_named": true,
+      "gate": "lane-unresolved",
+      "lane": null,
+      "payload": null,
+      "payload_ready": false,
+      "payload_reason": "no-local-payload"
+    },
+    {
+      "batch_id": "B-XIDUDU-02",
+      "consumer_named": true,
+      "gate": "CLOSED/vram_free=3724<6144",
+      "lane": "gpu",
+      "payload": null,
+      "payload_ready": false,
+      "payload_reason": "no-local-payload"
+    },
+    {
+      "batch_id": "B-LANE-A-01",
+      "consumer_named": false,
+      "gate": "OPEN/cpu_lane_idle=true,ram=61.3>=40.0",
+      "lane": "cpu",
+      "payload": null,
+      "payload_ready": false,
+      "payload_reason": "no-local-payload"
+    },
+    {
+      "batch_id": "B-LANE-B-01",
+      "consumer_named": false,
+      "gate": "OPEN/cpu_lane_idle=true,ram=61.3>=40.0",
+      "lane": "cpu",
+      "payload": null,
+      "payload_ready": false,
+      "payload_reason": "no-local-payload"
+    }
+  ],
+  "declared_unready": [],
+  "dispatchable": 4,
+  "dispatchable_cards": [
+    "B-CITY3D-01",
+    "B-CITY3D-02",
+    "B-XIDUDU-01",
+    "B-XIDUDU-02"
+  ],
+  "gap": 2,
+  "igniter": {
+    "bake_quality": {
+      "dark_files": [],
+      "files": [
+        {
+          "file": "Lightmap-0_comp_light.exr",
+          "height": 1024,
+          "lit_ratio_pct": 100.0,
+          "max_lin": 0.279667,
+          "mean_lin": 0.218778,
+          "p01_lin": 0.086595,
+          "p99_lin": 0.273106,
+          "path": "../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-0_comp_light.exr",
+          "pixels": 1048576,
+          "std_lin": 0.056477,
+          "verdict": "LIGHTMAP-CONTENT-OK",
+          "width": 1024
+        },
+        {
+          "file": "Lightmap-1_comp_light.exr",
+          "height": 1024,
+          "lit_ratio_pct": 100.0,
+          "max_lin": 0.278584,
+          "mean_lin": 0.224076,
+          "p01_lin": 0.099504,
+          "p99_lin": 0.273106,
+          "path": "../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-1_comp_light.exr",
+          "pixels": 1048576,
+          "std_lin": 0.047649,
+          "verdict": "LIGHTMAP-CONTENT-OK",
+          "width": 1024
+        }
+      ],
+      "files_read": 2,
+      "mean_lin": 0.221427,
+      "min_lit_pct": 100.0,
+      "outdir": "media/pool-ignite/B-CITY3D-01/20261109-190943",
+      "qc_verdict": "LIGHTMAP-QC-PASS",
+      "source": "recomputed-from-lightmaps",
+      "ts": "2026-11-09 19:10:31"
+    },
+    "delivery_audit": {
+      "cards": {
+        "B-CITY3D-01": {
+          "ok_runs": 24,
+          "pre_guard_runs": 21,
+          "redundant_runs": 0,
+          "unique_payloads": 3
+        },
+        "B-CITY3D-02": {
+          "ok_runs": 1,
+          "pre_guard_runs": 0,
+          "redundant_runs": 0,
+          "unique_payloads": 1
+        }
+      },
+      "totals": {
+        "ok_runs": 25,
+        "pre_guard_runs": 21,
+        "redundant_runs": 0,
+        "unique_payloads": 4
+      }
+    },
+    "duplicate_skips_today": 2,
+    "duplicate_window_h": 6.0,
+    "frame_quality": {
+      "clear_rgb": [
+        13,
+        13,
+        15
+      ],
+      "frames": [
+        {
+          "bg_rgb": [
+            13,
+            13,
+            15
+          ],
+          "bg_source": "declared",
+          "file": "frame_01.png",
+          "geom_pct": 86.14,
+          "magenta_pct": 54.36
+        },
+        {
+          "bg_rgb": [
+            13,
+            13,
+            15
+          ],
+          "bg_source": "declared",
+          "file": "frame_02.png",
+          "geom_pct": 76.57,
+          "magenta_pct": 15.94
+        },
+        {
+          "bg_rgb": [
+            13,
+            13,
+            15
+          ],
+          "bg_source": "declared",
+          "file": "frame_03.png",
+          "geom_pct": 91.32,
+          "magenta_pct": 64.84
+        },
+        {
+          "bg_rgb": [
+            13,
+            13,
+            15
+          ],
+          "bg_source": "declared",
+          "file": "frame_04.png",
+          "geom_pct": 85.79,
+          "magenta_pct": 54.68
+        },
+        {
+          "bg_rgb": [
+            13,
+            13,
+            15
+          ],
+          "bg_source": "declared",
+          "file": "frame_05.png",
+          "geom_pct": 100.0,
+          "magenta_pct": 0.0
+        },
+        {
+          "bg_rgb": [
+            13,
+            13,
+            15
+          ],
+          "bg_source": "declared",
+          "file": "frame_06.png",
+          "geom_pct": 82.23,
+          "magenta_pct": 24.28
+        }
+      ],
+      "frames_read": 6,
+      "geom_min_frame": "frame_02.png",
+      "geom_min_pct": 76.57,
+      "magenta_max_frame": "frame_03.png",
+      "magenta_max_pct": 64.84,
+      "outdir": "media/pool-ignite/B-CITY3D-02/20261109-101556",
+      "placeholder_files": [
+        "frame_01.png",
+        "frame_02.png",
+        "frame_03.png",
+        "frame_04.png",
+        "frame_06.png"
+      ],
+      "placeholder_frames": 5,
+      "qc_verdict": "FRAME-QC-INSUFFICIENT-PLACEHOLDER",
+      "source": "recomputed-from-frames",
+      "ts": "2026-11-09 10:16:15"
+    },
+    "last_failure": {
+      "batch_id": "B-CITY3D-02",
+      "error": "no-error-line-in-log",
+      "exit": 2,
+      "lane_gate": "OPEN/vram_free=8655>=6144",
+      "ts": "2026-11-09 18:25:10"
+    },
+    "last_receipt": "2026-11-09 19:10:31",
+    "last_tick_age_min": 6.7,
+    "receipts": 32,
+    "receipts_deliverable": 0,
+    "receipts_ok": 25,
+    "receipts_uncertified": 25
+  },
+  "not_runnable": [
+    "B-XIDUDU-01",
+    "B-XIDUDU-02",
+    "B-LANE-A-01",
+    "B-LANE-B-01"
+  ],
+  "runnable": 2,
+  "runnable_cards": [
+    "B-CITY3D-01",
+    "B-CITY3D-02"
+  ],
+  "ts": "2026-11-10 00:31:27"
+}

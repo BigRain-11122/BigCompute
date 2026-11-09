@@ -1,0 +1,76 @@
+bake_reconcile 2026-11-10 00:30:07
+uncertified=24 declared=0 certifiable=2 not_certifiable=22
+reason exr-overwritten(sha-mismatch)=22
+CERTIFIABLE 2026-11-09 10:11:17 B-CITY3D-01 qc=LIGHTMAP-QC-PASS min_lit=100.0%
+  ../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-0_comp_light.exr sha=514a49bf37ec5f74b5a067bbda3f0f635685e6eb1227c5902d239c5a6f802da4 verdict=LIGHTMAP-CONTENT-OK
+  ../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-1_comp_light.exr sha=62dac038cb81563f614b3314f74a31e187de4df058345074e6e6dc794c62ea8f verdict=LIGHTMAP-CONTENT-OK
+CERTIFIABLE 2026-11-09 19:10:31 B-CITY3D-01 qc=LIGHTMAP-QC-PASS min_lit=100.0%
+  ../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-0_comp_light.exr sha=514a49bf37ec5f74b5a067bbda3f0f635685e6eb1227c5902d239c5a6f802da4 verdict=LIGHTMAP-CONTENT-OK
+  ../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-1_comp_light.exr sha=62dac038cb81563f614b3314f74a31e187de4df058345074e6e6dc794c62ea8f verdict=LIGHTMAP-CONTENT-OK
+NOT-CERTIFIABLE 2026-11-08 22:56:41 B-CITY3D-01 reason=exr-overwritten(sha-mismatch)
+  ../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-0_comp_light.exr state=sha-mismatch(overwritten) declared=bac8534ae0e45662 on_disk=514a49bf37ec5f74
+  ../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-1_comp_light.exr state=sha-mismatch(overwritten) declared=f7e9de58ec786249 on_disk=62dac038cb81563f
+NOT-CERTIFIABLE 2026-11-08 23:11:24 B-CITY3D-01 reason=exr-overwritten(sha-mismatch)
+  ../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-0_comp_light.exr state=sha-mismatch(overwritten) declared=ffb75dca5b7e3729 on_disk=514a49bf37ec5f74
+  ../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-1_comp_light.exr state=sha-mismatch(overwritten) declared=a26fe8a921e5036e on_disk=62dac038cb81563f
+NOT-CERTIFIABLE 2026-11-08 23:25:47 B-CITY3D-01 reason=exr-overwritten(sha-mismatch)
+  ../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-0_comp_light.exr state=sha-match declared=514a49bf37ec5f74 on_disk=514a49bf37ec5f74
+  ../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-1_comp_light.exr state=sha-mismatch(overwritten) declared=f58e352d692042c0 on_disk=62dac038cb81563f
+NOT-CERTIFIABLE 2026-11-08 23:40:33 B-CITY3D-01 reason=exr-overwritten(sha-mismatch)
+  ../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-0_comp_light.exr state=sha-match declared=514a49bf37ec5f74 on_disk=514a49bf37ec5f74
+  ../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-1_comp_light.exr state=sha-mismatch(overwritten) declared=258d2765b28922ad on_disk=62dac038cb81563f
+NOT-CERTIFIABLE 2026-11-08 23:55:33 B-CITY3D-01 reason=exr-overwritten(sha-mismatch)
+  ../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-0_comp_light.exr state=sha-mismatch(overwritten) declared=bac8534ae0e45662 on_disk=514a49bf37ec5f74
+  ../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-1_comp_light.exr state=sha-mismatch(overwritten) declared=f7e9de58ec786249 on_disk=62dac038cb81563f
+NOT-CERTIFIABLE 2026-11-09 01:11:35 B-CITY3D-01 reason=exr-overwritten(sha-mismatch)
+  ../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-0_comp_light.exr state=sha-mismatch(overwritten) declared=91c8c7001eef8b43 on_disk=514a49bf37ec5f74
+  ../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-1_comp_light.exr state=sha-mismatch(overwritten) declared=18e3ed693ef8d6e8 on_disk=62dac038cb81563f
+NOT-CERTIFIABLE 2026-11-09 01:27:08 B-CITY3D-01 reason=exr-overwritten(sha-mismatch)
+  ../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-0_comp_light.exr state=sha-mismatch(overwritten) declared=ffb75dca5b7e3729 on_disk=514a49bf37ec5f74
+  ../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-1_comp_light.exr state=sha-mismatch(overwritten) declared=f7e9de58ec786249 on_disk=62dac038cb81563f
+NOT-CERTIFIABLE 2026-11-09 01:56:09 B-CITY3D-01 reason=exr-overwritten(sha-mismatch)
+  ../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-0_comp_light.exr state=sha-match declared=514a49bf37ec5f74 on_disk=514a49bf37ec5f74
+  ../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-1_comp_light.exr state=sha-mismatch(overwritten) declared=f58e352d692042c0 on_disk=62dac038cb81563f
+NOT-CERTIFIABLE 2026-11-09 02:43:01 B-CITY3D-01 reason=exr-overwritten(sha-mismatch)
+  ../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-0_comp_light.exr state=sha-mismatch(overwritten) declared=91c8c7001eef8b43 on_disk=514a49bf37ec5f74
+  ../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-1_comp_light.exr state=sha-mismatch(overwritten) declared=258d2765b28922ad on_disk=62dac038cb81563f
+NOT-CERTIFIABLE 2026-11-09 03:25:59 B-CITY3D-01 reason=exr-overwritten(sha-mismatch)
+  ../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-0_comp_light.exr state=sha-mismatch(overwritten) declared=cb14f369d1d86979 on_disk=514a49bf37ec5f74
+  ../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-1_comp_light.exr state=sha-mismatch(overwritten) declared=258d2765b28922ad on_disk=62dac038cb81563f
+NOT-CERTIFIABLE 2026-11-09 03:41:01 B-CITY3D-01 reason=exr-overwritten(sha-mismatch)
+  ../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-0_comp_light.exr state=sha-mismatch(overwritten) declared=ffb75dca5b7e3729 on_disk=514a49bf37ec5f74
+  ../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-1_comp_light.exr state=sha-mismatch(overwritten) declared=f7e9de58ec786249 on_disk=62dac038cb81563f
+NOT-CERTIFIABLE 2026-11-09 03:58:21 B-CITY3D-01 reason=exr-overwritten(sha-mismatch)
+  ../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-0_comp_light.exr state=sha-mismatch(overwritten) declared=ffb75dca5b7e3729 on_disk=514a49bf37ec5f74
+  ../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-1_comp_light.exr state=sha-mismatch(overwritten) declared=f7e9de58ec786249 on_disk=62dac038cb81563f
+NOT-CERTIFIABLE 2026-11-09 08:11:17 B-CITY3D-01 reason=exr-overwritten(sha-mismatch)
+  ../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-0_comp_light.exr state=sha-mismatch(overwritten) declared=bac8534ae0e45662 on_disk=514a49bf37ec5f74
+  ../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-1_comp_light.exr state=sha-mismatch(overwritten) declared=f7e9de58ec786249 on_disk=62dac038cb81563f
+NOT-CERTIFIABLE 2026-11-09 08:25:21 B-CITY3D-01 reason=exr-overwritten(sha-mismatch)
+  ../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-0_comp_light.exr state=sha-match declared=514a49bf37ec5f74 on_disk=514a49bf37ec5f74
+  ../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-1_comp_light.exr state=sha-mismatch(overwritten) declared=95c9531a999d44c1 on_disk=62dac038cb81563f
+NOT-CERTIFIABLE 2026-11-09 08:40:24 B-CITY3D-01 reason=exr-overwritten(sha-mismatch)
+  ../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-0_comp_light.exr state=sha-mismatch(overwritten) declared=ffb75dca5b7e3729 on_disk=514a49bf37ec5f74
+  ../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-1_comp_light.exr state=sha-mismatch(overwritten) declared=f7e9de58ec786249 on_disk=62dac038cb81563f
+NOT-CERTIFIABLE 2026-11-09 08:55:22 B-CITY3D-01 reason=exr-overwritten(sha-mismatch)
+  ../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-0_comp_light.exr state=sha-mismatch(overwritten) declared=ffb75dca5b7e3729 on_disk=514a49bf37ec5f74
+  ../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-1_comp_light.exr state=sha-mismatch(overwritten) declared=f7e9de58ec786249 on_disk=62dac038cb81563f
+NOT-CERTIFIABLE 2026-11-09 09:11:21 B-CITY3D-01 reason=exr-overwritten(sha-mismatch)
+  ../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-0_comp_light.exr state=sha-match declared=514a49bf37ec5f74 on_disk=514a49bf37ec5f74
+  ../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-1_comp_light.exr state=sha-mismatch(overwritten) declared=f58e352d692042c0 on_disk=62dac038cb81563f
+NOT-CERTIFIABLE 2026-11-09 09:25:20 B-CITY3D-01 reason=exr-overwritten(sha-mismatch)
+  ../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-0_comp_light.exr state=sha-mismatch(overwritten) declared=91c8c7001eef8b43 on_disk=514a49bf37ec5f74
+  ../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-1_comp_light.exr state=sha-mismatch(overwritten) declared=f58e352d692042c0 on_disk=62dac038cb81563f
+NOT-CERTIFIABLE 2026-11-09 09:40:25 B-CITY3D-01 reason=exr-overwritten(sha-mismatch)
+  ../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-0_comp_light.exr state=sha-mismatch(overwritten) declared=bac8534ae0e45662 on_disk=514a49bf37ec5f74
+  ../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-1_comp_light.exr state=sha-mismatch(overwritten) declared=f7e9de58ec786249 on_disk=62dac038cb81563f
+NOT-CERTIFIABLE 2026-11-09 09:55:23 B-CITY3D-01 reason=exr-overwritten(sha-mismatch)
+  ../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-0_comp_light.exr state=sha-mismatch(overwritten) declared=bac8534ae0e45662 on_disk=514a49bf37ec5f74
+  ../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-1_comp_light.exr state=sha-mismatch(overwritten) declared=f7e9de58ec786249 on_disk=62dac038cb81563f
+NOT-CERTIFIABLE 2026-11-09 10:15:46 B-CITY3D-01 reason=exr-overwritten(sha-mismatch)
+  ../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-0_comp_light.exr state=sha-mismatch(overwritten) declared=bac8534ae0e45662 on_disk=514a49bf37ec5f74
+  ../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-1_comp_light.exr state=sha-mismatch(overwritten) declared=f7e9de58ec786249 on_disk=62dac038cb81563f
+NOT-CERTIFIABLE 2026-11-09 17:58:22 B-CITY3D-01 reason=exr-overwritten(sha-mismatch)
+  ../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-0_comp_light.exr state=sha-mismatch(overwritten) declared=ffb75dca5b7e3729 on_disk=514a49bf37ec5f74
+  ../../.codely-cli/labbench/city3d-bake-spike/BakeSpike/Assets/BakeRoom/Lightmap-1_comp_light.exr state=sha-mismatch(overwritten) declared=f7e9de58ec786249 on_disk=62dac038cb81563f
+receipts_sha256 before=eaeea62a1d7bec42ac1f71957594589f97e0afd07498dc2c5c5002f3e4e56444 after=eaeea62a1d7bec42ac1f71957594589f97e0afd07498dc2c5c5002f3e4e56444 unchanged=True
