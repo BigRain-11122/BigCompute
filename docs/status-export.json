@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-11-10 00:16",
- "current_activity": "2026-11-09 22:57 轮：账本行摘要不可用（非 UTF-8 或空，原行见 state/rounds.log） ｜ 两池：本司备货可派 2 ／ 机队可领 4（两个不同池，本司卡未登记进机队池）",
- "latest_artifact": "qa/smoke-20261110-0014.png（mtime 2026-11-10 00:15）",
- "next_milestone": "M25 室内烘焙批步 2：labbench 烘焙样板间实弹（AD-021 模块壳围合+AD-035 灯板光池→Tuanjie 批模式烘焙·GPU/CPU 双路时长/峰值/质量三指标实测·J1-J4 判据窗·labbench 隔离区零碰司仓〔O-023 先例〕·编辑器启动窗承接）（队列状态=open（**步 2 机械链预建毕 09-29 22:43）"
+ "updated_at": "2026-11-10 00:56",
+ "current_activity": "2026-11-10 00:5x 令牌轮：行损失普查默认根修正（此前 run 恒 not-in-git 读数不可用；现解析到真正拥有台账的仓并输出 repo= 署名）",
+ "latest_artifact": "state/m173-root-split-20261110.txt（2026-11-10 00:5x）+ Tools/row_loss_census.py selftest 30/30",
+ "next_milestone": "M179 洋红修复实跑复验：门控=GPU vram_free≥6144（现 4759），开窗即跑 pool_igniter run --batch-id B-CITY3D-02，判据 pipeline=builtin srp_active=0 + placeholder_frames=0 + qc_verdict=FRAME-QC-PASS（候显存窗，≤48h）"
 }

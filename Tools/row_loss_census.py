@@ -105,6 +105,49 @@ def commit_series(repo, path, window):
     return [l.strip() for l in out.decode("utf-8", "replace").splitlines() if l.strip()]
 
 
+def resolve_default_repo(targets, start=None):
+    """Pick a repo where the requested targets actually exist (M173).
+
+    The default targets live in the group repo, not in the company repo this
+    tool ships in, so defaulting to the tool's own root made every default
+    reading `not-in-git`: `run` printed UNVERIFIED while the qa probe (which
+    passes the group root explicitly) printed ROW-LOSS-FOUND -- same
+    instrument, two roots. Candidates are tried nearest-first:
+    FLUXGROUP_ROOT, the tool's repo, then its ancestors. Returns
+    {"repo", "source"} with source=env|self|ancestor|fallback; fallback never
+    claims a tree it did not verify.
+    """
+    start = os.path.abspath(start or os.path.dirname(os.path.dirname(
+        os.path.abspath(__file__))))
+    cands = []
+    env_root = os.environ.get("FLUXGROUP_ROOT")
+    if env_root:
+        cands.append((os.path.abspath(env_root), "env"))
+    cur = start
+    for depth in range(0, 4):
+        cands.append((cur, "self" if depth == 0 else "ancestor"))
+        parent = os.path.dirname(cur)
+        if parent == cur:
+            break
+        cur = parent
+    for cand, source in cands:
+        rc, out = _git(cand, "rev-parse", "--show-toplevel")
+        if rc != 0:
+            continue
+        # Report the git toplevel, not the nested dir we probed: git resolves
+        # paths from the toplevel anyway, and printing the nested path would
+        # claim a root that does not own the ledger.
+        top = out.decode("utf-8", "replace").strip().replace("/", os.sep)
+        if not top:
+            continue
+        for t in targets:
+            if _git(top, "cat-file", "-e", "HEAD:%s" % t)[0] == 0:
+                kind = "env" if source == "env" else (
+                    "self" if os.path.normcase(top) == os.path.normcase(start) else "ancestor")
+                return {"repo": top, "source": kind}
+    return {"repo": start, "source": "fallback"}
+
+
 def classify_loss(lost_ids, older_rows):
     """Split lost ids into expected pruning and suspicious loss."""
     expected, suspicious = [], []
@@ -258,6 +301,10 @@ def census(repo, targets, window):
 def render(report, limit=12):
     lines = []
     lines.append("VERDICT=%s window=%d %s" % (report["verdict"], report["window"], report["domain"]))
+    # The root is part of the reading: the same window over a different repo
+    # yields a different verdict and a reader must be able to see which tree
+    # was judged without re-deriving it from per-target reasons (M173).
+    lines.append("repo=%s" % (report.get("repo") or "-"))
     lines.append("as_of=%s" % (report.get("as_of") or "-"))
     lines.append("n/a=%d %s" % (report.get("na_total", 0),
                                 ",".join(report.get("na") or []) or "-"))
@@ -447,8 +494,50 @@ def cmd_selftest():
         ok("S11 transient tags",
            r11["targets"][0]["lost_transient"] == 1 and r11["targets"][0]["lost_permanent"] == 0,
            str((r11["targets"][0]["lost_transient"], r11["targets"][0]["lost_permanent"])))
+        # S11 permanent tag
         ok("S11 permanent tag", rep["targets"][0]["lost_permanent"] == 1,
            str(rep["targets"][0]["lost_permanent"]))
+
+        # S12: default-root resolution walks up to the tree that owns the target.
+        # M173 fixture: the tool sits in a nested dir, the ledger lives one level up.
+        outer = os.path.join(tmp, "group")
+        os.makedirs(outer)
+        _gitw(outer, "init", "-q")
+        _gitw(outer, "config", "user.name", "selftest")
+        _gitw(outer, "config", "user.email", "selftest@local")
+        with open(os.path.join(outer, "led.jsonl"), "w", encoding="utf-8", newline="\n") as f:
+            f.write('{"id":"A","state":"RUNNING"}\n')
+        _gitw(outer, "add", "led.jsonl")
+        _gitw(outer, "commit", "-q", "-m", "c1")
+        inner = os.path.join(outer, "compute", "co", "Tools")
+        os.makedirs(inner)
+        pick = resolve_default_repo(["led.jsonl"], start=inner)
+        ok("S12 ancestor-root",
+           pick["repo"] == os.path.abspath(outer) and pick["source"] == "ancestor", str(pick))
+        ok("S12 reading usable",
+           census(pick["repo"], ["led.jsonl"], 10)["targets"][0]["why"] != "not-in-git", str(pick))
+        # S13: no candidate owns the target -> fallback, and the reading stays
+        # UNVERIFIED (absence of a tree is not health).
+        miss = resolve_default_repo(["nope.jsonl"], start=inner)
+        ok("S13 fallback", miss["source"] == "fallback" and miss["repo"] == os.path.abspath(inner),
+           str(miss))
+        ok("S13 not-green",
+           census(miss["repo"], ["nope.jsonl"], 10)["verdict"] == "UNVERIFIED", miss["source"])
+        # S14: the rendered reading names the root it judged.
+        ok("S14 render repo", ("repo=" + os.path.abspath(outer)) in render(
+            census(pick["repo"], ["led.jsonl"], 10)), render(census(pick["repo"], ["led.jsonl"], 10)))
+        # S15: FLUXGROUP_ROOT wins over the local tree when it owns the target.
+        saved = os.environ.get("FLUXGROUP_ROOT")
+        os.environ["FLUXGROUP_ROOT"] = outer
+        try:
+            envp = resolve_default_repo(["led.jsonl"], start=inner)
+            ok("S15 env-root", envp["source"] == "env" and envp["repo"] == os.path.abspath(outer),
+               str(envp))
+        finally:
+            if saved is None:
+                os.environ.pop("FLUXGROUP_ROOT", None)
+            else:
+                os.environ["FLUXGROUP_ROOT"] = saved
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 
@@ -475,11 +564,19 @@ def main():
         ap.print_help()
         return 3
 
-    repo = args.repo or os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    repo = os.path.abspath(repo)
     targets = tuple(args.target) if args.target else DEFAULT_TARGETS
+    if args.repo:
+        repo = os.path.abspath(args.repo)
+        # An explicit --repo is honoured as given: a wrong root must still read
+        # as not-in-git rather than being silently corrected to another tree.
+        src = "arg"
+    else:
+        picked = resolve_default_repo(targets)
+        repo, src = picked["repo"], picked["source"]
     report = census(repo, targets, args.window)
     print(render(report))
+    if src != "self":
+        print("root_source=%s (targets resolved against this tree; pass --repo to override)" % src)
     if args.json_out:
         with open(args.json_out, "w", encoding="utf-8", newline="\n") as f:
             json.dump(report, f, ensure_ascii=False, indent=2)
