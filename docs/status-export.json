@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-11-09 16:36",
- "current_activity": "2026-11-09 16:3x 令牌轮：M177 承办——派工判决必须自证「是否现测」。新增常驻探针 no.32，每轮读 state/dispatch-gate.jsonl 尾 80 行，11-09 01:30（M175 接线点）之后的行缺 reading 字段即判红并点名 ts+consumer；夹具 7/7 PASS、负控判红、实跑 judged=26 fresh=26 stale=0 file_stale=0；charter §三 第 32 条落盘。 gpu:7d n=1385 avg=53.8% AT-OR-ABOVE-BENCH·30min avg=100% busy（外部产线占满） qa:smoke-20261109-1621 29/31（no.32 PASS；两红=no.2 GPU 争用两车道均失败、no.22 M96 既有面）",
- "latest_artifact": "qa/smoke-20261109-1621.log（+同名 png；附 state/c1c4-20261109-162802.json 与 state/text-integrity-20261109.json）",
- "next_milestone": "M179 洋红修复实跑复验（T-20261109-7 判据③）：门控=本卡 GPU 道 vram_free≥6144；窗口一开即跑 pool_igniter run --batch-id B-CITY3D-02，验收 placeholder_frames=0 且 qc_verdict=FRAME-QC-PASS（窗 ≤48h，随车道让路律）"
+ "updated_at": "2026-11-09 19:10",
+ "current_activity": "2026-11-09 19:1x 令牌轮：T-20261109-7 真因定谳——18:25 带 A 路修复的渲染在 pipeline=builtin/srp_active=0/materials_standard=50 全正常的情况下仍 5/6 帧洋红，推翻「URP 与内置 shader 失配」假说；逐帧看图只有地板/天花板洋红、墙门灯板正常，离线取证证实 FloorSlab/CeilSlab 指向的材质 guid 31321ba1… 全工程零命中=悬空材质引用（纯洋红亮度 72.6 正好等于被判「空白」的 frame_05 均匀帧，一个根因两个症状）。已建 SlabMat.mat 修两处引用 + 渲染前 RepairMissingMaterials fail-closed + 新增离线普查器（selftest 9/9，修前 UNRESOLVED 2 点名两对象→修后 CLEAN）。 gpu:7d n=1401 avg=54.2% AT-OR-ABOVE-BENCH（50% 差距线）·30min 12.0% IDLE；qa:smoke-20261109-1906 29/31（no.16 GPU 争用、no.22 M96 既有面）",
+ "latest_artifact": "docs/ops/magenta-root-cause-2-20261109.md（+ Tools/scene_material_census.py 与 state/scene-material-census-20261109.json；qa/smoke-20261109-1906.log+png）",
+ "next_milestone": "M179 洋红修复实跑复验（T-20261109-7 判据③）：门控=GPU 道 vram_free≥6144；入口 sha 已变故指纹改变，窗口一开 BigCompute-PoolIgniter 自动重渲 B-CITY3D-02，验收 placeholder_frames=0 且 qc_verdict=FRAME-QC-PASS（窗 ≤48h，随车道让路律）"
 }

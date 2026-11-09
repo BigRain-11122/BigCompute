@@ -55,6 +55,7 @@ month_end_append.py
 month_end_collect.py
 openstd_render_probe.py
 p0_moe_measure.py
+pool_igniter.py
 probe_registry_census.py
 q8_trial_probe.py
 qa_restart.py
@@ -76,6 +77,7 @@ round_budget.py
 round_score.py
 row_loss_census.py
 scan_root_census.py
+scene_material_census.py
 scope_proof.py
 score_validation.py
 sec_fulltext_screen.py

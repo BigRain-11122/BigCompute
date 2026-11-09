@@ -1,0 +1,12 @@
+{
+ "verdict": "SCENE-MATERIAL-CLEAN",
+ "rc": 0,
+ "as_of": "2026-11-09 19:06:08",
+ "root": "C:\\Users\\sjs20\\Desktop\\FluxGroup\\.codely-cli\\labbench\\city3d-bake-spike\\BakeSpike",
+ "scenes_scanned": 6,
+ "slots_resolved": 5,
+ "slots_empty": 0,
+ "unresolved": [],
+ "unresolved_total": 0,
+ "objects": []
+}

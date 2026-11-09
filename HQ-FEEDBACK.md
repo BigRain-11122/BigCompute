@@ -826,3 +826,8 @@ P2=text_integrity 本仓零缺陷，但列数族 new_ext=13 全在集团只读�
 - 实物（产品优先律 2 分件）：派工判决不再「写了 equals 被守」——`qa_smoke` 新增**探针 no.32**，每轮读 `state/dispatch-gate.jsonl` 尾 80 行，M175 接线点（11-09 01:30）之后的行缺 `reading=(live|file)` 一律判红并点名 `ts consumer(verdict)`；夹具 **7/7 PASS**、负控（把末行改成 STALE 并摘掉 reading）→ `READING-MISSING 1/1` 判红，证闸非永绿；实跑 `judged=26 fresh=26 stale=0 file_stale=0 older=54`；charter §三 第 32 条落盘。
 - 关键判断：早于接线点的历史行只计 `older=` **不判红**（补不了的行判红＝修不了的常红，同 no.31 legacy 律）；`reading` 是逐判决字段，故 FRESH 行缺它也判红（仍只判字段存在，不判判决对错）。
 - P2 如实：冒烟 **29/31**（no.32 PASS、no.24 PROBE-REGISTRY-CLEAN；两红=no.2 ollama 两车道均失败〔gpu util 100%/vram 445MiB、cpu 道 180s 超时〕、no.22 M96 既有面）；洋红修复判据③仍阻塞（vram 关闭，让路律不抢）。
+
+## 日清 2026-11-09（19:1x 令牌轮）
+- 实物（产品优先律 2 分件）：洋红占位**真因定谳**——不是管线失配，是场景里 FloorSlab/CeilSlab 指向的材质 guid `31321ba1…` 在工程内零命中（悬空材质引用，Unity 画洋红兜底）。取证=18:25 那次带修复的渲染 `pipeline=builtin/srp_active=0/materials_standard=50` 全正常仍 5/6 帧洋红；逐帧看图只有地板/天花板洋红，墙门灯板正常；旁证=纯洋红亮度 72.6 恰等于被判「空白」的 frame_05 均匀帧（一个根因两个症状）。修复=建 `SlabMat.mat` 改两处引用 + 渲染前 `RepairMissingMaterials()` fail-closed（拿不到兜底材质即不渲染）+ 新增离线普查器 `scene_material_census.py`（selftest 9/9，实跑修前 UNRESOLVED 2 点名 FloorSlab/CeilSlab→修后 CLEAN）。
+- 勘正：本轮推翻 15:0x 日清「管线与材质不匹配」的结论，TASKS 里那句「假说已定因为真」已就地改为「已被现网数据推翻」；教训=离线普查只看磁盘 .mat、从不看场景引用，于是缺的那份材质既不被计数也不被判异常。
+- P2 如实：判据③（复跑渲染出 placeholder_frames=0）**未达成**——GPU 余量 2304MiB<6144 按让路律不抢，入口 sha 已变故指纹改变，车道一开守候器自动重渲；C# 本轮未过编译器、手写材质 YAML 待下次真渲确认。冒烟 29/31（两红=no.16 GPU 争用 /ask、no.22 M96 既有面，无新增红）。另一真发现=`sop_coverage_check` 复跑转红仅因 `docs/qa-smoke-test-charter.md` 28,005B>25KB 轻量闸（条款逐轮追加所致）——**未给自己开豁免**，转 tech 拆分待办。

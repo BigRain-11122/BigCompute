@@ -31,6 +31,7 @@ namespace City3DBatchRender
                 M["editor"] = Application.unityVersion;
                 UseBuiltInPipeline();
                 LoadScene();
+                RepairMissingMaterials();
                 AuditShaderPipeline();
                 RenderFrames();
             }
@@ -67,6 +68,65 @@ namespace City3DBatchRender
             {
                 M["pipeline"] = "fail:" + e.Message;
             }
+        }
+
+        // 悬空材质引用修复（2026-11-09 真因定谳·T-20261109-7）。
+        // 11-09 18:25 那次渲染在 pipeline=builtin / materials_standard=50 / srp_active=0
+        // 全部正常的情况下仍然 5/6 帧洋红，推翻了「URP 与内置 shader 失配」那个假说。
+        // 真实原因：场景里 FloorSlab/CeilSlab 指向的材质 guid 31321ba1… 在工程内不存在
+        // （Assets 下零个 .meta 命中），Unity 对悬空材质引用画洋红兜底。离线材质普查数
+        // 51/51 Standard 之所以看不出问题，是因为它只走 .mat 资产、从不走场景的引用。
+        // 另一个旁证：纯洋红亮度 0.2126*255+0.0722*255=72.6，正好等于 frame_05 那个被判
+        // 「空白」的均匀帧——俯视机位整屏都是洋红地板，一个根因两个症状。
+        // 修法=渲染前把 null 材质/无 shader 材质替换为内置管线兜底材质，并把被修的对象
+        // 名字写进指标；兜底材质都拿不到时不渲染直接报错（不许再产出洋红）。
+        static void RepairMissingMaterials()
+        {
+            var fixedObjs = new System.Collections.Generic.List<string>();
+            var bad = new System.Collections.Generic.List<string>();
+            Material fallback = null;
+            int slots = 0;
+            foreach (var r in UnityEngine.Object.FindObjectsOfType<Renderer>())
+            {
+                var mats = r.sharedMaterials;
+                bool touched = false;
+                for (int i = 0; i < mats.Length; i++)
+                {
+                    slots++;
+                    if (mats[i] != null && mats[i].shader != null) continue;
+                    if (fallback == null)
+                    {
+                        var sh = Shader.Find("Standard")
+                                 ?? Shader.Find("Legacy Shaders/Diffuse")
+                                 ?? Shader.Find("Unlit/Color");
+                        if (sh != null)
+                        {
+                            fallback = new Material(sh);
+                            fallback.name = "RenderSpikeFallback";
+                        }
+                    }
+                    if (fallback != null)
+                    {
+                        mats[i] = fallback;
+                        touched = true;
+                    }
+                    else
+                    {
+                        bad.Add(r.name + "[slot " + i + "]");
+                    }
+                }
+                if (touched)
+                {
+                    r.sharedMaterials = mats;
+                    fixedObjs.Add(r.name);
+                }
+            }
+            M["material_slots"] = slots;
+            M["materials_repaired"] = fixedObjs.Count;
+            M["materials_repaired_objects"] = string.Join(",", fixedObjs.ToArray());
+            M["materials_unrepairable"] = bad.Count;
+            if (bad.Count > 0)
+                throw new InvalidOperationException("material_unrepairable: " + string.Join(",", bad.ToArray()));
         }
 
         // 管线 x 材质一致性审计（只读·fail-closed）。

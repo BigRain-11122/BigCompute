@@ -1,0 +1,26 @@
+{
+ "verdict": "SCENE-MATERIAL-UNRESOLVED",
+ "rc": 2,
+ "as_of": "2026-11-09 19:05:24",
+ "root": "C:\\Users\\sjs20\\Desktop\\FluxGroup\\.codely-cli\\labbench\\city3d-bake-spike\\BakeSpike",
+ "scenes_scanned": 6,
+ "slots_resolved": 3,
+ "slots_empty": 0,
+ "unresolved": [
+  {
+   "scene": "Assets/BakeRoom.unity",
+   "object": "FloorSlab",
+   "guid": "31321ba15b8f8eb4c954353edc038b1d"
+  },
+  {
+   "scene": "Assets/BakeRoom.unity",
+   "object": "CeilSlab",
+   "guid": "31321ba15b8f8eb4c954353edc038b1d"
+  }
+ ],
+ "unresolved_total": 2,
+ "objects": [
+  "Assets/BakeRoom.unity:CeilSlab",
+  "Assets/BakeRoom.unity:FloorSlab"
+ ]
+}
