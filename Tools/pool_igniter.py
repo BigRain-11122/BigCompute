@@ -687,6 +687,44 @@ def duplicate_guard(batch_id, rows=None, hours=DUPLICATE_WINDOW_H,
     return True, "no-ok-baseline"
 
 
+def delivery_audit(rows=None):
+    """Runs are not deliveries: count provable payloads, name the rest.
+
+    "ok runs" alone cannot tell a real delivery from a rebuilt one - on
+    2026-11-09 B-CITY3D-01 had 24 ok runs behind a single labbench scene,
+    most of them from the 15-minute re-burn chain.  Three readings per card:
+      unique_payloads - distinct fingerprints among ok receipts (what this
+                        box provably built once);
+      pre_guard_runs  - ok receipts predating fingerprints, so their payloads
+                        can never be compared (never counted as value);
+      redundant_runs  - ok runs whose fingerprint repeats an earlier ok run.
+    """
+    rows = receipt_rows() if rows is None else rows
+    cards, seen = {}, {}
+    for r in rows:
+        if not r.get("ok"):
+            continue
+        bid = r.get("batch_id") or "?"
+        c = cards.setdefault(bid, {"ok_runs": 0, "unique_payloads": 0,
+                                   "pre_guard_runs": 0, "redundant_runs": 0})
+        c["ok_runs"] += 1
+        fp = r.get("fingerprint")
+        if not fp:
+            c["pre_guard_runs"] += 1
+            continue
+        if fp in seen.setdefault(bid, set()):
+            c["redundant_runs"] += 1
+            continue
+        seen[bid].add(fp)
+        c["unique_payloads"] += 1
+    totals = {"ok_runs": 0, "unique_payloads": 0, "pre_guard_runs": 0,
+              "redundant_runs": 0}
+    for c in cards.values():
+        for k in totals:
+            totals[k] += c[k]
+    return {"totals": totals, "cards": cards}
+
+
 def last_tick_age_min():
     """Minutes since the last tick() line.  None when the log is unreadable.
 
@@ -1089,6 +1127,7 @@ def readout():
             "duplicate_skips_today": duplicate_skips_today(),
             "frame_quality": last_render_quality(receipts),
             "bake_quality": last_bake_quality(receipts),
+            "delivery_audit": delivery_audit(receipts),
         },
         "cards": cards,
     }
@@ -1117,6 +1156,18 @@ def status(as_json=False, out=None):
              ign["last_tick_age_min"]))
     print("duplicate_guard=window%gh skips_today=%s"
           % (ign["duplicate_window_h"], ign["duplicate_skips_today"]))
+    da = ign.get("delivery_audit") or {}
+    tot = da.get("totals") or {}
+    if tot:
+        print("delivery_audit runs=%s unique_payloads=%s pre_guard=%s "
+              "redundant=%s"
+              % (tot["ok_runs"], tot["unique_payloads"],
+                 tot["pre_guard_runs"], tot["redundant_runs"]))
+        for bid in sorted(da.get("cards") or {}):
+            c = da["cards"][bid]
+            print("  %s runs=%s unique=%s pre_guard=%s redundant=%s"
+                  % (bid, c["ok_runs"], c["unique_payloads"],
+                     c["pre_guard_runs"], c["redundant_runs"]))
     fq = ign.get("frame_quality")
     if fq and fq.get("frames_read"):
         print("frame_quality frames=%s magenta_max=%s%%(%s) geom_min=%s%%(%s) "
@@ -1388,6 +1439,35 @@ def selftest():
                                        fingerprint=fp)
         chk("S34 legacy ok receipt without fingerprint lets one run through",
             allowed and why.startswith("baseline-without-fingerprint"), why)
+
+        # --- delivery audit: runs are not deliveries (tech T231) -----------
+        da = delivery_audit([dict(same, fingerprint="aaaabbbbccccdddd"),
+                             dict(same, fingerprint="aaaabbbbccccdddd"),
+                             dict(failed, fingerprint="aaaabbbbccccdddd")])
+        chk("S35 same payload built twice -> 1 unique + 1 redundant, "
+            "failure not counted",
+            da["totals"]["ok_runs"] == 2
+            and da["totals"]["unique_payloads"] == 1
+            and da["totals"]["redundant_runs"] == 1
+            and da["totals"]["pre_guard_runs"] == 0, da)
+
+        da = delivery_audit([pre_fp, pre_fp])
+        chk("S36 pre-guard receipts are named but never counted as value",
+            da["totals"]["unique_payloads"] == 0
+            and da["totals"]["pre_guard_runs"] == 2
+            and da["totals"]["redundant_runs"] == 0, da)
+
+        da = delivery_audit([dict(same, fingerprint="aaaabbbbccccdddd"),
+                             dict(same, fingerprint="1111222233334444")])
+        chk("S37 two different payloads -> 2 unique, 0 redundant",
+            da["totals"]["unique_payloads"] == 2
+            and da["totals"]["redundant_runs"] == 0, da)
+
+        da = delivery_audit([])
+        chk("S38 empty ledger reads as zeros, not as absent",
+            da["totals"] == {"ok_runs": 0, "unique_payloads": 0,
+                             "pre_guard_runs": 0, "redundant_runs": 0},
+            da["totals"])
 
         # --- frame quality (tech T226) ------------------------------------
         # Two synthetic frames whose defect blank/duplicate cannot see: a
