@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-11-09 15:54",
- "current_activity": "2026-11-09 15:00 轮：M179/B-CITY3D-02 洋红定因+修复落盘（51/51 材质=内置 Standard·管线改回内置+出生地 fail-closed 审计·部署 sha 一致） gpu:7d 基线未复跑（本轮零 GPU 动作·车道关 ram 6.0%/vram 332MiB） qa:smoke-20261109-1531 28/30（no.19 由本轮 5 列队列行触发→改 4 列后 new_local=0；no.22 M96 既有面） ｜ 两池：n/a（心跳 48 分钟未更新，超 45 分钟上限）",
- "latest_artifact": "state/gpu-util/samples.jsonl（mtime 2026-11-09 15:53）",
- "next_milestone": "M25 室内烘焙批步 2：labbench 烘焙样板间实弹（AD-021 模块壳围合+AD-035 灯板光池→Tuanjie 批模式烘焙·GPU/CPU 双路时长/峰值/质量三指标实测·J1-J4 判据窗·labbench 隔离区零碰司仓〔O-023 先例〕·编辑器启动窗承接）（队列状态=open（**步 2 机械链预建毕 09-29 22:43）"
+ "updated_at": "2026-11-09 16:36",
+ "current_activity": "2026-11-09 16:3x 令牌轮：M177 承办——派工判决必须自证「是否现测」。新增常驻探针 no.32，每轮读 state/dispatch-gate.jsonl 尾 80 行，11-09 01:30（M175 接线点）之后的行缺 reading 字段即判红并点名 ts+consumer；夹具 7/7 PASS、负控判红、实跑 judged=26 fresh=26 stale=0 file_stale=0；charter §三 第 32 条落盘。 gpu:7d n=1385 avg=53.8% AT-OR-ABOVE-BENCH·30min avg=100% busy（外部产线占满） qa:smoke-20261109-1621 29/31（no.32 PASS；两红=no.2 GPU 争用两车道均失败、no.22 M96 既有面）",
+ "latest_artifact": "qa/smoke-20261109-1621.log（+同名 png；附 state/c1c4-20261109-162802.json 与 state/text-integrity-20261109.json）",
+ "next_milestone": "M179 洋红修复实跑复验（T-20261109-7 判据③）：门控=本卡 GPU 道 vram_free≥6144；窗口一开即跑 pool_igniter run --batch-id B-CITY3D-02，验收 placeholder_frames=0 且 qc_verdict=FRAME-QC-PASS（窗 ≤48h，随车道让路律）"
 }

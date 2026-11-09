@@ -3834,6 +3834,130 @@ def selftest_frame_quality():
     return 0 if all(results) else 1
 
 
+# --- probe no.32: dispatch verdict must declare how it was measured (M177) ---
+DISPATCH_GATE_LOG = os.path.join(ROOT, "state", "dispatch-gate.jsonl")
+# M175 (11-09 01:1x) wired reading=(live|file) into every verdict written by
+# dispatch_precheck / pool_igniter / gpu_idle_collector.  Rows before that
+# timestamp cannot carry the field -- judging them would be a red no one can
+# fix (same rule as probe no.31's legacy `pending`).
+DISPATCH_READING_SINCE = "2026-11-09 01:30"
+DISPATCH_READING_TAIL = 80
+
+
+def dispatch_reading_judge(rows):
+    """M177: a verdict has to say whether it measured or read a stale file.
+
+    A STALE lane_gate means "the heartbeat file was too old to judge" -- the
+    exact state where the caller is supposed to re-measure.  Without a
+    `reading` field that row is indistinguishable from "never measured", and
+    the next editor of the writer can drop the field without anything turning
+    red.  `reading` is per-verdict (FRESH rows carry it too), so a missing
+    field is judged on any row written after the writer went in.
+    """
+    if rows is None:
+        return False, "dispatch-gate log unreadable"
+    if not rows:
+        return False, "dispatch-gate log is empty (no object to judge)"
+    judged = [r for r in rows if str(r.get("ts") or "") >= DISPATCH_READING_SINCE]
+    older = len(rows) - len(judged)
+    if not judged:
+        return True, ("n/a(no-verdict-since %s) tail=%d older=%d"
+                      % (DISPATCH_READING_SINCE, len(rows), older))
+    fresh_n = stale_n = file_stale = 0
+    missing = []
+    for r in judged:
+        gate = r.get("lane_gate") or {}
+        verdict = str(gate.get("verdict") or "")
+        reading = r.get("reading")
+        if verdict == "FRESH":
+            fresh_n += 1
+        elif verdict == "STALE":
+            stale_n += 1
+            if reading == "file":
+                file_stale += 1
+        if not reading:
+            missing.append("%s %s(%s)" % (r.get("ts") or "?",
+                                          r.get("consumer") or "?",
+                                          verdict or "no-verdict"))
+    if missing:
+        return False, ("READING-MISSING %d/%d rows since %s: %s (a verdict "
+                       "without reading= is indistinguishable from 'never "
+                       "measured')" % (len(missing), len(judged),
+                                       DISPATCH_READING_SINCE,
+                                       "; ".join(missing[:5])))
+    return True, ("reading=declared judged=%d fresh=%d stale=%d file_stale=%d "
+                  "older=%d since=%s" % (len(judged), fresh_n, stale_n,
+                                         file_stale, older,
+                                         DISPATCH_READING_SINCE))
+
+
+def probe_dispatch_reading():
+    """Probe no.32 (M177): dispatch verdicts still declare reading=live|file."""
+    if not os.path.exists(DISPATCH_GATE_LOG):
+        return False, "dispatch-gate log absent: %s" % DISPATCH_GATE_LOG
+    rows = []
+    try:
+        with open(DISPATCH_GATE_LOG, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line:
+                    rows.append(json.loads(line))
+    except Exception as e:  # noqa: BLE001 - report, do not crash the round
+        return False, "dispatch-gate log unreadable: %r" % (e,)
+    return dispatch_reading_judge(rows[-DISPATCH_READING_TAIL:])
+
+
+def selftest_dispatch_reading():
+    """M177 fixtures: legacy / STALE missing / FRESH missing / file / empty."""
+    results = []
+
+    def check(name, cond, detail=""):
+        results.append(bool(cond))
+        print(("[%s] S%d %s%s" % ("PASS" if cond else "FAIL",
+                                  len(results), name,
+                                  "" if cond else " :: " + str(detail))))
+
+    def row(ts, verdict, reading=None, consumer="gpu-dispatch-pointer"):
+        r = {"ts": ts, "consumer": consumer, "lane_gate": {"verdict": verdict}}
+        if reading is not None:
+            r["reading"] = reading
+        return r
+
+    ok, det = dispatch_reading_judge([row("2026-10-31 04:03:38", "STALE")])
+    check("rows predating the writer are counted, not judged",
+          ok and "older=1" in det and "n/a" in det, det)
+
+    ok, det = dispatch_reading_judge([row(DISPATCH_READING_SINCE, "STALE")])
+    check("STALE since the writer without reading -> FAIL naming the row",
+          (not ok) and "READING-MISSING" in det
+          and DISPATCH_READING_SINCE in det, det)
+
+    ok, det = dispatch_reading_judge([row("2026-11-09 14:08:38", "FRESH")])
+    check("FRESH since the writer without reading -> FAIL (per-verdict field)",
+          (not ok) and "FRESH" in det, det)
+
+    ok, det = dispatch_reading_judge(
+        [row("2026-11-09 14:08:38", "STALE", "file")])
+    check("STALE judged on a file reading -> PASS but file_stale visible",
+          ok and "file_stale=1" in det and "stale=1" in det, det)
+
+    ok, det = dispatch_reading_judge(
+        [row("2026-11-09 14:38:38", "FRESH", "live")])
+    check("live reading -> PASS and echoed", ok and "fresh=1" in det, det)
+
+    ok, det = dispatch_reading_judge([])
+    check("empty log -> FAIL (no object to judge)",
+          (not ok) and "empty" in det, det)
+
+    ok, det = dispatch_reading_judge(None)
+    check("unreadable log -> FAIL, never a green",
+          (not ok) and "unreadable" in det, det)
+
+    print("selftest dispatch-reading verdict: %d/%d PASS"
+          % (sum(results), len(results)))
+    return 0 if all(results) else 1
+
+
 def probe_probe_registry():
     """Probe no.24 (T190 / BC-P-169): probe numbering single-source census.
 
@@ -3888,6 +4012,8 @@ PROBE_REGISTRY = [
     (30, "ignition chain fixtures + pool gap naming (M170)", probe_igniter),
     (31, "render frame-quality reading survives (T227)",
      probe_frame_quality),
+    (32, "dispatch verdict reading declared (M177)",
+     probe_dispatch_reading),
 ]
 
 
@@ -3972,7 +4098,8 @@ def main():
                 | selftest_write_encoding() | selftest_row_loss()
                 | selftest_aftersale_rails() | selftest_drill_sets()
                 | selftest_money_guard() | selftest_igniter()
-                | selftest_frame_quality() | selftest_argv())
+                | selftest_frame_quality() | selftest_dispatch_reading()
+                | selftest_argv())
     os.makedirs(QA_DIR, exist_ok=True)
     ts = datetime.datetime.now().strftime("%Y%m%d-%H%M")
     log_path = os.path.join(QA_DIR, "smoke-%s.log" % ts)

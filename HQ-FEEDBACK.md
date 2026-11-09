@@ -821,3 +821,8 @@ P2=text_integrity 本仓零缺陷，但列数族 new_ext=13 全在集团只读�
 - 实物（产品优先律 2 分件）：洋红占位不是「材质坏了」，是**管线与材质不匹配**——离线静态普查（不开编辑器、不占 GPU）实测工程 **51/51 份材质** `m_Shader`=内置 Standard、URP shader 0 份、**82/82 贴图引用全解析**，而 11-08 那批渲染在进程内把默认管线切到 URP。旁证=帧里洋红与几何体严格对应（无几何的 frame_05 恰为 0%），贴图缺失该呈白/灰而非纯 255,0,255。
 - 修法：判据帧不依赖任何 SRP 特性，故坚持内置管线（`SetupUrp()`→`UseBuiltInPipeline()`），并在渲染前加出生地 fail-closed 审计（SRP 生效而仍有 Standard 材质即报错不渲染），另清掉工程默认管线里一条指向不存在 GUID 的悬挂引用。源件与工程部署件 sha 一致。
 - P2 如实：**编辑器本轮未启动**（RAM 6.0%/VRAM 332MiB 双关，让路律不抢）→ C# 未编译、未重渲、洋红是否消失未证，判据③维持未达成；冒烟 28/30（no.19 系我把队列行写成 5 列被列数闸当场抓到，改回 4 列后普查 new_local=0；no.22=M96 既有面）；重跑冒烟在本轮预算内未收敛，不冒充绿。
+
+## 日清 2026-11-09（16:3x 令牌轮）
+- 实物（产品优先律 2 分件）：派工判决不再「写了 equals 被守」——`qa_smoke` 新增**探针 no.32**，每轮读 `state/dispatch-gate.jsonl` 尾 80 行，M175 接线点（11-09 01:30）之后的行缺 `reading=(live|file)` 一律判红并点名 `ts consumer(verdict)`；夹具 **7/7 PASS**、负控（把末行改成 STALE 并摘掉 reading）→ `READING-MISSING 1/1` 判红，证闸非永绿；实跑 `judged=26 fresh=26 stale=0 file_stale=0 older=54`；charter §三 第 32 条落盘。
+- 关键判断：早于接线点的历史行只计 `older=` **不判红**（补不了的行判红＝修不了的常红，同 no.31 legacy 律）；`reading` 是逐判决字段，故 FRESH 行缺它也判红（仍只判字段存在，不判判决对错）。
+- P2 如实：冒烟 **29/31**（no.32 PASS、no.24 PROBE-REGISTRY-CLEAN；两红=no.2 ollama 两车道均失败〔gpu util 100%/vram 445MiB、cpu 道 180s 超时〕、no.22 M96 既有面）；洋红修复判据③仍阻塞（vram 关闭，让路律不抢）。
