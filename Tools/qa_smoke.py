@@ -3684,6 +3684,127 @@ def selftest_igniter():
     return 0 if all(results) else 1
 
 
+# T227: the frame-quality reading was added to render receipts on 2026-11-09
+# ~12:30.  Receipts written before that cannot carry it, and judging them would
+# be a permanent red nobody can fix (no GPU window) -- the "structural wait read
+# as a fault" trap.  They are named `pending`, never PASS.
+FRAME_QUALITY_SINCE = "2026-11-09 12:30:00"
+FRAME_QUALITY_KEYS = ("magenta_pct", "geom_pct", "qc_verdict")
+
+
+def frame_quality_judge(rows, since=FRAME_QUALITY_SINCE):
+    """Judge that the frame-quality reading survives on the render receipt.
+
+    T226 measured 5/6 judgment frames carrying 16-65% magenta placeholder
+    pixels, yet the old gate read `render_ok=true` because it only checked
+    blank/duplicate.  Two readings (magenta share, effective geometry share)
+    plus a verdict were written into the receipt -- and a reading nobody re-reads
+    rots: delete the field, or let the writer regress to blank/duplicate only,
+    and nothing complains.
+
+    This judge reads the receipt field directly.  It deliberately does NOT use
+    pool_igniter.last_render_quality(), which recomputes from the PNGs on disk
+    and would therefore fabricate the very reading being guarded.
+
+    Only presence and shape are judged, never the value (D-20261109-08 asks for
+    three keys to be visible, not for a threshold).
+    """
+    newest = None
+    for r in reversed(rows or []):
+        run = r.get("runner") or {}
+        if run.get("kind") == "render_spike" and r.get("ok"):
+            newest = r
+            break
+    if newest is None:
+        return True, "qc=n/a(no-render-yet)"
+    ts = str(newest.get("ts") or "")
+    batch = newest.get("batch_id")
+    if ts and ts < since:
+        return True, ("qc=pending(next render after %s is judged; last ok "
+                      "render %s @%s predates the field)"
+                      % (since, batch, ts))
+    q = newest.get("frame_quality")
+    if not isinstance(q, dict):
+        return False, ("qc=MISSING -- ok render receipt %s @%s carries no "
+                       "frame_quality (writer regressed or field deleted)"
+                       % (batch, ts))
+    missing = [k for k in FRAME_QUALITY_KEYS if q.get(k) in (None, "")]
+    if missing:
+        return False, ("qc=INCOMPLETE -- %s @%s missing %s (a partial reading "
+                       "is not a reading)" % (batch, ts, ",".join(missing)))
+    return True, ("qc=%s magenta_max=%s%% geom_min=%s%% (batch=%s @%s, "
+                  "plumbing only)" % (q["qc_verdict"], q["magenta_pct"],
+                                      q["geom_pct"], batch, ts))
+
+
+def probe_frame_quality():
+    """Probe no.31 (T227): render receipts still carry the quality reading."""
+    if HERE not in sys.path:
+        sys.path.insert(0, HERE)
+    try:
+        import pool_igniter as pi
+        rows = pi.receipt_rows()
+    except Exception as e:  # noqa: BLE001 - report, do not crash the round
+        return False, "pool_igniter receipts unreadable: %r" % (e,)
+    return frame_quality_judge(rows)
+
+
+def selftest_frame_quality():
+    """T227 fixtures: no render / legacy / missing / partial / intact."""
+    results = []
+
+    def check(name, cond, detail=""):
+        results.append(bool(cond))
+        print(("[%s] S%d %s%s" % ("PASS" if cond else "FAIL",
+                                  len(results), name,
+                                  "" if cond else " :: " + str(detail))))
+
+    def rows(ts="2026-11-09 13:10:00", q="with", ok=True):
+        rec = {"batch_id": "B-CITY3D-02", "ts": ts, "ok": ok,
+               "runner": {"kind": "render_spike", "artifacts": [{"path": "x"}]}}
+        if q == "with":
+            rec["frame_quality"] = {"magenta_pct": 0.0, "geom_pct": 100.0,
+                                    "qc_verdict": "FRAME-QC-PASS"}
+        elif q == "partial":
+            rec["frame_quality"] = {"magenta_pct": 0.0,
+                                    "qc_verdict": "FRAME-QC-PASS"}
+        return [{"batch_id": "B-OTHER", "ts": ts, "ok": True,
+                 "runner": {"kind": "bake_spike", "artifacts": [{}]}},
+                rec]
+
+    ok, det = frame_quality_judge([])
+    check("never rendered -> n/a, not a pass and not a failure",
+          ok and "n/a(no-render-yet)" in det, det)
+
+    ok, det = frame_quality_judge(rows(ts="2026-11-09 10:15:56", q="none"))
+    check("legacy receipt before the writer -> pending, never PASS",
+          ok and "pending" in det and "predates" in det, det)
+
+    ok, det = frame_quality_judge(rows(q="none"))
+    check("post-writer ok render without frame_quality -> FAIL",
+          (not ok) and "MISSING" in det, det)
+
+    ok, det = frame_quality_judge(rows(q="partial"))
+    check("field present but a key missing -> FAIL naming the key",
+          (not ok) and "INCOMPLETE" in det and "geom_pct" in det, det)
+
+    ok, det = frame_quality_judge(rows())
+    check("all three keys -> PASS and the verdict is echoed",
+          ok and "FRAME-QC-PASS" in det and "magenta_max=" in det, det)
+
+    ok, det = frame_quality_judge(
+        [{"batch_id": "B-CITY3D-02", "ts": "2026-11-09 13:10:00",
+          "ok": False, "runner": {"kind": "render_spike"},
+          "frame_quality": {"magenta_pct": 0, "geom_pct": 0,
+                            "qc_verdict": "x"}}])
+    check("a failed render is not the newest ok render (no false green)",
+          ok and "no-render-yet" in det, det)
+
+    print("selftest frame-quality verdict: %d/%d PASS"
+          % (sum(results), len(results)))
+    return 0 if all(results) else 1
+
+
 def probe_probe_registry():
     """Probe no.24 (T190 / BC-P-169): probe numbering single-source census.
 
@@ -3736,6 +3857,8 @@ PROBE_REGISTRY = [
     (28, "drill planted-set census (T205)", probe_drill_sets),
     (29, "money-face writer guards (T209)", probe_money_guard),
     (30, "ignition chain fixtures + pool gap naming (M170)", probe_igniter),
+    (31, "render frame-quality reading survives (T227)",
+     probe_frame_quality),
 ]
 
 
@@ -3820,7 +3943,7 @@ def main():
                 | selftest_write_encoding() | selftest_row_loss()
                 | selftest_aftersale_rails() | selftest_drill_sets()
                 | selftest_money_guard() | selftest_igniter()
-                | selftest_argv())
+                | selftest_frame_quality() | selftest_argv())
     os.makedirs(QA_DIR, exist_ok=True)
     ts = datetime.datetime.now().strftime("%Y%m%d-%H%M")
     log_path = os.path.join(QA_DIR, "smoke-%s.log" % ts)

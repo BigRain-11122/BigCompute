@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-11-09 12:28",
- "current_activity": "2026-11-09 12:00 轮：tech T226 done + main M178 done（帧检增洋红占位/有效几何两读数·44/44 PASS·实跑六帧洋红≤64.84%/5-6 帧占位→qc=INSUFFICIENT·D-20261109-08 回执提前） gpu:heartbeat 12:15 psutil=23.7%（cpu_lane_idle=false ram=12.1% vram_free=1240 两车道关·按让路律不抢） ｜ 两池：本司备货可派 3 ／ 机队可领 4（两个不同池，本司卡未登记进机队池）",
- "latest_artifact": "state/clean-window-log.jsonl（mtime 2026-11-09 12:24）",
- "next_milestone": "M25 室内烘焙批步 2：labbench 烘焙样板间实弹（AD-021 模块壳围合+AD-035 灯板光池→Tuanjie 批模式烘焙·GPU/CPU 双路时长/峰值/质量三指标实测·J1-J4 判据窗·labbench 隔离区零碰司仓〔O-023 先例〕·编辑器启动窗承接）（队列状态=open（**步 2 机械链预建毕 09-29 22:43）"
+ "updated_at": "2026-11-09 12:48",
+ "current_activity": "2026-11-09 12:43 午班轮：T-20261109-6 帧质检读数接常驻探针（qa_smoke no.31 落地·6/6 夹具·live PASS·charter 第 31 条在件）｜两池：本司备货可派 3 ／ 机队可领 4（两个不同池，本司卡未登记进机队池）｜GPU 道 vram_free=2254MiB<6144 关=按让路律不抢，洋红材质修复待净窗",
+ "latest_artifact": "qa/smoke-20261109-1246.log（28/30 PASS·no.31 首次在册·mtime 2026-11-09 12:46）",
+ "next_milestone": "B-CITY3D-02 洋红材质修复（首步=只含 1 个 cube 的最小隔离实验，判「工程缺 URP 资产」还是「材质过期」；复跑须 placeholder_frames=0 且 qc=FRAME-QC-PASS）＋下一次 render 点火即 no.31 由 pending 转首判（窗 ≤48h，门控=GPU/编辑器净窗）"
 }
