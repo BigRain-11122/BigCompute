@@ -1,0 +1,283 @@
+{
+  "age_policy_days": 7,
+  "computable": [
+    {
+      "age_days": 0.62,
+      "age_h": 14.89,
+      "batch_id": "B-CITY3D-01",
+      "kind": "bake_spike",
+      "min_lit_pct": 100.0,
+      "outdir": "media/pool-ignite/B-CITY3D-01/20261109-100943",
+      "qc_ok": true,
+      "qc_verdict": "LIGHTMAP-QC-PASS",
+      "reason": "lightmap-recomputed-from-disk",
+      "ts": "2026-11-09 10:11:17",
+      "verdict": "COMPUTABLE"
+    },
+    {
+      "age_days": 0.62,
+      "age_h": 14.81,
+      "batch_id": "B-CITY3D-02",
+      "frames_declared": 6,
+      "frames_read": 6,
+      "kind": "render_spike",
+      "outdir": "media/pool-ignite/B-CITY3D-02/20261109-101556",
+      "qc_ok": false,
+      "qc_verdict": "FRAME-QC-INSUFFICIENT-PLACEHOLDER",
+      "reason": "frame-quality-recomputed-from-disk",
+      "ts": "2026-11-09 10:16:15",
+      "verdict": "COMPUTABLE"
+    },
+    {
+      "age_days": 0.25,
+      "age_h": 5.9,
+      "batch_id": "B-CITY3D-01",
+      "kind": "bake_spike",
+      "min_lit_pct": 100.0,
+      "outdir": "media/pool-ignite/B-CITY3D-01/20261109-190943",
+      "qc_ok": true,
+      "qc_verdict": "LIGHTMAP-QC-PASS",
+      "reason": "lightmap-recomputed-from-disk",
+      "ts": "2026-11-09 19:10:31",
+      "verdict": "COMPUTABLE"
+    }
+  ],
+  "computable_count": 3,
+  "computable_fail_count": 1,
+  "computable_pass_count": 2,
+  "known_bad": [],
+  "known_bad_count": 0,
+  "note": "COMPUTABLE = today's bytes still match the receipt, so the reading is recomputed now; KNOWN-BAD = unprovable and older than the age policy; receipts are never rewritten",
+  "reasons": {
+    "exr-overwritten(sha-mismatch)": 22
+  },
+  "receipts_sha256_after": "eaeea62a1d7bec42ac1f71957594589f97e0afd07498dc2c5c5002f3e4e56444",
+  "receipts_sha256_before": "eaeea62a1d7bec42ac1f71957594589f97e0afd07498dc2c5c5002f3e4e56444",
+  "receipts_unchanged": true,
+  "scanned": 32,
+  "ts": "2026-11-10 01:04:42",
+  "unknown": 25,
+  "unprovable": [
+    {
+      "age_days": 1.09,
+      "age_h": 26.13,
+      "batch_id": "B-CITY3D-01",
+      "kind": "bake_spike",
+      "outdir": "media/pool-ignite/B-CITY3D-01/20261108-225550",
+      "reason": "exr-overwritten(sha-mismatch)",
+      "ts": "2026-11-08 22:56:41",
+      "verdict": "UNPROVABLE"
+    },
+    {
+      "age_days": 1.08,
+      "age_h": 25.89,
+      "batch_id": "B-CITY3D-01",
+      "kind": "bake_spike",
+      "outdir": "media/pool-ignite/B-CITY3D-01/20261108-230943",
+      "reason": "exr-overwritten(sha-mismatch)",
+      "ts": "2026-11-08 23:11:24",
+      "verdict": "UNPROVABLE"
+    },
+    {
+      "age_days": 1.07,
+      "age_h": 25.65,
+      "batch_id": "B-CITY3D-01",
+      "kind": "bake_spike",
+      "outdir": "media/pool-ignite/B-CITY3D-01/20261108-232443",
+      "reason": "exr-overwritten(sha-mismatch)",
+      "ts": "2026-11-08 23:25:47",
+      "verdict": "UNPROVABLE"
+    },
+    {
+      "age_days": 1.06,
+      "age_h": 25.4,
+      "batch_id": "B-CITY3D-01",
+      "kind": "bake_spike",
+      "outdir": "media/pool-ignite/B-CITY3D-01/20261108-233943",
+      "reason": "exr-overwritten(sha-mismatch)",
+      "ts": "2026-11-08 23:40:33",
+      "verdict": "UNPROVABLE"
+    },
+    {
+      "age_days": 1.05,
+      "age_h": 25.15,
+      "batch_id": "B-CITY3D-01",
+      "kind": "bake_spike",
+      "outdir": "media/pool-ignite/B-CITY3D-01/20261108-235444",
+      "reason": "exr-overwritten(sha-mismatch)",
+      "ts": "2026-11-08 23:55:33",
+      "verdict": "UNPROVABLE"
+    },
+    {
+      "age_days": 1.0,
+      "age_h": 23.89,
+      "batch_id": "B-CITY3D-01",
+      "kind": "bake_spike",
+      "outdir": "media/pool-ignite/B-CITY3D-01/20261109-010943",
+      "reason": "exr-overwritten(sha-mismatch)",
+      "ts": "2026-11-09 01:11:35",
+      "verdict": "UNPROVABLE"
+    },
+    {
+      "age_days": 0.98,
+      "age_h": 23.63,
+      "batch_id": "B-CITY3D-01",
+      "kind": "bake_spike",
+      "outdir": "media/pool-ignite/B-CITY3D-01/20261109-012443",
+      "reason": "exr-overwritten(sha-mismatch)",
+      "ts": "2026-11-09 01:27:08",
+      "verdict": "UNPROVABLE"
+    },
+    {
+      "age_days": 0.96,
+      "age_h": 23.14,
+      "batch_id": "B-CITY3D-01",
+      "kind": "bake_spike",
+      "outdir": "media/pool-ignite/B-CITY3D-01/20261109-015443",
+      "reason": "exr-overwritten(sha-mismatch)",
+      "ts": "2026-11-09 01:56:09",
+      "verdict": "UNPROVABLE"
+    },
+    {
+      "age_days": 0.93,
+      "age_h": 22.36,
+      "batch_id": "B-CITY3D-01",
+      "kind": "bake_spike",
+      "outdir": "media/pool-ignite/B-CITY3D-01/20261109-023944",
+      "reason": "exr-overwritten(sha-mismatch)",
+      "ts": "2026-11-09 02:43:01",
+      "verdict": "UNPROVABLE"
+    },
+    {
+      "age_days": 0.9,
+      "age_h": 21.65,
+      "batch_id": "B-CITY3D-01",
+      "kind": "bake_spike",
+      "outdir": "media/pool-ignite/B-CITY3D-01/20261109-032443",
+      "reason": "exr-overwritten(sha-mismatch)",
+      "ts": "2026-11-09 03:25:59",
+      "verdict": "UNPROVABLE"
+    },
+    {
+      "age_days": 0.89,
+      "age_h": 21.39,
+      "batch_id": "B-CITY3D-01",
+      "kind": "bake_spike",
+      "outdir": "media/pool-ignite/B-CITY3D-01/20261109-033943",
+      "reason": "exr-overwritten(sha-mismatch)",
+      "ts": "2026-11-09 03:41:01",
+      "verdict": "UNPROVABLE"
+    },
+    {
+      "age_days": 0.88,
+      "age_h": 21.11,
+      "batch_id": "B-CITY3D-01",
+      "kind": "bake_spike",
+      "outdir": "media/pool-ignite/B-CITY3D-01/20261109-035443",
+      "reason": "exr-overwritten(sha-mismatch)",
+      "ts": "2026-11-09 03:58:21",
+      "verdict": "UNPROVABLE"
+    },
+    {
+      "age_days": 0.7,
+      "age_h": 16.89,
+      "batch_id": "B-CITY3D-01",
+      "kind": "bake_spike",
+      "outdir": "media/pool-ignite/B-CITY3D-01/20261109-080944",
+      "reason": "exr-overwritten(sha-mismatch)",
+      "ts": "2026-11-09 08:11:17",
+      "verdict": "UNPROVABLE"
+    },
+    {
+      "age_days": 0.69,
+      "age_h": 16.66,
+      "batch_id": "B-CITY3D-01",
+      "kind": "bake_spike",
+      "outdir": "media/pool-ignite/B-CITY3D-01/20261109-082443",
+      "reason": "exr-overwritten(sha-mismatch)",
+      "ts": "2026-11-09 08:25:21",
+      "verdict": "UNPROVABLE"
+    },
+    {
+      "age_days": 0.68,
+      "age_h": 16.41,
+      "batch_id": "B-CITY3D-01",
+      "kind": "bake_spike",
+      "outdir": "media/pool-ignite/B-CITY3D-01/20261109-083943",
+      "reason": "exr-overwritten(sha-mismatch)",
+      "ts": "2026-11-09 08:40:24",
+      "verdict": "UNPROVABLE"
+    },
+    {
+      "age_days": 0.67,
+      "age_h": 16.16,
+      "batch_id": "B-CITY3D-01",
+      "kind": "bake_spike",
+      "outdir": "media/pool-ignite/B-CITY3D-01/20261109-085443",
+      "reason": "exr-overwritten(sha-mismatch)",
+      "ts": "2026-11-09 08:55:22",
+      "verdict": "UNPROVABLE"
+    },
+    {
+      "age_days": 0.66,
+      "age_h": 15.89,
+      "batch_id": "B-CITY3D-01",
+      "kind": "bake_spike",
+      "outdir": "media/pool-ignite/B-CITY3D-01/20261109-090943",
+      "reason": "exr-overwritten(sha-mismatch)",
+      "ts": "2026-11-09 09:11:21",
+      "verdict": "UNPROVABLE"
+    },
+    {
+      "age_days": 0.65,
+      "age_h": 15.66,
+      "batch_id": "B-CITY3D-01",
+      "kind": "bake_spike",
+      "outdir": "media/pool-ignite/B-CITY3D-01/20261109-092443",
+      "reason": "exr-overwritten(sha-mismatch)",
+      "ts": "2026-11-09 09:25:20",
+      "verdict": "UNPROVABLE"
+    },
+    {
+      "age_days": 0.64,
+      "age_h": 15.4,
+      "batch_id": "B-CITY3D-01",
+      "kind": "bake_spike",
+      "outdir": "media/pool-ignite/B-CITY3D-01/20261109-093944",
+      "reason": "exr-overwritten(sha-mismatch)",
+      "ts": "2026-11-09 09:40:25",
+      "verdict": "UNPROVABLE"
+    },
+    {
+      "age_days": 0.63,
+      "age_h": 15.16,
+      "batch_id": "B-CITY3D-01",
+      "kind": "bake_spike",
+      "outdir": "media/pool-ignite/B-CITY3D-01/20261109-095443",
+      "reason": "exr-overwritten(sha-mismatch)",
+      "ts": "2026-11-09 09:55:23",
+      "verdict": "UNPROVABLE"
+    },
+    {
+      "age_days": 0.62,
+      "age_h": 14.82,
+      "batch_id": "B-CITY3D-01",
+      "kind": "bake_spike",
+      "outdir": "media/pool-ignite/B-CITY3D-01/20261109-101443",
+      "reason": "exr-overwritten(sha-mismatch)",
+      "ts": "2026-11-09 10:15:46",
+      "verdict": "UNPROVABLE"
+    },
+    {
+      "age_days": 0.3,
+      "age_h": 7.11,
+      "batch_id": "B-CITY3D-01",
+      "kind": "bake_spike",
+      "outdir": "media/pool-ignite/B-CITY3D-01/20261109-175444",
+      "reason": "exr-overwritten(sha-mismatch)",
+      "ts": "2026-11-09 17:58:22",
+      "verdict": "UNPROVABLE"
+    }
+  ],
+  "unprovable_count": 22
+}

@@ -1,0 +1,29 @@
+unknown_converge 2026-11-10 01:03:58
+scanned=32 unknown=25 computable=3 unprovable=22 known_bad=0 policy=7d
+reason exr-overwritten(sha-mismatch)=22
+COMPUTABLE 2026-11-09 10:11:17 B-CITY3D-01 kind=bake_spike qc=LIGHTMAP-QC-PASS reason=lightmap-recomputed-from-disk
+COMPUTABLE 2026-11-09 10:16:15 B-CITY3D-02 kind=render_spike qc=FRAME-QC-INSUFFICIENT-PLACEHOLDER reason=frame-quality-recomputed-from-disk
+COMPUTABLE 2026-11-09 19:10:31 B-CITY3D-01 kind=bake_spike qc=LIGHTMAP-QC-PASS reason=lightmap-recomputed-from-disk
+UNPROVABLE 2026-11-08 22:56:41 B-CITY3D-01 kind=bake_spike age_days=1.09 reason=exr-overwritten(sha-mismatch)
+UNPROVABLE 2026-11-08 23:11:24 B-CITY3D-01 kind=bake_spike age_days=1.08 reason=exr-overwritten(sha-mismatch)
+UNPROVABLE 2026-11-08 23:25:47 B-CITY3D-01 kind=bake_spike age_days=1.07 reason=exr-overwritten(sha-mismatch)
+UNPROVABLE 2026-11-08 23:40:33 B-CITY3D-01 kind=bake_spike age_days=1.06 reason=exr-overwritten(sha-mismatch)
+UNPROVABLE 2026-11-08 23:55:33 B-CITY3D-01 kind=bake_spike age_days=1.05 reason=exr-overwritten(sha-mismatch)
+UNPROVABLE 2026-11-09 01:11:35 B-CITY3D-01 kind=bake_spike age_days=0.99 reason=exr-overwritten(sha-mismatch)
+UNPROVABLE 2026-11-09 01:27:08 B-CITY3D-01 kind=bake_spike age_days=0.98 reason=exr-overwritten(sha-mismatch)
+UNPROVABLE 2026-11-09 01:56:09 B-CITY3D-01 kind=bake_spike age_days=0.96 reason=exr-overwritten(sha-mismatch)
+UNPROVABLE 2026-11-09 02:43:01 B-CITY3D-01 kind=bake_spike age_days=0.93 reason=exr-overwritten(sha-mismatch)
+UNPROVABLE 2026-11-09 03:25:59 B-CITY3D-01 kind=bake_spike age_days=0.9 reason=exr-overwritten(sha-mismatch)
+UNPROVABLE 2026-11-09 03:41:01 B-CITY3D-01 kind=bake_spike age_days=0.89 reason=exr-overwritten(sha-mismatch)
+UNPROVABLE 2026-11-09 03:58:21 B-CITY3D-01 kind=bake_spike age_days=0.88 reason=exr-overwritten(sha-mismatch)
+UNPROVABLE 2026-11-09 08:11:17 B-CITY3D-01 kind=bake_spike age_days=0.7 reason=exr-overwritten(sha-mismatch)
+UNPROVABLE 2026-11-09 08:25:21 B-CITY3D-01 kind=bake_spike age_days=0.69 reason=exr-overwritten(sha-mismatch)
+UNPROVABLE 2026-11-09 08:40:24 B-CITY3D-01 kind=bake_spike age_days=0.68 reason=exr-overwritten(sha-mismatch)
+UNPROVABLE 2026-11-09 08:55:22 B-CITY3D-01 kind=bake_spike age_days=0.67 reason=exr-overwritten(sha-mismatch)
+UNPROVABLE 2026-11-09 09:11:21 B-CITY3D-01 kind=bake_spike age_days=0.66 reason=exr-overwritten(sha-mismatch)
+UNPROVABLE 2026-11-09 09:25:20 B-CITY3D-01 kind=bake_spike age_days=0.65 reason=exr-overwritten(sha-mismatch)
+UNPROVABLE 2026-11-09 09:40:25 B-CITY3D-01 kind=bake_spike age_days=0.64 reason=exr-overwritten(sha-mismatch)
+UNPROVABLE 2026-11-09 09:55:23 B-CITY3D-01 kind=bake_spike age_days=0.63 reason=exr-overwritten(sha-mismatch)
+UNPROVABLE 2026-11-09 10:15:46 B-CITY3D-01 kind=bake_spike age_days=0.62 reason=exr-overwritten(sha-mismatch)
+UNPROVABLE 2026-11-09 17:58:22 B-CITY3D-01 kind=bake_spike age_days=0.3 reason=exr-overwritten(sha-mismatch)
+receipts_sha256 before=eaeea62a1d7bec42ac1f71957594589f97e0afd07498dc2c5c5002f3e4e56444 after=eaeea62a1d7bec42ac1f71957594589f97e0afd07498dc2c5c5002f3e4e56444 unchanged=True

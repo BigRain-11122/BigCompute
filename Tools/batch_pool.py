@@ -413,6 +413,42 @@ def declared_named_type(row):
 
 
 IGNITION_LOG = os.path.join(ROOT, "state", "pool-ignitions.jsonl")
+UNKNOWN_CONVERGE_SIDECAR = os.path.join(ROOT, "state", "unknown-converge.json")
+
+
+def unknown_converge_reading(path=None):
+    """T230: the published verdict on previously-unknown receipts.
+
+    `unknown` is an honest state, not an exit: a receipt with no QC reading can
+    only leave it by running again, which never happens on a lane that stays
+    shut.  `pool_igniter unknown-converge` recomputes what today's disk can
+    still prove and publishes three counts here; this reader is the single
+    source for every face that must not pay the recompute (an ffmpeg read per
+    EXR).  Missing/unreadable sidecar returns None - "not measured yet" must
+    never print as "no unknown receipts".
+    """
+    path = path or UNKNOWN_CONVERGE_SIDECAR
+    if not os.path.exists(path):
+        return None
+    try:
+        with open(path, encoding="utf-8") as f:
+            doc = json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return None
+    if not isinstance(doc, dict) or "known_bad_count" not in doc:
+        return None
+    return {
+        "as_of": doc.get("ts"),
+        "unknown": doc.get("unknown"),
+        "computable": doc.get("computable_count"),
+        "computable_pass": doc.get("computable_pass_count"),
+        "computable_fail": doc.get("computable_fail_count"),
+        "unprovable": doc.get("unprovable_count"),
+        "known_bad": doc.get("known_bad_count"),
+        "known_bad_items": ["%s@%s" % (e.get("batch_id"), e.get("ts"))
+                            for e in (doc.get("known_bad") or [])],
+        "age_policy_days": doc.get("age_policy_days"),
+    }
 
 
 def receipt_deliverable(row):
@@ -536,7 +572,8 @@ def ignition_stats(log_path=None, hours=24, now=None):
     return stats
 
 
-def build_review(rows, today=None, claims=None, refusals=None):
+def build_review(rows, today=None, claims=None, refusals=None,
+                 unknown_converge=None):
     """Assemble the M66 monthly review snapshot from stocked cards.
 
     Pure (no I/O, no clock unless today is omitted) so selftest can pin dates.
@@ -650,6 +687,23 @@ def build_review(rows, today=None, claims=None, refusals=None):
             "verdict in receipt): counted as neither supply nor failure; "
             "read `pool_igniter status` frame_quality for the recomputed numbers"
             % (ign["unknown_24h"], 24))
+    # T230: an unknown receipt must be able to leave that state, or it turns
+    # into quiet garbage.  The sidecar holds what today's disk can still prove.
+    if unknown_converge:
+        if unknown_converge.get("known_bad"):
+            findings.append(
+                "KNOWN-BAD %d receipt(s) [%s]: unprovable from disk and older "
+                "than the %sd policy, so the pool stops implying they might "
+                "still be good"
+                % (unknown_converge["known_bad"],
+                   ", ".join(unknown_converge.get("known_bad_items") or []),
+                   unknown_converge.get("age_policy_days")))
+        if unknown_converge.get("computable_fail"):
+            findings.append(
+                "%d unknown receipt(s) are now provably unfit "
+                "(recomputed QC failed): they were never supply, and the "
+                "receipts themselves are left untouched"
+                % unknown_converge["computable_fail"])
     return {
         "cards": len(rows),
         "lanes": lanes,
@@ -674,6 +728,7 @@ def build_review(rows, today=None, claims=None, refusals=None):
         "ignitions_total": ign["ok"],
         "deliverable_total": ign["deliv"],
         "uncertified_total": ign["unknown"],
+        "unknown_converge": unknown_converge,
         "last_ignition_ts": ign["last_ts"],
         "in_flight": in_flight,
         "dry_run_end": DRY_RUN_END,
@@ -698,7 +753,8 @@ def cmd_review(path, as_json=False, write=True):
         return 1
     rows = load_rows(path)
     claims, refused = load_claims(with_refusals=True)
-    review = build_review(rows, claims=claims, refusals=refused)
+    review = build_review(rows, claims=claims, refusals=refused,
+                          unknown_converge=unknown_converge_reading())
     review["registry"] = os.path.relpath(path, ROOT)
     review["claims_source"] = os.path.relpath(CLAIM_LOG, ROOT)
     print("REVIEW cards=%d lanes=%d named=%d placeholder=%d dispatchable=%d "
@@ -734,6 +790,16 @@ def cmd_review(path, as_json=False, write=True):
              review["ignitions_total"], review["deliverable_total"],
              review["uncertified_total"],
              review["last_ignition_ts"] or "-"))
+    uc = review.get("unknown_converge")
+    if uc:
+        print("UNKNOWN-CONVERGE unknown=%s computable=%s(pass=%s fail=%s) "
+              "unprovable=%s known_bad=%s as_of=%s policy=%sd"
+              % (uc["unknown"], uc["computable"], uc["computable_pass"],
+                 uc["computable_fail"], uc["unprovable"], uc["known_bad"],
+                 uc["as_of"], uc["age_policy_days"]))
+    else:
+        print("UNKNOWN-CONVERGE n/a(no-sidecar: run "
+              "`pool_igniter unknown-converge`)")
     for f in review["findings"]:
         print("FINDING " + f)
     if as_json:
@@ -1037,10 +1103,29 @@ def cmd_selftest():
         {"ok": True, "deliverable_ok": True,
          "runner": {"kind": "other_job"}}) == "yes", \
         "kinds without a quality concept still trust the writer flag"
+    # T230: an unknown receipt must be able to leave `unknown`; the sidecar is
+    # where the published verdict lives, and both faces read the same numbers.
+    uc = build_review(pair, today=datetime.date(2026, 10, 20),
+                      unknown_converge={
+                          "unknown": 3, "computable": 1, "computable_pass": 0,
+                          "computable_fail": 1, "unprovable": 2,
+                          "known_bad": 2, "age_policy_days": 7,
+                          "known_bad_items": ["B-CITY3D-01@2026-11-01 00:00:00"],
+                          "as_of": "2026-11-10 01:00:00"})
+    assert any("KNOWN-BAD" in f for f in uc["findings"]), \
+        "T230: stale unprovable receipts must be named KNOWN-BAD"
+    assert any("provably unfit" in f for f in uc["findings"]), \
+        "T230: a recomputed QC failure is named, not left as unknown"
+    assert uc["unknown_converge"]["known_bad"] == 2, \
+        "T230: sidecar numbers are published as-is"
+    assert build_review(pair, today=datetime.date(2026, 10, 20)
+                        )["unknown_converge"] is None and \
+        unknown_converge_reading(os.path.join(ROOT, "state", "no-such-sidecar.json")) is None, \
+        "T230: no sidecar reads as not-measured, never as an empty set"
     print("selftest PASS (J1-J7 + gate lane map + review + J5 claim rule "
           "+ claim log + determinism + dispatchable + consumer_named "
           "+ receipt deliverable tri-state + bake atlas tri-state "
-          "+ QC-before-flag ordering, %d checks)" % 74)
+          "+ QC-before-flag ordering + unknown convergence, %d checks)" % 78)
     return 0
 
 

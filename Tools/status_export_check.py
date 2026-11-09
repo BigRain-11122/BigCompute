@@ -207,7 +207,10 @@ ARTIFACT_EXCLUDE = {"state/rounds.log", "state/heartbeat.txt",
 # so they can never be "the latest artifact".
 ARTIFACT_SKIP_PREFIX = ("state/queue/",)
 # Bytecode caches are build droppings, not artifacts.
-ARTIFACT_SKIP_EXT = (".pyc", ".pyo")
+ARTIFACT_SKIP_EXT = (".pyc", ".pyo", ".log", ".jsonl", ".lock")
+# T230 finding: the tangle of *process logs* (clean-window-log.jsonl and
+# friends) is bookkeeping, so it must not win "latest artifact" by being the
+# most recently touched file.  Readings and reports (.json/.txt/.md) still can.
 QUEUE_PATH = os.path.join("state", "queue", "main.md")
 OVERRIDES_PATH = os.path.join("docs", "status-export-overrides.json")
 QUEUE_ID_RE = re.compile(r"^(M|T|E)\d+$")
@@ -257,6 +260,16 @@ def _clean(text, limit):
         cut = text.rfind(" ")
         if cut > limit * 0.6:
             text = text[:cut]
+        # Chinese has no spaces, so the word-boundary rule above never fires
+        # and the line used to stop mid-sentence ("…改为由").  Prefer the last
+        # clause boundary, then always mark the cut so a truncated sentence is
+        # never mistaken for a finished one.
+        for mark in ("。", "；", "，", "、", "）", "|"):
+            pos = text.rfind(mark)
+            if pos > limit * 0.5:
+                text = text[:pos + 1]
+                break
+        text = text.rstrip("，、；") + "…"
     return text
 
 

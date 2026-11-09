@@ -853,3 +853,8 @@ P2=text_integrity 本仓零缺陷，但列数族 new_ext=13 全在集团只读�
 - 实物（产品优先律 2 分件）：行损失普查「同一仪器两种读数」定因修好——不是窗口而是**默认根**：`run` 默认查本司仓，而三本共享台账在集团仓，所以 `run` 恒报 UNVERIFIED（三目标全 `not-in-git`），只有冒烟探针显式传集团根才看得见丢行。改为「找真正拥有目标台账的仓」+ 输出 `repo=` 署名 + 显式 `--repo` 仍原样采信；selftest 30/30。证据 `state/m173-root-split-20261110.txt`。
 - 读数更正：默认根修好后同一条命令直接读到 `ROW-LOSS-FOUND`（window=40）。集团 `PRODUCTION-BACKLOG.jsonl` 永久丢行 **48 条（47 真实+1 CANARY 负控）**，此前报的「21 条」是窗窄偏低读数；本司只报警不改（禁跨仓写）。
 - P2：冒烟 29/31（no.22 既有回执面 missing_local=9、no.26 上述集团丢行；无新增红）；GPU 道 vram_free=4759<6144、cotenant 编辑器 1，M179 洋红复验仍待显存窗。
+
+## 日清 2026-11-10（01:0x 令牌轮）
+- 实物（产品优先律 2 分件）：`unknown` 态终于能离开——`pool_igniter unknown-converge` 按今日盘上字节把 25 条「不可判」拆成可证 3（pass=2 / fail=1）/ 不可证 22 / 过期降级 0；回执字节零变更，只写 sidecar，CEO 面（status 与 batch_pool review）读同一份数；selftest 69->77。证据 `state/unknown-converge-20261110.txt/.json`。
+- 读数更正（对 CEO 有意义）：11-09 10:15 那批六机位判据帧从「不知道能不能用」变成**明确不可用**（现算 FRAME-QC-INSUFFICIENT-PLACEHOLDER，5/6 帧洋红占位），另两条烘焙图集现算 LIGHTMAP-QC-PASS；22 条烘焙读数永久丢失（labbench 图集被后续烘焙覆盖、sha 不符），「文件在」不算证据。
+- P2（自伤型常红，已修）：qa no.30 的「健康自检」夹具把计数硬编码成 `55/55`，M180/M181 把下限抬到 69 后 18 条夹具全红，而 live 冒烟照绿——红的是夹具自己；已改为由下限派生，`--selftest` 复归 exit=0。冒烟 **29/31**（两红同源已知：no.22 M96 既有回执面、no.26 集团侧丢行，只报警不改）。

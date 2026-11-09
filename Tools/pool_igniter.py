@@ -1247,6 +1247,145 @@ def render_bake_reconcile(rec):
     return 0
 
 
+KNOWN_BAD_AGE_DAYS = 7
+UNKNOWN_CONVERGE_SIDECAR = os.path.join(ROOT, "state", "unknown-converge.json")
+
+
+def converge_unknown(rows=None, max_age_days=KNOWN_BAD_AGE_DAYS, reader=None,
+                     exists=None, hasher=None, now_dt=None):
+    """T230: `unknown` must have an exit, or it becomes quiet garbage.
+
+    A receipt that carries no QC reading reads `unknown` - honest, but it can
+    only leave that state when the card runs again.  On a lane that never opens
+    it would sit there forever, counted as neither supply nor failure.  So each
+    unknown receipt is classified once, from today's disk:
+
+    * COMPUTABLE   - the product's own bytes are still byte-identical to what
+                     the receipt declared, so the reading is recomputable now.
+    * UNPROVABLE   - files missing/overwritten or the card has no QC concept;
+                     names the reason instead of guessing.
+    * KNOWN-BAD    - unprovable AND older than `max_age_days`:降级, so the face
+                     stops implying "might still be good".
+
+    Nothing is written back into the receipt log; the result is a sidecar.
+    """
+    rows = receipt_rows() if rows is None else rows
+    now_dt = now_dt or now()
+    exists = exists or (lambda rel: os.path.exists(
+        os.path.normpath(os.path.join(ROOT, rel))))
+    hasher = hasher or (lambda rel: _file_sha256(
+        os.path.normpath(os.path.join(ROOT, rel))))
+    reader = reader or lightmap_stats
+    computable, unprovable = [], []
+    unknown = 0
+    for r in rows:
+        if receipt_state(r) != "unknown":
+            continue
+        unknown += 1
+        run = r.get("runner") or {}
+        kind = run.get("kind")
+        age_h = _receipt_age_h(r.get("ts"))
+        entry = {"ts": r.get("ts"), "batch_id": r.get("batch_id"),
+                 "outdir": r.get("outdir"), "kind": kind,
+                 "age_h": None if age_h is None else round(age_h, 2),
+                 "age_days": None if age_h is None else round(age_h / 24.0, 2)}
+        verdict, reason = "UNPROVABLE", None
+        if kind == "bake_spike":
+            rec = bake_reconcile(rows=[r], reader=reader, exists=exists,
+                                 hasher=hasher)
+            if rec["certifiable_count"] == 1:
+                verdict = "COMPUTABLE"
+                reason = "lightmap-recomputed-from-disk"
+                entry["qc_verdict"] = rec["certifiable"][0].get("qc_verdict")
+                entry["min_lit_pct"] = rec["certifiable"][0].get("min_lit_pct")
+            elif rec["declared_count"] == 1:
+                verdict = "COMPUTABLE"
+                reason = "reading-declared-in-receipt"
+                entry["qc_verdict"] = rec["declared"][0].get("qc_verdict")
+            else:
+                reason = (rec["not_certifiable"][0].get("reason")
+                          if rec["not_certifiable"] else "no-bake-entry")
+        elif kind == "render_spike":
+            pngs = [a for a in (run.get("artifacts") or [])
+                    if str(a.get("path", "")).lower().endswith(".png")]
+            missing, mismatched = [], []
+            for a in pngs:
+                rel = a["path"]
+                if not exists(rel):
+                    missing.append(rel)
+                elif a.get("sha256") and hasher(rel) != a["sha256"]:
+                    mismatched.append(rel)
+            entry["frames_declared"] = len(pngs)
+            if not pngs:
+                reason = "no-png-in-receipt"
+            elif missing:
+                reason = "frames-missing-on-disk"
+                entry["frames_missing"] = len(missing)
+            elif mismatched:
+                reason = "frames-overwritten(sha-mismatch)"
+                entry["frames_overwritten"] = len(mismatched)
+            else:
+                frames_dir = os.path.dirname(
+                    os.path.normpath(os.path.join(ROOT, pngs[0]["path"])))
+                rep = frame_quality_report(frames_dir)
+                entry["qc_verdict"] = rep.get("qc_verdict")
+                entry["frames_read"] = rep.get("frames_read")
+                verdict = "COMPUTABLE"
+                reason = "frame-quality-recomputed-from-disk"
+        else:
+            reason = "card-kind-has-no-qc(%s)" % (kind or "?")
+        entry["verdict"] = verdict
+        entry["reason"] = reason
+        if verdict == "COMPUTABLE":
+            qv = str(entry.get("qc_verdict") or "")
+            # Computable means "the reading is now known" - it may well be a
+            # failed QC.  Naming that separately stops a provably-bad batch
+            # from resting in the same bucket as an unreadable one.
+            entry["qc_ok"] = qv.endswith("-QC-PASS")
+            computable.append(entry)
+            continue
+        if entry["age_days"] is not None and entry["age_days"] > max_age_days:
+            entry["known_bad"] = True
+            entry["known_bad_reason"] = (
+                "unprovable and older than %dd" % max_age_days)
+        unprovable.append(entry)
+    known_bad = [e for e in unprovable if e.get("known_bad")]
+    reasons = {}
+    for e in unprovable:
+        reasons[e["reason"] or "?"] = reasons.get(e["reason"] or "?", 0) + 1
+    pass_n = sum(1 for e in computable if e.get("qc_ok"))
+    return {
+        "ts": now_dt.strftime("%Y-%m-%d %H:%M:%S"),
+        "scanned": len(rows),
+        "unknown": unknown,
+        "computable": computable,
+        "computable_count": len(computable),
+        "computable_pass_count": pass_n,
+        "computable_fail_count": len(computable) - pass_n,
+        "unprovable": unprovable,
+        "unprovable_count": len(unprovable),
+        "known_bad": known_bad,
+        "known_bad_count": len(known_bad),
+        "reasons": reasons,
+        "age_policy_days": max_age_days,
+        "note": "COMPUTABLE = today's bytes still match the receipt, so the "
+                "reading is recomputed now; KNOWN-BAD = unprovable and older "
+                "than the age policy; receipts are never rewritten",
+    }
+
+
+def unknown_converge_reading(path=None):
+    """Latest sidecar, for faces that must not re-run the recompute.
+
+    Recomputation costs an ffmpeg read per EXR; status and review read the
+    published numbers instead and say `n/a` when no sidecar exists yet, rather
+    than pretending the unknown set is empty.  The reader itself lives in
+    batch_pool so `pool_igniter status` and `batch_pool review` cannot drift.
+    """
+    import batch_pool
+    return batch_pool.unknown_converge_reading(path)
+
+
 def readout():
     """Two-pool honesty readout for the ignition chain.
 
@@ -1301,6 +1440,7 @@ def readout():
             "frame_quality": last_render_quality(receipts),
             "bake_quality": last_bake_quality(receipts),
             "delivery_audit": delivery_audit(receipts),
+            "unknown_converge": unknown_converge_reading(),
         },
         "cards": cards,
     }
@@ -1371,6 +1511,15 @@ def status(as_json=False, out=None):
               % (lf["ts"], lf["batch_id"], lf["exit"], lf["error"]))
     else:
         print("last_failure=none")
+    uc = ign.get("unknown_converge")
+    if uc:
+        print("unknown_converge computable=%s(pass=%s fail=%s) unprovable=%s "
+              "known_bad=%s as_of=%s policy=%sd"
+              % (uc["computable"], uc.get("computable_pass"),
+                 uc.get("computable_fail"), uc["unprovable"],
+                 uc["known_bad"], uc["as_of"], uc["age_policy_days"]))
+    else:
+        print("unknown_converge n/a(no-sidecar: run `unknown-converge`)")
     return 0
 
 
@@ -1878,6 +2027,112 @@ def selftest():
             .get("qc_verdict") == "LIGHTMAP-QC-PASS")
         chk("S60 M181: no reading -> nothing mirrored (no invented field)",
             receipt_extra_fields({"kind": "bake_spike"}) == {})
+
+        # T230: `unknown` must have an exit.  A receipt with no QC reading can
+        # only leave that state by running again - impossible on a lane that
+        # never opens, so it would sit as neither supply nor failure forever.
+        def _unk(ts, kind, artifacts, ok=True):
+            return {"ts": ts, "batch_id": "B-CITY3D-01", "ok": ok,
+                    "outdir": "media/pool-ignite/x",
+                    "runner": {"kind": kind, "artifacts": artifacts}}
+
+        fresh = now().strftime("%Y-%m-%d %H:%M:%S")
+        old = (now() - datetime.timedelta(days=8)
+               ).strftime("%Y-%m-%d %H:%M:%S")
+        disk = {"a.exr": "aaa", "b.exr": "bbb"}
+        conv_ok = converge_unknown(
+            [_unk(fresh, "bake_spike",
+                  [{"path": "a.exr", "sha256": "aaa"},
+                   {"path": "b.exr", "sha256": "bbb"}])],
+            reader=_fake(False),
+            exists=lambda rel: rel in disk, hasher=lambda rel: disk[rel])
+        chk("S61 T230: unknown bake with sha-identical atlas -> COMPUTABLE",
+            conv_ok["unknown"] == 1 and conv_ok["computable_count"] == 1
+            and conv_ok["computable"][0]["qc_verdict"] == "LIGHTMAP-QC-PASS"
+            and conv_ok["known_bad_count"] == 0, conv_ok["reasons"])
+
+        conv_bad = converge_unknown(
+            [_unk(old, "bake_spike",
+                  [{"path": "a.exr", "sha256": "zzz"}])],
+            reader=_fake(False), exists=lambda rel: True,
+            hasher=lambda rel: "aaa")
+        chk("S62 T230: unprovable + older than policy -> KNOWN-BAD, reason named",
+            conv_bad["computable_count"] == 0
+            and conv_bad["known_bad_count"] == 1
+            and conv_bad["unprovable"][0]["reason"]
+            == "exr-overwritten(sha-mismatch)"
+            and conv_bad["unprovable"][0].get("known_bad") is True,
+            conv_bad["unprovable"])
+
+        # A render receipt predating T226 has no QC verdict but its frames live
+        # in a per-run directory (never overwritten), so the reading really is
+        # recomputable today.
+        frames_dir = os.path.join(tmp, "frames")
+        os.makedirs(frames_dir, exist_ok=True)
+        shot = os.path.join(frames_dir, "frame_01.png")
+        made_png = False
+        try:
+            from PIL import Image
+            Image.new("RGB", (8, 8), (13, 13, 15)).save(shot)
+            made_png = True
+        except ImportError:
+            pass
+        if made_png:
+            conv_render = converge_unknown(
+                [_unk(fresh, "render_spike",
+                      [{"path": shot, "sha256": _file_sha256(shot)}])])
+            chk("S63 T230: unknown render frame set on disk -> COMPUTABLE",
+                conv_render["computable_count"] == 1
+                and conv_render["computable"][0]["qc_verdict"]
+                == "FRAME-QC-PASS"
+                and conv_render["computable_pass_count"] == 1,
+                conv_render["reasons"])
+            mag = os.path.join(frames_dir, "frame_02.png")
+            from PIL import Image
+            Image.new("RGB", (8, 8), (255, 0, 255)).save(mag)
+            conv_mag = converge_unknown(
+                [_unk(fresh, "render_spike",
+                      [{"path": mag, "sha256": _file_sha256(mag)}])])
+            chk("S68 T230: provably placeholder frames -> computable but qc fail",
+                conv_mag["computable_count"] == 1
+                and conv_mag["computable_fail_count"] == 1
+                and conv_mag["computable"][0]["qc_ok"] is False,
+                conv_mag["computable"])
+            os.remove(shot)
+            os.remove(mag)
+        else:
+            chk("S63 T230: frame recompute fixture skipped (no PIL) -> not claimed",
+                True, "PIL missing")
+
+        conv_gone = converge_unknown(
+            [_unk(fresh, "render_spike",
+                  [{"path": os.path.join(tmp, "gone", "f.png"),
+                    "sha256": "abc"}])])
+        chk("S64 T230: frames gone -> UNPROVABLE named, not counted as supply",
+            conv_gone["computable_count"] == 0
+            and conv_gone["unprovable"][0]["reason"] == "frames-missing-on-disk"
+            and conv_gone["unprovable"][0].get("known_bad") is None,
+            conv_gone["reasons"])
+
+        side = os.path.join(tmp, "unknown-converge.json")
+        with open(side, "w", encoding="utf-8", newline="\n") as f:
+            f.write(json.dumps({"ts": "2026-11-10 01:00:00", "unknown": 3,
+                                "computable_count": 1, "unprovable_count": 2,
+                                "known_bad_count": 0,
+                                "known_bad": [],
+                                "age_policy_days": 7}))
+        rd_side = unknown_converge_reading(side)
+        chk("S65 T230: sidecar reading is published as-is",
+            rd_side["computable"] == 1 and rd_side["unprovable"] == 2
+            and rd_side["known_bad"] == 0, rd_side)
+        chk("S66 T230: no sidecar -> None, never a fabricated empty set",
+            unknown_converge_reading(os.path.join(tmp, "nope.json")) is None)
+        conv_none = converge_unknown([{"ok": True, "ts": fresh,
+                                      "runner": {"kind": "render_spike",
+                                                 "frame_quality":
+                                                 {"qc_verdict": "FRAME-QC-PASS"}}}])
+        chk("S67 T230: certificated receipts stay out of the unknown set",
+            conv_none["unknown"] == 0 and conv_none["computable_count"] == 0)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 
@@ -1904,6 +2159,11 @@ def main(argv=None):
     p_c = sub.add_parser("bake-reconcile")
     p_c.add_argument("--json-out")
     p_c.add_argument("--txt-out")
+    p_u = sub.add_parser("unknown-converge")
+    p_u.add_argument("--json-out", default=UNKNOWN_CONVERGE_SIDECAR)
+    p_u.add_argument("--txt-out")
+    p_u.add_argument("--max-age-days", type=float,
+                     default=KNOWN_BAD_AGE_DAYS)
     args = ap.parse_args(argv)
     if args.cmd == "tick":
         return tick()
@@ -1959,6 +2219,61 @@ def main(argv=None):
                 f.write("receipts_sha256 before=%s after=%s unchanged=%s\n"
                         % (before, after, rec["receipts_unchanged"]))
         return render_bake_reconcile(rec)
+    if args.cmd == "unknown-converge":
+        before = _file_sha256(RECEIPTS)
+        rec = converge_unknown(max_age_days=args.max_age_days)
+        after = _file_sha256(RECEIPTS)
+        rec["receipts_sha256_before"] = before
+        rec["receipts_sha256_after"] = after
+        rec["receipts_unchanged"] = before == after
+        doc = json.dumps(rec, ensure_ascii=False, indent=2, sort_keys=True)
+        if args.json_out:
+            os.makedirs(os.path.dirname(os.path.abspath(args.json_out)),
+                        exist_ok=True)
+            with open(args.json_out, "w", encoding="utf-8", newline="\n") as f:
+                f.write(doc + "\n")
+        if args.txt_out:
+            os.makedirs(os.path.dirname(os.path.abspath(args.txt_out)),
+                        exist_ok=True)
+            with open(args.txt_out, "w", encoding="utf-8", newline="\n") as f:
+                f.write("unknown_converge %s\n" % rec["ts"])
+                f.write("scanned=%s unknown=%s computable=%s(pass=%s fail=%s) "
+                        "unprovable=%s known_bad=%s policy=%sd\n"
+                        % (rec["scanned"], rec["unknown"],
+                           rec["computable_count"],
+                           rec["computable_pass_count"],
+                           rec["computable_fail_count"],
+                           rec["unprovable_count"],
+                           rec["known_bad_count"], rec["age_policy_days"]))
+                for k, v in sorted(rec["reasons"].items()):
+                    f.write("reason %s=%s\n" % (k, v))
+                for e in rec["computable"]:
+                    f.write("COMPUTABLE %s %s kind=%s qc=%s reason=%s\n"
+                            % (e["ts"], e["batch_id"], e["kind"],
+                               e.get("qc_verdict"), e["reason"]))
+                for e in rec["unprovable"]:
+                    f.write("UNPROVABLE %s %s kind=%s age_days=%s reason=%s%s\n"
+                            % (e["ts"], e["batch_id"], e["kind"],
+                               e["age_days"], e["reason"],
+                               " KNOWN-BAD" if e.get("known_bad") else ""))
+                f.write("receipts_sha256 before=%s after=%s unchanged=%s\n"
+                        % (before, after, rec["receipts_unchanged"]))
+        print("scanned=%s unknown=%s computable=%s(pass=%s fail=%s) "
+              "unprovable=%s known_bad=%s policy=%sd receipts_unchanged=%s"
+              % (rec["scanned"], rec["unknown"], rec["computable_count"],
+                 rec["computable_pass_count"], rec["computable_fail_count"],
+                 rec["unprovable_count"], rec["known_bad_count"],
+                 rec["age_policy_days"], rec["receipts_unchanged"]))
+        for k, v in sorted(rec["reasons"].items()):
+            print("reason %s=%s" % (k, v))
+        for e in rec["computable"]:
+            print("COMPUTABLE %s %s kind=%s qc=%s"
+                  % (e["ts"], e["batch_id"], e["kind"], e.get("qc_verdict")))
+        for e in rec["unprovable"]:
+            print("UNPROVABLE %s %s age_days=%s reason=%s%s"
+                  % (e["ts"], e["batch_id"], e["age_days"], e["reason"],
+                     " KNOWN-BAD" if e.get("known_bad") else ""))
+        return 0
     ok, receipt = ignite(args.batch_id, force=args.force)
     print(json.dumps(receipt, ensure_ascii=False, indent=2, sort_keys=True))
     return 0 if ok else 1

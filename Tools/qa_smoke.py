@@ -3613,8 +3613,13 @@ def selftest_igniter():
                                   len(results), name,
                                   "" if cond else " :: " + str(detail))))
 
-    good_out = "\n".join(["PASS S%d fixture" % i for i in range(55)]
-                         + ["55/55 PASS"])
+    # The fixture's "healthy" output must track the pinned floor: a hardcoded
+    # 55/55 silently turned every fixture red the moment the floor moved to 69
+    # (M180/M181 raised pool_igniter's own count), which is a self-inflicted red
+    # that says nothing about the igniter.
+    good_count = IGNITER_MIN_SELFTEST
+    good_out = "\n".join(["PASS S%d fixture" % i for i in range(good_count)]
+                         + ["%d/%d PASS" % (good_count, good_count)])
 
     def rd(**kw):
         doc = {"dispatchable": 4, "runnable": 2, "gap": 2,
@@ -3636,7 +3641,8 @@ def selftest_igniter():
 
     ok, det = igniter_judge(0, good_out, rd(), ok_receipt)
     check("clean chain -> PASS and reports pool + fixture readings",
-          ok and "selftest=55/55" in det and "gap=2" in det
+          ok and ("selftest=%d/%d" % (good_count, good_count)) in det
+          and "gap=2" in det
           and "receipts=11" in det and "last_failure=none" in det, det)
 
     ok, det = igniter_judge(1, "20/21 PASS", rd(), ok_receipt)
