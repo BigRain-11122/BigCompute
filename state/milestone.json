@@ -1,0 +1,6 @@
+{
+ "next_milestone": "B-CITY3D-02 判据帧复渲（材质悬空引用已离线修好）：车道余量≥6144MiB 的首个窗口由守候器自动重烧，验收=六帧洋红占比 0 且 qc=FRAME-QC-PASS，48h 内无窗则记 BLOCKED 并给读数",
+ "declared_at": "2026-11-10 21:34",
+ "window_h": 48,
+ "basis": "T-20261109-10 步③待车道；GPU 道 21:31 实测 vram_free=956MiB"
+}

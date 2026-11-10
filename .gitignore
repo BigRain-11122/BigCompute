@@ -47,3 +47,5 @@ __pycache__/
 !state/t228-magenta-rootcause-*
 # T-20261109-10 场景悬空材质普查件（产品面实物：修前/修后两次真实读数，供渲染前离线判据消费）
 !state/scene-material-census-*
+# M182: 里程碑声明是对外实况面的输入，须可审可回溯（不是运行时读数）
+!state/milestone.json

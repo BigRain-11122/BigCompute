@@ -1,6 +1,6 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-11-10 21:42",
+ "updated_at": "2026-11-10 21:52",
  "current_activity": "2026-11-10 21:45 轮：M182 done 里程碑声明接线（state/milestone.json + source=declared/queue 双源标注，selftest 25/25）+ M183 done 取证（任务=已启用/health 200… ｜ 两池：本司备货可派 2 ／ 机队可领 4（两个不同池，本司卡未登记进机队池）",
  "latest_artifact": "state/unknown-converge.json（mtime 2026-11-10 21:39）",
  "next_milestone": "B-CITY3D-02 判据帧复渲（材质悬空引用已离线修好）：车道余量≥6144MiB 的首个窗口由守候器自动重烧，验收=六帧洋红占比 0 且 qc=FRAME-QC-PASS，48h 内无窗则记 BLOCKED 并给读数（source=declared）"
