@@ -230,6 +230,18 @@ POOL_FIELD_RE = re.compile(r"\b(stock_dispatchable|pool_effective)=(\S+)")
 # argument the export itself is -- it describes a round nobody can verify.
 OVERRIDE_MAX_AGE_H = MAX_AGE_H
 
+# M182: the queue-derived milestone can only ever name the oldest unfinished
+# row, so the CEO face kept reporting M25 (opened 2026-09-29) as "next" for
+# six weeks -- and M181 showed the row status text carries stray dates, so
+# inference cannot be fixed by heuristics.  A round now states the target in
+# state/milestone.json; the declaration wins while fresh and the face always
+# prints which of the two it used.
+MILESTONE_PATH = os.path.join("state", "milestone.json")
+MILESTONE_MAX_AGE_H = 48.0
+MILESTONE_TIMEFMT = "%Y-%m-%d %H:%M"
+MILESTONE_SOURCE_DECLARED = "source=declared"
+MILESTONE_SOURCE_QUEUE = "source=queue"
+
 
 READABLE_RE = re.compile(r"[\x20-\x7e\u3000-\u303f\u4e00-\u9fff\uff00-\uffef\u2000-\u2bff]+")
 # Below this share of readable characters a chunk is mojibake, not text.
@@ -418,23 +430,75 @@ def compose_milestone(queue_text):
     return "队列无未闭合行（state/queue/main.md）"
 
 
+def load_declared_milestone(root=None, now=None, max_age_h=MILESTONE_MAX_AGE_H):
+    """(text, note) -- the target a round declared, while it is still fresh.
+
+    M182: "which row is really next" is not inferable from the queue text, so
+    the round states it instead of the tool guessing.  A stale or unparsable
+    declaration is dropped with a note rather than silently used: naming a
+    3-day-old target on the CEO face is the same lie as naming a 6-week-old
+    one, and a future timestamp is a typo, not a plan.
+    """
+    root = root or ROOT
+    path = os.path.join(root, *MILESTONE_PATH.split("/"))
+    try:
+        with open(path, "rb") as f:
+            raw = f.read()
+    except OSError:
+        return None, None
+    if raw.startswith(BOM):
+        raw = raw[3:]
+    try:
+        payload = json.loads(raw.decode("utf-8"))
+    except (ValueError, UnicodeDecodeError) as e:
+        return None, "%s unparsable: %s" % (MILESTONE_PATH, e)
+    if not isinstance(payload, dict):
+        return None, "%s top level is not an object" % MILESTONE_PATH
+    text = payload.get("next_milestone")
+    if not isinstance(text, str) or not text.strip():
+        return None, "%s has no next_milestone text, queue-derived used" % MILESTONE_PATH
+    stamp = payload.get("declared_at")
+    try:
+        declared = datetime.datetime.strptime(str(stamp), MILESTONE_TIMEFMT)
+    except (ValueError, TypeError):
+        return None, ("%s declared_at=%r is not 'YYYY-MM-DD HH:MM', "
+                      "queue-derived used" % (MILESTONE_PATH, stamp))
+    now = now or datetime.datetime.now()
+    age_h = (now - declared).total_seconds() / 3600.0
+    if age_h > max_age_h:
+        return None, ("%s declared %s is %.1fh old (> %.0fh), queue-derived used"
+                      % (MILESTONE_PATH, stamp, age_h, max_age_h))
+    if age_h < -1.0:
+        return None, ("%s declared_at=%s is %.1fh in the future, "
+                      "queue-derived used" % (MILESTONE_PATH, stamp, -age_h))
+    return text.strip(), None
+
+
 def compose_lines(rounds_text, queue_text, files, now=None, overrides=None,
-                  pool_line=None):
+                  pool_line=None, declared_milestone=None):
     """Pure: three machine lines + overrides appended, never replacing.
 
     `pool_line` (M166) is appended to current_activity so the two-pool
     reading reaches the CEO face without being retyped each round.
+    `declared_milestone` (M182) wins over the queue-derived row, and the line
+    says which one it came from so a wrong target can be traced to its author.
     """
     now = now or datetime.datetime.now()
     activity = compose_activity(rounds_text)
     if pool_line:
         activity = activity + " ｜ " + pool_line
+    declared = _clean(declared_milestone, 240) if declared_milestone else ""
+    if declared:
+        milestone = "%s（%s）" % (declared, MILESTONE_SOURCE_DECLARED)
+    else:
+        milestone = "%s（%s）" % (compose_milestone(queue_text),
+                                 MILESTONE_SOURCE_QUEUE)
     lines = {
         "company": "BigCompute",
         "updated_at": now.strftime("%Y-%m-%d %H:%M"),
         "current_activity": activity,
         "latest_artifact": compose_artifact(files),
-        "next_milestone": compose_milestone(queue_text),
+        "next_milestone": milestone,
     }
     for key, value in (overrides or {}).items():
         if not isinstance(value, str) or not value.strip():
@@ -582,9 +646,13 @@ def compose(root=None, now=None, write=False):
             overrides, read_warn = _read_overrides(ov_path)
             if read_warn:
                 _print_safe("NOTE %s" % read_warn)
+    declared, ms_note = load_declared_milestone(root, now=now)
+    if ms_note:
+        _print_safe("NOTE %s" % ms_note)
     lines = compose_lines(rounds_text, queue_text, collect_files(root),
                           now=now, overrides=overrides,
-                          pool_line=pool_note(heartbeat_text, now=now))
+                          pool_line=pool_note(heartbeat_text, now=now),
+                          declared_milestone=declared)
     if write:
         path = os.path.join(root, *EXPORT_PATH.split("/"))
         problems, first3 = guarded_write(path, lines)
@@ -824,6 +892,68 @@ def selftest():
     cases.append(w_ok)
     print("  [%s] W active milestone skips blocked; all-blocked falls back"
           % ("PASS" if w_ok else "FAIL"))
+
+    # M182 X: a declared target wins over the oldest unfinished queue row,
+    # and the line says which one it used (a wrong target must be traceable
+    # to whoever declared it, not to the queue).
+    x_declared = compose_lines(base_round, q_one, files_a, now=now,
+                               declared_milestone="B-CITY3D-02 复渲验洋红")
+    x_queue = compose_lines(base_round, q_one, files_a, now=now)
+    x_ok = (x_declared["next_milestone"].startswith("B-CITY3D-02 复渲验洋红")
+            and MILESTONE_SOURCE_DECLARED in x_declared["next_milestone"]
+            and "M4" not in x_declared["next_milestone"]
+            and MILESTONE_SOURCE_QUEUE in x_queue["next_milestone"]
+            and "M4" in x_queue["next_milestone"])
+    cases.append(x_ok)
+    print("  [%s] X declared milestone wins and names its source"
+          % ("PASS" if x_ok else "FAIL"))
+
+    # M182 Y: freshness gate on the declaration -- fresh used, stale / future
+    # / unparsable / empty ignored with a reason, absent file silent.
+    with tempfile.TemporaryDirectory() as td:
+        mp = os.path.join(td, *MILESTONE_PATH.split("/"))
+        os.makedirs(os.path.dirname(mp))
+
+        def _write_kv(payload):
+            with open(mp, "w", encoding="utf-8") as f:
+                json.dump(payload, f, ensure_ascii=False)
+
+        fresh_stamp = (now - datetime.timedelta(hours=2)).strftime(MILESTONE_TIMEFMT)
+        stale_stamp = (now - datetime.timedelta(hours=72)).strftime(MILESTONE_TIMEFMT)
+        future_stamp = (now + datetime.timedelta(hours=6)).strftime(MILESTONE_TIMEFMT)
+
+        _write_kv({"next_milestone": "新鲜目标", "declared_at": fresh_stamp})
+        y_fresh, y_fresh_note = load_declared_milestone(td, now=now)
+
+        _write_kv({"next_milestone": "陈旧目标", "declared_at": stale_stamp})
+        y_stale, y_stale_note = load_declared_milestone(td, now=now)
+
+        _write_kv({"next_milestone": "未来目标", "declared_at": future_stamp})
+        y_future, y_future_note = load_declared_milestone(td, now=now)
+
+        _write_kv({"next_milestone": "   ", "declared_at": fresh_stamp})
+        y_empty, y_empty_note = load_declared_milestone(td, now=now)
+
+        _write_kv({"next_milestone": "坏时标", "declared_at": "今天"})
+        y_bad, y_bad_note = load_declared_milestone(td, now=now)
+
+        with open(mp, "w", encoding="utf-8") as f:
+            f.write("{not json")
+        y_broken, y_broken_note = load_declared_milestone(td, now=now)
+
+        os.remove(mp)
+        y_absent, y_absent_note = load_declared_milestone(td, now=now)
+
+    y_ok = (y_fresh == "新鲜目标" and y_fresh_note is None
+            and y_stale is None and "old" in (y_stale_note or "")
+            and y_future is None and "future" in (y_future_note or "")
+            and y_empty is None and "no next_milestone" in (y_empty_note or "")
+            and y_bad is None and "declared_at" in (y_bad_note or "")
+            and y_broken is None and "unparsable" in (y_broken_note or "")
+            and y_absent is None and y_absent_note is None)
+    cases.append(y_ok)
+    print("  [%s] Y declaration gate: fresh used, stale/future/empty/torn ignored"
+          % ("PASS" if y_ok else "FAIL"))
 
     print("status_export_check selftest: %d/%d PASS" % (sum(cases), len(cases)))
     return 0 if all(cases) else 1
