@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-11-11 00:35",
- "current_activity": "2026-11-10 23:00 轮：M184 done 回执产物 20 条 MISSING-LOCAL 逐条 triage（OFF-MAINLINE=11 / NEVER-ANYWHERE=6 / NAME-SUSPECT=2 / PATH-CORRECTED=1·不可核销 19/20=95.0%（占计入行 20.0%）·主因=backup/bm-a-20261110 支线领先主线 268 提交·本司只出对账不自决 cherry-pick）… ｜ 两池：本司备货可派 2 ／ 机队可领 4（两个不同池，本司卡未登记进机队池） ｜ 2026-11-11 00:3x 令牌轮：M186 收口——工时器缺失件定性拆可达性三态，21 件实测 IN-HEAD-HISTORY-REMOVED=0 / OFF-MAINLINE=8 / NAME-DRIFT=9 / NEVER-EXISTED=4（本批无一件曾进主线），selftest 41/41 [via BigCompute-OSLoop]",
- "latest_artifact": "state/milestone.json（mtime 2026-11-11 00:23） ｜ state/d02-reconcile-input-20261111.txt（D-02 复核清单：8 件取回路径×5 条支线逐件 cat-file 实测，backup 支线 0/8、origin pending 8/8）｜state/cpu-eff-triage-m186-20261111.txt/.json ｜Tools/cpu_effective_hours.py（新增 _git_reach 可达性判据）",
+ "updated_at": "2026-11-11 00:45",
+ "current_activity": "2026-11-11 00:29 轮：M186 done(IN-HISTORY-REMOVED 拆可达性三态·7 日窗 21 件 OFF-MAINLINE 8/NAME-DRIFT 9/NEVER-EXISTED 4/IN-HEAD 0·selftest 41/41)+M188 ACTIVE(D-20261111-02 复核腿·清单已备·取回源实测 backup 支线 0/8 vs origin pending 8/8) gpu:2026-11-05..11-11… ｜ 两池：本司备货可派 2 ／ 机队可领 4（两个不同池，本司卡未登记进机队池） ｜ 2026-11-11 00:4x 令牌轮：M186+M187 双收口——缺失件定性拆可达性（IN-HEAD 0 / OFF-MAINLINE 8）与产物归属轴（missing_local 21→20），工时器 selftest 46/46；D-20261111-02 复核清单已备 [via BigCompute-OSLoop]",
+ "latest_artifact": "state/cpu-eff-m187-20261111.json（mtime 2026-11-11 00:34） ｜ state/d02-reconcile-input-20261111.txt（D-02 复核清单+取回源实测：backup 0/8 vs origin pending 8/8）｜state/cpu-eff-m187-20261111.json（归属轴读数）｜Tools/cpu_effective_hours.py（+_git_reach / owner_from_deliverable）",
  "next_milestone": "2026-11-11 18:00 D-20261111-02 复核腿交付：8 件取回路径逐件 blob 比对结论（取回源实测 backup 支线 0/8、origin/bm-a/pending-20261110-0000 8/8）；同日 B-CITY3D-02 判据帧复渲等车道窗（vram_free≥6144MiB 自动重烧，无窗则逐日 BLOCKED 并给读数）（source=declared） ｜ 2026-11-11 18:00 D-20261111-02 复核腿交付：8 件取回路径逐件 blob 比对结论（取回源实测 backup 支线 0/8、origin/bm-a/pending-20261110-0000 8/8）；同日 B-CITY3D-02 判据帧复渲等车道窗（vram_free≥6144MiB 自动重烧，无窗则逐日 BLOCKED 并给读数）"
 }

@@ -1,0 +1,76 @@
+{
+  "generated_at": "2026-11-11T00:39:48+08:00",
+  "verdict": "C1C4-GREEN",
+  "failed": [],
+  "checked": [
+    "C1",
+    "C2",
+    "C3",
+    "C4"
+  ],
+  "results": [
+    {
+      "id": "C1",
+      "label": "rails-schema+ledger-continuity",
+      "cmd": "Tools/rails_schema_check.py c1",
+      "rc": 0,
+      "timed_out": false,
+      "verdict": "C1-GREEN",
+      "seconds": 1.86,
+      "tail": [
+        "jsonschema 4.26.0",
+        "VERDICT=RAILS-SCHEMA-GREEN violations=0 rows=1216 skipped=2",
+        "--------------------",
+        "LEDGER-CONTINUITY-GREEN violations=0 rail_rows={'cost': 0, 'quota': 2, 'cloud': 0, 'borrow': 0, 'l1': 10}",
+        "evidence=ledger-continuity-20261111-003944.json",
+        "VERDICT=C1-GREEN"
+      ]
+    },
+    {
+      "id": "C2",
+      "label": "fulfillment-pipeline",
+      "cmd": "Tools/fulfillment/test_pipeline.py",
+      "rc": 0,
+      "timed_out": false,
+      "verdict": "PASS",
+      "seconds": 0.88,
+      "tail": [
+        "[PASS] H1 blind-box draw fulfills (2 rows) and tx replay adds zero",
+        "[PASS] H2 subscription rails: monthly renewal lands as its own rows",
+        "========================================================================",
+        "detail: 44 checks, 0 failed",
+        "========================================================================",
+        "RESULT: PASS (44/44 checks passed)"
+      ]
+    },
+    {
+      "id": "C3",
+      "label": "compliance-gate",
+      "cmd": "Tools/compliance_gate_check.py check",
+      "rc": 0,
+      "timed_out": false,
+      "verdict": "GATE_GREEN_WITH_SLOTS",
+      "seconds": 0.6,
+      "tail": [
+        "== 合规门机检（paypoint-compliance-map-v1.md）==",
+        "rows=15  anchors=59  slots=3",
+        "SLOT_PENDING   月消费上限数值随 CEO 定价批·机制位=quota-gate 同构",
+        "SLOT_PENDING   月上限数值随批",
+        "SLOT_PENDING   非投顾提示文案位随直播面",
+        "verdict=GATE_GREEN_WITH_SLOTS  pass=59/59  slots=3"
+      ]
+    },
+    {
+      "id": "C4",
+      "label": "cost-ledger-selftest",
+      "cmd": "Tools/cost_ledger.py selftest",
+      "rc": 0,
+      "timed_out": false,
+      "verdict": "PASS",
+      "seconds": 2.53,
+      "tail": [
+        "selftest: math=True determinism=True count=ok t94date=True sli8=True guards=True (orders+quota-gate+count+cloud+borrow+l1+t94date+sli8+money-guard) -> PASS"
+      ]
+    }
+  ]
+}

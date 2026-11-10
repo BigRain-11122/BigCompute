@@ -44,9 +44,10 @@ RECEIPT_REL = os.path.join("cph4", "fleet", "queue-receipts")
 HOST_NODE = os.environ.get("FLUXGROUP_NODE", "bm-a")
 HASH_CAP = 16 * 1024 * 1024  # 超过 16MB 只取前 1MB+size 做指纹，避免大件拖慢
 
-BUCKETS = ("verified", "remote_unverif", "missing_local", "rc_fail",
-           "replay", "copy", "path_reuse", "zero_seconds", "no_deliverable",
-           "bad_json", "not_work_receipt", "unparsed", "sha_mismatch")
+BUCKETS = ("verified", "remote_unverif", "missing_local", "owner_elsewhere",
+           "rc_fail", "replay", "copy", "path_reuse", "zero_seconds",
+           "no_deliverable", "bad_json", "not_work_receipt", "unparsed",
+           "sha_mismatch")
 
 # 回执可能用这些键声明产物内容指纹（BC-P-173：文件名与大小都不变、内容变了时，
 # 只有对账声明指纹才能区分「同一件被重新编码」与「换了另一个文件」）
@@ -231,6 +232,31 @@ def is_foreign(rec, host):
             or str(rec.get("deliverable") or "").startswith("/"))
 
 
+_NODE_TOKEN = re.compile(r"bm-[a-z0-9]+")
+
+
+def owner_from_deliverable(rel):
+    """产物路径的**归属机器**（M187·只认目录段这个结构证据）。
+
+    `cph4/fleet/artifacts/bm-b/MANIFEST.jsonl` 的 bm-b 是该产物区的属主——本机
+    找不到它属正常，不是「本机缺件」。而文件名里的 bm-x（`model-radar-bm-c-
+    20261103.json`）是**被作业对象**：那份雷达本就该由执行机写在本机，不改变归属。
+    两个不同目录段同时出现＝路径自相矛盾，返回空（不判），禁按猜归属。
+    """
+    parts = [p for p in re.split(r"[\\/]+", (rel or "").replace("\\", "/")) if p]
+    hits = sorted({p for p in parts[:-1] if _is_machine_node(p)})
+    if len(hits) != 1:
+        return ""
+    return hits[0]
+
+
+def subject_nodes(rel, host=""):
+    """文件名里出现的机队节点名（被作业对象·仅作读数可追，不作归属证据）。"""
+    base = os.path.basename((rel or "").replace("\\", "/"))
+    return sorted({t for t in _NODE_TOKEN.findall(base.lower())
+                   if t != (host or "")})
+
+
 def evaluate(records, root, host, days=None, node=None, now=None):
     now = now or datetime.now()
     cutoff = None
@@ -269,10 +295,22 @@ def evaluate(records, root, host, days=None, node=None, now=None):
             skipped.append((rec, "REMOTE-UNVERIF"))
             continue
 
+        # M187：产物落在他机产物区（artifacts/bm-b/…）＝归属错轴，不是本机缺件。
+        # 这个判定只认目录段（结构证据）；文件名里的 bm-x 是被作业对象，不作归属证据
+        # ——把 model-radar-bm-c 当成「不归本机」会把「该在本机写却没写」洗成清白。
+        owner = owner_from_deliverable(rec["deliverable"])
+        subs = subject_nodes(rec["deliverable"], host)
+        if subs:
+            rec["subject_nodes"] = subs
+        if owner and owner != host:
+            rec["owner_node"] = owner
+            buckets["owner_elsewhere"] += 1
+            skipped.append((rec, "OWNER-ELSEWHERE owner=%s" % owner))
+            continue
+
         path = local_path(root, rec["deliverable"])
         exists = bool(path) and os.path.isfile(path)
         digest = _sha(path) if exists else ""
-
         if not exists:
             buckets["missing_local"] += 1
             skipped.append((rec, "MISSING-LOCAL"))
@@ -364,7 +402,8 @@ def evaluate(records, root, host, days=None, node=None, now=None):
 
     verdict = "ATTENTION" if (buckets["missing_local"] or buckets["copy"]
                               or buckets["replay"] or buckets["zero_seconds"]
-                              or buckets["sha_mismatch"]) else "CLEAN"
+                              or buckets["sha_mismatch"]
+                              or buckets["owner_elsewhere"]) else "CLEAN"
     payload = {
         "tool": "cpu_effective_hours",
         "generated_at": datetime.now().isoformat(timespec="seconds"),
@@ -396,7 +435,10 @@ def evaluate(records, root, host, days=None, node=None, now=None):
                          "reused_with": r["reused_with"],
                          "deliverable": r["deliverable"]} for r in reuse_rows],
         "skipped": [{"id": r["id"], "node": r["node"], "receipt": r.get("receipt", ""),
-                     "reason": why, "deliverable": r["deliverable"]} for r, why in skipped],
+                     "reason": why, "deliverable": r["deliverable"],
+                     "owner": r.get("owner_node") or "",
+                     "subject_nodes": r.get("subject_nodes") or []}
+                    for r, why in skipped],
     }
     return payload
 
@@ -731,12 +773,14 @@ def report(payload, show_list=False):
     _out("verdict=%s  counted=%d  net=%sh  (%.0fs)"
          % (payload["verdict"], t["counted"], t["net_hours"], t["net_seconds"]))
     _out("receipts_scanned=%d  verified=%d  remote_unverif=%d  missing_local=%d  "
+         "owner_elsewhere=%d  "
          "rc_fail=%d  replay=%d  copy=%d  path_reuse=%d  zero_seconds=%d  "
          "no_deliverable=%d  bad_json=%d  not_work_receipt=%d"
          % (t["receipts_scanned"], b["verified"], b["remote_unverif"],
-            b["missing_local"], b["rc_fail"], b["replay"], b["copy"],
-            b["path_reuse"], b["zero_seconds"], b["no_deliverable"],
-            b["bad_json"], b["not_work_receipt"]))
+            b["missing_local"], b["owner_elsewhere"], b["rc_fail"], b["replay"],
+            b["copy"],
+            b["path_reuse"], b["zero_seconds"],
+            b["no_deliverable"], b["bad_json"], b["not_work_receipt"]))
     cover = payload.get("sha_coverage") or {}
     _out("sha_coverage: declared=%s matched=%s mismatched=%s"
          % (cover.get("declared", "?"), cover.get("matched", "?"),
@@ -940,6 +984,46 @@ def selftest():
              sp["sha_coverage"]["declared"] == 2
              and sp["sha_coverage"]["matched"] == 1
              and sp["sha_coverage"]["mismatched"] == 1)
+
+        # ---- M187 归属轴：产物落在他机产物区 ≠ 本机缺件 ----
+        oroot = os.path.join(tmp, "ownerroot")
+        ordir = os.path.join(oroot, RECEIPT_REL)
+        os.makedirs(ordir, exist_ok=True)
+        _write(os.path.join(ordir, "o1.json"),
+               _lane("O-OTHER", "bm-a", 60,
+                     "cph4/fleet/artifacts/bm-b/MANIFEST.jsonl", fresh))
+        _write(os.path.join(ordir, "o2.json"),
+               _lane("O-OWN", "bm-a", 60,
+                     "cph4/fleet/artifacts/bm-a/MANIFEST.jsonl", fresh))
+        _write(os.path.join(ordir, "o3.json"),
+               _lane("O-SUBJECT", "bm-a", 60,
+                     "cph4/fleet/queue-receipts/model-radar-bm-c-20261103.json",
+                     fresh))
+        _write(os.path.join(ordir, "o4.json"),
+               _lane("O-AMBIG", "bm-a", 60,
+                     "cph4/fleet/artifacts/bm-b/bm-c/x.json", fresh))
+        orecs, _obad, _ooth = load_receipts(ordir)
+        op = evaluate(orecs, oroot, "bm-a", days=1, now=now)
+        oslot = {s["id"]: s for s in op["skipped"]}
+        want("S42 产物在他机产物区（artifacts/bm-b/…）→ OWNER-ELSEWHERE 且不计入本机缺件",
+             op["buckets"]["owner_elsewhere"] == 1
+             and op["buckets"]["missing_local"] == 3
+             and oslot["O-OTHER"]["reason"].startswith("OWNER-ELSEWHERE owner=bm-b")
+             and oslot["O-OTHER"]["owner"] == "bm-b")
+        want("S43 本机自己的产物区（artifacts/bm-a/…）缺件仍判 MISSING-LOCAL",
+             oslot["O-OWN"]["reason"] == "MISSING-LOCAL")
+        want("S44 文件名里的他机 token 只是被作业对象 → 不重分类，仅留读数",
+             oslot["O-SUBJECT"]["reason"] == "MISSING-LOCAL"
+             and oslot["O-SUBJECT"]["subject_nodes"] == ["bm-c"])
+        want("S45 路径含两个不同节点目录 = 自相矛盾 → 不判归属，仍记缺件",
+             oslot["O-AMBIG"]["reason"] == "MISSING-LOCAL"
+             and oslot["O-AMBIG"]["owner"] == "")
+        only_other = [r for r in orecs if r["id"] == "O-OTHER"]
+        po = evaluate(only_other, oroot, "bm-a", days=1, now=now)
+        want("S46 只有归属错轴、零缺件时仍判 ATTENTION（不得读成 CLEAN）",
+             po["buckets"]["owner_elsewhere"] == 1
+             and po["buckets"]["missing_local"] == 0
+             and po["verdict"] == "ATTENTION")
 
         td = os.path.join(tmp, "triage_root")
         tdir = os.path.join(td, "cph4", "fleet", "queue-receipts")

@@ -887,3 +887,4 @@ P2 派生两条工具口径缺陷已立行：M186（`IN-HISTORY-REMOVED` 未区�
 P1 已修（M186 工具口径）：`IN-HISTORY-REMOVED` 拆可达性三态——7 日窗 21 件缺失件实测 **OFF-MAINLINE=8 / NAME-DRIFT=9 / NEVER-EXISTED=4 / IN-HEAD-HISTORY-REMOVED=0**，即本批无一件曾进主线，「从主线历史找回」对该批无对象（selftest 41/41 PASS）。
 P0 提醒（@HQ 取回腿·18:00 前）：D-02 指定取回源 `backup/bm-a-20261110` 对本轮 8 件 **0/8 命中**，8 件全在 `origin/bm-a/pending-20261110-0000`（8/8）——若取回清单与之重叠，源须改该远端 pending 支线，否则照字面执行会取空并被判永久缺件。复核清单=`state/d02-reconcile-input-20261111.txt`。
 诚实：D-02 记 11 件与本轮 8 件不同集（窗口滚动+分类轴差异），未强行对齐；零跨仓写、未 cherry-pick。
+00:4x 增补（M187 同轮收口）：产物归属轴拆出 `OWNER-ELSEWHERE`——7 日窗 missing_local **21→20**，唯一 1 条是 `R-ART-PUSH-B-20261102`（bm-a 执行、产物属 bm-b 的 `artifacts/bm-b/MANIFEST.jsonl`），此前一直被记成「本机缺件」；三条文件名带他机 token 的件（model-radar bm-c/bm-m、FREE-MEM-APPLY-bm-c）**维持缺件**——文件名 token 是被作业对象，不是归属证据。

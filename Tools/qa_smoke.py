@@ -2575,10 +2575,11 @@ def receipt_product_judge(payload):
     b = payload["buckets"]
     t = payload.get("totals") or {}
     head = ("verdict=%s counted=%s net_h=%s missing_local=%d copy=%d "
-            "no_deliverable=%d"
+            "owner_elsewhere=%d no_deliverable=%d"
             % (payload.get("verdict", "?"), t.get("counted", 0),
                t.get("net_hours", 0), b.get("missing_local", 0),
-               b.get("copy", 0), b.get("no_deliverable", 0)))
+               b.get("copy", 0), b.get("owner_elsewhere", 0),
+               b.get("no_deliverable", 0)))
     hits = []
     for item in payload.get("copies") or []:
         hits.append("copy:%s/%s<-%s" % (item.get("node"), item.get("id"),
@@ -2586,6 +2587,9 @@ def receipt_product_judge(payload):
     for item in payload.get("skipped") or []:
         if item.get("reason") == "MISSING-LOCAL":
             hits.append("missing:%s/%s" % (item.get("node"), item.get("id")))
+        elif str(item.get("reason") or "").startswith("OWNER-ELSEWHERE"):
+            # M187：产物在他机产物区＝归属错轴，不是本机缺件；仍须点名，禁静默吞掉
+            hits.append("owner:%s/%s" % (item.get("node"), item.get("id")))
     bad = bool(b.get("missing_local") or b.get("copy"))
     return (not bad), head + ((" " + " ".join(hits[:6])) if hits else "")
 
@@ -2653,6 +2657,15 @@ def selftest_receipt_product_law():
     ok, det = receipt_product_judge(copy)
     check("S3 COPY-AS-PRODUCT -> FAIL and named",
           (not ok) and "copy=1" in det and "copy:bm-a/Q-2<-Q-1" in det)
+
+    owner = base({"owner_elsewhere": 1},
+                 skipped=[{"id": "Q-3", "node": "bm-a", "owner": "bm-b",
+                           "reason": "OWNER-ELSEWHERE owner=bm-b",
+                           "deliverable":
+                               "cph4/fleet/artifacts/bm-b/MANIFEST.jsonl"}])
+    ok, det = receipt_product_judge(owner)
+    check("S5 OWNER-ELSEWHERE named but not red (wrong machine, not absence)",
+          ok and "owner_elsewhere=1" in det and "owner:bm-a/Q-3" in det)
 
     ok, det = receipt_product_judge(None)
     check("S4 no summary -> FAIL/UNVERIFIED", (not ok) and "UNVERIFIED" in det)
