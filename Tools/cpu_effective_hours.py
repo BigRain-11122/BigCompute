@@ -413,6 +413,50 @@ def _git_last_commit(root, relpath):
         return ""
 
 
+_SHA_RE = re.compile(r"^[0-9a-fA-F]{7,40}$")
+
+
+def _git_reach(root, hist_line):
+    """hist 行里的提交相对 HEAD 的可达性（只读·M186）。
+
+    `git log --all` 会把旁支备份分支上的提交也算成「曾入过库」，于是两种事实
+    被塞进同一个标签：主线曾有后被移出（可找回）vs 从未进过主线（旁支件本
+    就不在交付面）。这里只回答一件事——那笔提交从 HEAD 能不能走到。
+
+    返回 {"reach": "HEAD"|"OFF-HEAD"|"UNKNOWN", "refs": [...], "sha": str}。
+    UNKNOWN 一律不猜（git 不可用／非仓／sha 解析不了），由调用方如实降级。
+    """
+    sha = (hist_line or "").split(" ")[0] if (hist_line or "").strip() else ""
+    out = {"reach": "UNKNOWN", "refs": [],
+           "sha": sha if _SHA_RE.match(sha) else ""}
+    if not out["sha"]:
+        return out
+    try:
+        anc = subprocess.run(["git", "-C", root, "merge-base", "--is-ancestor",
+                              out["sha"], "HEAD"],
+                             capture_output=True, text=True, encoding="utf-8",
+                             errors="replace", timeout=20)
+    except Exception:  # noqa: BLE001 - 判不了可达性就不猜
+        return out
+    if anc.returncode == 0:
+        out["reach"] = "HEAD"
+        return out
+    if anc.returncode != 1:
+        return out   # 128=坏对象/非仓，不是「不可达」结论
+    try:
+        refs = subprocess.run(["git", "-C", root, "for-each-ref",
+                               "--contains", out["sha"],
+                               "--format=%(refname:short)"],
+                              capture_output=True, text=True, encoding="utf-8",
+                              errors="replace", timeout=20)
+        out["refs"] = [ln.strip() for ln in (refs.stdout or "").splitlines()
+                       if ln.strip()]
+    except Exception:  # noqa: BLE001
+        return out
+    out["reach"] = "OFF-HEAD"
+    return out
+
+
 _DATE_IN_NAME = re.compile(r"(20\d{2})[-_]?(\d{2})[-_]?(\d{2})")
 
 
@@ -535,8 +579,8 @@ def _expected_for(item, overlay):
     return {"node": node, "id": rid}, src
 
 
-def triage_missing(payload, root, hist_fn=None, overlay=None):
-    """MISSING-LOCAL 逐条定性（BC-P-211·BC-P-213 签名加固·T219 overlay 接线）。
+def triage_missing(payload, root, hist_fn=None, overlay=None, reach_fn=None):
+    """MISSING-LOCAL 逐条定性（BC-P-211·BC-P-213 签名加固·T219 overlay·M186 可达性）。
 
     红本身不告诉任何人该怎么办：件不在盘，可能是「曾入过库后被删」「名字漂移」
     或「从来就没有」。三类处置完全不同（找回/改收据路径/作废收据），所以把
@@ -545,7 +589,12 @@ def triage_missing(payload, root, hist_fn=None, overlay=None):
     近名件同理不能只凭共享词干：11-07 实测 5 件 NAME-DRIFT 里 4 件是别机/别次
     的件被同名词干吸进来。故候选必须带内部签名（node/内部 id/日期）与缺失件
     对照，只有三要素无冲突且至少两项相符（CONFIRMED）才标 actionable。
+
+    「历史里有」也不是一个结论（M186 实测 11/20 落在 backup 旁支）：可达性三态
+    HEAD→IN-HEAD-HISTORY-REMOVED／OFF-HEAD→OFF-MAINLINE(带 ref)／判不了→
+    HISTORY-UNVERIFIED，禁把旁支件读成「主线删掉了」。
     """
+
     hist_fn = hist_fn or _git_last_commit
     items = []
     for item in payload.get("skipped") or []:
@@ -556,7 +605,7 @@ def triage_missing(payload, root, hist_fn=None, overlay=None):
             items.append({"id": item.get("id"), "node": item.get("node"),
                           "deliverable": "", "class": "NO-PATH",
                           "hist": "", "variants": [], "candidates": [],
-                          "actionable": []})
+                          "actionable": [], "reach": {}})
             continue
         hist = hist_fn(root, rel)
         d = os.path.dirname(os.path.join(root, rel))
@@ -595,14 +644,26 @@ def triage_missing(payload, root, hist_fn=None, overlay=None):
         variants = [c["name"] for c in candidates]
         actionable = [c["name"] for c in candidates
                       if c["confirm"] == "CONFIRMED"]
+        reach = {"reach": "", "refs": [], "sha": ""}
         if hist:
-            cls = "IN-HISTORY-REMOVED"
+            try:
+                reach = (reach_fn or _git_reach)(root, hist) or reach
+            except Exception:  # noqa: BLE001 - 可达性判不了就不猜
+                reach = {"reach": "UNKNOWN", "refs": [], "sha": ""}
+            state = reach.get("reach")
+            if state == "HEAD":
+                cls = "IN-HEAD-HISTORY-REMOVED"
+            elif state == "OFF-HEAD":
+                cls = "OFF-MAINLINE"
+            else:
+                cls = "HISTORY-UNVERIFIED"
         elif variants:
             cls = "NAME-DRIFT"
         else:
             cls = "NEVER-EXISTED"
         items.append({"id": item.get("id"), "node": item.get("node"),
                       "deliverable": rel, "class": cls, "hist": hist,
+                      "reach": reach,
                       "variants": variants, "candidates": candidates,
                       "actionable": actionable,
                       "sig_src": sig_src, "expected": expected,
@@ -636,7 +697,17 @@ def report_triage(items, overlay_meta=None):
          % (len(items), " ".join("%s:%d" % (k, tally[k]) for k in sorted(tally)),
             actionable, upgraded))
     for it in items:
-        extra = ("  hist=%s" % it["hist"][:60]) if it["hist"] else ""
+        extra = ""
+        if it["hist"]:
+            rc = it.get("reach") or {}
+            state = rc.get("reach") or "UNKNOWN"
+            if state == "HEAD":
+                where = "HEAD"
+            elif state == "OFF-HEAD":
+                where = ",".join(rc.get("refs") or []) or "off-head(no-ref)"
+            else:
+                where = "unknown"
+            extra = "  hist=%s  reach=%s" % (it["hist"][:60], where)
         src = it.get("sig_src") or {}
         sig = "node=%s,id=%s" % (src.get("node") or "-", src.get("id") or "-")
         _out("  %-22s %-6s %-18s %s  sig[%s]%s"
@@ -908,7 +979,9 @@ def selftest():
                                          "node-radar-bm-a-20261102.json")}]}
         tri = triage_missing(
             tpay, td,
-            hist_fn=lambda r, p: "abc1234 add" if p.endswith("old.json") else "")
+            hist_fn=lambda r, p: "abc1234 add" if p.endswith("old.json") else "",
+            reach_fn=lambda r, h: {"reach": "HEAD", "refs": [],
+                                   "sha": "abc1234"})
         kinds = {i["id"]: i["class"] for i in tri}
         by_id = {i["id"]: i for i in tri}
         want("S25 从未入过库且无近名件 → NEVER-EXISTED",
@@ -917,8 +990,8 @@ def selftest():
              kinds.get("B-DRIFT") == "NAME-DRIFT"
              and any("model-radar-bm-a-20261104.json" in i["variants"]
                      for i in tri if i["id"] == "B-DRIFT"))
-        want("S27 曾有提交 → IN-HISTORY-REMOVED（可找回）",
-             kinds.get("C-HIST") == "IN-HISTORY-REMOVED")
+        want("S27 可从 HEAD 到达 → IN-HEAD-HISTORY-REMOVED（可找回）",
+             kinds.get("C-HIST") == "IN-HEAD-HISTORY-REMOVED")
         want("S28 只对 MISSING-LOCAL 定性，其余跳过项不入表",
              len(tri) == 5 and "D-REMOTE" not in kinds)
         e_cands = {c["name"]: c["confirm"]
@@ -937,6 +1010,31 @@ def selftest():
              f_cands.get("node-radar-bm-a-20261102-v2.json") == "CONFIRMED"
              and by_id["F-MATCH"]["actionable"]
              == ["node-radar-bm-a-20261102-v2.json"])
+
+        # ---- M186 可达性：历史里曾有 ≠ 主线曾有 ----
+        def tri_one(pid, fname, reach):
+            return triage_missing(
+                {"skipped": [{"id": pid, "node": "bm-a",
+                              "reason": "MISSING-LOCAL",
+                              "deliverable": os.path.join(
+                                  "cph4", "fleet", "queue-receipts", fname)}]},
+                td, hist_fn=lambda r, p: "abc1234 add",
+                reach_fn=lambda r, h: reach)[0]
+
+        off = tri_one("G-OFFBRANCH", "side.json",
+                      {"reach": "OFF-HEAD", "refs": ["backup/bm-a-20261110"],
+                       "sha": "abc1234"})
+        unk = tri_one("H-UNVERIFIED", "norepo.json",
+                      {"reach": "UNKNOWN", "refs": [], "sha": ""})
+        head = tri_one("I-HEADREMOVED", "mainline.json",
+                       {"reach": "HEAD", "refs": [], "sha": "abc1234"})
+        want("S39 历史里有但只在旁支 → OFF-MAINLINE 并带 ref 名",
+             off["class"] == "OFF-MAINLINE"
+             and off["reach"]["refs"] == ["backup/bm-a-20261110"])
+        want("S40 可达性判不了 → HISTORY-UNVERIFIED（不冒充主线删除/旁支）",
+             unk["class"] == "HISTORY-UNVERIFIED")
+        want("S41 同一路径可由 HEAD 到达 → IN-HEAD-HISTORY-REMOVED",
+             head["class"] == "IN-HEAD-HISTORY-REMOVED")
 
         # ---- T219 overlay 接线：收据缺 node/id 时由 STRONG 签名补齐 ----
         with open(os.path.join(tdir, "unsigned-20261102.json"), "w",
@@ -965,6 +1063,7 @@ def selftest():
         tri_o = triage_missing(
             tpay, td,
             hist_fn=lambda r, p: "abc1234 add" if p.endswith("old.json") else "",
+            reach_fn=lambda r, h: {"reach": "HEAD", "refs": [], "sha": "abc1234"},
             overlay=ovy)
         by_o = {i["deliverable"].split(os.sep)[-1]: i for i in tri_o}
         u = by_o.get("unsigned-20261102-out.json") or {}
@@ -983,7 +1082,8 @@ def selftest():
              and (w.get("sig_src") or {}).get("node") == "")
         tri_n = triage_missing(
             tpay, td,
-            hist_fn=lambda r, p: "abc1234 add" if p.endswith("old.json") else "")
+            hist_fn=lambda r, p: "abc1234 add" if p.endswith("old.json") else "",
+            reach_fn=lambda r, h: {"reach": "HEAD", "refs": [], "sha": "abc1234"})
         n0 = {i["deliverable"].split(os.sep)[-1]: i for i in tri_n}
         n_cands = {c["name"]: c for c in
                    (n0.get("unsigned-20261102-out.json") or {}).get("candidates") or []}

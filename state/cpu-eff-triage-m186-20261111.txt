@@ -1,0 +1,104 @@
+MISSING-TRIAGE overlay=receipt-sig-overlay-20261107.json entries=656 strong=656 weak=0
+MISSING-TRIAGE 21 件  分类=NAME-DRIFT:9 NEVER-EXISTED:4 OFF-MAINLINE:8  可改路径候选=1  靠 overlay 提级=0
+  NEVER-EXISTED          bm-a   ART-PUSH-BMA-20261 cph4/fleet/artifacts/bm-a/PUSHED.jsonl  sig[node=receipt,id=receipt]
+  NEVER-EXISTED          bm-a   BIZ-BIGGAME-SUBMIT cph4/fleet/reports/submit-pack-20261110/SUBMIT-PACK.md  sig[node=receipt,id=receipt]
+  NAME-DRIFT             bm-a   FREE-MEM-APPLY-bm- cph4/fleet/queue-receipts/FREE-MEM-APPLY-bm-c-20261107-receipt.txt  sig[node=receipt,id=receipt]
+    cand FREE-MEM-APPLY-bm-c-20261107-bm-a.json     confirm=CONFIRMED     base=CONFIRMED     node=bm-a  id=FREE-MEM-APPLY-bm- date=2026-11-07
+  NEVER-EXISTED          bm-a   MV-ANCHOR-BATCH3-2 cph4/fleet/mv-album-001-jay/anchors/POOL-0018-0019-anchor-matrix.json  sig[node=receipt,id=receipt]
+  OFF-MAINLINE           bm-a   MV-DIRECTOR-PACKET cph4/fleet/queue-receipts/review-packet-kn-20261109.md  sig[node=receipt,id=receipt]  hist=ec93ae272 job(MV-DIRECTOR-PACKET-20261109): artifact [via bm  reach=salvage-auto-20261106,origin/bm-a/pending-20261109-1800,origin/bm-a/pending-20261109-2107,origin/bm-a/pending-20261110-0000
+    cand review-packet-kn-20261101.md               confirm=DATE-DIFF     base=DATE-DIFF     node=-     id=-                  date=2026-11-01
+    cand review-packet-kn-20261102.md               confirm=DATE-DIFF     base=DATE-DIFF     node=-     id=-                  date=2026-11-02
+    cand review-packet-kn-20261104.md               confirm=DATE-DIFF     base=DATE-DIFF     node=-     id=-                  date=2026-11-04
+    cand review-packet-kn-20261105.md               confirm=DATE-DIFF     base=DATE-DIFF     node=-     id=-                  date=2026-11-05
+    cand review-packet-kn-20261108.md               confirm=DATE-DIFF     base=DATE-DIFF     node=-     id=-                  date=2026-11-08
+  NEVER-EXISTED          bm-a   R-ART-PUSH-B-20261 cph4/fleet/artifacts/bm-b/MANIFEST.jsonl  sig[node=receipt,id=receipt]
+  NAME-DRIFT             bm-a   R-MODEL-RADAR-BMA- cph4/fleet/queue-receipts/model-radar-bm-a-20261103.json  sig[node=receipt,id=receipt]
+    cand model-radar-bm-a-20261104.json             confirm=DATE-DIFF     base=DATE-DIFF     node=bm-a  id=-                  date=2026-11-04
+    cand model-radar-bm-a-20261105.json             confirm=DATE-DIFF     base=DATE-DIFF     node=bm-a  id=-                  date=2026-11-05
+    cand model-radar-bm-a-20261106.json             confirm=DATE-DIFF     base=DATE-DIFF     node=bm-a  id=-                  date=2026-11-06
+    cand model-radar-bm-a-20261107.json             confirm=DATE-DIFF     base=DATE-DIFF     node=bm-a  id=-                  date=2026-11-07
+    cand model-radar-bm-a-20261110.json             confirm=DATE-DIFF     base=DATE-DIFF     node=bm-a  id=-                  date=2026-11-10
+  NAME-DRIFT             bm-a   R-MODEL-RADAR-BMC- cph4/fleet/queue-receipts/model-radar-bm-c-20261103.json  sig[node=receipt,id=receipt]
+    cand model-radar-bm-c-20261104.json             confirm=NODE-CONFLICT base=NODE-CONFLICT node=bm-c  id=-                  date=2026-11-04
+    cand model-radar-bm-c-20261105.json             confirm=NODE-CONFLICT base=NODE-CONFLICT node=bm-c  id=-                  date=2026-11-05
+    cand model-radar-bm-c-20261110.json             confirm=NODE-CONFLICT base=NODE-CONFLICT node=bm-c  id=-                  date=2026-11-10
+    cand model-radar-bm-c-20261111.json             confirm=NODE-CONFLICT base=NODE-CONFLICT node=bm-c  id=-                  date=2026-11-11
+    cand model-radar-bm-a-20261104.json             confirm=DATE-DIFF     base=DATE-DIFF     node=bm-a  id=-                  date=2026-11-04
+  NAME-DRIFT             bm-a   R-MODEL-RADAR-BMM- cph4/fleet/queue-receipts/model-radar-bm-m-20261103.json  sig[node=receipt,id=receipt]
+    cand model-radar-bm-m-20261104.json             confirm=NODE-CONFLICT base=NODE-CONFLICT node=bm-m  id=-                  date=2026-11-04
+    cand model-radar-bm-m-20261105.json             confirm=NODE-CONFLICT base=NODE-CONFLICT node=bm-m  id=-                  date=2026-11-05
+    cand model-radar-bm-m-20261109.json             confirm=NODE-CONFLICT base=NODE-CONFLICT node=bm-m  id=-                  date=2026-11-09
+    cand model-radar-bm-m-20261110.json             confirm=NODE-CONFLICT base=NODE-CONFLICT node=bm-m  id=-                  date=2026-11-10
+    cand model-radar-bm-a-20261104.json             confirm=DATE-DIFF     base=DATE-DIFF     node=bm-a  id=-                  date=2026-11-04
+  OFF-MAINLINE           bm-a   R-PLAN-BIGCOMPUTE- cph4/fleet/queue-receipts/triage-bigcompute-20261110.md  sig[node=receipt,id=receipt]  hist=93094d9ca job(R-NEXT-BIGGAME-SUBMIT-P-20261110): artifact [v  reach=origin/bm-a/pending-20261110-0000
+    cand triage-bigcompute-20261031.md              confirm=DATE-DIFF     base=DATE-DIFF     node=-     id=-                  date=2026-10-31
+    cand triage-bigcompute-20261101.md              confirm=DATE-DIFF     base=DATE-DIFF     node=-     id=-                  date=2026-11-01
+    cand triage-bigcompute-20261102.md              confirm=DATE-DIFF     base=DATE-DIFF     node=-     id=-                  date=2026-11-02
+    cand triage-bigcompute-20261103.md              confirm=DATE-DIFF     base=DATE-DIFF     node=-     id=-                  date=2026-11-03
+    cand triage-bigcompute-20261104.md              confirm=DATE-DIFF     base=DATE-DIFF     node=-     id=-                  date=2026-11-04
+  OFF-MAINLINE           bm-a   R-PLAN-BIGGAME-202 cph4/fleet/queue-receipts/triage-biggame-20261109.md  sig[node=receipt,id=receipt]  hist=daa08cbad job(R-PLAN-BIGGAME-20261109): artifact [via bm-a]  reach=salvage-auto-20261106,origin/bm-a/pending-20261109-1800,origin/bm-a/pending-20261109-2107,origin/bm-a/pending-20261110-0000
+    cand triage-biggame-20261031.md                 confirm=DATE-DIFF     base=DATE-DIFF     node=-     id=-                  date=2026-10-31
+    cand triage-biggame-20261101.md                 confirm=DATE-DIFF     base=DATE-DIFF     node=-     id=-                  date=2026-11-01
+    cand triage-biggame-20261102.md                 confirm=DATE-DIFF     base=DATE-DIFF     node=-     id=-                  date=2026-11-02
+    cand triage-biggame-20261103.md                 confirm=DATE-DIFF     base=DATE-DIFF     node=-     id=-                  date=2026-11-03
+    cand triage-biggame-20261104.md                 confirm=DATE-DIFF     base=DATE-DIFF     node=-     id=-                  date=2026-11-04
+  OFF-MAINLINE           bm-a   R-PLAN-BIGLIFE-202 cph4/fleet/queue-receipts/triage-biglife-20261110.md  sig[node=receipt,id=receipt]  hist=93d09d515 job(R-MODEL-RADAR-BMA-20261110): artifact [via bm-  reach=origin/bm-a/pending-20261110-0000
+    cand triage-biglife-20261031.md                 confirm=DATE-DIFF     base=DATE-DIFF     node=-     id=-                  date=2026-10-31
+    cand triage-biglife-20261101.md                 confirm=DATE-DIFF     base=DATE-DIFF     node=-     id=-                  date=2026-11-01
+    cand triage-biglife-20261102.md                 confirm=DATE-DIFF     base=DATE-DIFF     node=-     id=-                  date=2026-11-02
+    cand triage-biglife-20261103.md                 confirm=DATE-DIFF     base=DATE-DIFF     node=-     id=-                  date=2026-11-03
+    cand triage-biglife-20261104.md                 confirm=DATE-DIFF     base=DATE-DIFF     node=-     id=-                  date=2026-11-04
+  OFF-MAINLINE           bm-a   R-PLAN-BIGSTREAMMV cph4/fleet/queue-receipts/triage-bigstream-mv-20261109.md  sig[node=receipt,id=receipt]  hist=6c024f437 job(R-PLAN-BIGSTREAMMV-20261109): artifact [via bm  reach=salvage-auto-20261106,origin/bm-a/pending-20261109-1800,origin/bm-a/pending-20261109-2107,origin/bm-a/pending-20261110-0000
+    cand triage-bigstream-mv-20261031.md            confirm=DATE-DIFF     base=DATE-DIFF     node=-     id=-                  date=2026-10-31
+    cand triage-bigstream-mv-20261101.md            confirm=DATE-DIFF     base=DATE-DIFF     node=-     id=-                  date=2026-11-01
+    cand triage-bigstream-mv-20261102.md            confirm=DATE-DIFF     base=DATE-DIFF     node=-     id=-                  date=2026-11-02
+    cand triage-bigstream-mv-20261103.md            confirm=DATE-DIFF     base=DATE-DIFF     node=-     id=-                  date=2026-11-03
+    cand triage-bigstream-mv-20261104.md            confirm=DATE-DIFF     base=DATE-DIFF     node=-     id=-                  date=2026-11-04
+  OFF-MAINLINE           bm-a   R-TRIAGE-BIGGAME-B cph4/fleet/queue-receipts/triage-biggame-bm-a-20261109.md  sig[node=receipt,id=receipt]  hist=5225ec807 job(R-TRIAGE-BIGGAME-BMA-20261109): artifact [via   reach=origin/bm-a/pending-20261109-2107,origin/bm-a/pending-20261110-0000
+    cand triage-biggame-bm-a-20261108.md            confirm=DATE-DIFF     base=DATE-DIFF     node=-     id=-                  date=2026-11-08
+    cand triage-biggame-bm-c-20261110.md            confirm=DATE-DIFF     base=DATE-DIFF     node=-     id=-                  date=2026-11-10
+    cand triage-biggame-bm-c-20261111.md            confirm=DATE-DIFF     base=DATE-DIFF     node=-     id=-                  date=2026-11-11
+    cand triage-biggame-bm-m-20261109.md            confirm=PARTIAL       base=PARTIAL       node=-     id=-                  date=2026-11-09
+    cand triage-biggame-bm-m-20261110.md            confirm=DATE-DIFF     base=DATE-DIFF     node=-     id=-                  date=2026-11-10
+  NAME-DRIFT             bm-a   R-TRIAGE-BIGGAME-B cph4/fleet/queue-receipts/triage-biggame-bm-a-20261110.md  sig[node=receipt,id=receipt]
+    cand triage-biggame-bm-a-20261108.md            confirm=DATE-DIFF     base=DATE-DIFF     node=-     id=-                  date=2026-11-08
+    cand triage-biggame-bm-c-20261110.md            confirm=PARTIAL       base=PARTIAL       node=-     id=-                  date=2026-11-10
+    cand triage-biggame-bm-c-20261111.md            confirm=DATE-DIFF     base=DATE-DIFF     node=-     id=-                  date=2026-11-11
+    cand triage-biggame-bm-m-20261109.md            confirm=DATE-DIFF     base=DATE-DIFF     node=-     id=-                  date=2026-11-09
+    cand triage-biggame-bm-m-20261110.md            confirm=PARTIAL       base=PARTIAL       node=-     id=-                  date=2026-11-10
+  OFF-MAINLINE           bm-a   R-TRIAGE-BIGSTREAM cph4/fleet/queue-receipts/triage-bigstream-mv-bm-a-20261109.md  sig[node=receipt,id=receipt]  hist=1cebf125f job(R-TRIAGE-BIGSTREAMMV-BMA-20261109): artifact [  reach=salvage-auto-20261106,origin/bm-a/pending-20261109-1800,origin/bm-a/pending-20261109-2107,origin/bm-a/pending-20261110-0000
+    cand triage-bigstream-mv-bm-c-20261110.md       confirm=DATE-DIFF     base=DATE-DIFF     node=-     id=-                  date=2026-11-10
+    cand triage-bigstream-mv-bm-c-20261111.md       confirm=DATE-DIFF     base=DATE-DIFF     node=-     id=-                  date=2026-11-11
+    cand triage-bigstream-mv-bm-m-20261110.md       confirm=DATE-DIFF     base=DATE-DIFF     node=-     id=-                  date=2026-11-10
+    cand triage-bigstream-mv-20261031.md            confirm=DATE-DIFF     base=DATE-DIFF     node=-     id=-                  date=2026-10-31
+    cand triage-bigstream-mv-20261101.md            confirm=DATE-DIFF     base=DATE-DIFF     node=-     id=-                  date=2026-11-01
+  NAME-DRIFT             bm-a   R-TRIAGE-BIGSTREAM cph4/fleet/queue-receipts/triage-bigstream-mv-bm-a-20261110.md  sig[node=receipt,id=receipt]
+    cand triage-bigstream-mv-bm-c-20261110.md       confirm=PARTIAL       base=PARTIAL       node=-     id=-                  date=2026-11-10
+    cand triage-bigstream-mv-bm-c-20261111.md       confirm=DATE-DIFF     base=DATE-DIFF     node=-     id=-                  date=2026-11-11
+    cand triage-bigstream-mv-bm-m-20261110.md       confirm=PARTIAL       base=PARTIAL       node=-     id=-                  date=2026-11-10
+    cand triage-bigstream-mv-20261031.md            confirm=DATE-DIFF     base=DATE-DIFF     node=-     id=-                  date=2026-10-31
+    cand triage-bigstream-mv-20261101.md            confirm=DATE-DIFF     base=DATE-DIFF     node=-     id=-                  date=2026-11-01
+  OFF-MAINLINE           bm-a   R-TRIAGE-FLUXVERSE cph4/fleet/queue-receipts/triage-fluxverse-bm-a-20261109.md  sig[node=receipt,id=receipt]  hist=2ad9b652e job(R-TRIAGE-FLUXVERSE-BMA-20261109): artifact [vi  reach=origin/bm-a/pending-20261109-2107,origin/bm-a/pending-20261110-0000
+    cand triage-fluxverse-bm-a-20261108.md          confirm=DATE-DIFF     base=DATE-DIFF     node=-     id=-                  date=2026-11-08
+    cand triage-fluxverse-bm-c-20261110.md          confirm=DATE-DIFF     base=DATE-DIFF     node=-     id=-                  date=2026-11-10
+    cand triage-fluxverse-bm-m-20261110.md          confirm=DATE-DIFF     base=DATE-DIFF     node=-     id=-                  date=2026-11-10
+    cand triage-fluxverse-20261031.md               confirm=DATE-DIFF     base=DATE-DIFF     node=-     id=-                  date=2026-10-31
+    cand triage-fluxverse-20261101.md               confirm=DATE-DIFF     base=DATE-DIFF     node=-     id=-                  date=2026-11-01
+  NAME-DRIFT             bm-a   R-TRIAGE-FLUXVERSE cph4/fleet/queue-receipts/triage-fluxverse-bm-a-20261110.md  sig[node=receipt,id=receipt]
+    cand triage-fluxverse-bm-a-20261108.md          confirm=DATE-DIFF     base=DATE-DIFF     node=-     id=-                  date=2026-11-08
+    cand triage-fluxverse-bm-c-20261110.md          confirm=PARTIAL       base=PARTIAL       node=-     id=-                  date=2026-11-10
+    cand triage-fluxverse-bm-m-20261110.md          confirm=PARTIAL       base=PARTIAL       node=-     id=-                  date=2026-11-10
+    cand triage-fluxverse-20261031.md               confirm=DATE-DIFF     base=DATE-DIFF     node=-     id=-                  date=2026-10-31
+    cand triage-fluxverse-20261101.md               confirm=DATE-DIFF     base=DATE-DIFF     node=-     id=-                  date=2026-11-01
+  NAME-DRIFT             bm-a   biggame-playable-2 cph4/fleet/queue-receipts/game-playable-2026-11-03.md  sig[node=receipt,id=receipt]
+    cand game-pack-scan-2026-11-03.json             confirm=PARTIAL       base=PARTIAL       node=-     id=-                  date=2026-11-03
+    cand game-packs-2026-11-03-r2.json              confirm=PARTIAL       base=PARTIAL       node=-     id=-                  date=2026-11-03
+    cand game-packs-2026-11-03.json                 confirm=PARTIAL       base=PARTIAL       node=-     id=-                  date=2026-11-03
+    cand game-packs-2026-11-04.json                 confirm=DATE-DIFF     base=DATE-DIFF     node=-     id=-                  date=2026-11-04
+    cand game-packs-2026-11-05.json                 confirm=DATE-DIFF     base=DATE-DIFF     node=-     id=-                  date=2026-11-05
+  NAME-DRIFT             bm-a   bigmoney-quote-202 cph4/fleet/queue-receipts/quant-quote-2026-11-07.md  sig[node=receipt,id=receipt]
+    cand QUANT-BACKTEST-PRODUCE-20261108-bm-a.json  confirm=ID-DIFF       base=ID-DIFF       node=bm-a  id=QUANT-BACKTEST-PRO date=2026-11-08
+    cand quant-conclusion-2026-11-07.json           confirm=PARTIAL       base=PARTIAL       node=-     id=-                  date=2026-11-07
+    cand quant-conclusion-2026-11-07.md             confirm=PARTIAL       base=PARTIAL       node=-     id=-                  date=2026-11-07
+    cand quant-signal-2026-11-03-blocked-20261103.csv confirm=DATE-DIFF     base=DATE-DIFF     node=-     id=-                  date=2026-11-03
+    cand quant-signal-2026-11-03-blocked-20261104.csv confirm=DATE-DIFF     base=DATE-DIFF     node=-     id=-                  date=2026-11-03

@@ -1,0 +1,65 @@
+D-20261111-02 复核清单（@BigCompute 复核腿·取回方=@HQ 工具席 bm-a）
+生成=2026-11-11 00:3x 令牌轮  源=Tools/cpu_effective_hours.py --days 7 --triage-missing
+口径=可达性由 git merge-base --is-ancestor + for-each-ref --contains 逐条实测；本司只读集团仓，不取回不 cherry-pick
+
+总数 missing_local=21  OFF-MAINLINE=8  IN-HEAD-HISTORY-REMOVED=0
+
+[一] 支线可到达的路径（取回候选·逐条带 ref）
+  MV-DIRECTOR-PACKET-20261109        cph4/fleet/queue-receipts/review-packet-kn-20261109.md       refs=salvage-auto-20261106,origin/bm-a/pending-20261109-1800,origin/bm-a/pending-20261109-2107,origin/bm-a/pending-20261110-0000
+  R-PLAN-BIGCOMPUTE-20261110         cph4/fleet/queue-receipts/triage-bigcompute-20261110.md      refs=origin/bm-a/pending-20261110-0000
+  R-PLAN-BIGGAME-20261109            cph4/fleet/queue-receipts/triage-biggame-20261109.md         refs=salvage-auto-20261106,origin/bm-a/pending-20261109-1800,origin/bm-a/pending-20261109-2107,origin/bm-a/pending-20261110-0000
+  R-PLAN-BIGLIFE-20261110            cph4/fleet/queue-receipts/triage-biglife-20261110.md         refs=origin/bm-a/pending-20261110-0000
+  R-PLAN-BIGSTREAMMV-20261109        cph4/fleet/queue-receipts/triage-bigstream-mv-20261109.md    refs=salvage-auto-20261106,origin/bm-a/pending-20261109-1800,origin/bm-a/pending-20261109-2107,origin/bm-a/pending-20261110-0000
+  R-TRIAGE-BIGGAME-BMA-20261109      cph4/fleet/queue-receipts/triage-biggame-bm-a-20261109.md    refs=origin/bm-a/pending-20261109-2107,origin/bm-a/pending-20261110-0000
+  R-TRIAGE-BIGSTREAMMV-BMA-20261109  cph4/fleet/queue-receipts/triage-bigstream-mv-bm-a-20261109.md refs=salvage-auto-20261106,origin/bm-a/pending-20261109-1800,origin/bm-a/pending-20261109-2107,origin/bm-a/pending-20261110-0000
+  R-TRIAGE-FLUXVERSE-BMA-20261109    cph4/fleet/queue-receipts/triage-fluxverse-bm-a-20261109.md  refs=origin/bm-a/pending-20261109-2107,origin/bm-a/pending-20261110-0000
+
+[二] 主线可达（真正「主线删除」）
+  none
+
+[三] 其余非支线类（不属本次取回面）
+  ART-PUSH-BMA-20261104              NEVER-EXISTED      cph4/fleet/artifacts/bm-a/PUSHED.jsonl
+  BIZ-BIGGAME-SUBMITPACK-20261110    NEVER-EXISTED      cph4/fleet/reports/submit-pack-20261110/SUBMIT-PACK.md
+  FREE-MEM-APPLY-bm-c-20261107       NAME-DRIFT         cph4/fleet/queue-receipts/FREE-MEM-APPLY-bm-c-20261107-receipt.txt
+  MV-ANCHOR-BATCH3-20261106          NEVER-EXISTED      cph4/fleet/mv-album-001-jay/anchors/POOL-0018-0019-anchor-matrix.json
+  R-ART-PUSH-B-20261102              NEVER-EXISTED      cph4/fleet/artifacts/bm-b/MANIFEST.jsonl
+  R-MODEL-RADAR-BMA-20261103         NAME-DRIFT         cph4/fleet/queue-receipts/model-radar-bm-a-20261103.json
+  R-MODEL-RADAR-BMC-20261103         NAME-DRIFT         cph4/fleet/queue-receipts/model-radar-bm-c-20261103.json
+  R-MODEL-RADAR-BMM-20261103         NAME-DRIFT         cph4/fleet/queue-receipts/model-radar-bm-m-20261103.json
+  R-TRIAGE-BIGGAME-BMA-20261110      NAME-DRIFT         cph4/fleet/queue-receipts/triage-biggame-bm-a-20261110.md
+  R-TRIAGE-BIGSTREAMMV-BMA-20261110  NAME-DRIFT         cph4/fleet/queue-receipts/triage-bigstream-mv-bm-a-20261110.md
+  R-TRIAGE-FLUXVERSE-BMA-20261110    NAME-DRIFT         cph4/fleet/queue-receipts/triage-fluxverse-bm-a-20261110.md
+  biggame-playable-2026-11-03        NAME-DRIFT         cph4/fleet/queue-receipts/game-playable-2026-11-03.md
+  bigmoney-quote-2026-11-07          NAME-DRIFT         cph4/fleet/queue-receipts/quant-quote-2026-11-07.md
+
+[四] 复核方法（18:00 用）
+  1) 对每条路径 git -C <group> log --all --oneline -1 -- <path> 取源 blob 所在提交
+  2) 取回后 git -C <group> ls-tree origin/main -- <path> 逐件读 blob 号
+  3) 两侧 blob 号逐件比对；不一致即不通过，禁按「看起来一样」放行
+  4) 本司口径：IN-HEAD=0 说明本批不存在「主线曾删除」件，取回后仍须在 origin/main 可读才算销账
+
+[五] 取回源实测（本轮复核腿第一件·逐件 cat-file -e）
+  被测件=本轮 OFF-MAINLINE 8 件（口径与 D-02 的 11 件不完全同集，见六）
+    backup/bm-a-20261110                   have=0/8
+        missing=MV-DIRECTOR-PACKET-20261109,R-PLAN-BIGCOMPUTE-20261110,R-PLAN-BIGGAME-20261109,R-PLAN-BIGLIFE-20261110,R-PLAN-BIGSTREAMMV-20261109,R-TRIAGE-BIGGAME-BMA-20261109,R-TRIAGE-BIGSTREAMMV-BMA-20261109,R-TRIAGE-FLUXVERSE-BMA-20261109
+    origin/bm-a/pending-20261110-0000      have=8/8
+    origin/bm-a/pending-20261109-2107      have=6/8
+        missing=R-PLAN-BIGCOMPUTE-20261110,R-PLAN-BIGLIFE-20261110
+    origin/bm-a/pending-20261109-1800      have=6/8
+        missing=R-PLAN-BIGCOMPUTE-20261110,R-PLAN-BIGLIFE-20261110
+    salvage-auto-20261106                  have=5/8
+        missing=R-PLAN-BIGCOMPUTE-20261110,R-PLAN-BIGLIFE-20261110,R-TRIAGE-FLUXVERSE-BMA-20261109
+
+  判读：D-02 指令的取回源 backup/bm-a-20261110 对本轮 8 件 **0/8 命中**；
+        8 件全在 origin/bm-a/pending-20261110-0000（8/8）。若 18:00 取回清单与本表
+        重叠，源须改用该远端 pending 支线，否则取回必然落空并被判「永久缺件」。
+
+[六] 与 D-20261111-02 的口径差（如实·不勉强对齐）
+  1) 件数：D-02 记 11 件（M184 手制四分类），本轮机判 OFF-MAINLINE=8 件、总 missing=21；
+     差因=窗口滚动（11-07 批件滚出/新件进入）+ 分类轴不同（M184 把「有近名件但签名不足」
+     单列为 NAME-SUSPECT，工时器把有近名件者归 NAME-DRIFT）。两表不可直接相减。
+  2) 支线：M184 整批记「全部落在 backup/bm-a-20261110」；本轮逐件 for-each-ref 得
+     salvage-auto-20261106 与 origin/bm-a/pending-20261109-1800/-2107/-20261110-0000
+     四条，且 backup 支线 0/8 命中 —— 整批归属需按件复核，禁按批推定。
+  3) IN-HEAD-HISTORY-REMOVED=0：本批不存在「主线曾删除」件，故「从主线历史找回」
+     这一动作对本批无对象。

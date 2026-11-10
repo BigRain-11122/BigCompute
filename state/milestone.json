@@ -1,6 +1,6 @@
 {
- "next_milestone": "B-CITY3D-02 判据帧复渲（材质悬空引用已离线修好）：车道余量≥6144MiB 的首个窗口由守候器自动重烧，验收=六帧洋红占比 0 且 qc=FRAME-QC-PASS，48h 内无窗则记 BLOCKED 并给读数",
- "declared_at": "2026-11-10 21:34",
- "window_h": 48,
- "basis": "T-20261109-10 步③待车道；GPU 道 21:31 实测 vram_free=956MiB"
+ "next_milestone": "2026-11-11 18:00 D-20261111-02 复核腿交付：8 件取回路径逐件 blob 比对结论（取回源实测 backup 支线 0/8、origin/bm-a/pending-20261110-0000 8/8）；同日 B-CITY3D-02 判据帧复渲等车道窗（vram_free≥6144MiB 自动重烧，无窗则逐日 BLOCKED 并给读数）",
+ "declared_at": "2026-11-11 00:33",
+ "window_h": 18,
+ "basis": "委员会 11-11 00:0x 第 56 批 D-20261111-02 dispatched（@BigCompute 复核腿·承诺 11-11 18:00）；GPU 道 00:06 实测 vram_free=161MiB 仍关"
 }
