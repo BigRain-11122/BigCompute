@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-11-11 00:52",
- "current_activity": "2026-11-11 00:43 轮：M189 done(归属字段读侧面·真数 0/2022 张回执带 owner·字段优先+src 可追·selftest 48/48) gpu:2026-11-05..11-11 n=1277 avg=54.0%% AT-OR-ABOVE-BENCH(R-C1 50%% gap line·sole call-out 30%% 维持) rolling30 n=6 avg=72.2%% busy… ｜ 两池：n/a（心跳 46 分钟未更新，超 45 分钟上限） ｜ 2026-11-11 00:5x 令牌轮：M186/M187/M189 三收口——缺失件定性拆可达性（IN-HEAD 0 / OFF-MAINLINE 8）、产物归属轴（missing_local 21→20，归属错轴 1 条移出）、归属改读回执字段（实测 0/2022 张声明，故仍标 owner_src=path）；工时器 selftest 48/48，冒烟 31/32（唯一红=no.22 真缺 20 条） [via BigCompute-OSLoop]",
- "latest_artifact": "state/cpu-eff-m189-20261111.json（mtime 2026-11-11 00:42） ｜ state/d02-reconcile-input-20261111.txt（D-02 复核清单+取回源实测：backup 0/8 vs origin pending 8/8）｜state/cpu-eff-m187-20261111.json 与 state/m189-owner-field-census-20261111.json（归属轴与字段面读数）…",
- "next_milestone": "2026-11-11 18:00 D-20261111-02 复核腿交付：8 件取回路径逐件 blob 比对结论（取回源实测 backup 支线 0/8、origin/bm-a/pending-20261110-0000 8/8）；同日 B-CITY3D-02 判据帧复渲等车道窗（vram_free≥6144MiB 自动重烧，无窗则逐日 BLOCKED 并给读数）（source=declared） ｜ 2026-11-11 18:00 D-20261111-02 复核腿交付：8 件取回路径逐件 blob 比对结论（取回源实测 backup 支线 0/8、origin/bm-a/pending-20261110-0000 8/8）；同日 B-CITY3D-02 判据帧复渲等车道窗（vram_free≥6144MiB 自动重烧，无窗则逐日 BLOCKED 并给读数）"
+ "updated_at": "2026-11-11 01:02",
+ "current_activity": "2026-11-11 00:43 轮：M189 done(归属字段读侧面·真数 0/2022 张回执带 owner·字段优先+src 可追·selftest 48/48) gpu:2026-11-05..11-11 n=1277 avg=54.0% AT-OR-ABOVE-BENCH(R-C1 50% gap line·sole call-out 30% 维持) rolling30 n=6 avg=72.2% busy… ｜ 两池：n/a（心跳 56 分钟未更新，超 45 分钟上限）",
+ "latest_artifact": "state/d02-reconcile-input-20261111.txt（mtime 2026-11-11 00:48） ｜ state/d02-reconcile-input-20261111.txt（D-02 复核清单·含源 blob 预登记：8 件在 origin/bm-a/pending-20261110-0000 的 blob 号已钉死，origin/main 现况 0/8 在位）…",
+ "next_milestone": "2026-11-11 18:00 D-20261111-02 复核腿交付：8 件取回路径逐件 blob 比对结论（取回源实测 backup 支线 0/8、origin/bm-a/pending-20261110-0000 8/8）；同日 B-CITY3D-02 判据帧复渲等车道窗（vram_free≥6144MiB 自动重烧，无窗则逐日 BLOCKED 并给读数）（source=declared）"
 }
