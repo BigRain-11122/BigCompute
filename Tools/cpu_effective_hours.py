@@ -125,6 +125,19 @@ def parse_ts(value):
     return None
 
 
+# 回执可能显式声明产物归属（M189）。实测 2026-11-11：2022 张回执 0 张带这些字段，
+# 所以归属目前只能从路径反推；字段一旦出现必须压过路径推断（声明＞约定）。
+OWNER_KEYS = ("owner", "product_node", "owner_node", "artifact_owner")
+
+
+def _declared_owner(doc):
+    for key in OWNER_KEYS:
+        val = str((doc or {}).get(key) or "").strip()
+        if val:
+            return val, key
+    return "", ""
+
+
 def normalize(doc):
     """两种 schema → 统一记录。返回 None 表示不是可核算回执。"""
     if not isinstance(doc, dict):
@@ -141,6 +154,7 @@ def normalize(doc):
 
     if has_deliverable is None:
         state = str(doc.get("state") or "").upper()
+        owner, owner_key = _declared_owner(doc)
         return {
             "schema": "llm",
             "id": str(doc.get("job") or ""),
@@ -151,6 +165,8 @@ def normalize(doc):
             "rc_ok": state in ("DONE", "OK", "PASS"),
             "rc": state,
             "declared_sha": declared_sha(doc),
+            "owner": owner,
+            "owner_key": owner_key,
         }
 
     rc = doc.get("rc")
@@ -169,6 +185,8 @@ def normalize(doc):
         "rc_ok": rc_ok,
         "rc": rc,
         "declared_sha": declared_sha(doc),
+        "owner": _declared_owner(doc)[0],
+        "owner_key": _declared_owner(doc)[1],
     }
 
 
@@ -257,6 +275,21 @@ def subject_nodes(rel, host=""):
                    if t != (host or "")})
 
 
+OWNER_KEYS = ("owner", "product_node", "owner_node", "artifact_owner")
+
+
+def owner_from_receipt(rec):
+    """回执自己声明的产物归属（M189 读侧字段面）。
+
+    实测 2026-11-11：2022 张回执里 **0 张**带 owner 字段——所以当前只能靠路径反推。
+    字段一旦出现就必须压过路径推断：声明是断言，路径只是约定。返回 (owner, src)。
+    """
+    val = str((rec or {}).get("owner") or "").strip()
+    if val:
+        return val, "field:%s" % ((rec or {}).get("owner_key") or "owner")
+    return "", ""
+
+
 def evaluate(records, root, host, days=None, node=None, now=None):
     now = now or datetime.now()
     cutoff = None
@@ -298,14 +331,19 @@ def evaluate(records, root, host, days=None, node=None, now=None):
         # M187：产物落在他机产物区（artifacts/bm-b/…）＝归属错轴，不是本机缺件。
         # 这个判定只认目录段（结构证据）；文件名里的 bm-x 是被作业对象，不作归属证据
         # ——把 model-radar-bm-c 当成「不归本机」会把「该在本机写却没写」洗成清白。
-        owner = owner_from_deliverable(rec["deliverable"])
+        owner, owner_src = owner_from_receipt(rec)
+        if not owner:
+            owner = owner_from_deliverable(rec["deliverable"])
+            owner_src = "path" if owner else ""
         subs = subject_nodes(rec["deliverable"], host)
         if subs:
             rec["subject_nodes"] = subs
         if owner and owner != host:
             rec["owner_node"] = owner
+            rec["owner_src"] = owner_src
             buckets["owner_elsewhere"] += 1
-            skipped.append((rec, "OWNER-ELSEWHERE owner=%s" % owner))
+            skipped.append((rec, "OWNER-ELSEWHERE owner=%s src=%s"
+                            % (owner, owner_src or "?")))
             continue
 
         path = local_path(root, rec["deliverable"])
@@ -437,6 +475,7 @@ def evaluate(records, root, host, days=None, node=None, now=None):
         "skipped": [{"id": r["id"], "node": r["node"], "receipt": r.get("receipt", ""),
                      "reason": why, "deliverable": r["deliverable"],
                      "owner": r.get("owner_node") or "",
+                     "owner_src": r.get("owner_src") or "",
                      "subject_nodes": r.get("subject_nodes") or []}
                     for r, why in skipped],
     }
@@ -814,10 +853,12 @@ def _write(path, obj):
         json.dump(obj, fh, ensure_ascii=False)
 
 
-def _lane(rid, node, seconds, deliverable, ts, rc=0):
-    return {"id": rid, "node": node, "rc": rc, "seconds": seconds,
-            "cmd": "python x.py", "deliverable": deliverable,
-            "deliverable_exists": True, "ts": ts}
+def _lane(rid, node, seconds, deliverable, ts, rc=0, **extra):
+    rec = {"id": rid, "node": node, "rc": rc, "seconds": seconds,
+           "cmd": "python x.py", "deliverable": deliverable,
+           "deliverable_exists": True, "ts": ts}
+    rec.update(extra)
+    return rec
 
 
 def selftest():
@@ -1024,6 +1065,20 @@ def selftest():
              po["buckets"]["owner_elsewhere"] == 1
              and po["buckets"]["missing_local"] == 0
              and po["verdict"] == "ATTENTION")
+        want("S47 路径无节点段时按回执字段判归属（owner_src=field）",
+             oslot["O-OTHER"]["owner_src"] == "path"
+             and evaluate([normalize(_lane("O-FIELD", "bm-a", 60, "out/none.json",
+                                           fresh, owner="bm-b"))],
+                          oroot, "bm-a", days=1,
+                          now=now)["skipped"][0]["owner_src"] == "field:owner")
+        fld = evaluate([normalize(_lane("O-FIELD-OWN", "bm-a", 60,
+                                        "cph4/fleet/artifacts/bm-b/x.json", fresh,
+                                        owner="bm-a"))],
+                       oroot, "bm-a", days=1, now=now)
+        fslot = {s["id"]: s for s in fld["skipped"]}
+        want("S48 回执声明 owner=本机时压过路径推断（不判 OWNER-ELSEWHERE）",
+             fld["buckets"]["owner_elsewhere"] == 0
+             and fslot["O-FIELD-OWN"]["reason"] == "MISSING-LOCAL")
 
         td = os.path.join(tmp, "triage_root")
         tdir = os.path.join(td, "cph4", "fleet", "queue-receipts")
