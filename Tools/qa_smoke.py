@@ -2562,36 +2562,67 @@ RECEIPT_LAW_WINDOW_DAYS = 7
 
 
 def receipt_product_judge(payload):
-    """Probe no.22 verdict (M96 / BC-P-166): a receipt must trace to a file.
+    """Probe no.22 verdict (M96 / BC-P-166 / M191): a receipt must trace to a file.
 
     MISSING-LOCAL (the receipt claims a local product that is not on disk) and
     COPY-AS-PRODUCT (the same bytes counted as two products) are red -- those
     hours cannot be verified, so they must not read as delivered work. A
     receipt with no deliverable at all is printed but not red: it is visible
     evidence of a non-work receipt, not a claim about a product that lied.
+
+    M191：MISSING-LOCAL 里混着两种事实——回执自己写了 outcome=FAIL（已申报的
+    失败，处置是重排或免计数）与「以为写成了却找不到」（真供给缺口）。两者同权
+    判红会让探针常红、也掩盖真缺件，故拆两数：红只给非自报失败的那一档；自报
+    失败仍逐条点名。分诊口径与 cpu_effective_hours.self_declared_failure 单源。
     """
     if not isinstance(payload, dict) or "buckets" not in payload:
         return False, "verdict=UNVERIFIED no summary"
+    if HERE not in sys.path:
+        sys.path.insert(0, HERE)
+    try:
+        import cpu_effective_hours as ceh
+    except Exception as e:  # noqa: BLE001 - 判据单源不可用即不许判绿
+        return False, "verdict=UNVERIFIED classifier unavailable: %r" % e
     b = payload["buckets"]
     t = payload.get("totals") or {}
-    head = ("verdict=%s counted=%s net_h=%s missing_local=%d copy=%d "
-            "owner_elsewhere=%d no_deliverable=%d"
+    miss_items = [it for it in payload.get("skipped") or []
+                  if it.get("reason") == "MISSING-LOCAL"]
+    selffail_items = [it for it in miss_items
+                      if ceh.self_declared_failure(it)]
+    real_items = [it for it in miss_items
+                  if not ceh.self_declared_failure(it)]
+    bucket_missing = int(b.get("missing_local") or 0)
+    # 明细少于桶数＝有点名的缺口没被逐条列出，余量并入真缺件（禁把无名口洗白）
+    unnamed_missing = max(0, bucket_missing - len(miss_items))
+    real_n = len(real_items) + unnamed_missing
+    selffail_n = len(selffail_items)
+    sf = payload.get("self_fail") or {}
+    head = ("verdict=%s counted=%s net_h=%s missing_local=%d missing_real=%d "
+            "self_fail=%d self_fail_all=%s copy=%d owner_elsewhere=%d "
+            "no_deliverable=%d"
             % (payload.get("verdict", "?"), t.get("counted", 0),
-               t.get("net_hours", 0), b.get("missing_local", 0),
-               b.get("copy", 0), b.get("owner_elsewhere", 0),
-               b.get("no_deliverable", 0)))
+               t.get("net_hours", 0), bucket_missing, real_n,
+               selffail_n, sf.get("total", "-"), b.get("copy", 0),
+               b.get("owner_elsewhere", 0), b.get("no_deliverable", 0)))
     hits = []
     for item in payload.get("copies") or []:
         hits.append("copy:%s/%s<-%s" % (item.get("node"), item.get("id"),
                                         item.get("copy_of")))
+    for item in real_items:
+        hits.append("missing:%s/%s" % (item.get("node"), item.get("id")))
+    for item in selffail_items:
+        hits.append("selffail:%s/%s" % (item.get("node"), item.get("id")))
     for item in payload.get("skipped") or []:
-        if item.get("reason") == "MISSING-LOCAL":
-            hits.append("missing:%s/%s" % (item.get("node"), item.get("id")))
-        elif str(item.get("reason") or "").startswith("OWNER-ELSEWHERE"):
+        if str(item.get("reason") or "").startswith("OWNER-ELSEWHERE"):
             # M187：产物在他机产物区＝归属错轴，不是本机缺件；仍须点名，禁静默吞掉
             hits.append("owner:%s/%s" % (item.get("node"), item.get("id")))
-    bad = bool(b.get("missing_local") or b.get("copy"))
-    return (not bad), head + ((" " + " ".join(hits[:6])) if hits else "")
+    bad = bool(real_n or b.get("copy"))
+    shown = hits[:8]
+    if len(hits) > len(shown):
+        # 点名被截断时明写余数：否则读数说 missing_real=10 而名字只有几个，
+        # 读者无法判断「没列出来的」是漏报还是没点名（M191 同族）。
+        shown.append("(+%d more)" % (len(hits) - len(shown)))
+    return (not bad), head + ((" " + " ".join(shown)) if shown else "")
 
 
 def probe_receipt_product_law(root=None, days=RECEIPT_LAW_WINDOW_DAYS):
@@ -2648,8 +2679,9 @@ def selftest_receipt_product_law():
                 skipped=[{"id": "Q-1", "node": "bm-a",
                           "reason": "MISSING-LOCAL", "deliverable": "x.txt"}])
     ok, det = receipt_product_judge(miss)
-    check("S2 MISSING-LOCAL -> FAIL and named",
-          (not ok) and "missing_local=1" in det and "missing:bm-a/Q-1" in det)
+    check("S2 MISSING-LOCAL -> FAIL and named (negative control: real gap stays red)",
+          (not ok) and "missing_local=1" in det and "missing_real=1" in det
+          and "missing:bm-a/Q-1" in det)
 
     copy = base({"copy": 1},
                 copies=[{"id": "Q-2", "node": "bm-a", "copy_of": "Q-1",
@@ -2666,6 +2698,50 @@ def selftest_receipt_product_law():
     ok, det = receipt_product_judge(owner)
     check("S5 OWNER-ELSEWHERE named but not red (wrong machine, not absence)",
           ok and "owner_elsewhere=1" in det and "owner:bm-a/Q-3" in det)
+
+    selffail = base({"missing_local": 2},
+                    skipped=[{"id": "Q-4", "node": "bm-a",
+                              "reason": "MISSING-LOCAL", "deliverable": "a.bin",
+                              "outcome": "FAIL", "error_class": "E-ARTIFACT",
+                              "declared_missing": True},
+                             {"id": "Q-5", "node": "bm-a",
+                              "reason": "MISSING-LOCAL", "deliverable": "b.bin",
+                              "outcome": "OK", "error_class": "",
+                              "declared_missing": True}])
+    ok, det = receipt_product_judge(selffail)
+    check("S6 self-declared failures -> PASS, both named, missing_real=0",
+          ok and "missing_real=0" in det and "self_fail=2" in det
+          and "selffail:bm-a/Q-4" in det and "selffail:bm-a/Q-5" in det)
+
+    mixed = base({"missing_local": 3},
+                 skipped=[{"id": "Q-6", "node": "bm-a",
+                           "reason": "MISSING-LOCAL", "deliverable": "c.bin"},
+                          {"id": "Q-4", "node": "bm-a",
+                           "reason": "MISSING-LOCAL", "deliverable": "a.bin",
+                           "outcome": "FAIL"},
+                          {"id": "Q-5", "node": "bm-a",
+                           "reason": "MISSING-LOCAL", "deliverable": "b.bin",
+                           "declared_missing": True}])
+    ok, det = receipt_product_judge(mixed)
+    check("S7 mixed -> FAIL on the real one only, both kinds named",
+          (not ok) and "missing_real=1" in det and "self_fail=2" in det
+          and "missing:bm-a/Q-6" in det and "selffail:bm-a/Q-4" in det)
+
+    gap = base({"missing_local": 2},
+               skipped=[{"id": "Q-4", "node": "bm-a",
+                         "reason": "MISSING-LOCAL", "deliverable": "a.bin",
+                         "outcome": "FAIL"}])
+    ok, det = receipt_product_judge(gap)
+    check("S8 bucket larger than detail -> remaining gap still counts red",
+          (not ok) and "missing_real=1" in det)
+
+    many = base({"missing_local": 12},
+                skipped=[{"id": "Q-%d" % i, "node": "bm-a",
+                          "reason": "MISSING-LOCAL",
+                          "deliverable": "d%d.bin" % i} for i in range(12)])
+    ok, det = receipt_product_judge(many)
+    check("S9 truncated naming states the remainder, counts still agree",
+          (not ok) and "missing_real=12" in det and "(+4 more)" in det)
 
     ok, det = receipt_product_judge(None)
     check("S4 no summary -> FAIL/UNVERIFIED", (not ok) and "UNVERIFIED" in det)

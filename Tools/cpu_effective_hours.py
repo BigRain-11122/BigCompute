@@ -196,6 +196,26 @@ def normalize(doc):
     }
 
 
+SELF_FAIL_OK_OUTCOMES = ("", "OK", "PASS", "DONE")
+
+
+def self_declared_failure(item):
+    """回执自报失败的三要素（M190/M191 单源判据）：与 rc 无关。
+
+    rc=0 只说明命令跑完；outcome=FAIL / error_class / deliverable_exists=false
+    说的是产物没写出来。分诊（triage_missing）与 QA 探针（qa_smoke no.22）都
+    读这里，避免同一规则两处手写后漂移。
+    """
+    signals = []
+    if str(item.get("outcome") or "").upper() not in SELF_FAIL_OK_OUTCOMES:
+        signals.append("outcome=%s" % item.get("outcome"))
+    if item.get("error_class"):
+        signals.append("error_class=%s" % item.get("error_class"))
+    if item.get("declared_missing"):
+        signals.append("deliverable_exists=false")
+    return signals
+
+
 def _num(value):
     try:
         return float(value)
@@ -787,15 +807,7 @@ def triage_missing(payload, root, hist_fn=None, overlay=None, reach_fn=None):
         # 这类件不是「供给缺口」而是「已申报的失败」，处置是重排或免计数，与
         # 「以为写成了却找不到」完全不同，故压过历史/近名件判定（信息仍保留在
         # reach/variants 里可追）。
-        self_declared = [k for k, hit in
-                         (("outcome=%s" % item.get("outcome"), 
-                           str(item.get("outcome") or "").upper()
-                           not in ("", "OK", "PASS", "DONE")),
-                          ("error_class=%s" % item.get("error_class"),
-                           bool(item.get("error_class"))),
-                          ("deliverable_exists=false",
-                           bool(item.get("declared_missing"))))
-                         if hit]
+        self_declared = self_declared_failure(item)
         if self_declared:
             cls = "KNOWN-FAIL"
         items.append({"id": item.get("id"), "node": item.get("node"),
