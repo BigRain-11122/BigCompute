@@ -205,7 +205,13 @@ ARTIFACT_EXCLUDE = {"state/rounds.log", "state/heartbeat.txt",
                     "state/proposals.md", "HQ-FEEDBACK.md"}
 # Queue files are planning bookkeeping too: score-zero by the mandate,
 # so they can never be "the latest artifact".
-ARTIFACT_SKIP_PREFIX = ("state/queue/",)
+# M181 finding: a checker's own output (patrol json, registry/probe reports,
+# smoke png) is evidence that a check ran, not work product.  Letting it win
+# "latest artifact" made the face say "nothing shipped" on days that shipped.
+ARTIFACT_SKIP_PREFIX = ("state/queue/", "state/c1c4-",
+                        "state/probe-registry-", "state/text-integrity-",
+                        "state/lane-gate-", "state/dispatch-gate",
+                        "state/ledger-continuity-", "qa/smoke-")
 # Bytecode caches are build droppings, not artifacts.
 ARTIFACT_SKIP_EXT = (".pyc", ".pyo", ".log", ".jsonl", ".lock")
 # T230 finding: the tangle of *process logs* (clean-window-log.jsonl and
@@ -354,11 +360,18 @@ def compose_activity(rounds_text):
     return "%s 轮：%s" % (stamp, seg)
 
 
+_CODE_EXT = (".py", ".ps1", ".psm1", ".cs", ".bat", ".cmd")
+
+
 def compose_artifact(files):
     """Newest artifact by mtime; bookkeeping files are already excluded."""
     if not files:
         return "未发现实物文件（state/qa/docs/Tools 扫描为空）"
-    rel, mtime = max(files, key=lambda p: p[1])
+    # M181: a script is work product, but this line answers "what can the CEO
+    # look at?" - when a reading/report also landed, name it instead of the
+    # script that wrote it.
+    reports = [p for p in files if not p[0].lower().endswith(_CODE_EXT)]
+    rel, mtime = max(reports or files, key=lambda p: p[1])
     ts = datetime.datetime.fromtimestamp(mtime)
     return "%s（mtime %s）" % (rel, ts.strftime("%Y-%m-%d %H:%M"))
 
@@ -371,6 +384,12 @@ def compose_milestone(queue_text):
     milestone" could only ever name an item nobody can start. Active rows
     win; a queue with nothing active falls back to the blocked rows so the
     line never goes blank (and the status text still says blocked).
+
+    M181 note: an attempt to demote rows by the newest date inside their
+    status text was withdrawn - row statuses carry stray dates (window
+    deadlines, "as of" stamps), so the demotion picked *other* stale rows
+    instead of fresher work.  Naming the wrong milestone is worse than
+    naming an old one; this function stays as M166 left it.
     """
     rows = []
     for line in (queue_text or "").splitlines():

@@ -445,6 +445,10 @@ def unknown_converge_reading(path=None):
         "computable_fail": doc.get("computable_fail_count"),
         "unprovable": doc.get("unprovable_count"),
         "known_bad": doc.get("known_bad_count"),
+        # M181: a byte match against an artifact living outside its own run
+        # directory is weaker evidence - surfaced separately, never merged
+        # with same-run evidence.
+        "legacy_shared": doc.get("legacy_shared_count"),
         "known_bad_items": ["%s@%s" % (e.get("batch_id"), e.get("ts"))
                             for e in (doc.get("known_bad") or [])],
         "age_policy_days": doc.get("age_policy_days"),

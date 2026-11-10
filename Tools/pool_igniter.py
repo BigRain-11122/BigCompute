@@ -1148,6 +1148,30 @@ def _file_sha256(path):
     return h.hexdigest()
 
 
+def _product_scope(paths, outdir):
+    """M181: was this product written into its own run directory?
+
+    The labbench bake atlas lives in the project's Assets, a path every later
+    bake rewrites, so "today's bytes match" is weaker evidence for a legacy
+    receipt than for one whose product sits under its own run directory (T232).
+    Both can be COMPUTABLE; they must not be counted as the same number.
+    """
+    if not paths:
+        return "no-paths"
+    if not outdir:
+        return "legacy-shared-path"
+    base = os.path.normpath(outdir)
+    for p in paths:
+        rel = os.path.normpath(str(p))
+        try:
+            inside = os.path.commonpath([base, rel]) == base
+        except ValueError:      # different drives: cannot be inside
+            inside = False
+        if not inside:
+            return "legacy-shared-path"
+    return "run-dir"
+
+
 def bake_reconcile(rows=None, reader=None, exists=None, hasher=None):
     """M181: can the uncertified bake receipts be certified from disk?
 
@@ -1191,10 +1215,14 @@ def bake_reconcile(rows=None, reader=None, exists=None, hasher=None):
                              "qc_verdict": q_declared.get("qc_verdict"),
                              "min_lit_pct": q_declared.get("min_lit_pct"),
                              "reading_source": "declared",
+                             "product_scope": _product_scope(
+                                 [a["path"] for a in exrs], r.get("outdir")),
                              "disk_states": states})
             continue
         entry = {"ts": r.get("ts"), "batch_id": r.get("batch_id"),
                  "outdir": r.get("outdir"), "exr_declared": len(exrs),
+                 "product_scope": _product_scope(
+                     [a["path"] for a in exrs], r.get("outdir")),
                  "files": []}
         if not exrs:
             entry["reason"] = "no-exr-in-receipt"
@@ -1240,6 +1268,8 @@ def bake_reconcile(rows=None, reader=None, exists=None, hasher=None):
     reasons = {}
     for e in not_certifiable:
         reasons[e.get("reason", "?")] = reasons.get(e.get("reason", "?"), 0) + 1
+    legacy = [e for e in (declared + certifiable)
+              if e.get("product_scope") == "legacy-shared-path"]
     return {
         "ts": now().strftime("%Y-%m-%d %H:%M:%S"),
         "unread": len(certifiable) + len(not_certifiable),
@@ -1249,11 +1279,16 @@ def bake_reconcile(rows=None, reader=None, exists=None, hasher=None):
         "not_certifiable": not_certifiable,
         "certifiable_count": len(certifiable),
         "not_certifiable_count": len(not_certifiable),
+        "legacy_shared": legacy,
+        "legacy_shared_count": len(legacy),
         "reasons": reasons,
         "note": "declared = the receipt itself carries a QC reading; "
                 "certifiable = no reading, but today's disk bytes are "
                 "sha-identical to the receipt so the reading is recomputable; "
-                "the atlas path is shared across bakes",
+                "the atlas path is shared across bakes; legacy-shared-path = "
+                "the artifact does not live under its own run directory, so "
+                "a byte match may be a later run's identical product "
+                "(M181: counted, never merged with same-run evidence)",
     }
 
 
@@ -1261,6 +1296,9 @@ def render_bake_reconcile(rec):
     print("bake_reconcile declared=%s recomputable=%s unrecomputable=%s"
           % (rec["declared_count"], rec["certifiable_count"],
              rec["not_certifiable_count"]))
+    print("scope legacy_shared=%s(artifact outside its own run dir; a byte "
+          "match may belong to a later run)"
+          % rec.get("legacy_shared_count", 0))
     if rec["reasons"]:
         print("reasons " + " ".join("%s=%s" % (k, v)
                                     for k, v in sorted(rec["reasons"].items())))
@@ -1325,6 +1363,9 @@ def converge_unknown(rows=None, max_age_days=KNOWN_BAD_AGE_DAYS, reader=None,
                  "age_days": None if age_h is None else round(age_h / 24.0, 2)}
         verdict, reason = "UNPROVABLE", None
         if kind == "bake_spike":
+            exr_paths = [a.get("path") for a in (run.get("artifacts") or [])
+                         if str(a.get("path", "")).lower().endswith(".exr")]
+            entry["product_scope"] = _product_scope(exr_paths, r.get("outdir"))
             rec = bake_reconcile(rows=[r], reader=reader, exists=exists,
                                  hasher=hasher)
             if rec["certifiable_count"] == 1:
@@ -1350,6 +1391,8 @@ def converge_unknown(rows=None, max_age_days=KNOWN_BAD_AGE_DAYS, reader=None,
                 elif a.get("sha256") and hasher(rel) != a["sha256"]:
                     mismatched.append(rel)
             entry["frames_declared"] = len(pngs)
+            entry["product_scope"] = _product_scope(
+                [a["path"] for a in pngs], r.get("outdir"))
             if not pngs:
                 reason = "no-png-in-receipt"
             elif missing:
@@ -1388,6 +1431,8 @@ def converge_unknown(rows=None, max_age_days=KNOWN_BAD_AGE_DAYS, reader=None,
     for e in unprovable:
         reasons[e["reason"] or "?"] = reasons.get(e["reason"] or "?", 0) + 1
     pass_n = sum(1 for e in computable if e.get("qc_ok"))
+    legacy = [e for e in computable
+              if e.get("product_scope") == "legacy-shared-path"]
     return {
         "ts": now_dt.strftime("%Y-%m-%d %H:%M:%S"),
         "scanned": len(rows),
@@ -1396,6 +1441,9 @@ def converge_unknown(rows=None, max_age_days=KNOWN_BAD_AGE_DAYS, reader=None,
         "computable_count": len(computable),
         "computable_pass_count": pass_n,
         "computable_fail_count": len(computable) - pass_n,
+        "legacy_shared": legacy,
+        "legacy_shared_count": len(legacy),
+        "run_dir_computable_count": len(computable) - len(legacy),
         "unprovable": unprovable,
         "unprovable_count": len(unprovable),
         "known_bad": known_bad,
@@ -1404,7 +1452,10 @@ def converge_unknown(rows=None, max_age_days=KNOWN_BAD_AGE_DAYS, reader=None,
         "age_policy_days": max_age_days,
         "note": "COMPUTABLE = today's bytes still match the receipt, so the "
                 "reading is recomputed now; KNOWN-BAD = unprovable and older "
-                "than the age policy; receipts are never rewritten",
+                "than the age policy; legacy-shared-path = the artifact lives "
+                "outside its own run directory, so a byte match may belong to "
+                "a later run (M181: reported separately, never merged into "
+                "same-run evidence); receipts are never rewritten",
     }
 
 
@@ -2203,6 +2254,51 @@ def selftest():
             "second run invalidated the first")
         chk("S73 T232: unreadable source is skipped, not recorded as a copy",
             preserve_lightmaps([os.path.join(tmp, "nope.exr")], run2) == [])
+
+        # M181: a byte match is only as strong as where the product lives.  A
+        # legacy receipt points at the shared labbench atlas; the same bytes can
+        # be a later run's identical output, so it may not be counted as
+        # same-run evidence.
+        run_dir_art = "media/pool-ignite/x/lightmaps/a.exr"
+        disk_run = {run_dir_art: "aaa"}
+        conv_run = converge_unknown(
+            [_unk(fresh, "bake_spike", [{"path": run_dir_art, "sha256": "aaa"}])],
+            reader=_fake(False),
+            exists=lambda rel: rel in disk_run, hasher=lambda rel: disk_run[rel])
+        chk("S74 M181: artifact under its own run dir -> scope=run-dir",
+            conv_run["computable_count"] == 1
+            and conv_run["computable"][0].get("product_scope") == "run-dir"
+            and conv_run["legacy_shared_count"] == 0
+            and conv_run["run_dir_computable_count"] == 1, conv_run["computable"])
+
+        conv_legacy = converge_unknown(
+            [_unk(fresh, "bake_spike", [{"path": "a.exr", "sha256": "aaa"}])],
+            reader=_fake(False),
+            exists=lambda rel: rel in disk, hasher=lambda rel: disk[rel])
+        chk("S75 M181: artifact outside its run dir stays COMPUTABLE but is "
+            "counted as legacy-shared, not same-run",
+            conv_legacy["computable_count"] == 1
+            and conv_legacy["computable"][0].get("product_scope")
+            == "legacy-shared-path"
+            and conv_legacy["legacy_shared_count"] == 1
+            and conv_legacy["run_dir_computable_count"] == 0,
+            conv_legacy["computable"])
+
+        rec_legacy = bake_reconcile(
+            rows=[{"ts": fresh, "batch_id": "B-CITY3D-01", "ok": True,
+                   "outdir": "media/pool-ignite/x",
+                   "runner": {"kind": "bake_spike",
+                              "lightmap_quality": {"qc_verdict":
+                                                   "LIGHTMAP-QC-PASS"},
+                              "artifacts": [{"path": "a.exr", "sha256": "aaa"}]}}],
+            reader=_fake(False), exists=lambda rel: rel in disk,
+            hasher=lambda rel: disk[rel])
+        chk("S76 M181: bake_reconcile tags the declared path too, so the "
+            "reconcile face cannot read legacy as same-run",
+            rec_legacy["declared_count"] == 1
+            and rec_legacy["declared"][0].get("product_scope")
+            == "legacy-shared-path"
+            and rec_legacy["legacy_shared_count"] == 1, rec_legacy["declared"])
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 
@@ -2317,10 +2413,15 @@ def main(argv=None):
                            rec["known_bad_count"], rec["age_policy_days"]))
                 for k, v in sorted(rec["reasons"].items()):
                     f.write("reason %s=%s\n" % (k, v))
+                f.write("scope legacy_shared=%s run_dir=%s\n"
+                        % (rec["legacy_shared_count"],
+                           rec["run_dir_computable_count"]))
                 for e in rec["computable"]:
-                    f.write("COMPUTABLE %s %s kind=%s qc=%s reason=%s\n"
+                    f.write("COMPUTABLE %s %s kind=%s qc=%s scope=%s "
+                            "reason=%s\n"
                             % (e["ts"], e["batch_id"], e["kind"],
-                               e.get("qc_verdict"), e["reason"]))
+                               e.get("qc_verdict"),
+                               e.get("product_scope", "?"), e["reason"]))
                 for e in rec["unprovable"]:
                     f.write("UNPROVABLE %s %s kind=%s age_days=%s reason=%s%s\n"
                             % (e["ts"], e["batch_id"], e["kind"],
@@ -2334,11 +2435,15 @@ def main(argv=None):
                  rec["computable_pass_count"], rec["computable_fail_count"],
                  rec["unprovable_count"], rec["known_bad_count"],
                  rec["age_policy_days"], rec["receipts_unchanged"]))
+        print("scope legacy_shared=%s run_dir=%s(M181: not the same evidence)"
+              % (rec["legacy_shared_count"],
+                 rec["run_dir_computable_count"]))
         for k, v in sorted(rec["reasons"].items()):
             print("reason %s=%s" % (k, v))
         for e in rec["computable"]:
-            print("COMPUTABLE %s %s kind=%s qc=%s"
-                  % (e["ts"], e["batch_id"], e["kind"], e.get("qc_verdict")))
+            print("COMPUTABLE %s %s kind=%s qc=%s scope=%s"
+                  % (e["ts"], e["batch_id"], e["kind"], e.get("qc_verdict"),
+                     e.get("product_scope", "?")))
         for e in rec["unprovable"]:
             print("UNPROVABLE %s %s age_days=%s reason=%s%s"
                   % (e["ts"], e["batch_id"], e["age_days"], e["reason"],
