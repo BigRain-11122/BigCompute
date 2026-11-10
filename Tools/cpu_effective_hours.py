@@ -187,6 +187,12 @@ def normalize(doc):
         "declared_sha": declared_sha(doc),
         "owner": _declared_owner(doc)[0],
         "owner_key": _declared_owner(doc)[1],
+        # 回执自己的成败断言（M190）：rc=0 与「产物写出来了」是两件事，
+        # 11-11 实测 biggame-playable-2026-11-03-bm-a.json 即 rc=0/ok_rc=[0]
+        # 却 outcome=FAIL + error_class=E-ARTIFACT + deliverable_exists=false。
+        "outcome": str(doc.get("outcome") or "").upper(),
+        "error_class": str(doc.get("error_class") or ""),
+        "declared_missing": doc.get("deliverable_exists") is False,
     }
 
 
@@ -442,6 +448,25 @@ def evaluate(records, root, host, days=None, node=None, now=None):
                               or buckets["replay"] or buckets["zero_seconds"]
                               or buckets["sha_mismatch"]
                               or buckets["owner_elsewhere"]) else "CLEAN"
+    # 自报失败总览（M190）：outcome/error_class/deliverable_exists 是回执自己
+    # 的成败断言，与 rc 无关。产物在不在都先记数，才能答「失败到底有没有写出东西」。
+    self_fail = [r for r in records
+                 if str(r.get("outcome") or "").upper() not in ("", "OK", "PASS", "DONE")
+                 or r.get("error_class") or r.get("declared_missing")]
+    fail_no_file = 0
+    for r in self_fail:
+        p = local_path(root, r.get("deliverable") or "")
+        if not (p and os.path.isfile(p)):
+            fail_no_file += 1
+    self_fail_summary = {"total": len(self_fail),
+                         "with_file": len(self_fail) - fail_no_file,
+                         "without_file": fail_no_file,
+                         "by_error_class": {}}
+    for r in self_fail:
+        k = r.get("error_class") or "(none)"
+        self_fail_summary["by_error_class"][k] = \
+            self_fail_summary["by_error_class"].get(k, 0) + 1
+
     payload = {
         "tool": "cpu_effective_hours",
         "generated_at": datetime.now().isoformat(timespec="seconds"),
@@ -451,6 +476,7 @@ def evaluate(records, root, host, days=None, node=None, now=None):
         "window_days": days,
         "node_filter": node,
         "verdict": verdict,
+        "self_fail": self_fail_summary,
         "totals": {
             "receipts_scanned": len(rows) + len(skipped) + buckets["unparsed"],
             "counted": len(rows),
@@ -476,7 +502,10 @@ def evaluate(records, root, host, days=None, node=None, now=None):
                      "reason": why, "deliverable": r["deliverable"],
                      "owner": r.get("owner_node") or "",
                      "owner_src": r.get("owner_src") or "",
-                     "subject_nodes": r.get("subject_nodes") or []}
+                     "subject_nodes": r.get("subject_nodes") or [],
+                     "outcome": r.get("outcome") or "",
+                     "error_class": r.get("error_class") or "",
+                     "declared_missing": bool(r.get("declared_missing"))}
                     for r, why in skipped],
     }
     return payload
@@ -739,15 +768,43 @@ def triage_missing(payload, root, hist_fn=None, overlay=None, reach_fn=None):
             else:
                 cls = "HISTORY-UNVERIFIED"
         elif variants:
-            cls = "NAME-DRIFT"
+            # 「同目录有近名件」不等于名字写错（M186/M187 同族第三处口径缺陷）：
+            # 11-11 实测 9 件 NAME-DRIFT 里 8 件的候选全被日期/节点反证——那次
+            # 那份根本没落盘，处置是补写或作废，不是改收据路径。故标签按候选的
+            # confirm 汇总，CONFIRMED 才算真漂移。
+            confirms = [c["confirm"] for c in candidates]
+            if "CONFIRMED" in confirms:
+                cls = "NAME-DRIFT"
+            elif all(c in ("DATE-DIFF", "NODE-CONFLICT", "ID-DIFF")
+                     for c in confirms):
+                cls = "MISSING-THAT-OCCURRENCE"
+            else:
+                cls = "MISSING-AMBIGUOUS"
         else:
             cls = "NEVER-EXISTED"
+        # 最强的处置信号先行：回执自己已承认失败（M190）。rc=0 只说明命令跑完，
+        # outcome=FAIL / error_class / deliverable_exists=false 说的是产物没写出来。
+        # 这类件不是「供给缺口」而是「已申报的失败」，处置是重排或免计数，与
+        # 「以为写成了却找不到」完全不同，故压过历史/近名件判定（信息仍保留在
+        # reach/variants 里可追）。
+        self_declared = [k for k, hit in
+                         (("outcome=%s" % item.get("outcome"), 
+                           str(item.get("outcome") or "").upper()
+                           not in ("", "OK", "PASS", "DONE")),
+                          ("error_class=%s" % item.get("error_class"),
+                           bool(item.get("error_class"))),
+                          ("deliverable_exists=false",
+                           bool(item.get("declared_missing"))))
+                         if hit]
+        if self_declared:
+            cls = "KNOWN-FAIL"
         items.append({"id": item.get("id"), "node": item.get("node"),
                       "deliverable": rel, "class": cls, "hist": hist,
                       "reach": reach,
                       "variants": variants, "candidates": candidates,
                       "actionable": actionable,
                       "sig_src": sig_src, "expected": expected,
+                      "self_declared": self_declared,
                       "upgraded": [c["name"] for c in candidates
                                    if c["confirm"] == "CONFIRMED"
                                    and c["confirm_base"] != "CONFIRMED"]})
@@ -777,6 +834,17 @@ def report_triage(items, overlay_meta=None):
     _out("MISSING-TRIAGE %d 件  分类=%s  可改路径候选=%d  靠 overlay 提级=%d"
          % (len(items), " ".join("%s:%d" % (k, tally[k]) for k in sorted(tally)),
             actionable, upgraded))
+    actions = [("自报失败(重排或免计数)", tally.get("KNOWN-FAIL", 0)),
+               ("改收据路径", tally.get("NAME-DRIFT", 0)),
+               ("补写或作废(那次没落盘)", tally.get("MISSING-THAT-OCCURRENCE", 0)),
+               ("补证据(证据不足)", tally.get("MISSING-AMBIGUOUS", 0)),
+               ("作废收据(从未存在)", tally.get("NEVER-EXISTED", 0)),
+               ("支线取回", tally.get("OFF-MAINLINE", 0)),
+               ("主线找回", tally.get("IN-HEAD-HISTORY-REMOVED", 0)),
+               ("可达性待查", tally.get("HISTORY-UNVERIFIED", 0)),
+               ("无路径", tally.get("NO-PATH", 0))]
+    live = ["%s=%d" % (k, v) for k, v in actions if v]
+    _out("处置面 %s" % (" ".join(live) if live else "none"))
     for it in items:
         extra = ""
         if it["hist"]:
@@ -791,6 +859,9 @@ def report_triage(items, overlay_meta=None):
             extra = "  hist=%s  reach=%s" % (it["hist"][:60], where)
         src = it.get("sig_src") or {}
         sig = "node=%s,id=%s" % (src.get("node") or "-", src.get("id") or "-")
+        sd = it.get("self_declared") or []
+        if sd:
+            extra += "  why=%s" % ",".join(sd)
         _out("  %-22s %-6s %-18s %s  sig[%s]%s"
              % (it["class"], it["node"], (it["id"] or "")[:18], it["deliverable"],
                 sig, extra))
@@ -824,6 +895,13 @@ def report(payload, show_list=False):
     _out("sha_coverage: declared=%s matched=%s mismatched=%s"
          % (cover.get("declared", "?"), cover.get("matched", "?"),
             cover.get("mismatched", "?")))
+    sf = payload.get("self_fail") or {}
+    if sf:
+        cls = sf.get("by_error_class") or {}
+        _out("self_fail(回执自报失败): total=%d with_file=%d without_file=%d  %s"
+             % (sf.get("total", 0), sf.get("with_file", 0),
+                sf.get("without_file", 0),
+                " ".join("%s:%d" % (k, v) for k, v in sorted(cls.items()))))
     for node in sorted(payload["per_node"]):
         slot = payload["per_node"][node]
         _out("  node=%-6s counted=%-3d effective_h=%.3f"
@@ -1125,8 +1203,9 @@ def selftest():
         by_id = {i["id"]: i for i in tri}
         want("S25 从未入过库且无近名件 → NEVER-EXISTED",
              kinds.get("A-NEVER") == "NEVER-EXISTED")
-        want("S26 未入过库但同目录有近名件 → NAME-DRIFT 并列出近名件",
-             kinds.get("B-DRIFT") == "NAME-DRIFT"
+        want("S26 同目录只有别日件（DATE-DIFF 反证）→ MISSING-THAT-OCCURRENCE"
+             "（那次没落盘·不许读成名字写错），且仍列出近名件",
+             kinds.get("B-DRIFT") == "MISSING-THAT-OCCURRENCE"
              and any("model-radar-bm-a-20261104.json" in i["variants"]
                      for i in tri if i["id"] == "B-DRIFT"))
         want("S27 可从 HEAD 到达 → IN-HEAD-HISTORY-REMOVED（可找回）",
@@ -1174,6 +1253,56 @@ def selftest():
              unk["class"] == "HISTORY-UNVERIFIED")
         want("S41 同一路径可由 HEAD 到达 → IN-HEAD-HISTORY-REMOVED",
              head["class"] == "IN-HEAD-HISTORY-REMOVED")
+
+        # ---- M190：近名件被反证 ≠ 名字漂移（三类处置互不相同）----
+        with open(os.path.join(tdir, "amb-20261105-old.txt"), "w",
+                  encoding="utf-8") as fh:
+            fh.write("no signature here")
+        tpay["skipped"].append(
+            {"id": "J-AMBIG", "node": "bm-a", "reason": "MISSING-LOCAL",
+             "deliverable": os.path.join("cph4", "fleet", "queue-receipts",
+                                         "amb-20261105.json")})
+        tri_m = triage_missing(
+            tpay, td,
+            hist_fn=lambda r, p: "abc1234 add" if p.endswith("old.json") else "",
+            reach_fn=lambda r, h: {"reach": "HEAD", "refs": [], "sha": "abc1234"})
+        mk = {i["id"]: i for i in tri_m}
+        want("S49 候选全是节点/日期反证 → MISSING-THAT-OCCURRENCE 且无可改路径",
+             mk["E-CONFLICT"]["class"] == "MISSING-THAT-OCCURRENCE"
+             and mk["E-CONFLICT"]["actionable"] == [])
+        want("S50 候选无任何可对照要素 → MISSING-AMBIGUOUS（既不判漂移也不判没写）",
+             mk["J-AMBIG"]["class"] == "MISSING-AMBIGUOUS"
+             and mk["J-AMBIG"]["actionable"] == [])
+        want("S51 候选三要素齐（CONFIRMED）→ 仍判 NAME-DRIFT 并列出可改路径",
+             mk["F-MATCH"]["class"] == "NAME-DRIFT"
+             and mk["F-MATCH"]["actionable"] == ["node-radar-bm-a-20261102-v2.json"])
+        mixed = [(i["id"], i["class"]) for i in tri_m
+                 if (i["class"] == "NAME-DRIFT") != bool(i["actionable"])]
+        want("S52 标签与动作一致：NAME-DRIFT ⟺ 有可改路径候选，其余形态不得混报",
+             not mixed)
+
+        # ---- M190 第二层：回执自报失败 ≠ 缺件（rc=0 只证明命令跑完）----
+        tpay["skipped"] += [
+            {"id": "K-KNOWNFAIL", "node": "bm-a", "reason": "MISSING-LOCAL",
+             "deliverable": os.path.join("cph4", "fleet", "queue-receipts",
+                                         "node-radar-bm-a-20261102.json"),
+             "outcome": "FAIL", "error_class": "E-ARTIFACT"},
+            {"id": "L-DECLMISS", "node": "bm-a", "reason": "MISSING-LOCAL",
+             "deliverable": os.path.join("cph4", "fleet", "queue-receipts",
+                                         "model-radar-bm-a-20261103.json"),
+             "declared_missing": True}]
+        tri_k = triage_missing(
+            tpay, td, hist_fn=lambda r, p: "",
+            reach_fn=lambda r, h: {"reach": "HEAD", "refs": [], "sha": ""})
+        kk = {i["id"]: i for i in tri_k}
+        want("S53 回执自报 outcome=FAIL → KNOWN-FAIL，压过近名件 CONFIRMED"
+             "（已申报的失败不是供给缺口）",
+             kk["K-KNOWNFAIL"]["class"] == "KNOWN-FAIL"
+             and "outcome=FAIL" in kk["K-KNOWNFAIL"]["self_declared"])
+        want("S54 回执自报 deliverable_exists=false → KNOWN-FAIL"
+             "（产物没写出来是回执自己的陈述，不是找不到）",
+             kk["L-DECLMISS"]["class"] == "KNOWN-FAIL"
+             and "deliverable_exists=false" in kk["L-DECLMISS"]["self_declared"])
 
         # ---- T219 overlay 接线：收据缺 node/id 时由 STRONG 签名补齐 ----
         with open(os.path.join(tdir, "unsigned-20261102.json"), "w",

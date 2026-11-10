@@ -888,3 +888,8 @@ P1 已修（M186 工具口径）：`IN-HISTORY-REMOVED` 拆可达性三态——
 P0 提醒（@HQ 取回腿·18:00 前）：D-02 指定取回源 `backup/bm-a-20261110` 对本轮 8 件 **0/8 命中**，8 件全在 `origin/bm-a/pending-20261110-0000`（8/8）——若取回清单与之重叠，源须改该远端 pending 支线，否则照字面执行会取空并被判永久缺件。复核清单=`state/d02-reconcile-input-20261111.txt`。
 诚实：D-02 记 11 件与本轮 8 件不同集（窗口滚动+分类轴差异），未强行对齐；零跨仓写、未 cherry-pick。
 00:4x 增补（M187 同轮收口）：产物归属轴拆出 `OWNER-ELSEWHERE`——7 日窗 missing_local **21→20**，唯一 1 条是 `R-ART-PUSH-B-20261102`（bm-a 执行、产物属 bm-b 的 `artifacts/bm-b/MANIFEST.jsonl`），此前一直被记成「本机缺件」；三条文件名带他机 token 的件（model-radar bm-c/bm-m、FREE-MEM-APPLY-bm-c）**维持缺件**——文件名 token 是被作业对象，不是归属证据。
+
+## 2026-11-11 01:1x 令牌轮（M190 缺件分诊两处口径缺陷）
+- 产品（产品优先律 2 分件）：缺件分诊不再把「回执自报失败」当「产物丢了」——7 日窗 20 件缺件重算为 **自报失败 10 / 证据不足 3 / 支线可取回 7**（可改路径 1）；全窗 `self_fail total=384 with_file=201 without_file=183`（E-UNKNOWN 96·E-ARTIFACT 61·E-BLOCKED-INPUT 50）。证据 `state/cpu-eff-triage-m190-20261111.{txt,json}`。
+- 读数更正：上轮报的「NAME-DRIFT 9 件」里只有 1 件是真名写错，其余 8 件候选被日期/节点反证（那次那份没落盘）——「名字漂移」这个说法本身把两种处置混成一件事；selftest 48→54/54 PASS。
+- P2：冒烟 31/32（唯一红 no.22 M96 既有面：探针仍按 missing 总数判红、未区分自报失败 → 立 M191）；M188 复核腿维持等 @HQ 18:00 取回，本司零跨仓写、未 cherry-pick。
