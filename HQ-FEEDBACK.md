@@ -898,3 +898,8 @@ P0 提醒（@HQ 取回腿·18:00 前）：D-02 指定取回源 `backup/bm-a-2026
 - 产品（产品优先律 2 分件）：QA 冒烟 no.22 拆两数——`missing_local=20` → `missing_real=10 / self_fail=10`，红只给真缺件；自报失败按 `selffail:` 逐条点名，点名被截断时明写 `(+N more)`。判据单源=`cpu_effective_hours.self_declared_failure()`（分诊与探针共用），receipt-product-law 夹具 9/9 PASS（S6 只自报→绿／S7 混合只红真缺／S8 明细少于桶数余量仍红／S9 截断余数）。证据 `qa/smoke-20261111-0427.log/.png`。
 - 诚实：冒烟仍 **31/32**（no.22 红）：20 件缺件里 10 件自报失败已分离，余 10 件（证据不足 3 / 支线可找回 7）按真缺件继续红——本轮只治「同权」，不治缺件本身；全窗自报失败 396 条（含文件/无文件拆分未进探针行）。
 - P2：三队列可执行面偏薄（main=8 / tech=5 / explore=1），本轮只补 1 条；explore 面下次需补方向行，否则触及「≥10 常备」自检红线。
+
+## 2026-11-11 06:1x 令牌轮（M192 no.22 sidecar）
+- 产品（产品优先律 2 分件）：QA 冒烟 no.22 的缺口清单落成机器可读件 `qa/smoke-20261111-0608-no22.json`（9937B）——`missing_real` 10 条 + `self_fail` 10 条 + `copies` 1 条，逐条带 node/id/deliverable/receipt/reason/回执自述理由；日志行只列 8 条（余 `(+13 more)`），现在点外可由他人复核与派工。有缺口才落文件、干净轮打 `sidecar=none`（缺文件即「本轮无缺口」）；写不出即判红。receipt-product-law 夹具 9→13/13 PASS，charter §三 第 22 条同窗改写。
+- 诚实：冒烟 **29/32**（较上轮 31/32 多两红且都不是本轮改动引起）——no.14 报 `EXPORT-STALE`（冒烟在收尾刷新之前跑＝时序倒挂，已立 M193 并如实不为此改判据）；no.16 `:8792 /ask` 超时（M183 已知观测窗面）。no.22 仍红＝10 件真缺件照红，本轮只让它们可逐条追。
+- 日清：P2 no.22 sidecar 已落盘但无读者（下一轮仍从零算）→ BC-P-239「carried/new 两数」待批。

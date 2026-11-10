@@ -2625,7 +2625,108 @@ def receipt_product_judge(payload):
     return (not bad), head + ((" " + " ".join(shown)) if shown else "")
 
 
-def probe_receipt_product_law(root=None, days=RECEIPT_LAW_WINDOW_DAYS):
+ROUND_STAMP = ""  # set by main() so probes can name their own round artifacts
+
+
+def default_receipt_sidecar_path():
+    """Round-scoped sidecar name, matching the smoke log's own stamp (M192)."""
+    stamp = ROUND_STAMP or datetime.datetime.now().strftime("%Y%m%d-%H%M")
+    return os.path.join(QA_DIR, "smoke-%s-no22.json" % stamp)
+
+
+def receipt_product_sidecar(payload):
+    """M192: the gap list behind no.22's one console line, machine-readable.
+
+    The line prints counts plus at most eight names, so a round that finds ten
+    real gaps cannot be re-checked or dispatched by anyone afterwards.  This
+    returns the same classification as two full arrays (single source:
+    cpu_effective_hours.self_declared_failure), so the detail outlives the log.
+    """
+    if not isinstance(payload, dict) or "buckets" not in payload:
+        return None
+    if HERE not in sys.path:
+        sys.path.insert(0, HERE)
+    try:
+        import cpu_effective_hours as ceh
+    except Exception:  # noqa: BLE001 - no classifier means no sidecar, not a guess
+        return None
+    b = payload["buckets"]
+    miss_items = [it for it in payload.get("skipped") or []
+                  if it.get("reason") == "MISSING-LOCAL"]
+    real_items = [it for it in miss_items
+                  if not ceh.self_declared_failure(it)]
+    selffail_items = [it for it in miss_items
+                      if ceh.self_declared_failure(it)]
+    bucket_missing = int(b.get("missing_local") or 0)
+    unnamed_missing = max(0, bucket_missing - len(miss_items))
+
+    def slim(item, kind):
+        return {
+            "kind": kind,
+            "node": item.get("node") or "",
+            "id": item.get("id") or "",
+            "deliverable": item.get("deliverable") or "",
+            "receipt": item.get("receipt") or "",
+            "reason": item.get("reason") or "",
+            "outcome": item.get("outcome") or "",
+            "error_class": item.get("error_class") or "",
+            "declared_missing": bool(item.get("declared_missing")),
+            "self_declared": ceh.self_declared_failure(item),
+        }
+
+    owner_items = [it for it in payload.get("skipped") or []
+                   if str(it.get("reason") or "").startswith("OWNER-ELSEWHERE")]
+    return {
+        "probe": "no.22",
+        "window_days": payload.get("window_days"),
+        "host": payload.get("host"),
+        "verdict": payload.get("verdict"),
+        "counts": {
+            "missing_local": bucket_missing,
+            "missing_real": len(real_items) + unnamed_missing,
+            "missing_real_named": len(real_items),
+            "missing_unnamed": unnamed_missing,
+            "self_fail": len(selffail_items),
+            "copy": int(b.get("copy") or 0),
+            "owner_elsewhere": int(b.get("owner_elsewhere") or 0),
+            "no_deliverable": int(b.get("no_deliverable") or 0),
+        },
+        "missing_real": [slim(it, "MISSING-LOCAL") for it in real_items],
+        "self_fail": [slim(it, "MISSING-LOCAL-self-declared")
+                      for it in selffail_items],
+        "copies": [{"node": it.get("node") or "", "id": it.get("id") or "",
+                    "copy_of": it.get("copy_of") or "",
+                    "deliverable": it.get("deliverable") or ""}
+                   for it in payload.get("copies") or []],
+        "owner_elsewhere": [slim(it, "OWNER-ELSEWHERE") for it in owner_items],
+    }
+
+
+def write_receipt_sidecar(payload, path):
+    """Write the sidecar only when something is wrong; a clean round writes none.
+
+    A stale file from an earlier round would be read as "this round's gaps", so
+    the absence of a file is itself the signal -- the console line then says
+    sidecar=none.
+    """
+    data = receipt_product_sidecar(payload)
+    if data is None:
+        return None
+    c = data["counts"]
+    if not (c["missing_real"] or c["copy"] or c["self_fail"]
+            or c["owner_elsewhere"]):
+        return None
+    parent = os.path.dirname(path)
+    if parent:
+        os.makedirs(parent, exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2, sort_keys=True)
+        f.write("\n")
+    return path
+
+
+def probe_receipt_product_law(root=None, days=RECEIPT_LAW_WINDOW_DAYS,
+                              sidecar_path=None):
     """Probe no.22 (M96 / BC-P-166): queue receipts traceable to a file.
 
     cpu_effective_hours shipped as a manual command; the product-law claim
@@ -2649,7 +2750,15 @@ def probe_receipt_product_law(root=None, days=RECEIPT_LAW_WINDOW_DAYS):
         payload["buckets"]["not_work_receipt"] = len(other)
     except Exception as e:  # noqa: BLE001 - probe must report, not crash
         return False, "cpu_effective_hours raised: %r" % e
-    return receipt_product_judge(payload)
+    ok, det = receipt_product_judge(payload)
+    target = sidecar_path or default_receipt_sidecar_path()
+    try:
+        written = write_receipt_sidecar(payload, target)
+    except Exception as e:  # noqa: BLE001 - a gap that cannot be handed off is a gap
+        return False, det + " sidecar=ERROR %r" % e
+    if written:
+        return ok, det + " sidecar=%s" % os.path.basename(written)
+    return ok, det + " sidecar=none"
 
 
 def selftest_receipt_product_law():
@@ -2745,6 +2854,46 @@ def selftest_receipt_product_law():
 
     ok, det = receipt_product_judge(None)
     check("S4 no summary -> FAIL/UNVERIFIED", (not ok) and "UNVERIFIED" in det)
+
+    import tempfile
+    tmpdir = tempfile.mkdtemp(prefix="no22-sidecar-")
+    many_path = os.path.join(tmpdir, "gap.json")
+    ok, det = receipt_product_judge(many)
+    written = write_receipt_sidecar(many, many_path)
+    data = {}
+    if written and os.path.isfile(written):
+        with open(written, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    rows = data.get("missing_real") or []
+    check("S10 a gap round writes a sidecar with all 12 named (log shows 8)",
+          bool(written) and len(rows) == 12
+          and rows[0].get("id") == "Q-0" and rows[0].get("node") == "bm-a"
+          and rows[0].get("deliverable") == "d0.bin"
+          and data.get("counts", {}).get("missing_real") == 12
+          and data.get("probe") == "no.22")
+
+    clean_path = os.path.join(tmpdir, "clean.json")
+    none_written = write_receipt_sidecar(base(), clean_path)
+    check("S11 clean round writes no sidecar (absent file is the signal)",
+          none_written is None and not os.path.exists(clean_path))
+
+    bad = write_receipt_sidecar(None, os.path.join(tmpdir, "bad.json"))
+    check("S12 unusable payload -> no sidecar, no crash",
+          bad is None and not os.path.exists(os.path.join(tmpdir, "bad.json")))
+
+    sf_path = os.path.join(tmpdir, "self.json")
+    write_receipt_sidecar(mixed, sf_path)
+    with open(sf_path, "r", encoding="utf-8") as f:
+        sf_data = json.load(f)
+    sf_rows = sf_data.get("self_fail") or []
+    real_rows = sf_data.get("missing_real") or []
+    check("S13 sidecar separates the two kinds and keeps the stated reason",
+          len(sf_rows) == 2 and len(real_rows) == 1
+          and [r["id"] for r in real_rows] == ["Q-6"]
+          and any("outcome=FAIL" in r.get("self_declared", [])
+                  for r in sf_rows)
+          and sf_data["counts"]["missing_real"] == 1
+          and sf_data["counts"]["self_fail"] == 2)
 
     print("selftest receipt-product-law verdict: %d/%d PASS"
           % (len([r for r in results if r]), len(results)))
@@ -4403,6 +4552,8 @@ def main():
                 | selftest_unknown_sidecar() | selftest_argv())
     os.makedirs(QA_DIR, exist_ok=True)
     ts = datetime.datetime.now().strftime("%Y%m%d-%H%M")
+    global ROUND_STAMP
+    ROUND_STAMP = ts
     log_path = os.path.join(QA_DIR, "smoke-%s.log" % ts)
     png_path = os.path.join(QA_DIR, "smoke-%s.png" % ts)
     probes = PROBE_REGISTRY
