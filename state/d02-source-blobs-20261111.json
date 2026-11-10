@@ -1,0 +1,62 @@
+{
+ "source_ref": "origin/bm-a/pending-20261110-0000",
+ "generated": "2026-11-11 00:5x",
+ "items": [
+  {
+   "id": "MV-DIRECTOR-PACKET-20261109",
+   "path": "cph4/fleet/queue-receipts/review-packet-kn-20261109.md",
+   "src_blob": "26342f856d640e58de0143aeb8c6d49e31230a47",
+   "src_bytes": 1184,
+   "on_origin_main_now": false
+  },
+  {
+   "id": "R-PLAN-BIGCOMPUTE-20261110",
+   "path": "cph4/fleet/queue-receipts/triage-bigcompute-20261110.md",
+   "src_blob": "808d4560270f724425b5e523c4880bf360cc7eb2",
+   "src_bytes": 335,
+   "on_origin_main_now": false
+  },
+  {
+   "id": "R-PLAN-BIGGAME-20261109",
+   "path": "cph4/fleet/queue-receipts/triage-biggame-20261109.md",
+   "src_blob": "c277b343aa15b8e197fc4f263c2d06198cf8a9ad",
+   "src_bytes": 605,
+   "on_origin_main_now": false
+  },
+  {
+   "id": "R-PLAN-BIGLIFE-20261110",
+   "path": "cph4/fleet/queue-receipts/triage-biglife-20261110.md",
+   "src_blob": "8118d0dc35dad61df5b3628cc4cf609da1f9181c",
+   "src_bytes": 432,
+   "on_origin_main_now": false
+  },
+  {
+   "id": "R-PLAN-BIGSTREAMMV-20261109",
+   "path": "cph4/fleet/queue-receipts/triage-bigstream-mv-20261109.md",
+   "src_blob": "7b5f320486684dfe4158c86ad4010dec8af1a03e",
+   "src_bytes": 1088,
+   "on_origin_main_now": false
+  },
+  {
+   "id": "R-TRIAGE-BIGGAME-BMA-20261109",
+   "path": "cph4/fleet/queue-receipts/triage-biggame-bm-a-20261109.md",
+   "src_blob": "41029755c08eafe17856d9fc0b8287dc0a76c438",
+   "src_bytes": 605,
+   "on_origin_main_now": false
+  },
+  {
+   "id": "R-TRIAGE-BIGSTREAMMV-BMA-20261109",
+   "path": "cph4/fleet/queue-receipts/triage-bigstream-mv-bm-a-20261109.md",
+   "src_blob": "a5328e57e112080c6f0f84b1f0bc76ab25fc9057",
+   "src_bytes": 1088,
+   "on_origin_main_now": false
+  },
+  {
+   "id": "R-TRIAGE-FLUXVERSE-BMA-20261109",
+   "path": "cph4/fleet/queue-receipts/triage-fluxverse-bm-a-20261109.md",
+   "src_blob": "604dddc21106d44f130491da2a61a951433f2aeb",
+   "src_bytes": 660,
+   "on_origin_main_now": false
+  }
+ ]
+}
