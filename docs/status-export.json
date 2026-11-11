@@ -1,8 +1,8 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-11-12 04:22",
- "current_activity": "2026-11-12 00:00 轮：M197 done 实况面自证判据（D-20261112-05 承办·承诺窗内提前约 12h）=面增 caps（write_lag/ledger_lag/max_age/bench_date/source 五字段）+freshness 人读行，值逐字来自 status_face_freshness 单源（新增 S11/S12 断言·12/12）… ｜ 两池：本司备货可派 2 ／ 机队可领 4（两个不同池，本司卡未登记进机队池）",
- "latest_artifact": "state/milestone.json（mtime 2026-11-12 04:22）",
+ "updated_at": "2026-11-12 06:11",
+ "current_activity": "2026-11-12 04:00 轮：M196 done(charter §三 29 条细则逐字拆入 docs/qa-probes-20261112-{a,b}.md·30739B→6576B·两附录登记 REGISTER[L3][QA巡检]·SOP-COVERAGE-GREEN violations=0·selftest 12/12·registry PROBE-REGISTRY-CLEAN probes=32 clauses=29 reserved=[7]… ｜ 两池：本司备货可派 2 ／ 机队可领 4（两个不同池，本司卡未登记进机队池）",
+ "latest_artifact": "docs/qa-probes-20261112-b.md（mtime 2026-11-12 06:09）",
  "next_milestone": "M198 指针可解析闸：charter §三 每行 `细节=docs/qa-probes-20261112-{a,b}.md·pN` → 逐行验「文件在盘 + 附录内确有该编号行 + 标题词对得上」三面，缺一面点名并判红（本轮派生·窗 11-13 04:00 前）；同窗并行=取回落地后 8 件 blob 复跑结案（最迟 11-13 20:00）+ B-CITY3D-02 判据帧复渲维持门控 vram_free>=6144MiB（source=declared）",
  "caps": {
   "write_lag_min": 30.0,

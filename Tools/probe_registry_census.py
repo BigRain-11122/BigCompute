@@ -45,6 +45,18 @@ BASE_END = "## \u4e8c\u3001"             # "## 2." heading
 BULLET_RE = re.compile(r"^\s*-\s*(\d+)\.", re.MULTILINE)
 REGISTRY_NAME = "PROBE_REGISTRY"
 
+# M198: a clause may be split out into an appendix file, leaving a pointer
+# like "- 5. title｜detail=docs/qa-probes-x.md·p5" in section 3.  The pointer
+# is prose until something resolves it: rename/delete the appendix, renumber
+# it, or add a clause and forget the appendix, and nobody notices.
+POINTER_SEP = "\uff5c"                  # fullwidth vertical bar
+DETAIL_WORD = "\u7ec6\u8282"            # "detail"
+MIDDOT = "\u00b7"
+APPENDIX_GLOB = "qa-probes-*.md"
+POINTER_RE = re.compile(
+    r"^\s*-\s*(\d+)\.\s*(.*?)\s*" + POINTER_SEP + r"\s*"
+    + DETAIL_WORD + r"=(\S+)" + MIDDOT + r"p(\d+)\s*$")
+
 # T206: a clause keeps its number but may be rewritten in another shape.  The
 # dash bullet was the only shape recognised, so a clause copied back as a
 # table row, "N、", "N)" or "* N." stayed invisible -- the very duplicate
@@ -152,6 +164,138 @@ def clause_occurrences(text):
     return counts
 
 
+def _norm(text):
+    """Collapse whitespace so a title comparison is about words, not spacing."""
+    return re.sub(r"\s+", " ", text or "").strip()
+
+
+def charter_pointers(text):
+    """Return [(no, title, path, clause_no, lineno)] from section 3.
+
+    Only section 3 carries the "detail=<file>·pN" pointers; a pointer copied
+    elsewhere is prose, and section 1's table has no pointers at all.
+    """
+    start = text.find(SECTION_START)
+    end = text.find(SECTION_END)
+    if start < 0 or end <= start:
+        return []
+    out = []
+    for lineno, line in enumerate(text[start:end].splitlines(), 1):
+        m = POINTER_RE.match(line)
+        if m:
+            out.append((int(m.group(1)), m.group(2).strip(), m.group(3),
+                        int(m.group(4)), lineno))
+    return out
+
+
+def appendix_clauses(path):
+    """Return {clause_no: (lineno, text)} for the '- N.' lines of an appendix."""
+    table = {}
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            for lineno, line in enumerate(f, 1):
+                m = BULLET_RE.match(line)
+                if m:
+                    table[int(m.group(1))] = (lineno, line)
+    except OSError:
+        return None
+    return table
+
+
+def appendix_files(root):
+    """Return appendix paths under <root>/docs (sorted)."""
+    docs = os.path.join(root, "docs")
+    try:
+        names = sorted(os.listdir(docs))
+    except OSError:
+        return []
+    return [os.path.join(docs, n) for n in names
+            if n.startswith("qa-probes-") and n.endswith(".md")]
+
+
+def refs_problems(text, root=None, require=None):
+    """Resolve every section-3 detail pointer; return (problems, report).
+
+    Three faces per pointer: the file is on disk, it holds a "- N." clause
+    with the pointer's number, and that clause's text still contains the
+    charter clause title.  A clause with no pointer is a problem too, and an
+    appendix clause nobody cites is a rule without a reader.
+
+    require=None means auto: enforce as soon as the charter has any pointer
+    or the docs tree already holds appendix files (stripping the pointers
+    must not switch the check off).
+    """
+    root = root or ROOT
+    pointers = charter_pointers(text)
+    numbers, _reserved, _base = charter_numbers(text)
+    files = appendix_files(root)
+    enforce = require
+    if enforce is None:
+        enforce = bool(pointers) or bool(files)
+    report = {"enforced": bool(enforce), "pointers": len(pointers),
+              "appendix_files": len(files), "appendix_clauses": 0,
+              "resolved": 0, "reasons": {}}
+    if not enforce:
+        return [], report
+
+    problems = []
+    cited = set()
+    tables = {}
+    pointed = {no for no, _t, _p, _c, _l in pointers}
+
+    for no in (numbers or []):
+        if no not in pointed:
+            problems.append("POINTER-MISSING no.%d clause has no detail "
+                            "pointer" % no)
+
+    for no, title, rel, cno, _lineno in pointers:
+        full = os.path.join(root, *rel.replace("\\", "/").split("/"))
+        name = os.path.basename(full)
+        if not os.path.isfile(full):
+            problems.append("POINTER-FILE no.%d -> %s not on disk"
+                            % (no, rel))
+            continue
+        if cno != no:
+            problems.append("POINTER-NUMBER no.%d points at %s p%d"
+                            % (no, name, cno))
+        if full not in tables:
+            tables[full] = appendix_clauses(full)
+        table = tables[full] or {}
+        cited.add((name, cno))
+        hit = table.get(cno)
+        if hit is None:
+            problems.append("POINTER-CLAUSE no.%d -> %s has no '- %d.' clause"
+                            % (no, name, cno))
+            continue
+        want = _norm(title)
+        if want and want not in _norm(hit[1]):
+            problems.append("POINTER-TITLE no.%d %r not in %s L%d"
+                            % (no, title, name, hit[0]))
+            continue
+        report["resolved"] += 1
+
+    for full in files:
+        if full not in tables:
+            tables[full] = appendix_clauses(full)
+    for full in sorted(tables):
+        table = tables[full] or {}
+        name = os.path.basename(full)
+        report["appendix_clauses"] += len(table)
+        for cno in sorted(table):
+            if (name, cno) not in cited:
+                problems.append("POINTER-ORPHAN %s p%d has no charter pointer"
+                                % (name, cno))
+    report["reasons"] = _count_prefixes(problems)
+    return problems, report
+
+
+def _count_prefixes(problems):
+    counts = {}
+    for p in problems:
+        counts[p.split(" ", 1)[0]] = counts.get(p.split(" ", 1)[0], 0) + 1
+    return counts
+
+
 def registry_records(source):
     """Return [(no, fn_name)] from the module-level PROBE_REGISTRY literal."""
     tree = ast.parse(source)
@@ -177,8 +321,12 @@ def registry_records(source):
     return records, defined
 
 
-def census(smoke_path=None, charter_path=None):
-    """Run the three-face comparison and return a machine-readable report."""
+def census(smoke_path=None, charter_path=None, root=None, require_refs=None):
+    """Run the comparison and return a machine-readable report.
+
+    root/require_refs carry the M198 detail-pointer face; both default to the
+    live repo and auto-enforcement, so an existing caller keeps working.
+    """
     smoke_path = smoke_path or DEFAULT_SMOKE
     charter_path = charter_path or DEFAULT_CHARTER
     report = {"smoke": smoke_path, "charter": charter_path,
@@ -263,13 +411,25 @@ def census(smoke_path=None, charter_path=None):
     if report["problems"]:
         report["verdict"] = "PROBE-REGISTRY-GAPS"
     else:
-        report["verdict"] = "PROBE-REGISTRY-CLEAN"
+        # M198: pointer resolution runs last so the numbering face keeps its
+        # own verdict shape when the pointers are fine.
+        refs, refs_rep = refs_problems(text, root, require_refs)
+        report["refs"] = refs_rep
+        for p in refs:
+            report["problems"].append(p)
+        if report["problems"]:
+            report["verdict"] = "PROBE-REGISTRY-GAPS"
+        else:
+            report["verdict"] = "PROBE-REGISTRY-CLEAN"
     report["summary"] = (
         "%s probes=%d base=%d charter_ext=%d clauses=%d reserved=%s "
-        "dup=%d problems=%d"
+        "dup=%d refs=%d/%d problems=%d"
         % (report["verdict"], len(reg_nos), len(base), len(numbers),
            len(occurrences), report["reserved"] or "none",
-           len(report["duplicate_clauses"]), len(report["problems"])))
+           len(report["duplicate_clauses"]),
+           report.get("refs", {}).get("resolved", 0),
+           report.get("refs", {}).get("pointers", 0),
+           len(report["problems"])))
     return report
 
 
@@ -330,14 +490,14 @@ def selftest():
 
         _write(smoke, SMOKE_FIXTURE)
         _write(charter, CHARTER_FIXTURE)
-        rep = census(smoke, charter)
+        rep = census(smoke, charter, tmp)
         check("clean pair -> CLEAN+exit0",
               rep["verdict"] == "PROBE-REGISTRY-CLEAN",
               rep.get("summary", ""))
 
         # missing charter clause for probe 2
         _write(charter, CHARTER_FIXTURE.replace("- 2. second probe.\n", ""))
-        rep = census(smoke, charter)
+        rep = census(smoke, charter, tmp)
         check("probe without charter clause -> GAPS",
               rep["verdict"] == "PROBE-REGISTRY-GAPS"
               and any("no.2 has no charter clause" in p
@@ -346,7 +506,7 @@ def selftest():
 
         # charter clause without probe, outside the reserved slot
         _write(charter, _charter_with(["- 3. ghost probe.\n"]))
-        rep = census(smoke, charter)
+        rep = census(smoke, charter, tmp)
         check("charter clause without probe -> GAPS",
               rep["verdict"] == "PROBE-REGISTRY-GAPS"
               and any("no.3 has no probe" in p for p in rep["problems"]),
@@ -355,7 +515,7 @@ def selftest():
         # reserved slot must not be reported as a gap
         _write(charter, _charter_with(
             ["- 3. %s slot for a future probe.\n" % RESERVED_WORD]))
-        rep = census(smoke, charter)
+        rep = census(smoke, charter, tmp)
         check("reserved slot -> CLEAN",
               rep["verdict"] == "PROBE-REGISTRY-CLEAN"
               and 3 in rep["reserved"],
@@ -365,7 +525,7 @@ def selftest():
         _write(smoke, SMOKE_FIXTURE.replace(
             '(2, "probe two", probe_two)', '(1, "probe two", probe_two)'))
         _write(charter, CHARTER_FIXTURE)
-        rep = census(smoke, charter)
+        rep = census(smoke, charter, tmp)
         check("duplicate number -> GAPS",
               rep["verdict"] == "PROBE-REGISTRY-GAPS"
               and any("duplicate probe no.1" in p for p in rep["problems"]),
@@ -374,7 +534,7 @@ def selftest():
         # gap: registry declares 1 and 4
         _write(smoke, SMOKE_FIXTURE.replace(
             '(2, "probe two", probe_two)', '(4, "probe two", probe_two)'))
-        rep = census(smoke, charter)
+        rep = census(smoke, charter, tmp)
         check("numbering gap -> GAPS",
               rep["verdict"] == "PROBE-REGISTRY-GAPS"
               and any("gap: no.2" in p for p in rep["problems"])
@@ -383,7 +543,7 @@ def selftest():
 
         # same clause copied into a second section: two rules, one number
         _write(charter, _charter_with(["- 2. second probe, older copy.\n"]))
-        rep = census(smoke, charter)
+        rep = census(smoke, charter, tmp)
         check("duplicate clause -> GAPS+DUPLICATE-CLAUSE",
               rep["verdict"] == "PROBE-REGISTRY-GAPS"
               and rep["duplicate_clauses"] == [2]
@@ -392,7 +552,7 @@ def selftest():
               str(rep["problems"]))
 
         # unreadable input must not read as clean
-        rep = census(os.path.join(tmp, "missing.py"), charter)
+        rep = census(os.path.join(tmp, "missing.py"), charter, tmp)
         check("missing file -> UNVERIFIED",
               rep["verdict"] == "PROBE-REGISTRY-UNVERIFIED",
               rep["verdict"])
@@ -401,7 +561,7 @@ def selftest():
         _write(smoke, SMOKE_FIXTURE)
         _write(charter, CHARTER_FIXTURE.replace(
             DRIFT_ANCHOR, "- 99. drifted clause outside section 3."))
-        rep = census(smoke, charter)
+        rep = census(smoke, charter, tmp)
         check("clause only outside section 3 -> GAPS",
               rep["verdict"] == "PROBE-REGISTRY-GAPS"
               and 99 in rep.get("clause_numbers", [])
@@ -419,7 +579,7 @@ def selftest():
             '(2, "probe two", probe_two),',
             '(2, "probe two", probe_two),\n    (3, "drifted", probe_three),')
         _write(smoke, drifted_smoke)
-        rep = census(smoke, charter)
+        rep = census(smoke, charter, tmp)
         check("drifted clause with probe -> CLEAN",
               rep["verdict"] == "PROBE-REGISTRY-CLEAN"
               and 3 in rep["registry"] and 3 in rep.get("clause_numbers", []),
@@ -434,7 +594,7 @@ def selftest():
                 ("paren", "99) drifted paren clause"),
                 ("star bullet", "* 99. drifted star clause")):
             _write(charter, CHARTER_FIXTURE.replace(DRIFT_ANCHOR, clause))
-            rep = census(smoke, charter)
+            rep = census(smoke, charter, tmp)
             check("%s clause -> GAPS" % label,
                   rep["verdict"] == "PROBE-REGISTRY-GAPS"
                   and 99 in rep.get("clause_numbers", [])
@@ -449,12 +609,78 @@ def selftest():
         _write(charter, CHARTER_FIXTURE.replace(
             "| 1 | first base probe |",
             "| 1 | first base probe |\n| 7 | frozen base row |"))
-        rep = census(smoke, charter)
+        rep = census(smoke, charter, tmp)
         check("base table row not counted as clause",
               rep["verdict"] == "PROBE-REGISTRY-CLEAN"
               and 7 not in rep.get("clause_numbers", [])
               and not any("no.7" in p for p in rep["problems"]),
               rep.get("summary", "") + " " + str(rep["problems"]))
+
+        # ---- M198: the "detail=<appendix>·pN" pointers must resolve ----
+        docs = os.path.join(tmp, "docs")
+        os.makedirs(docs, exist_ok=True)
+        appendix = os.path.join(docs, "qa-probes-t.md")
+        pointer = ("- 2. second probe%s%s=docs/qa-probes-t.md%sp2\n"
+                   % (POINTER_SEP, DETAIL_WORD, MIDDOT))
+        ptr_charter = CHARTER_FIXTURE.replace("- 2. second probe.\n", pointer)
+        _write(smoke, SMOKE_FIXTURE)
+
+        _write(charter, ptr_charter)
+        _write(appendix, "- 2. second probe (full rule).\n")
+        rep = census(smoke, charter, tmp)
+        check("resolvable pointer -> CLEAN",
+              rep["verdict"] == "PROBE-REGISTRY-CLEAN"
+              and rep["refs"]["resolved"] == 1,
+              rep.get("summary", "") + " " + str(rep["problems"]))
+
+        _write(charter, ptr_charter.replace("qa-probes-t.md",
+                                            "qa-probes-gone.md"))
+        rep = census(smoke, charter, tmp)
+        check("pointer to a missing appendix -> GAPS+POINTER-FILE",
+              rep["verdict"] == "PROBE-REGISTRY-GAPS"
+              and any("POINTER-FILE" in p for p in rep["problems"]),
+              str(rep["problems"]))
+
+        _write(charter, ptr_charter)
+        _write(appendix, "- 7. a clause that is not the pointer's number.\n")
+        rep = census(smoke, charter, tmp)
+        check("appendix lacks the clause -> GAPS+POINTER-CLAUSE",
+              rep["verdict"] == "PROBE-REGISTRY-GAPS"
+              and any("POINTER-CLAUSE" in p for p in rep["problems"]),
+              str(rep["problems"]))
+
+        _write(appendix, "- 2. an entirely different rule.\n")
+        rep = census(smoke, charter, tmp)
+        check("appendix title drifted -> GAPS+POINTER-TITLE",
+              rep["verdict"] == "PROBE-REGISTRY-GAPS"
+              and any("POINTER-TITLE" in p for p in rep["problems"]),
+              str(rep["problems"]))
+
+        # stripping the pointers must not switch the face off: the appendix
+        # is still on disk, so a clause without a pointer is a problem.
+        _write(charter, CHARTER_FIXTURE)
+        _write(appendix, "- 2. second probe (full rule).\n")
+        rep = census(smoke, charter, tmp)
+        check("pointer stripped while appendix exists -> GAPS",
+              rep["verdict"] == "PROBE-REGISTRY-GAPS"
+              and any("POINTER-MISSING" in p for p in rep["problems"]),
+              str(rep["problems"]))
+
+        _write(charter, ptr_charter)
+        _write(appendix, "- 2. second probe (full rule).\n"
+                         "- 9. a rule nobody points at.\n")
+        rep = census(smoke, charter, tmp)
+        check("orphan appendix clause -> GAPS+POINTER-ORPHAN",
+              rep["verdict"] == "PROBE-REGISTRY-GAPS"
+              and any("POINTER-ORPHAN" in p for p in rep["problems"]),
+              str(rep["problems"]))
+
+        _write(appendix, "- 2. second probe (full rule).\n")
+        rep = census(smoke, charter, tmp, require_refs=False)
+        check("require_refs=False -> face off (opt-out is explicit)",
+              rep["verdict"] == "PROBE-REGISTRY-CLEAN"
+              and rep["refs"]["enforced"] is False,
+              rep.get("summary", ""))
 
     # live pair: real repo files must parse (CLEAN or GAPS both parse)
     live = census()
@@ -475,13 +701,26 @@ def main():
     ap.add_argument("--smoke", default=None)
     ap.add_argument("--charter", default=None)
     ap.add_argument("--json-out", default=None)
+    ap.add_argument("--root", default=None,
+                    help="repo root used to resolve appendix pointers")
+    ap.add_argument("--require-refs", dest="require_refs",
+                    action="store_true", default=None,
+                    help="force the pointer face even with no pointers/files")
     args = ap.parse_args()
 
     if args.command == "selftest":
         return selftest()
 
-    rep = census(args.smoke, args.charter)
+    rep = census(args.smoke, args.charter, args.root, args.require_refs)
     print("probe registry census: %s" % rep["summary"])
+    refs = rep.get("refs") or {}
+    if refs.get("enforced"):
+        print("  refs: resolved=%d/%d appendix_clauses=%d files=%d %s"
+              % (refs.get("resolved", 0), refs.get("pointers", 0),
+                 refs.get("appendix_clauses", 0),
+                 refs.get("appendix_files", 0),
+                 " ".join("%s=%d" % (k, v) for k, v in
+                          sorted((refs.get("reasons") or {}).items()))))
     shapes = rep.get("clause_variants") or {}
     print("  shapes: %s" % (" ".join("%s=%d" % (k, shapes[k])
                                      for k in sorted(shapes)) or "none"))
