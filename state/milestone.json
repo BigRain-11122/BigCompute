@@ -1,6 +1,6 @@
 {
- "next_milestone": "2026-11-11 18:00 D-20261111-02 复核腿交付：8 件取回路径逐件 blob 比对结论（取回源实测 backup 支线 0/8、origin/bm-a/pending-20261110-0000 8/8）；同日 B-CITY3D-02 判据帧复渲等车道窗（vram_free≥6144MiB 自动重烧，无窗则逐日 BLOCKED 并给读数）",
- "declared_at": "2026-11-11 00:33",
- "window_h": 18,
- "basis": "委员会 11-11 00:0x 第 56 批 D-20261111-02 dispatched（@BigCompute 复核腿·承诺 11-11 18:00）；GPU 道 00:06 实测 vram_free=161MiB 仍关"
+ "next_milestone": "BC-P-241 实装：docs/status-export.json 增 freshness 块（write_lag/ledger_lag/max_age/judged_at/verdict，值与 status_face_freshness 单源逐字相等，selftest 断言）——本轮面上即可读到判据；同窗兜底=取回落地后 8 件 blob 复跑结案（最迟 11-13 20:00）+ B-CITY3D-02 判据帧复渲维持门控 vram_free>=6144MiB",
+ "declared_at": "2026-11-11 22:47",
+ "window_h": 48,
+ "basis": "M194 本轮已收口（单源模块 selftest 10/10+两处夹具 33/33、25/25，实跑复现写侧拒/读侧绿错位窗）；剩余缺口=caps 仍只在代码里、CEO 面不可自述，故下一件=把 caps 写进面；GPU 道 22:46 实测 vram_free=3266MiB 仍低于 6144"
 }

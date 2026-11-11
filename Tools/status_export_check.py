@@ -67,8 +67,16 @@ EXPORT_PATH = os.path.join("docs", "status-export.json")
 ROUNDS_PATH = os.path.join("state", "rounds.log")
 
 REQUIRED_KEYS = ("current_activity", "latest_artifact", "next_milestone")
-MAX_AGE_H = 48.0
-LAG_H = 2.0
+# M194：两条读侧尺子的阈值单源=status_face_freshness（禁复制字面）；
+# 与写侧 round_append.J11 共用同一份定义，读数里各自打印 bench=。
+try:
+    from status_face_freshness import LEDGER_LAG_MIN, MAX_AGE_MIN
+except Exception:  # 同目录导入兜底（被 qa_smoke 经 sys.path 加载时不触发）
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from status_face_freshness import LEDGER_LAG_MIN, MAX_AGE_MIN
+
+MAX_AGE_H = MAX_AGE_MIN / 60.0
+LAG_H = LEDGER_LAG_MIN / 60.0
 
 TS_RE = re.compile(r"^(\d{4})-(\d{2})-(\d{2})[ T](\d{2})(?::(\d{2}))?")
 PLACEHOLDER_TOKENS = ("tbd", "todo", "n/a", "...", "-")
@@ -159,17 +167,19 @@ def export_verdict(raw_bytes, now=None, rounds_text="", exists=True):
         return "EXPORT-BAD", "updated_at unparsable: %r" % (payload.get("updated_at"),)
     age_h = (now - updated).total_seconds() / 3600.0
     if age_h > MAX_AGE_H:
-        return "EXPORT-STALE", ("updated_at=%s age=%.1fh > %.0fh cap"
+        return "EXPORT-STALE", ("updated_at=%s age=%.1fh > %.0fh cap (bench=now)"
                                 % (updated.strftime("%Y-%m-%d %H:%M"), age_h, MAX_AGE_H))
     latest = latest_round_ts(rounds_text)
     if latest is not None:
         lag_h = (latest - updated).total_seconds() / 3600.0
         if lag_h > LAG_H:
             return "EXPORT-STALE", ("round %s is %.1fh newer than export %s "
-                                    "(face not refreshed while work happened)"
+                                    "(face not refreshed while work happened; "
+                                    "bench=rounds.log latest round)"
                                     % (latest.strftime("%Y-%m-%d %H:%M"), lag_h,
                                        updated.strftime("%Y-%m-%d %H:%M")))
-    return "EXPORT-GREEN", ("three lines present, updated_at=%s age=%.1fh"
+    return "EXPORT-GREEN", ("three lines present, updated_at=%s age=%.1fh "
+                            "(bench=now+rounds.log latest round)"
                             % (updated.strftime("%Y-%m-%d %H:%M"), age_h))
 
 

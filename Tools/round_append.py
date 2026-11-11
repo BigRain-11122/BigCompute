@@ -85,7 +85,14 @@ ROUNDS_LOG_BASENAME = "rounds.log"
 TEXTINTEGRITY_RE = re.compile(r"textintegrity:(CLEAN|EXTERNAL-DAMAGED|NEEDS-FIX)")
 # J11（M193）：轮账本落盘时 CEO 实况面必须是本轮刷新过的
 STATUS_EXPORT_REL = os.path.join("docs", "status-export.json")
-EXPORT_MAX_LAG_MIN = 30.0
+# M194：阈值与判决单源=status_face_freshness（写侧尺子那条·禁复制字面）
+try:
+    from status_face_freshness import WRITE_LAG_MIN, judge_write
+except Exception:  # 同目录导入兜底（被当脚本直跑时 sys.path[0] 已是 Tools/）
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from status_face_freshness import WRITE_LAG_MIN, judge_write
+
+EXPORT_MAX_LAG_MIN = WRITE_LAG_MIN
 
 
 def _find_status_export(path):
@@ -240,12 +247,14 @@ def append_line(path, line, allow_ascii_qmark=False, allow_missing_textintegrity
         if err:
             return 9, ("STATUS-EXPORT-BAD-REJECT: %s 读不动（%s）——先修面再落轮账本"
                        "（J11·M193）" % (os.path.abspath(export_path), err))
-        if age_min > EXPORT_MAX_LAG_MIN:
+        _verdict = judge_write(stamp)
+        if not _verdict["ok"]:
             return 9, ("STATUS-EXPORT-STALE-REJECT: 实况面 updated_at=%s 比本轮早 %.0f 分钟"
-                       "（上限 %.0f）——「本轮干完活才刷面」与「面根本没刷」在台账里一样，"
+                       "（上限 %.0f·bench=now·判据单源=status_face_freshness）——"
+                       "「本轮干完活才刷面」与「面根本没刷」在台账里一样，"
                        "no.14 因此每轮必先红一次（M193 实锚 2.9h）。正解=先跑 "
                        "python Tools/status_export_check.py compose --write 再落轮账本"
-                       % (stamp, age_min, EXPORT_MAX_LAG_MIN))
+                       % (stamp, _verdict["age_min"], _verdict["cap_min"]))
     # J4 尾行守卫：既有尾字节非 \n 时先补换行，防新行并入既有尾行（T50 判例）
     tail_nl_fix = bool(text) and not raw.endswith(b"\n")
     with io.open(path, "a", encoding="utf-8", newline="") as f:

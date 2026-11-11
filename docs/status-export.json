@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-11-11 19:07",
- "current_activity": "2026-11-11 06:00 轮：M192 done(no.22 补机器可读 sidecar：有缺口必落 qa/smoke-<轮时标>-no22.json·missing_real 10+self_fail 10+copies 1 逐条带 node/id/deliverable/自述理由·干净轮 sidecar=none·写不出即红·夹具 9→13/13)+M172 closed-superseded(M178 已出六帧/M179 接续·同命令不再占两 open… ｜ 两池：本司备货可派 2 ／ 机队可领 4（两个不同池，本司卡未登记进机队池）",
- "latest_artifact": "state/runbook.md（mtime 2026-11-11 19:05）",
- "next_milestone": "2026-11-11 18:00 D-20261111-02 复核腿交付：8 件取回路径逐件 blob 比对结论（取回源实测 backup 支线 0/8、origin/bm-a/pending-20261110-0000 8/8）；同日 B-CITY3D-02 判据帧复渲等车道窗（vram_free≥6144MiB 自动重烧，无窗则逐日 BLOCKED 并给读数）（source=declared）"
+ "updated_at": "2026-11-11 22:48",
+ "current_activity": "2026-11-11 19:00 轮：M193 done(J11 实况面对齐闸=轮账本落盘校验 CEO 实况面 ≤30min·缺面/坏面同拒 exit9·selftest 27→33/33·实弹负控 175min 旧面被点名拒写·收尾顺序 compose→smoke→落账钉死)+M194 open(实况面新鲜度两把尺子待收敛) gpu:2026-11-05..11-11 n=1382 avg=53.3% AT-OR-ABOVE-BENCH(R-C1 50% gap… ｜ 两池：本司备货可派 2 ／ 机队可领 4（两个不同池，本司卡未登记进机队池）",
+ "latest_artifact": "state/milestone.json（mtime 2026-11-11 22:47）",
+ "next_milestone": "BC-P-241 实装：docs/status-export.json 增 freshness 块（write_lag/ledger_lag/max_age/judged_at/verdict，值与 status_face_freshness 单源逐字相等，selftest 断言）——本轮面上即可读到判据；同窗兜底=取回落地后 8 件 blob 复跑结案（最迟 11-13 20:00）+ B-CITY3D-02 判据帧复渲维持门控 vram_free>=6144MiB（source=declared）"
 }

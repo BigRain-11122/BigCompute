@@ -907,3 +907,13 @@ P0 提醒（@HQ 取回腿·18:00 前）：D-02 指定取回源 `backup/bm-a-2026
 - 产品（产品优先律 2 分件）：`round_append` 新增 **J11 实况面对齐闸**——轮账本落盘时 CEO 实况面必须本轮已刷（`docs/status-export.json` 的 updated_at 距落账 ≤30min，缺面/坏 JSON 同样拒写，exit 9；逃生门 `--allow-stale-status-export "<理由>"` 空理由照拒、放行行带 bypass 留痕）。selftest 27→33/33 PASS，实弹负控（175min 旧面）被拒并点名差值。收尾顺序同步钉死=compose --write → 冒烟 → 落轮账本（mandate 步 8 + runbook 各一行）。
 - 诚实：冒烟 30/32——no.22 红是真缺件 10 件照红（3 证据不足 / 7 支线可找回，派单权归 @HQ）；no.16 `:8792 /ask` 一次超时、同窗复跑转绿，属 M183 已知观测窗面，本轮未改其判据。同轮修掉上轮遗留的两处：心跳融合行（no.20 PARALLEL-NEW 一条）与 runbook 超预算（2324→2035B，no.11 复绿）。
 - 日清：P2 已立 M194——实况面新鲜度现在两把尺子（no.14 比台账 2h vs J11 比墙钟 30min），两边都能自洽但会有错位窗口，收敛须过 gate-rigor 四问，本轮只登记不改判据。
+
+## 2026-11-11 20:2x 令牌轮（M188 复核腿实跑）
+- 产品（产品优先律 2 分件）：M188 复核腿实跑（只读 fetch 后 origin/main HEAD=d228abc6 @20:21:37）-> `D02-REVIEW-NOT-RETRIEVED ok=0/8`：8 件在主线全 absent（取回动作至今未落到 origin/main）；源侧 8/8 仍可取且与 00:5x 钉死的 src_blob 逐件相等（钉死版本未漂，取回后可直接比对）。证据 state/d02-review-20261111.txt + .json。
+- P1（取回源错·须在取回前纠）：D-02 指令写 `backup/bm-a-20261110`，实测对本批 0/8 命中；8 件全在 `origin/bm-a/pending-20261110-0000`（8/8）。按指令执行取回必然落空，事后会被读成「永久缺件」——建议取回方取回前先把源改到实测命中的 ref（本司禁跨仓写、禁 cherry-pick，只能上报）。
+- 诚实：「未取回」既不是本司通过也不是本司失败，本司侧可做部分（清单/源 blob 钉死/逐件比对器）已做完，复核腿无对象可验故不结案；缺件面仍归 no.22 独立判，本条不并入。
+
+## 2026-11-11 22:4x 夜班轮（M194 实况面新鲜度单源）
+- 产品（产品优先律 2 分件）：`Tools/status_face_freshness.py` 落盘＝实况面新鲜度三把尺子单源（WRITE_LAG 30min vs now／LEDGER_LAG 120min vs 台账最新轮／MAX_AGE 2880min vs now）；`round_append.J11` 与 `status_export_check` 各自 import 同一常量＋同一函数，读数写死 `bench=`；selftest 10/10，两套既有夹具 33/33 与 25/25 全绿。实跑当场复现错位窗（面 20:24、now 22:46、台账最新轮 19:00：写侧拒 143min 而读侧绿 lag=−84min），证据 state/m194-freshness-single-source-20261111.txt。
+- 诚实：M179（洋红修复实跑复验）本轮不可点火——vram_free 3266MiB < 本卡门控 6144MiB，如实维持 open 不虚报；M185（ResidentQA 转 S4U）仍 BLOCKED-PHYSICAL 待提权窗。
+- 日清：P2 单源已立但 caps 仍只活在代码里，CEO 面上看不到「判据是什么、何时定的」→ BC-P-241 建议把 freshness caps 写进实况面自身。

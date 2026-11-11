@@ -91,6 +91,7 @@ serve_sla_baseline.py
 sku_ledger_join.py
 sla_drift_preaudit.py
 sop_coverage_check.py
+status_face_freshness.py
 status_export_check.py
 storm_leftover_check.py
 text_integrity_census.py
