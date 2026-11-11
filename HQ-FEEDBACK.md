@@ -929,3 +929,7 @@ P0 提醒（@HQ 取回腿·18:00 前）：D-02 指定取回源 `backup/bm-a-2026
 - 产品（产品优先律 2 分件）：`Tools/probe_registry_census.py` 增**指针面**——charter §三 每行 `细节=<附录>·pN` 逐行三验〔附录文件在盘／附录内确有 `- N.` 行／该行仍含本条标题词〕，并双向查〔条款无指针=`POINTER-MISSING`／附录条款无人引用=`POINTER-ORPHAN`〕；指针整行被删而附录仍在盘时仍判红（不因「没有指针」自动放行）。selftest 16→**23/23 PASS**（六条新夹具含缺文件/缺条款/标题漂移/指针被删/孤儿条款/显式关闭面），实跑 `PROBE-REGISTRY-CLEAN ... refs=29/29 problems=0`；**qa_smoke no.24 本来就调 `census()`，故这道闸从本轮起每轮冒烟自动守**，无需另接探针。证据 `state/m198-pointer-resolve-20261112.json`。
 - 诚实：指针面只证「回指还在」，不证「条款正文没被改写」——标题保留而规则换掉仍会过（已留 BC-P-244）；同类边界另记一条：本节判据靠 `- N.` 行形状，附录若改用别的编号形状会读成「条款不存在」，宁可判红也不猜。
 - 日清：P2 M198 结案（M196 拆分的后续面）；如实记队列水位——tech open=2、explore open=2，低于常备 ≥10 线，本轮只补真实派生项不造活凑数；集团双台账 11-12 无本司新派单（D-20261112-05 已由 D-07 核销、D-09 分卷与我司无关）。
+
+## 2026-11-12 06:3x 令牌轮（M179 洋红出生地根治）
+- 产品（产品优先律 2 分件）：判据帧洋红的根因定谳在「生成器」而不是「场景文件」——`BuildRoom()` 每次烘焙都重写 `Assets/BakeRoom.unity`，11-09 的 SlabMat 改写因此被 11-12 01:42 那次烘焙覆盖回去，四小时后 04:58 的渲染仍是 6/6 帧洋红占位；而 `RepairMissingMaterials` 的 `mats[i]!=null && shader!=null` 判据对「URP Lit 在 builtin 下画不出来」完全无感（material_slots=14 / repaired=0）。本轮把修复挪到出生地并真跑验证：烘焙卡 248.3s ok=true、两板材质钉死 Standard（`slab_material=loaded:...SlabMat.mat|Standard`）、重生成后场景 guid `31321ba1…` 零命中、材质普查由 3/2 UNRESOLVED 转 5/0 CLEAN（证据 `state/bake-spike-magenta-birthsite-20261112.txt`）。
+- 日清：无 P0/P1；P2=渲染侧判据③（六帧洋红消失）仍待 GPU 开窗（06:2x vram 3298<6144，按让路律不抢），`.cs` 内容已变→payload 指纹变化，开窗后守候器自动重渲。

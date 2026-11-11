@@ -22,6 +22,7 @@ namespace City3DBakeSpike
     public static class Entry
     {
         static readonly Dictionary<string, object> M = new Dictionary<string, object>();
+        static Material slabMat;
 
         public static void Run()
         {
@@ -144,12 +145,51 @@ namespace City3DBakeSpike
             return 1;
         }
 
+        // 2026-11-12 出生地修复（承 T-20261109-7 / T-20261109-10）：
+        // BuildRoom 每次烘焙都 NewScene+SaveScene 重写 Assets/BakeRoom.unity，所以
+        // 「直接改场景里的材质引用」活不过下一次烘焙——11-09 的 SlabMat 改写就是被
+        // 11-12 01:42 那次烘焙覆盖回去的（场景 mtime 实证）。而 CreatePrimitive 在本
+        // 工程给出的默认材质是 URP Lit（guid 31321ba1… = PackageCache 内
+        // com.unity.render-pipelines.universal/.../Lit.mat），渲染卡又把管线强制清成
+        // builtin，于是两块板子在渲染时画洋红（04:58 回执 6/6 帧占位、material_slots=14
+        // 却 materials_repaired=0 —— 引用与 shader 都非 null，守卫看不见）。
+        // 修法=在生成侧就钉死内置管线可用材质，让场景文件永不再写出 URP 材质引用。
+        static Material SlabMaterial()
+        {
+            if (slabMat != null) return slabMat;
+            const string path = "Assets/RenderSpike/SlabMat.mat";
+            var loaded = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (loaded != null && loaded.shader != null)
+            {
+                slabMat = loaded;
+                M["slab_material"] = "loaded:" + path + "|" + loaded.shader.name;
+                return slabMat;
+            }
+            var sh = Shader.Find("Standard") ?? Shader.Find("Unlit/Color");
+            if (sh == null) throw new InvalidOperationException("slab_material_unavailable: no builtin shader");
+            if (!AssetDatabase.IsValidFolder("Assets/RenderSpike"))
+                AssetDatabase.CreateFolder("Assets", "RenderSpike");
+            slabMat = new Material(sh);
+            slabMat.name = "SlabMat";
+            AssetDatabase.CreateAsset(slabMat, path);
+            AssetDatabase.SaveAssets();
+            M["slab_material"] = "created:" + path + "|" + sh.name;
+            return slabMat;
+        }
+
         static int MakeSlab(string name, Vector3 pos, Vector3 scale)
         {
             var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
             go.name = name;
             go.transform.position = pos;
             go.transform.localScale = scale;
+            var mr = go.GetComponent<MeshRenderer>();
+            var mat = SlabMaterial();
+            if (mr != null)
+            {
+                mr.sharedMaterial = mat;
+                M["slab_material_applied_" + name] = mat.shader.name;
+            }
             MarkStatic(go);
             return 1;
         }

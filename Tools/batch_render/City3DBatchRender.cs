@@ -80,9 +80,29 @@ namespace City3DBatchRender
         // 「空白」的均匀帧——俯视机位整屏都是洋红地板，一个根因两个症状。
         // 修法=渲染前把 null 材质/无 shader 材质替换为内置管线兜底材质，并把被修的对象
         // 名字写进指标；兜底材质都拿不到时不渲染直接报错（不许再产出洋红）。
+        // 2026-11-12 守卫补盲（04:58 回执实证）：material_slots=14 而 repaired=0，
+        // 6/6 帧仍是洋红占位——「引用非 null 且 shader 非 null」这条判据看不见真正坏掉
+        // 的那两种形态：①悬空引用被 Unity 兜底成 Hidden/InternalErrorShader（shader 非
+        // null）；②材质是 SRP 专用 shader（Universal Render Pipeline/Lit…），而本卡渲染
+        // 前把管线强制清成 builtin——shader 对象在，但在 builtin 下画不出来（31321ba1…
+        // 正是 PackageCache 里的 URP Lit.mat）。判据改为按 shader 名识别，并保留原因串。
+        static string BrokenReason(Material m)
+        {
+            if (m == null) return "null-material";
+            var sh = m.shader;
+            if (sh == null) return "null-shader";
+            var n = sh.name ?? "";
+            if (n.Length == 0) return "empty-shader-name";
+            if (n == "Hidden/InternalErrorShader") return "error-shader";
+            if (n.StartsWith("Universal Render Pipeline/")) return "srp-shader-under-builtin:" + n;
+            if (n.StartsWith("HDRP/")) return "srp-shader-under-builtin:" + n;
+            return null;
+        }
+
         static void RepairMissingMaterials()
         {
             var fixedObjs = new System.Collections.Generic.List<string>();
+            var reasons = new System.Collections.Generic.List<string>();
             var bad = new System.Collections.Generic.List<string>();
             Material fallback = null;
             int slots = 0;
@@ -93,7 +113,8 @@ namespace City3DBatchRender
                 for (int i = 0; i < mats.Length; i++)
                 {
                     slots++;
-                    if (mats[i] != null && mats[i].shader != null) continue;
+                    var why = BrokenReason(mats[i]);
+                    if (why == null) continue;
                     if (fallback == null)
                     {
                         var sh = Shader.Find("Standard")
@@ -109,10 +130,11 @@ namespace City3DBatchRender
                     {
                         mats[i] = fallback;
                         touched = true;
+                        reasons.Add(r.name + "[slot " + i + "]:" + why);
                     }
                     else
                     {
-                        bad.Add(r.name + "[slot " + i + "]");
+                        bad.Add(r.name + "[slot " + i + "]:" + why);
                     }
                 }
                 if (touched)
@@ -124,6 +146,7 @@ namespace City3DBatchRender
             M["material_slots"] = slots;
             M["materials_repaired"] = fixedObjs.Count;
             M["materials_repaired_objects"] = string.Join(",", fixedObjs.ToArray());
+            M["materials_repaired_reasons"] = string.Join(";", reasons.ToArray());
             M["materials_unrepairable"] = bad.Count;
             if (bad.Count > 0)
                 throw new InvalidOperationException("material_unrepairable: " + string.Join(",", bad.ToArray()));
