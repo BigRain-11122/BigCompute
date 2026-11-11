@@ -1,8 +1,8 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-11-12 00:10",
- "current_activity": "2026-11-11 22:00 轮：M194 done 实况面新鲜度三把尺子单源 status_face_freshness (WRITE_LAG 30min/LEDGER_LAG 120min/MAX_AGE 2880min; round_append.J11 与 status_export_check 同源 import; selftest 10/10 含双向错位窗夹具; 两套既有夹具 33/33+25/25;… ｜ 两池：本司备货可派 2 ／ 机队可领 4（两个不同池，本司卡未登记进机队池）",
- "latest_artifact": "state/m197-caps-in-face-20261112.txt（mtime 2026-11-12 00:09）",
+ "updated_at": "2026-11-12 00:18",
+ "current_activity": "2026-11-12 00:00 轮：M197 done 实况面自证判据（D-20261112-05 承办·承诺窗内提前约 12h）=面增 caps（write_lag/ledger_lag/max_age/bench_date/source 五字段）+freshness 人读行，值逐字来自 status_face_freshness 单源（新增 S11/S12 断言·12/12）… ｜ 两池：本司备货可派 2 ／ 机队可领 4（两个不同池，本司卡未登记进机队池）",
+ "latest_artifact": "state/unknown-converge.json（mtime 2026-11-12 00:12）",
  "next_milestone": "BC-P-241 实装：docs/status-export.json 增 freshness 块（write_lag/ledger_lag/max_age/judged_at/verdict，值与 status_face_freshness 单源逐字相等，selftest 断言）——本轮面上即可读到判据；同窗兜底=取回落地后 8 件 blob 复跑结案（最迟 11-13 20:00）+ B-CITY3D-02 判据帧复渲维持门控 vram_free>=6144MiB（source=declared）",
  "caps": {
   "write_lag_min": 30.0,
