@@ -903,3 +903,7 @@ P0 提醒（@HQ 取回腿·18:00 前）：D-02 指定取回源 `backup/bm-a-2026
 - 产品（产品优先律 2 分件）：QA 冒烟 no.22 的缺口清单落成机器可读件 `qa/smoke-20261111-0608-no22.json`（9937B）——`missing_real` 10 条 + `self_fail` 10 条 + `copies` 1 条，逐条带 node/id/deliverable/receipt/reason/回执自述理由；日志行只列 8 条（余 `(+13 more)`），现在点外可由他人复核与派工。有缺口才落文件、干净轮打 `sidecar=none`（缺文件即「本轮无缺口」）；写不出即判红。receipt-product-law 夹具 9→13/13 PASS，charter §三 第 22 条同窗改写。
 - 诚实：冒烟 **29/32**（较上轮 31/32 多两红且都不是本轮改动引起）——no.14 报 `EXPORT-STALE`（冒烟在收尾刷新之前跑＝时序倒挂，已立 M193 并如实不为此改判据）；no.16 `:8792 /ask` 超时（M183 已知观测窗面）。no.22 仍红＝10 件真缺件照红，本轮只让它们可逐条追。
 - 日清：P2 no.22 sidecar 已落盘但无读者（下一轮仍从零算）→ BC-P-239「carried/new 两数」待批。
+## 2026-11-11 19:2x 令牌轮（M193 实况面对齐闸·收尾顺序钉死）
+- 产品（产品优先律 2 分件）：`round_append` 新增 **J11 实况面对齐闸**——轮账本落盘时 CEO 实况面必须本轮已刷（`docs/status-export.json` 的 updated_at 距落账 ≤30min，缺面/坏 JSON 同样拒写，exit 9；逃生门 `--allow-stale-status-export "<理由>"` 空理由照拒、放行行带 bypass 留痕）。selftest 27→33/33 PASS，实弹负控（175min 旧面）被拒并点名差值。收尾顺序同步钉死=compose --write → 冒烟 → 落轮账本（mandate 步 8 + runbook 各一行）。
+- 诚实：冒烟 30/32——no.22 红是真缺件 10 件照红（3 证据不足 / 7 支线可找回，派单权归 @HQ）；no.16 `:8792 /ask` 一次超时、同窗复跑转绿，属 M183 已知观测窗面，本轮未改其判据。同轮修掉上轮遗留的两处：心跳融合行（no.20 PARALLEL-NEW 一条）与 runbook 超预算（2324→2035B，no.11 复绿）。
+- 日清：P2 已立 M194——实况面新鲜度现在两把尺子（no.14 比台账 2h vs J11 比墙钟 30min），两边都能自洽但会有错位窗口，收敛须过 gate-rigor 四问，本轮只登记不改判据。

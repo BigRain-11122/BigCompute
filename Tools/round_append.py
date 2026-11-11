@@ -45,9 +45,18 @@ utf-8 显式编码唯一写入路径——轮账本/心跳 append 一律走本�
      目标文件名 rounds.log 时，行内必须带 `textintegrity:<三态>` 字段
      （三态取 text_integrity_census.rounds_line() 的输出），否则拒写 exit 8。
      逃生门=--allow-missing-textintegrity "<理由>"（理由必须非空、随行打印）。
+  J11 实况面对齐闸（M193·11-11 立）：轮账本落盘时 CEO 实况面必须已是本轮
+     刷新过的。旧态=冒烟在收尾步之前跑、实况面在收尾步才 compose，于是
+     「本轮干完活才刷面」与「面根本没刷」在台账里长得一样，no.14 每轮必先
+     红一次再被收尾补救（M193 实锚：round 04:00 vs export 01:07 = 2.9h）。
+     判据=docs/status-export.json 的 updated_at 距本行落盘 ≤ EXPORT_MAX_LAG_MIN
+     分钟；面缺失/不可解析同样拒写（面消失不得靠「没有文件」静默通过）。
+     逃生门=--allow-stale-status-export "<理由>"（理由必须非空、随行打印）。
 """
 import argparse
+import datetime
 import io
+import json
 import os
 import re
 import sys
@@ -74,6 +83,42 @@ QMARK_RUN_RE = re.compile(r"\?{2,}")
 # J10（D-20261102-03 ③）：轮账本行必须携带 text-integrity 摘要字段
 ROUNDS_LOG_BASENAME = "rounds.log"
 TEXTINTEGRITY_RE = re.compile(r"textintegrity:(CLEAN|EXTERNAL-DAMAGED|NEEDS-FIX)")
+# J11（M193）：轮账本落盘时 CEO 实况面必须是本轮刷新过的
+STATUS_EXPORT_REL = os.path.join("docs", "status-export.json")
+EXPORT_MAX_LAG_MIN = 30.0
+
+
+def _find_status_export(path):
+    """从轮账本所在目录向上最多 3 层找 docs/status-export.json（无则 None）。"""
+    d = os.path.dirname(os.path.abspath(path))
+    for _ in range(4):
+        cand = os.path.join(d, STATUS_EXPORT_REL)
+        if os.path.exists(cand):
+            return cand
+        parent = os.path.dirname(d)
+        if parent == d:
+            break
+        d = parent
+    return None
+
+
+def _status_export_age_min(export_path):
+    """返回 (age_min, stamp_text, error)。age_min=None 时 error 说明读不动的原因。"""
+    try:
+        with io.open(export_path, "r", encoding="utf-8-sig") as f:
+            data = json.load(f)
+    except Exception as e:
+        return None, "", "不可解析(%s)" % e
+    stamp = str(data.get("updated_at") or "").strip()
+    if not stamp:
+        return None, "", "缺 updated_at 字段"
+    for fmt in ("%Y-%m-%d %H:%M", "%Y-%m-%d %H:%M:%S"):
+        try:
+            ts = datetime.datetime.strptime(stamp, fmt)
+            return (datetime.datetime.now() - ts).total_seconds() / 60.0, stamp, ""
+        except ValueError:
+            continue
+    return None, stamp, "updated_at 形态不可解析"
 
 
 def _read_strict(path):
@@ -106,11 +151,12 @@ def _verify_readback(path, line):
     return True, "readback=ok"
 
 
-def append_line(path, line, allow_ascii_qmark=False, allow_missing_textintegrity=None):
+def append_line(path, line, allow_ascii_qmark=False, allow_missing_textintegrity=None,
+                allow_stale_status_export=None):
     """返回 (exit_code, message)。
 
     exit 0=APPENDED / 2=DUPLICATE / 3=CORRUPT / 4=DUAL-TS / 5=EMPTY-LINE
-    / 6=MOJIBAKE / 7=QMARK-CORRUPT / 8=MISSING-TEXTINTEGRITY
+    / 6=MOJIBAKE / 7=QMARK-CORRUPT / 8=MISSING-TEXTINTEGRITY / 9=STATUS-EXPORT
     """
     raw, text = _read_strict(path)
     if text is None:
@@ -178,6 +224,28 @@ def append_line(path, line, allow_ascii_qmark=False, allow_missing_textintegrity
                        "正解=跑 python Tools/text_integrity_census.py run --rounds-line "
                        "取其输出拼入本行；确无该面时用 "
                        "--allow-missing-textintegrity \"<理由>\" 显式放行")
+    # J11 实况面对齐闸（M193·11-11 立）：面必须是本轮刷新过的
+    if allow_stale_status_export is not None and not allow_stale_status_export.strip():
+        return 9, ("STATUS-EXPORT-STALE-REJECT: --allow-stale-status-export 的理由为空——"
+                   "逃生门必须写明为什么本轮不刷实况面（J11·M193）")
+    if os.path.basename(path).lower() == ROUNDS_LOG_BASENAME and not allow_stale_status_export:
+        export_path = _find_status_export(path)
+        if not export_path:
+            return 9, ("STATUS-EXPORT-MISSING-REJECT: 轮账本落盘时找不到 "
+                       "docs/status-export.json（CEO 实况面）——面消失不得靠「没有文件」"
+                       "静默通过（J11·M193）。正解=先跑 "
+                       "python Tools/status_export_check.py compose --write；"
+                       "确无该面时用 --allow-stale-status-export \"<理由>\" 显式放行")
+        age_min, stamp, err = _status_export_age_min(export_path)
+        if err:
+            return 9, ("STATUS-EXPORT-BAD-REJECT: %s 读不动（%s）——先修面再落轮账本"
+                       "（J11·M193）" % (os.path.abspath(export_path), err))
+        if age_min > EXPORT_MAX_LAG_MIN:
+            return 9, ("STATUS-EXPORT-STALE-REJECT: 实况面 updated_at=%s 比本轮早 %.0f 分钟"
+                       "（上限 %.0f）——「本轮干完活才刷面」与「面根本没刷」在台账里一样，"
+                       "no.14 因此每轮必先红一次（M193 实锚 2.9h）。正解=先跑 "
+                       "python Tools/status_export_check.py compose --write 再落轮账本"
+                       % (stamp, age_min, EXPORT_MAX_LAG_MIN))
     # J4 尾行守卫：既有尾字节非 \n 时先补换行，防新行并入既有尾行（T50 判例）
     tail_nl_fix = bool(text) and not raw.endswith(b"\n")
     with io.open(path, "a", encoding="utf-8", newline="") as f:
@@ -192,6 +260,8 @@ def append_line(path, line, allow_ascii_qmark=False, allow_missing_textintegrity
         msg += " tail_nl_fix=1（既有尾行缺换行已补——J4 守卫）"
     if allow_missing_textintegrity:
         msg += " textintegrity_bypass=(%s)" % allow_missing_textintegrity.strip()
+    if allow_stale_status_export:
+        msg += " status_export_bypass=(%s)" % allow_stale_status_export.strip()
     rb_ok, rb_msg = _verify_readback(path, line)  # J7 回读断言（非拦截·防吞写）
     if not rb_ok:
         msg = rb_msg + " | " + msg
@@ -294,7 +364,25 @@ def _selftest():
         c, m = append_line(p3, "22:56 刻痕：第三方复活被杀（20:49:44 击发实锚·引他人证据时刻）")
         run("S22 二手引用行放行", c == 0 and "击发实锚" in open(p3, "rb").read().decode("utf-8"), m[:120])
         # S23 rounds.log 缺 text-integrity 字段 → 拒写（J10·D-20261102-03 ③）
-        pr = os.path.join(td, "rounds.log")
+        # M193：轮账本目标按仓形摆放（state/rounds.log + docs/status-export.json），
+        # 否则 J11 会先拦「找不到实况面」，S23/S24 就测不到自己那一条。
+        proot = os.path.join(td, "repo")
+        os.makedirs(os.path.join(proot, "docs"))
+        os.makedirs(os.path.join(proot, "state"))
+
+        def mkexport(minutes_ago, stamp=None):
+            if stamp is None:
+                ts = datetime.datetime.now() - datetime.timedelta(minutes=minutes_ago)
+                stamp = ts.strftime("%Y-%m-%d %H:%M")
+            with io.open(os.path.join(proot, STATUS_EXPORT_REL), "w",
+                         encoding="utf-8", newline="") as f:
+                f.write(json.dumps({"updated_at": stamp, "current_activity": "x",
+                                    "latest_artifact": "x", "next_milestone": "x"},
+                                   ensure_ascii=False))
+            return stamp
+
+        mkexport(1)
+        pr = os.path.join(proot, "state", "rounds.log")
         c, m = append_line(pr, "2026-11-02 19:2x tokens: local=0 api=0 queue:T-x done=x")
         run("S23 rounds行缺字段拒写 exit8",
             c == 8 and "MISSING-TEXTINTEGRITY" in m and not os.path.exists(pr), m[:100])
@@ -312,6 +400,45 @@ def _selftest():
         # S26 非 rounds.log 目标不受 J10 约束（心跳/队列照常写）
         c, m = append_line(p3, "19:3x 刻痕：J10 不波及非轮账本目标")
         run("S26 非rounds目标不受限", c == 0 and "textintegrity_bypass" not in m, m[:100])
+        # S27 实况面缺失 → 拒写（J11·M193）：面消失不得靠「没有文件」静默通过
+        pnoface = os.path.join(td, "noface", "state")
+        os.makedirs(pnoface)
+        pr_noface = os.path.join(pnoface, "rounds.log")
+        c, m = append_line(pr_noface, "2026-11-11 19:2x tokens: local=0 api=0 queue:M193 done"
+                                      " | textintegrity:CLEAN cats=7/7")
+        run("S27 实况面缺失拒写 exit9",
+            c == 9 and "STATUS-EXPORT-MISSING" in m and not os.path.exists(pr_noface), m[:110])
+        # S28 实况面过期 → 拒写（M193 实锚形态：round 比 export 新 2.9h）
+        before = open(pr, "rb").read()
+        stale_stamp = mkexport(90)
+        c, m = append_line(pr, "2026-11-11 19:3x tokens: local=0 api=0 queue:M193 done"
+                               " | textintegrity:CLEAN cats=7/7")
+        run("S28 实况面过期拒写 exit9",
+            c == 9 and "STATUS-EXPORT-STALE" in m and stale_stamp in m
+            and open(pr, "rb").read() == before, m[:120])
+        # S29 实况面本轮已刷 → 放行（收尾正序：compose --write → 落轮账本）
+        mkexport(0)
+        c, m = append_line(pr, "2026-11-11 19:4x tokens: local=0 api=0 queue:M193 done"
+                               " | textintegrity:CLEAN cats=7/7")
+        run("S29 实况面新鲜放行", c == 0 and "textintegrity:CLEAN" in open(pr, "rb").read().decode("utf-8"), m[:110])
+        # S30 逃生门：理由必须非空，非空放行且消息带 status_export_bypass
+        mkexport(90)
+        c, m = append_line(pr, "2026-11-11 19:5x tokens: local=0 api=0 queue:例外行"
+                               " | textintegrity:CLEAN cats=7/7",
+                           allow_stale_status_export="")
+        run("S30a 逃生门空理由仍拒", c == 9 and "理由为空" in m, m[:110])
+        c, m = append_line(pr, "2026-11-11 19:5x tokens: local=0 api=0 queue:例外行"
+                               " | textintegrity:CLEAN cats=7/7",
+                           allow_stale_status_export="实况面写盘故障待修·本轮显式放行")
+        run("S30b 逃生门非空放行", c == 0 and "status_export_bypass=" in m, m[:130])
+        # S31 实况面坏 JSON → 拒写（不许把「读不动」当「新鲜」）
+        with io.open(os.path.join(proot, STATUS_EXPORT_REL), "w", encoding="utf-8", newline="") as f:
+            f.write("{not json")
+        before = open(pr, "rb").read()
+        c, m = append_line(pr, "2026-11-11 20:0x tokens: local=0 api=0 queue:坏面行"
+                               " | textintegrity:CLEAN cats=7/7")
+        run("S31 实况面坏JSON拒写 exit9",
+            c == 9 and "STATUS-EXPORT-BAD" in m and open(pr, "rb").read() == before, m[:110])
 
     n_pass = sum(1 for _, ok, _ in checks if ok)
     for name, ok, detail in checks:
@@ -332,12 +459,15 @@ def main():
                    help="放行含问号的纯 ASCII 行（J9 逃生门·真英文问句用）")
     a.add_argument("--allow-missing-textintegrity", metavar="REASON",
                    help="放行 state/rounds.log 中不带 textintegrity: 字段的行（J10 逃生门·理由必填）")
+    a.add_argument("--allow-stale-status-export", metavar="REASON",
+                   help="放行实况面尚未本轮刷新的轮账本行（J11 逃生门·理由必填）")
     sub.add_parser("selftest", help="自测（temp 夹具零污染）")
     args = ap.parse_args()
     if args.cmd == "selftest":
         sys.exit(_selftest())
     code, msg = append_line(args.file, args.line, allow_ascii_qmark=args.allow_ascii_qmark,
-                            allow_missing_textintegrity=args.allow_missing_textintegrity)
+                            allow_missing_textintegrity=args.allow_missing_textintegrity,
+                            allow_stale_status_export=args.allow_stale_status_export)
     print(("APPEND " if code == 0 else "") + msg)
     if code == 0:
         print("NOTE: " + BUDGET_NOTE)

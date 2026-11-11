@@ -1,7 +1,7 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-11-11 06:12",
- "current_activity": "2026-11-11 04:00 轮：M191 done(no.22 拆 missing_real/self_fail 两数·判据单源 self_declared_failure·夹具 9/9·冒烟仍 31/32)+M192 open(命中明细未落 json) gpu:2026-11-05..2026-11-11 n=1325 avg=54.5% AT-OR-ABOVE-BENCH(R-C1 50% gap line·sole call-out 30%)… ｜ 两池：本司备货可派 2 ／ 机队可领 4（两个不同池，本司卡未登记进机队池）",
- "latest_artifact": "docs/qa-smoke-test-charter.md（mtime 2026-11-11 06:08）",
+ "updated_at": "2026-11-11 19:07",
+ "current_activity": "2026-11-11 06:00 轮：M192 done(no.22 补机器可读 sidecar：有缺口必落 qa/smoke-<轮时标>-no22.json·missing_real 10+self_fail 10+copies 1 逐条带 node/id/deliverable/自述理由·干净轮 sidecar=none·写不出即红·夹具 9→13/13)+M172 closed-superseded(M178 已出六帧/M179 接续·同命令不再占两 open… ｜ 两池：本司备货可派 2 ／ 机队可领 4（两个不同池，本司卡未登记进机队池）",
+ "latest_artifact": "state/runbook.md（mtime 2026-11-11 19:05）",
  "next_milestone": "2026-11-11 18:00 D-20261111-02 复核腿交付：8 件取回路径逐件 blob 比对结论（取回源实测 backup 支线 0/8、origin/bm-a/pending-20261110-0000 8/8）；同日 B-CITY3D-02 判据帧复渲等车道窗（vram_free≥6144MiB 自动重烧，无窗则逐日 BLOCKED 并给读数）（source=declared）"
 }
