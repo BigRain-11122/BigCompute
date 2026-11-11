@@ -69,11 +69,14 @@ ROUNDS_PATH = os.path.join("state", "rounds.log")
 REQUIRED_KEYS = ("current_activity", "latest_artifact", "next_milestone")
 # M194：两条读侧尺子的阈值单源=status_face_freshness（禁复制字面）；
 # 与写侧 round_append.J11 共用同一份定义，读数里各自打印 bench=。
+# BC-P-241：面的 caps/freshness 两键也由同一模块生成，本文件只做比对。
 try:
-    from status_face_freshness import LEDGER_LAG_MIN, MAX_AGE_MIN
+    from status_face_freshness import (LEDGER_LAG_MIN, MAX_AGE_MIN,
+                                       caps_block, caps_line)
 except Exception:  # 同目录导入兜底（被 qa_smoke 经 sys.path 加载时不触发）
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-    from status_face_freshness import LEDGER_LAG_MIN, MAX_AGE_MIN
+    from status_face_freshness import (LEDGER_LAG_MIN, MAX_AGE_MIN,
+                                       caps_block, caps_line)
 
 MAX_AGE_H = MAX_AGE_MIN / 60.0
 LAG_H = LEDGER_LAG_MIN / 60.0
@@ -127,6 +130,48 @@ def _bad_value(key, value):
     return None
 
 
+CAPS_KEY = "caps"
+FRESHNESS_KEY = "freshness"
+CAPS_FIELDS = ("write_lag_min", "ledger_lag_min", "max_age_min",
+               "bench_date", "source")
+
+
+def caps_problems(payload):
+    """BC-P-241: 面里写的判据必须逐字等于单源常量。
+
+    面缺这两键 = CEO 打开面看不到门在哪（这正是 M194 留下的缺口）；
+    键在但值与 status_face_freshness 不符 = 面在撒谎（阈值改了、面没跟），
+    比不写更糟。两种都判红，读数里点名差在哪一字段。
+    """
+    problems = []
+    block = payload.get(CAPS_KEY)
+    if not isinstance(block, dict):
+        problems.append("%s missing (面未自证判据)" % CAPS_KEY)
+        return problems
+    expect = caps_block()
+    for field in CAPS_FIELDS:
+        if field not in block:
+            problems.append("%s.%s missing" % (CAPS_KEY, field))
+            continue
+        got, want = block[field], expect[field]
+        if isinstance(want, float):
+            try:
+                same = abs(float(got) - want) < 1e-9
+            except (TypeError, ValueError):
+                same = False
+        else:
+            same = got == want
+        if not same:
+            problems.append("%s.%s=%r != 单源 %r" % (CAPS_KEY, field, got, want))
+    bad_line = _bad_value(FRESHNESS_KEY, payload.get(FRESHNESS_KEY))
+    if bad_line:
+        problems.append(bad_line)
+    elif payload.get(FRESHNESS_KEY) != caps_line():
+        problems.append("%s 与单源 caps_line() 不一致（判据文字已漂移）"
+                        % FRESHNESS_KEY)
+    return problems
+
+
 def export_verdict(raw_bytes, now=None, rounds_text="", exists=True):
     """Pure: verdict + detail for the export face.
 
@@ -162,6 +207,9 @@ def export_verdict(raw_bytes, now=None, rounds_text="", exists=True):
             problems.append(bad)
     if problems:
         return "EXPORT-BAD", "; ".join(problems)
+    cap_problems = caps_problems(payload)
+    if cap_problems:
+        return "EXPORT-BAD", "; ".join(cap_problems)
     updated = parse_ts(payload.get("updated_at"))
     if updated is None:
         return "EXPORT-BAD", "updated_at unparsable: %r" % (payload.get("updated_at"),)
@@ -509,8 +557,15 @@ def compose_lines(rounds_text, queue_text, files, now=None, overrides=None,
         "current_activity": activity,
         "latest_artifact": compose_artifact(files),
         "next_milestone": milestone,
+        # BC-P-241：判据与定标日期写进面自身。两个键由代码独占生成，
+        # 不在下面的 overrides 循环里可被覆盖——面只能投影单源，不能改写它。
+        CAPS_KEY: caps_block(),
+        FRESHNESS_KEY: caps_line(),
     }
     for key, value in (overrides or {}).items():
+        if key in (CAPS_KEY, FRESHNESS_KEY):
+            _print_safe("NOTE overrides 试图改写 %s，已忽略（判据只能来自单源）" % key)
+            continue
         if not isinstance(value, str) or not value.strip():
             continue
         if key in REQUIRED_KEYS:
@@ -686,6 +741,8 @@ def selftest():
         "current_activity": "round in progress",
         "latest_artifact": "state/x.txt (2026-10-27 20:29)",
         "next_milestone": "N1 月末归集 10-31 22:43",
+        "caps": caps_block(),
+        "freshness": caps_line(),
     }
     rounds_old = "2026-10-27 19x tokens: local=0 api=0\n"
 
@@ -964,6 +1021,34 @@ def selftest():
     cases.append(y_ok)
     print("  [%s] Y declaration gate: fresh used, stale/future/empty/torn ignored"
           % ("PASS" if y_ok else "FAIL"))
+
+    # BC-P-241 Z1-Z4: 面里的判据必须来自单源，且不许被补充层改写。
+    no_caps = dict(good)
+    no_caps.pop(CAPS_KEY)
+    no_caps.pop(FRESHNESS_KEY)
+    z1_v, z1_d = export_verdict(enc(no_caps), now=now, rounds_text=rounds_old)
+    z1_ok = z1_v == "EXPORT-BAD" and "caps missing" in z1_d
+    cases.append(z1_ok)
+    print("  [%s] Z1 面无 caps 块判红并点名 (%s)" % ("PASS" if z1_ok else "FAIL", z1_d))
+
+    drift = dict(good, caps=dict(caps_block(), max_age_min=2880.0 * 2))
+    z2_v, z2_d = export_verdict(enc(drift), now=now, rounds_text=rounds_old)
+    z2_ok = z2_v == "EXPORT-BAD" and "max_age_min" in z2_d and "单源" in z2_d
+    cases.append(z2_ok)
+    print("  [%s] Z2 caps 与单源不符判红并点名字段 (%s)" % ("PASS" if z2_ok else "FAIL", z2_d))
+
+    text_drift = dict(good, freshness="判据：随便写的")
+    z3_v, _ = export_verdict(enc(text_drift), now=now, rounds_text=rounds_old)
+    z3_ok = z3_v == "EXPORT-BAD"
+    cases.append(z3_ok)
+    print("  [%s] Z3 freshness 文字漂移判红 (%s)" % ("PASS" if z3_ok else "FAIL", z3_v))
+
+    z4 = compose_lines(base_round, q_one, files_a, now=now,
+                       overrides={CAPS_KEY: {"max_age_min": 1},
+                                  FRESHNESS_KEY: "手写判据"})
+    z4_ok = (z4[CAPS_KEY] == caps_block() and z4[FRESHNESS_KEY] == caps_line())
+    cases.append(z4_ok)
+    print("  [%s] Z4 overrides 不得改写 caps/freshness" % ("PASS" if z4_ok else "FAIL"))
 
     print("status_export_check selftest: %d/%d PASS" % (sum(cases), len(cases)))
     return 0 if all(cases) else 1

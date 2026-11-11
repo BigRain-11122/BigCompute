@@ -28,7 +28,13 @@ no.14 只看台账仍是绿（台账尚未写，面相对台账并不落后）�
     不是「面落后」的证据；调用点须把 ledger=n/a 打进读数。
   - 本模块不读盘、不发 IO，纯函数（便于两侧共用同一夹具集）。
 
-CLI: selftest / judge <updated_at> [--now ...] [--latest-round ...]
+BC-P-241（D-20261112-05）：三条 caps 此前只活在本模块的常量里，CEO 打开
+docs/status-export.json 看不到判据，也无从知道这套阈值是哪天定标的。面的
+freshness/caps 两键由 `caps_block()` / `caps_line()` 生成并写进面本体，值
+逐字来自本文件的常量——代码仍是唯一真值源，面只是它的可读投影；面里写的
+caps 与常量不一致时 status_export_check 判红（面撒谎比没写更糟）。
+
+CLI: selftest / caps / judge <updated_at> [--now ...] [--latest-round ...]
 """
 from __future__ import annotations
 
@@ -41,7 +47,32 @@ WRITE_LAG_MIN = 30.0
 LEDGER_LAG_MIN = 120.0
 MAX_AGE_MIN = 2880.0
 
+# 定标日期：M194 把三把尺子收到本文件的那一天。阈值改一次就要改这个日期，
+# 否则面上会出现「判据是新值、定标还是旧日子」的组合。
+BENCH_DATE = "2026-11-11"
+SOURCE = "Tools/status_face_freshness.py"
+
 STAMP_FORMATS = ("%Y-%m-%d %H:%M", "%Y-%m-%d %H:%M:%S")
+
+
+def caps_block():
+    """面本体里的机读 caps 块（逐字来自本模块常量）。"""
+    return {
+        "write_lag_min": WRITE_LAG_MIN,
+        "ledger_lag_min": LEDGER_LAG_MIN,
+        "max_age_min": MAX_AGE_MIN,
+        "bench_date": BENCH_DATE,
+        "source": SOURCE,
+    }
+
+
+def caps_line():
+    """人读一屏的判据行（CEO 只读面也能知道门在哪）。"""
+    return ("实况面判据：本轮刷面距今≤%.0f 分钟才准落账（写侧）／面不得落后"
+            "轮账本 >%.0f 分钟／面龄 ≤%.0f 分钟（合 %.0f 小时）；定标 %s；"
+            "真值源=%s"
+            % (WRITE_LAG_MIN, LEDGER_LAG_MIN, MAX_AGE_MIN,
+               MAX_AGE_MIN / 60.0, BENCH_DATE, SOURCE))
 
 
 def parse_stamp(text):
@@ -174,6 +205,24 @@ def selftest():
                    latest_round_ts=datetime.datetime(2026, 11, 11, 19, 0))
     run("S10 确定性", json.dumps(a, sort_keys=True) == json.dumps(b, sort_keys=True))
 
+    # S11 (BC-P-241) caps 块必须逐字等于常量：面上写的判据只能来自这里，
+    # 常量一改而块没改就是面在撒谎——这一断言让漂移在出生地可见。
+    blk = caps_block()
+    run("S11 caps_block 与常量逐字一致",
+        blk["write_lag_min"] == WRITE_LAG_MIN
+        and blk["ledger_lag_min"] == LEDGER_LAG_MIN
+        and blk["max_age_min"] == MAX_AGE_MIN
+        and blk["bench_date"] == BENCH_DATE
+        and blk["source"] == SOURCE,
+        json.dumps(blk, ensure_ascii=False))
+
+    # S12 人读行必须把三个数都带出来（少一个就等于面上没写）
+    line = caps_line()
+    run("S12 caps_line 三值齐且带定标日期",
+        all(str(int(v)) in line for v in (WRITE_LAG_MIN, LEDGER_LAG_MIN, MAX_AGE_MIN))
+        and BENCH_DATE in line,
+        line)
+
     n = sum(1 for c in checks if c)
     print("SELFTEST %s %d/%d" % ("PASS" if n == len(checks) else "FAIL", n, len(checks)))
     return 0 if n == len(checks) else 1
@@ -183,6 +232,7 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description="实况面新鲜度三把尺子单源（M194）")
     sub = ap.add_subparsers(dest="cmd", required=True)
     sub.add_parser("selftest", help="跑夹具")
+    sub.add_parser("caps", help="打印面本体用的 caps 块与人读行")
     j = sub.add_parser("judge", help="判一个面时标（读数含 bench=）")
     j.add_argument("updated_at")
     j.add_argument("--now", default=None, help="基准墙钟（YYYY-MM-DD HH:MM）")
@@ -194,6 +244,10 @@ def main(argv=None):
 
     if a.cmd == "selftest":
         return selftest()
+    if a.cmd == "caps":
+        print(json.dumps({"caps": caps_block(), "freshness": caps_line()},
+                         ensure_ascii=False, indent=2))
+        return 0
 
     now = parse_stamp(a.now) if a.now else None
     latest = parse_stamp(a.latest_round) if a.latest_round else None

@@ -1,7 +1,15 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-11-11 22:48",
- "current_activity": "2026-11-11 19:00 轮：M193 done(J11 实况面对齐闸=轮账本落盘校验 CEO 实况面 ≤30min·缺面/坏面同拒 exit9·selftest 27→33/33·实弹负控 175min 旧面被点名拒写·收尾顺序 compose→smoke→落账钉死)+M194 open(实况面新鲜度两把尺子待收敛) gpu:2026-11-05..11-11 n=1382 avg=53.3% AT-OR-ABOVE-BENCH(R-C1 50% gap… ｜ 两池：本司备货可派 2 ／ 机队可领 4（两个不同池，本司卡未登记进机队池）",
- "latest_artifact": "state/milestone.json（mtime 2026-11-11 22:47）",
- "next_milestone": "BC-P-241 实装：docs/status-export.json 增 freshness 块（write_lag/ledger_lag/max_age/judged_at/verdict，值与 status_face_freshness 单源逐字相等，selftest 断言）——本轮面上即可读到判据；同窗兜底=取回落地后 8 件 blob 复跑结案（最迟 11-13 20:00）+ B-CITY3D-02 判据帧复渲维持门控 vram_free>=6144MiB（source=declared）"
+ "updated_at": "2026-11-12 00:10",
+ "current_activity": "2026-11-11 22:00 轮：M194 done 实况面新鲜度三把尺子单源 status_face_freshness (WRITE_LAG 30min/LEDGER_LAG 120min/MAX_AGE 2880min; round_append.J11 与 status_export_check 同源 import; selftest 10/10 含双向错位窗夹具; 两套既有夹具 33/33+25/25;… ｜ 两池：本司备货可派 2 ／ 机队可领 4（两个不同池，本司卡未登记进机队池）",
+ "latest_artifact": "state/m197-caps-in-face-20261112.txt（mtime 2026-11-12 00:09）",
+ "next_milestone": "BC-P-241 实装：docs/status-export.json 增 freshness 块（write_lag/ledger_lag/max_age/judged_at/verdict，值与 status_face_freshness 单源逐字相等，selftest 断言）——本轮面上即可读到判据；同窗兜底=取回落地后 8 件 blob 复跑结案（最迟 11-13 20:00）+ B-CITY3D-02 判据帧复渲维持门控 vram_free>=6144MiB（source=declared）",
+ "caps": {
+  "write_lag_min": 30.0,
+  "ledger_lag_min": 120.0,
+  "max_age_min": 2880.0,
+  "bench_date": "2026-11-11",
+  "source": "Tools/status_face_freshness.py"
+ },
+ "freshness": "实况面判据：本轮刷面距今≤30 分钟才准落账（写侧）／面不得落后轮账本 >120 分钟／面龄 ≤2880 分钟（合 48 小时）；定标 2026-11-11；真值源=Tools/status_face_freshness.py"
 }

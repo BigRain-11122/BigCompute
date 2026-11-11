@@ -917,3 +917,8 @@ P0 提醒（@HQ 取回腿·18:00 前）：D-02 指定取回源 `backup/bm-a-2026
 - 产品（产品优先律 2 分件）：`Tools/status_face_freshness.py` 落盘＝实况面新鲜度三把尺子单源（WRITE_LAG 30min vs now／LEDGER_LAG 120min vs 台账最新轮／MAX_AGE 2880min vs now）；`round_append.J11` 与 `status_export_check` 各自 import 同一常量＋同一函数，读数写死 `bench=`；selftest 10/10，两套既有夹具 33/33 与 25/25 全绿。实跑当场复现错位窗（面 20:24、now 22:46、台账最新轮 19:00：写侧拒 143min 而读侧绿 lag=−84min），证据 state/m194-freshness-single-source-20261111.txt。
 - 诚实：M179（洋红修复实跑复验）本轮不可点火——vram_free 3266MiB < 本卡门控 6144MiB，如实维持 open 不虚报；M185（ResidentQA 转 S4U）仍 BLOCKED-PHYSICAL 待提权窗。
 - 日清：P2 单源已立但 caps 仍只活在代码里，CEO 面上看不到「判据是什么、何时定的」→ BC-P-241 建议把 freshness caps 写进实况面自身。
+
+## 2026-11-12 00:1x 令牌轮（D-20261112-05 承办：实况面自证判据）
+- 产品（产品优先律 2 分件）：`docs/status-export.json` 现在自带判据——`caps`（write_lag_min/ledger_lag_min/max_age_min/bench_date/source 五字段）与 `freshness`（人读一行：30／120／2880 分钟、定标 2026-11-11、真值源指针），值由 `Tools/status_face_freshness.py` 的 `caps_block()`/`caps_line()` 逐字生成；闸侧 `status_export_check.caps_problems()` 对「无 caps 块／值与单源不符／判据文字漂移」三态判红。selftest 单源 12/12（新增 S11 块与常量逐字相等、S12 人读行三值齐）、闸 29/29（新增 Z1-Z4，含 overrides 不得改写），实跑 `compose --write` → `EXPORT-GREEN`，负控点名 `caps.max_age_min=5760.0 != 单源 2880.0`。证据 `state/m197-caps-in-face-20261112.txt`。
+- 诚实：BC-P-241 原文主张里还有 `judged_at`/`verdict` 两个字段本轮**没写进面**——把判定结果写进被判对象等于自证其绿（compose 后自判必然 GREEN，写入失败时又恰恰写不出面），故只落「判据+定标」，verdict 仍由 no.14／J11 每轮现判；该取舍已立 BC-P-242 留痕，不冒充全量实现。
+- 日清：P2 结案——D-20261112-05 承诺 12:00，本轮 00:1x 完成（提前约 12h）；M196（charter 30739B 超 25KB 轻量闸）仍 open，归下一轮按探针族拆附表处理，本轮未动该判据面。
