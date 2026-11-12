@@ -1,8 +1,8 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-11-12 06:50",
+ "updated_at": "2026-11-12 19:06",
  "current_activity": "2026-11-12 06:00 轮：M179+T-20261112-119 洋红出生地根治（BuildRoom 每次重写场景故 SlabMat 改写被覆盖→MakeSlab 钉死 Standard+BrokenReason 识别 SRP/error shader；烘焙真跑 ok=true 248.3s、重生成后 census 3/2→5/0 CLEAN、部署件 sha 相等… ｜ 两池：本司备货可派 2 ／ 机队可领 4（两个不同池，本司卡未登记进机队池）",
- "latest_artifact": "state/unknown-converge.json（mtime 2026-11-12 06:44）",
+ "latest_artifact": "state/m199-package-only-20261112.txt（mtime 2026-11-12 19:05）",
  "next_milestone": "M198 指针可解析闸：charter §三 每行 `细节=docs/qa-probes-20261112-{a,b}.md·pN` → 逐行验「文件在盘 + 附录内确有该编号行 + 标题词对得上」三面，缺一面点名并判红（本轮派生·窗 11-13 04:00 前）；同窗并行=取回落地后 8 件 blob 复跑结案（最迟 11-13 20:00）+ B-CITY3D-02 判据帧复渲维持门控 vram_free>=6144MiB（source=declared）",
  "caps": {
   "write_lag_min": 30.0,

@@ -1134,6 +1134,16 @@ def receipt_extra_fields(result):
     q = (result or {}).get("lightmap_quality")
     if q:
         extra["lightmap_quality"] = q
+    fq = (result or {}).get("frame_quality")
+    if fq:
+        # flat magenta_pct/geom_pct are what consumers ask for; the runner keeps
+        # them as magenta_max_pct/geom_min_pct next to the per-frame detail
+        flat = dict(fq)
+        if "magenta_pct" not in flat and flat.get("magenta_max_pct") is not None:
+            flat["magenta_pct"] = flat.get("magenta_max_pct")
+        if "geom_pct" not in flat and flat.get("geom_min_pct") is not None:
+            flat["geom_pct"] = flat.get("geom_min_pct")
+        extra["frame_quality"] = flat
     return extra
 
 

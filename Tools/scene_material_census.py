@@ -14,6 +14,15 @@ One dangling reference, two symptoms.
 This tool answers, before spending an editor launch:
   "does every material reference in this scene resolve to something on disk?"
 
+Two kinds of "not under Assets" must not be merged (M199):
+  - PACKAGE-ONLY: the guid lives in Library/PackageCache (a package asset, e.g.
+    URP's Lit.mat). The reference resolves; the fix is a shader/pipeline change,
+    never "re-create the missing asset".
+  - DANGLING: nothing on disk anywhere. That is the magenta fallback case.
+Reading the first as the second sends you off to build something that already
+exists; reading the second as the first hides a real defect. So they are counted
+separately, and CLEAN is decided by DANGLING only.
+
 Usage:
   python Tools/scene_material_census.py run [--root <project dir>] [--json-out <path>]
   python Tools/scene_material_census.py selftest
@@ -66,6 +75,35 @@ def build_guid_index(root: str) -> dict:
     return index
 
 
+def build_package_index(root: str):
+    """guid -> relative path for every .meta under Library/PackageCache.
+
+    Returns (index, base_dir_or_None). Missing cache is not an error: it means this
+    machine has never resolved packages, so package-only refs cannot be told apart
+    from dangling ones and the reading must say so instead of guessing.
+    """
+    base = os.path.join(root, "Library", "PackageCache")
+    if not os.path.isdir(base):
+        return {}, None
+    index = {}
+    for dirpath, _, names in os.walk(base):
+        for n in names:
+            if not n.endswith(".meta"):
+                continue
+            fp = os.path.join(dirpath, n)
+            try:
+                # guid is always in the head of a .meta; reading whole trees of
+                # package metadata would cost more than the answer is worth
+                with open(fp, "rb") as fh:
+                    head = fh.read(4096).decode("utf-8", "replace")
+            except OSError:
+                continue
+            m = GUID_LINE_RE.search(head.replace("\r\n", "\n"))
+            if m:
+                index[m.group(1).lower()] = os.path.relpath(fp[:-5], root).replace("\\", "/")
+    return index, base
+
+
 def parse_scene(path: str):
     """Yield (gameobject_name, [(fileID, guid)]) for every renderer material slot."""
     text = _read(path)
@@ -108,6 +146,7 @@ def parse_scene(path: str):
 
 def census(root: str) -> dict:
     guid_index = build_guid_index(root)
+    pkg_index, pkg_base = build_package_index(root)
     assets = os.path.join(root, "Assets")
     scenes = []
     for dirpath, _, names in os.walk(assets):
@@ -117,6 +156,7 @@ def census(root: str) -> dict:
     scenes.sort()
 
     unresolved = []
+    package_only = []
     resolved = 0
     empty = 0
     scanned_scenes = 0
@@ -135,6 +175,11 @@ def census(root: str) -> dict:
                 target = guid_index.get(guid)
                 if target:
                     resolved += 1
+                    continue
+                pkg = pkg_index.get(guid)
+                if pkg:
+                    # resolves, but to a package asset - different fix than dangling
+                    package_only.append({"scene": rel, "object": obj, "guid": guid, "in": pkg})
                 else:
                     unresolved.append({"scene": rel, "object": obj, "guid": guid})
 
@@ -155,24 +200,43 @@ def census(root: str) -> dict:
         "scenes_scanned": scanned_scenes,
         "slots_resolved": resolved,
         "slots_empty": empty,
+        "slots_package_only": len(package_only),
+        "package_only": package_only,
+        "package_only_total": len(package_only),
+        "package_index": len(pkg_index),
+        "package_cache_present": pkg_base is not None,
+        "package_cache": None if pkg_base is None else os.path.relpath(pkg_base, root).replace("\\", "/"),
         "unresolved": unresolved,
         "unresolved_total": len(unresolved),
         "objects": sorted({u["scene"] + ":" + u["object"] for u in unresolved}),
+        "package_objects": sorted({u["scene"] + ":" + u["object"] for u in package_only}),
     }
 
 
 def render(payload: dict) -> str:
     lines = [
-        "VERDICT=%s scenes=%d slots_resolved=%d slots_empty=%d unresolved=%d as_of=%s"
+        "VERDICT=%s scenes=%d slots_resolved=%d slots_empty=%d package_only=%d unresolved=%d pkg_index=%s as_of=%s"
         % (
             payload["verdict"],
             payload["scenes_scanned"],
             payload["slots_resolved"],
             payload["slots_empty"],
+            payload["slots_package_only"],
             payload["unresolved_total"],
+            payload["package_index"] if payload["package_cache_present"] else "absent",
             payload["as_of"],
         )
     ]
+    if not payload["package_cache_present"]:
+        # Absence of the cache is not evidence of dangling refs; say so out loud.
+        lines.append(
+            "  NOTE package_cache=absent: package-level refs cannot be told apart from "
+            "dangling ones on this machine (no Library/PackageCache)"
+        )
+    for u in payload["package_only"][:10]:
+        lines.append("  PACKAGE-ONLY %s : %s -> guid %s (%s)" % (u["scene"], u["object"], u["guid"], u["in"]))
+    if payload["package_only_total"] > 10:
+        lines.append("  ... +%d more package-only" % (payload["package_only_total"] - 10))
     for u in payload["unresolved"][:20]:
         lines.append("  UNRESOLVED %s : %s -> guid %s" % (u["scene"], u["object"], u["guid"]))
     if payload["unresolved_total"] > 20:
@@ -212,7 +276,7 @@ MeshRenderer:
 """
 
 
-def _mk_project(material_guid: str, slot_guid: str, write_mat: bool) -> str:
+def _mk_project(material_guid: str, slot_guid: str, write_mat: bool, pkg_guids=()) -> str:
     root = tempfile.mkdtemp(prefix="scenecensus-")
     assets = os.path.join(root, "Assets")
     os.makedirs(assets, exist_ok=True)
@@ -221,6 +285,16 @@ def _mk_project(material_guid: str, slot_guid: str, write_mat: bool) -> str:
             fh.write("fileFormatVersion: 2\n")
         with open(os.path.join(assets, "Slab.mat.meta"), "w", encoding="utf-8") as fh:
             fh.write(_META % material_guid)
+    if pkg_guids:
+        pkg = os.path.join(root, "Library", "PackageCache",
+                           "com.unity.render-pipelines.universal@14.2.0-t1", "Runtime", "Materials")
+        os.makedirs(pkg, exist_ok=True)
+        for i, g in enumerate(pkg_guids):
+            fp = os.path.join(pkg, "PkgMat%d.mat" % i)
+            with open(fp, "w", encoding="utf-8") as fh:
+                fh.write("fileFormatVersion: 2\n")
+            with open(fp + ".meta", "w", encoding="utf-8") as fh:
+                fh.write(_META % g)
     slots = "  - {fileID: 2100000, guid: %s, type: 2}\n" % slot_guid
     with open(os.path.join(assets, "Room.unity"), "w", encoding="utf-8") as fh:
         fh.write(_SCENE_TMPL % (slots, material_guid))
@@ -286,6 +360,43 @@ def selftest() -> int:
     # S9 determinism
     p6b = census(root6)
     check("S9 deterministic", p6b["unresolved"] == p6["unresolved"])
+
+    # S10 guid only inside Library/PackageCache -> PACKAGE-ONLY, not dangling, still CLEAN
+    root7 = _mk_project("11111111111111111111111111111111", "11111111111111111111111111111111", False,
+                        pkg_guids=["11111111111111111111111111111111"])
+    p7 = census(root7)
+    check("S10 package-only not dangling",
+          p7["verdict"] == "SCENE-MATERIAL-CLEAN" and p7["rc"] == 0
+          and p7["unresolved_total"] == 0 and p7["slots_package_only"] == 2)
+    check("S10b package path named",
+          all(u["in"].startswith("Library/PackageCache/") for u in p7["package_only"]))
+
+    # S11 cache present but this guid absent -> real DANGLING, package_only stays 0
+    root8 = _mk_project("22222222222222222222222222222222", "22222222222222222222222222222222", False,
+                        pkg_guids=["33333333333333333333333333333333"])
+    p8 = census(root8)
+    check("S11 dangling with cache present",
+          p8["verdict"] == "SCENE-MATERIAL-UNRESOLVED" and p8["rc"] == 2
+          and p8["package_only_total"] == 0 and p8["package_index"] == 1)
+
+    # S12 no cache at all -> flag it instead of silently calling refs dangling
+    root9 = _mk_project("44444444444444444444444444444444", "44444444444444444444444444444444", False)
+    p9 = census(root9)
+    check("S12 cache absent flagged", p9["package_cache_present"] is False and p9["package_index"] == 0)
+    check("S12b absent cache still reports dangling", p9["verdict"] == "SCENE-MATERIAL-UNRESOLVED")
+    check("S12c render prints the caveat", "package_cache=absent" in render(p9))
+
+    # S13 built-in guid must not be counted as package-only
+    root10 = _mk_project("55555555555555555555555555555555", "0000000000000000f000000000000000", True,
+                         pkg_guids=["55555555555555555555555555555555"])
+    p10 = census(root10)
+    check("S13 builtin not package-only",
+          p10["verdict"] == "SCENE-MATERIAL-CLEAN" and p10["slots_package_only"] == 0
+          and p10["slots_resolved"] == 2)
+
+    # S14 package-only detail is deterministic
+    p7b = census(root7)
+    check("S14 package-only deterministic", p7b["package_only"] == p7["package_only"])
 
     print("scene_material_census selftest %d/%d PASS" % (ok, total))
     return 0 if ok == total else 1

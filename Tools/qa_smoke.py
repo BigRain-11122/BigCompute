@@ -4027,6 +4027,17 @@ def frame_quality_judge(rows, since=FRAME_QUALITY_SINCE):
                       "render %s @%s predates the field)"
                       % (since, batch, ts))
     q = newest.get("frame_quality")
+    via = "top"
+    if not isinstance(q, dict):
+        # Receipts written before the top-level mirror keep the reading inside
+        # `runner` (M181 same family: runner.lightmap_quality vs top level).
+        # Reading that as "field deleted" would call a live writer dead.
+        rq = (newest.get("runner") or {}).get("frame_quality")
+        if isinstance(rq, dict):
+            q = {"magenta_pct": rq.get("magenta_max_pct"),
+                 "geom_pct": rq.get("geom_min_pct"),
+                 "qc_verdict": rq.get("qc_verdict")}
+            via = "runner"
     if not isinstance(q, dict):
         return False, ("qc=MISSING -- ok render receipt %s @%s carries no "
                        "frame_quality (writer regressed or field deleted)"
@@ -4035,9 +4046,9 @@ def frame_quality_judge(rows, since=FRAME_QUALITY_SINCE):
     if missing:
         return False, ("qc=INCOMPLETE -- %s @%s missing %s (a partial reading "
                        "is not a reading)" % (batch, ts, ",".join(missing)))
-    return True, ("qc=%s magenta_max=%s%% geom_min=%s%% (batch=%s @%s, "
+    return True, ("qc=%s magenta_max=%s%% geom_min=%s%% (batch=%s @%s via=%s, "
                   "plumbing only)" % (q["qc_verdict"], q["magenta_pct"],
-                                      q["geom_pct"], batch, ts))
+                                      q["geom_pct"], batch, ts, via))
 
 
 def probe_frame_quality():
