@@ -955,3 +955,10 @@ P0 提醒（@HQ 取回腿·18:00 前）：D-02 指定取回源 `backup/bm-a-2026
 - 实跑读数（先出真数再动刀）：3 张演练单里 **1 行**（`MOCK-20261020-R3`，GMV 349.0）是 `channel=private` + `b2b-direct-signed`；改后演练面 `store gmv=52.9000` / `private/b2b gmv=349.0000`——矩阵里不再有把两者加在一起的 private 行。真实营收仍 0 行 → `REV-NO-REAL-DATA`（不印 0.00）。下游回归：unit_cost_drill 32/32、sku_ledger_join 10/10、refund_rate_calibration 25/25、rails_schema_check 45/45。
 - 诚实：①拆行是读侧派生，账本行 `channel=private` 原值一字未改（历史行不改写、可回溯）；②改判来源写进读数 `channel_src=note|field`，静默搬钱不可能；③选②不选①=写侧 M200 的 `unit_cost_drill` 与其夹具 S31 已把「不发明第四渠道」定为设计，推翻它要动两个工具两套夹具且不多给信息；④真正长期解在写侧直声明（BC-P-248），note 推断只是兼容兜底，已按 E3 登 R-074。
 - 日清：集团 orders 21:54 新行属 BigStream mv0001 开工（不涉本司，零动作）、decisions 11-12 18:10 后无新增；队列 open −1（M201 结案），本窗新立项 2（BC-P-248/R-074）不占 P1 位。
+## 2026-11-13 22:3x 夜班轮（洋红结案：判据③真达成 + 六机位联系表）
+- 产品（产品优先律 2 分件）：新增 `Tools/render_contact_sheet.py`——一次渲染的六张判据帧拼成一张带逐帧读数的联系表（1944x782，每格标 `magenta%`/`geom%`），实跑 `media/pool-ignite/B-CITY3D-02/20261113-191047` 出 `frames=6`，标签与回执 `frame_quality.frames[]` 逐帧一致。产物：`media/pool-ignite/B-CITY3D-02/20261113-191047/contact-sheet.png`。
+- 结案（有实物有回执，非纸面）：T-20261109-7 判据③由守候器两次真渲补证——11-13 11:11:40 与 19:12:25 均 `ok=true deliverable_ok=true`，`placeholder_frames=0 magenta_max=0.00% geom_min=72.77% qc=FRAME-QC-PASS`；人眼复核最新六帧=灰白室内/门板/灯板正常，11-09 那批 16–65% 洋红占位已消失（出生地修复 T-20261112-119 生效）。
+- 诚实：①场景仍是 labbench 快样 BakeRoom，只证「洋红消失 + 帧可读」，不证构图与美术质量，也不是消费方资产；②两次 ok 共用同一载荷指纹 `4ab6e686b7`（第二次是守卫窗内重渲，非新载荷）；③联系表读数取自回执而非重算像素——这条依赖本身已入提案 BC-P-249。
+- 日清：集团 orders 尾行最新 11-12 13:29/11-13 21:55 属主控与 BigStream 席（不涉本司，零动作）；decisions 11-12 18:10 后无新增。队列 open −1（T-20261109-7 结案）、补 1（T-20261113-122 联系表件，本轮即 done），净 0 如实。`hq_feedback` 面此前 71h 未刷（P2 MISSED），本轮已补。
+- 顺手定性（no.22 常红那 10 件真缺件，只读普查 10 分钟）：`state/no22-missing-census-20261113.{txt,json}` 给出路径级分类＝**8 件同日同题但有兄弟件**（`triage-<topic>-<date>.md` 声明未写，实产是 `...-bm-m-`/`-bm-c-`/无标签同题同日期文件）＋**2 件无任何兄弟件**（`triage-bigstream-mv[-bm-a]-20261109.md`）。**关键诚实点**：8 件兄弟件**无一份提到对应回执 id**（都是通用日度 triage），所以这只证「声明路径与实产文件名/执行机署名不符」，**不能**据此判「交付其实存在」——no.22 维持红，工具侧抬头应显式列出兄弟件供人判（已入 tech T237）。
+- 自捉（本轮第二个）：这份普查首跑写成 `NO-SIBLING=10`，原因是兄弟件名去机标签后没去掉日期尾，比较必然不等——分类器的「同题同日」判据必须先归一日期再比，垃圾读数当场作废重跑后才是 8/2。

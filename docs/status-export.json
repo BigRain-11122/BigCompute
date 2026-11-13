@@ -1,8 +1,8 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-11-13 22:05",
+ "updated_at": "2026-11-13 22:30",
  "current_activity": "2026-11-13 22:00 轮：M201 done(private/b2b 拆行·先出真数=3 张演练单里 1 行带 b2b 记号〔349.0〕；选②三线词表不动·读面派生行·channel_resolution 返回行+来源 field|note·CHANNEL_ORDER 单源化四处硬编码循环·payload 增 channel_split… ｜ 两池：本司备货可派 2 ／ 机队可领 4（两个不同池，本司卡未登记进机队池）",
- "latest_artifact": "state/revenue-caliber-20261113.json（mtime 2026-11-13 21:58）",
+ "latest_artifact": "Tools/tool_manifest.txt（mtime 2026-11-13 22:30）",
  "next_milestone": "M202 承办件（BC-P-248 写侧直声明渠道）：`unit_cost_drill` 的 lane→channel 表直出 `channel=b2b`，读侧 `channel_note` 推断降级为兼容兜底并计 `inferred=`（写侧改完后该计数应归零）；判据=演练面逐行读数不变 + 夹具覆盖「note 缺失仍归对行」（窗 11-14 12:43 前）…（source=declared）",
  "caps": {
   "write_lag_min": 30.0,
