@@ -268,7 +268,9 @@ ARTIFACT_EXCLUDE = {"state/rounds.log", "state/heartbeat.txt",
                     # M203：工具清单是登记面，不是交付物。注册一个新工具会让它成为
                     # mtime 最新的文件，于是 CEO 面显示「最近实物=Tools/tool_manifest.txt」，
                     # 把同批真正新增的脚本挤掉——与 M202 的台账冒充同族。
-                    "Tools/tool_manifest.txt"}
+                    "Tools/tool_manifest.txt",
+                    # M204：空闲自检戳（每轮由巡检写一次）也是运行面，不是交付物。
+                    "state/idle_selfcheck.json"}
 # Queue files are planning bookkeeping too: score-zero by the mandate,
 # so they can never be "the latest artifact".
 # M181 finding: a checker's own output (patrol json, registry/probe reports,
@@ -277,7 +279,12 @@ ARTIFACT_EXCLUDE = {"state/rounds.log", "state/heartbeat.txt",
 ARTIFACT_SKIP_PREFIX = ("state/queue/", "state/c1c4-",
                         "state/probe-registry-", "state/text-integrity-",
                         "state/lane-gate-", "state/dispatch-gate",
-                        "state/ledger-continuity-", "qa/smoke-")
+                        "state/ledger-continuity-", "qa/smoke-",
+                        # M204：GPU 采集器的滚动日志每 ~5min 重写一次，所以它
+                        # 永远是 mtime 最新的文件，于是 CEO 面长期显示「最近实物=
+                        # state/gpu-util/dispatch-log.md」——同 M202/M203 族（机器
+                        # 自写的运行面冒充满交付物）。整目录排除，让真产物露出来。
+                        "state/gpu-util/")
 # Bytecode caches are build droppings, not artifacts.
 ARTIFACT_SKIP_EXT = (".pyc", ".pyo", ".log", ".jsonl", ".lock")
 # T230 finding: the tangle of *process logs* (clean-window-log.jsonl and
@@ -1091,6 +1098,12 @@ def selftest():
     a4_ok = "Tools/tool_manifest.txt" in ARTIFACT_EXCLUDE
     cases.append(a4_ok)
     print("  [%s] A4 工具清单不进最近实物" % ("PASS" if a4_ok else "FAIL"))
+
+    # M204: 滚动写盘的运行日志目录（GPU 采集器 ~5min 一次）不能靠最新 mtime
+    # 冒充交付物——否则它会长期霸占「最近实物」。
+    a5_ok = any(p.startswith("state/gpu-util/") for p in ARTIFACT_SKIP_PREFIX)
+    cases.append(a5_ok)
+    print("  [%s] A5 GPU 采集器滚动日志不进制最近实物" % ("PASS" if a5_ok else "FAIL"))
 
     print("status_export_check selftest: %d/%d PASS" % (sum(cases), len(cases)))
     return 0 if all(cases) else 1
