@@ -284,7 +284,12 @@ ARTIFACT_SKIP_PREFIX = ("state/queue/", "state/c1c4-",
                         # 永远是 mtime 最新的文件，于是 CEO 面长期显示「最近实物=
                         # state/gpu-util/dispatch-log.md」——同 M202/M203 族（机器
                         # 自写的运行面冒充满交付物）。整目录排除，让真产物露出来。
-                        "state/gpu-util/")
+                        "state/gpu-util/",
+                        # M205：轮账本写入工具自己倾倒的抓取/回显件
+                        # （round_append_in.txt / round_append_out.txt）是拿来看
+                        # 命令回了什么的，不是交付物；谁图省事把 stdout 重定向进
+                        # state/ 一次，它就会以最新 mtime 顶掉真产物。
+                        "state/round_append_")
 # Bytecode caches are build droppings, not artifacts.
 ARTIFACT_SKIP_EXT = (".pyc", ".pyo", ".log", ".jsonl", ".lock")
 # T230 finding: the tangle of *process logs* (clean-window-log.jsonl and
@@ -1104,6 +1109,12 @@ def selftest():
     a5_ok = any(p.startswith("state/gpu-util/") for p in ARTIFACT_SKIP_PREFIX)
     cases.append(a5_ok)
     print("  [%s] A5 GPU 采集器滚动日志不进制最近实物" % ("PASS" if a5_ok else "FAIL"))
+
+    # M205: 轮账本工具的抓取/回显件（state/round_append_out.txt）同样是「看命令
+    # 回了什么」的临时面，本轮实测它被读成「最近实物」并写进了 CEO 面。
+    a6_ok = any(p.startswith("state/round_append_") for p in ARTIFACT_SKIP_PREFIX)
+    cases.append(a6_ok)
+    print("  [%s] A6 轮账本抓取件不进最近实物" % ("PASS" if a6_ok else "FAIL"))
 
     print("status_export_check selftest: %d/%d PASS" % (sum(cases), len(cases)))
     return 0 if all(cases) else 1
