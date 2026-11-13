@@ -264,7 +264,11 @@ ARTIFACT_EXCLUDE = {"state/rounds.log", "state/heartbeat.txt",
                     # M202: 风险台账与里程碑声明都是维护面（行级 upkeep / 单字段声明），
                     # 不能当「最近实物」——否则加一条风险或改一次里程碑就让 CEO 面
                     # 显示「最近交付=台账/状态文件」。
-                    "docs/risk-register.md", "state/milestone.json"}
+                    "docs/risk-register.md", "state/milestone.json",
+                    # M203：工具清单是登记面，不是交付物。注册一个新工具会让它成为
+                    # mtime 最新的文件，于是 CEO 面显示「最近实物=Tools/tool_manifest.txt」，
+                    # 把同批真正新增的脚本挤掉——与 M202 的台账冒充同族。
+                    "Tools/tool_manifest.txt"}
 # Queue files are planning bookkeeping too: score-zero by the mandate,
 # so they can never be "the latest artifact".
 # M181 finding: a checker's own output (patrol json, registry/probe reports,
@@ -1082,6 +1086,11 @@ def selftest():
     a3_ok = "docs/risk-register.md" in ARTIFACT_EXCLUDE
     cases.append(a3_ok)
     print("  [%s] A3 风险台账不进最近实物" % ("PASS" if a3_ok else "FAIL"))
+
+    # M203: 工具清单是登记面，注册新工具不该把它顶成「最近实物」
+    a4_ok = "Tools/tool_manifest.txt" in ARTIFACT_EXCLUDE
+    cases.append(a4_ok)
+    print("  [%s] A4 工具清单不进最近实物" % ("PASS" if a4_ok else "FAIL"))
 
     print("status_export_check selftest: %d/%d PASS" % (sum(cases), len(cases)))
     return 0 if all(cases) else 1
