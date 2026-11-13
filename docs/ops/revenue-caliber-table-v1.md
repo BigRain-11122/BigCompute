@@ -15,6 +15,13 @@
 |---|---|---|---|---|
 | （无营收行） | — | — | — | — |
 
+## 二之二、演练面三线分布（drill，**不入结算、不并入上表**）
+
+| 渠道 | GMV 下单金额 | NET 净额 | COGS 成本 | GROSS 毛利 |
+|---|---|---|---|---|
+| store | 52.9000 | 46.2346 | 0.2527 | 45.9819 |
+| private | 349.0000 | 305.0260 | 0.1080 | 304.9180 |
+
 ## 三、本轮读数（账本级，非估算）
 
 - verdict=`REV-NO-REAL-DATA`
@@ -35,16 +42,6 @@
 
 ## 五、findings（每条都点名对象）
 
-| 代码 | 次数 | 含义 |
-|---|---|---|
-| `CALIBER-UNLABELED` | 3 | 金额行没有口径标记（settlement_caliber / caliber_note 皆缺） |
-| `CHANNEL-UNASSIGNED` | 3 | 营收行无渠道标记，三线分面不可分 |
-
-- `CALIBER-UNLABELED` deal order=MOCK-20261019-R1
-- `CHANNEL-UNASSIGNED` deal order=MOCK-20261019-R1
-- `CALIBER-UNLABELED` deal order=MOCK-20261019-R2
-- `CHANNEL-UNASSIGNED` deal order=MOCK-20261019-R2
-- `CALIBER-UNLABELED` deal order=MOCK-20261020-R3
-- `CHANNEL-UNASSIGNED` deal order=MOCK-20261020-R3
+无（FINDINGS none）
 
 > 口径律：GMV 永不称收入；NET/GROSS 各自单列，禁相加成「总收入」；distr 归因行与 delivery 履约事件不是营收行。本表只读账本，不含任何估算或外推。

@@ -257,6 +257,17 @@ def load_rails(root):
 
 # ---------------------------------------------------------------- 渲染
 
+def _matrix_by_channel(totals):
+    """(rail, channel, caliber) 汇总 → 渠道×口径矩阵；非营收轨与无渠道行不入。"""
+    matrix = {}
+    for (rail, ch, c), v in totals.items():
+        if RAILS[rail]["class"] != "revenue":
+            continue
+        matrix.setdefault(ch, {}).setdefault(c, 0.0)
+        matrix[ch][c] = round(matrix[ch].get(c, 0.0) + v, 6)
+    return matrix
+
+
 def build_payload(root):
     classified, domain = load_rails(root)
 
@@ -265,12 +276,11 @@ def build_payload(root):
     totals, counts = aggregate([r for r in classified if not r["drill"]])
 
     # 三线×口径矩阵；只有 revenue 轨的行进入营收面读数
-    matrix = {}
-    for (rail, ch, c), v in totals.items():
-        if RAILS[rail]["class"] != "revenue":
-            continue
-        matrix.setdefault(ch, {}).setdefault(c, 0.0)
-        matrix[ch][c] = round(matrix[ch].get(c, 0.0) + v, 6)
+    matrix = _matrix_by_channel(totals)
+    # M200：演练面单列一张同形矩阵——标了 channel 的演练行从此能回答
+    # 「哪条线卖出去了多少」，但它永远不并入上面的实面矩阵。
+    totals_drill, _ = aggregate([r for r in classified if r["drill"]])
+    matrix_drill = _matrix_by_channel(totals_drill)
 
     findings = findings_for(classified)
     per_code = {}
@@ -289,6 +299,7 @@ def build_payload(root):
         "rows_drill": len(drill),
         "non_revenue_rows_with_amount": non_rev_amount_rows,
         "matrix": matrix,
+        "matrix_drill": matrix_drill,
         "totals_by_caliber": {c: round(sum(r.get(c) or 0.0 for r in real), 6) for c in CALIBERS},
         "findings": findings,
         "findings_by_code": per_code,
@@ -325,6 +336,22 @@ def render(payload, as_md=False):
                 _fmt(m.get("cogs")), _fmt(m.get("gross"))))
         if not payload["matrix"]:
             lines.append("| （无营收行） | — | — | — | — |")
+        lines.append("")
+        lines.append("## 二之二、演练面三线分布（drill，**不入结算、不并入上表**）")
+        lines.append("")
+        drill_matrix = payload.get("matrix_drill") or {}
+        if drill_matrix:
+            lines.append("| 渠道 | GMV 下单金额 | NET 净额 | COGS 成本 | GROSS 毛利 |")
+            lines.append("|---|---|---|---|---|")
+            for ch in ("livestream", "store", "private", "unassigned"):
+                if ch not in drill_matrix:
+                    continue
+                m = drill_matrix[ch]
+                lines.append("| %s | %s | %s | %s | %s |" % (
+                    ch, _fmt(m.get("gmv")), _fmt(m.get("net")),
+                    _fmt(m.get("cogs")), _fmt(m.get("gross"))))
+        else:
+            lines.append("（演练行未标渠道，或本域无演练行）")
         lines.append("")
         lines.append("## 三、本轮读数（账本级，非估算）")
         lines.append("")
@@ -396,6 +423,16 @@ def render(payload, as_md=False):
                         _fmt(m.get("cogs")), _fmt(m.get("gross"))))
     if not payload["matrix"]:
         lines.append("  channel=（无营收行可归渠道）")
+    drill_matrix = payload.get("matrix_drill") or {}
+    if drill_matrix:
+        lines.append("DRILL-FACE 演练面（mock 行，不入结算·不进上方实面矩阵）")
+        for ch in ("livestream", "store", "private", "unassigned"):
+            if ch not in drill_matrix:
+                continue
+            m = drill_matrix[ch]
+            lines.append("  drill-channel=%-10s gmv=%s net=%s cogs=%s gross=%s"
+                         % (ch, _fmt(m.get("gmv")), _fmt(m.get("net")),
+                            _fmt(m.get("cogs")), _fmt(m.get("gross"))))
     lines.append("non_revenue_rows_with_amount=%d（非营收轨带金额字段，单独计数不并入营收）"
                  % payload["non_revenue_rows_with_amount"])
     if payload["findings"]:
@@ -538,6 +575,23 @@ def selftest():
                             "settlement_caliber": "B", "channel": "store"}])
     check("S16 drill in real face still flagged",
           any(f["code"] == "DRILL-IN-REAL" for f in findings_for(real_with_drill)))
+
+    # S17 演练面矩阵与实面矩阵互不污染（M200：演练行标了渠道也不得进实面）
+    mixed = _mk([
+        {"_rail": "deal", "_expect": "drill", "order_id": "MOCK-1", "price": 3.0,
+         "net_price": 2.622, "mock": True, "fee_rate": 0.05, "refund_rate": 0.08,
+         "settlement_caliber": "B", "channel": "store"},
+        {"_rail": "deal", "_expect": "real", "order_id": "A8", "price": 49.9,
+         "net_price": 43.6126, "mock": None, "fee_rate": 0.05, "refund_rate": 0.08,
+         "settlement_caliber": "B", "channel": "private"},
+    ])
+    real_totals, _ = aggregate([r for r in mixed if not r["drill"]])
+    drill_totals, _ = aggregate([r for r in mixed if r["drill"]])
+    real_m, drill_m = _matrix_by_channel(real_totals), _matrix_by_channel(drill_totals)
+    check("S17 drill matrix separate from real matrix",
+          set(real_m) == {"private"} and set(drill_m) == {"store"}
+          and real_m["private"]["gmv"] == 49.9 and drill_m["store"]["gmv"] == 3.0,
+          "real=%s drill=%s" % (real_m, drill_m))
 
     passed = sum(1 for _, ok, _ in results if ok)
     for name, ok, why in results:

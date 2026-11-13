@@ -106,6 +106,12 @@ SCHEMAS = {
             # 演练单恒 0（与 fund_3090 同律：MOCK 轨不累计金额）
             "amount": {"type": "number", "minimum": 0},
             "api_reason": {"type": "string", "minLength": 2},
+            # M200: 渠道与口径由 regen 从 lane 派生——演练行也要能回答
+            # 「哪条线卖出去了多少」，否则三线分面在数据面永远 unassigned。
+            "channel": {"type": "string",
+                        "enum": ["livestream", "store", "private"]},
+            "settlement_caliber": {"type": "string", "minLength": 1},
+            "channel_note": {"type": "string", "minLength": 2},
             "route_group": {
                 "enum": ["resident-qa-8792", "batch-pool", "direct-outbox"],
             },
@@ -346,6 +352,11 @@ PRODUCERS = {
         "cost_rate_cny_per_mtok": "unit_cost_drill.regen_mock_rows (M133)",
         "cost_simulated": "unit_cost_drill.regen_mock_rows (M133)",
         "denominator_simulated": "unit_cost_drill.regen_mock_rows (M133)",
+        # M200: channel/caliber 同为 regen 派生（lane -> 渠道表 + 口径 B），
+        # 理由同 M133——值必须可复跑，历史行不手改。
+        "channel": "unit_cost_drill.regen_mock_rows (M200)",
+        "settlement_caliber": "unit_cost_drill.regen_mock_rows (M200)",
+        "channel_note": "unit_cost_drill.regen_mock_rows (M200)",
     },
     "aftersale": {
         "aftersale_id": "manual:平台后台退款流水导出（计划态未接·M114 schema 先行）",

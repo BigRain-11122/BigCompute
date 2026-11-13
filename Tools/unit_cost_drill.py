@@ -51,8 +51,25 @@ UNIT_COST_BLOCKED = "UNIT-COST-BLOCKED"
 # declared design values (never a settlement price -- see unit_cost_caliber).
 MOCK_DESIGN_COST_RATE = 0.60   # CNY per Mtok, design value (M107)
 MOCK_DESIGN_QUOTA_MTOK = 0.42  # M12 quota band lower bound, design value (M66)
+
+# M200: the three drill rows were the only "order-shaped" data in the company and
+# carried neither a channel nor a caliber tag, so every three-line x caliber
+# question read "unassigned". Derived here for the same reason as the cost keys:
+# one rerun reproduces them, and no historical row is hand-edited.
+# Channel vocabulary is the three selling lines of revenue_caliber (store/
+# livestream/private); a direct-signed annual report is reached through our own
+# outreach, i.e. private, and keeps a b2b marker in channel_note instead of
+# inventing a fourth channel.
+MOCK_CHANNEL_BY_LANE = {
+    "subscription": "store",   # quota monthly card -> store shelf
+    "gacha": "store",          # ornament gacha -> store shelf
+    "b2b_direct": "private",   # annual report, direct-signed -> own outreach
+}
+MOCK_CHANNEL_NOTE = {"b2b_direct": "b2b-direct-signed"}
+MOCK_SETTLEMENT_CALIBER = "B"  # caliber B (internal cost anchor) is the sole settlement caliber
+MOCK_CHANNEL_KEYS = ("channel", "settlement_caliber", "channel_note")
 MOCK_DRILL_KEYS = ("amount", "amount_mtok", "cost_rate_cny_per_mtok",
-                   "cost_simulated", "denominator_simulated")
+                   "cost_simulated", "denominator_simulated") + MOCK_CHANNEL_KEYS
 
 
 def _load_rows(path):
@@ -471,8 +488,8 @@ def _mock_denominator_mtok(row):
 def regen_mock_rows(rows, rate=MOCK_DESIGN_COST_RATE):
     """Return (rows_with_cost_keys, issues). Pure, no IO.
 
-    Only the drill cost keys are written. Every other key is copied verbatim, so
-    a rerun cannot silently move prices, dates or order ids.
+    Only the drill keys are written. Every other key is copied verbatim, so a
+    rerun cannot silently move prices, dates or order ids.
     """
     out, issues = [], []
     for row in rows:
@@ -483,10 +500,26 @@ def regen_mock_rows(rows, rate=MOCK_DESIGN_COST_RATE):
                           % (new.get("order_id"), kind))
             out.append(new)
             continue
+        lane = row.get("lane")
+        channel = MOCK_CHANNEL_BY_LANE.get(lane)
+        if channel is None:
+            # Unknown lane means we cannot say which line sold it; refuse rather
+            # than default to "store" and quietly mislabel the face.
+            issues.append("%s unknown lane=%r (no channel derivation)"
+                          % (new.get("order_id"), lane))
+            out.append(new)
+            continue
         new["cost_rate_cny_per_mtok"] = rate
         new["amount"] = round(mtok * rate, 4)
         new["cost_simulated"] = True
         new["denominator_simulated"] = True
+        new["channel"] = channel
+        new["settlement_caliber"] = MOCK_SETTLEMENT_CALIBER
+        note = MOCK_CHANNEL_NOTE.get(lane)
+        if note:
+            new["channel_note"] = note
+        else:
+            new.pop("channel_note", None)
         out.append(new)
     return out, issues
 
@@ -725,6 +758,14 @@ def _selftest():
         {"order_id": "MOCK-X", "date": "2026-10-19", "price": 1.0,
          "amount": 0.0, "tokens_local": 0, "tokens_api": 0,
          "cost_item": "MOCK-DRILL", "mock": True},
+        {"order_id": "MOCK-Y", "date": "2026-10-19", "price": 2.0,
+         "amount": 0.0, "fund_3090": 0.0, "lane": "mystery",
+         "tokens_local": 0, "tokens_api": 0, "amount_mtok": 0.1,
+         "cost_item": "MOCK-DRILL", "mock": True},
+        {"order_id": "MOCK-Z", "date": "2026-10-20", "price": 349.0,
+         "amount": 0.0, "fund_3090": 0.0, "lane": "b2b_direct",
+         "tokens_local": 0, "tokens_api": 0, "amount_mtok": 0.18,
+         "cost_item": "MOCK-DRILL", "mock": True},
     ]
     regen1, regen_issues = regen_mock_rows(drill_rows)
     regen2, _ = regen_mock_rows(regen1)
@@ -744,6 +785,25 @@ def _selftest():
     chk("S28 regen leaves every other key untouched",
         regen1[0]["price"] == 49.9 and regen1[0]["net_price"] == 43.6126
         and regen1[1]["date"] == "2026-10-19")
+    chk("S29 lane -> channel/caliber derived (store rows)",
+        regen1[0].get("channel") == "store"
+        and regen1[0].get("settlement_caliber") == "B"
+        and regen1[1].get("channel") == "store",
+        "row0=%s cal=%s row1=%s" % (regen1[0].get("channel"),
+                                    regen1[0].get("settlement_caliber"),
+                                    regen1[1].get("channel")))
+    chk("S30 unknown lane -> issue named, no channel invented",
+        any("MOCK-Y" in i for i in regen_issues)
+        and "channel" not in regen1[3]
+        and "settlement_caliber" not in regen1[3], str(regen_issues))
+    chk("S31 b2b_direct -> private + b2b note (no fourth channel)",
+        regen1[4].get("channel") == "private"
+        and regen1[4].get("channel_note") == "b2b-direct-signed"
+        and regen1[0].get("channel_note") is None,
+        "row4=%s note=%s" % (regen1[4].get("channel"),
+                             regen1[4].get("channel_note")))
+    chk("S32 channel fill does not promote drill rows to real",
+        all(r.get("mock") is True for r in regen1))
 
     failed = [c for c in checks if not c[1]]
     for name, ok, detail in checks:

@@ -1,8 +1,8 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-11-12 22:48",
- "current_activity": "2026-11-12 19:00 轮：M199 done(材质普查增 PACKAGE-ONLY 分类：判定序 Assets→PackageCache→DANGLING，CLEAN 仍只看 DANGLING；selftest 9→17/17 含「无缓存时不得把包内读成悬空」负控；实跑 labbench CLEAN slots_resolved=5 pkg_index=9828… ｜ 两池：本司备货可派 2 ／ 机队可领 4（两个不同池，本司卡未登记进机队池）",
- "latest_artifact": "state/sop-coverage-20261112-224744.json（mtime 2026-11-12 22:47）",
+ "updated_at": "2026-11-13 19:23",
+ "current_activity": "2026-11-12 22:00 轮：M154 done(Tools/revenue_caliber.py 三线营收口径统一·selftest 16/16·rail 五类定性+四口径分行永不合成一个「收入」数+七类 findings 逐条点名；实跑 12 行/真实营收行 0→REV-NO-REAL-DATA，两条真缺陷=3 张演练成交单全员 CALIBER-UNLABELED+CHANNEL-UNASSIGNED〔有营收也分不出三线〕… ｜ 两池：本司备货可派 2 ／ 机队可领 4（两个不同池，本司卡未登记进机队池）",
+ "latest_artifact": "docs/ops/revenue-caliber-table-v1.md（mtime 2026-11-13 19:21）",
  "next_milestone": "M198 指针可解析闸：charter §三 每行 `细节=docs/qa-probes-20261112-{a,b}.md·pN` → 逐行验「文件在盘 + 附录内确有该编号行 + 标题词对得上」三面，缺一面点名并判红（本轮派生·窗 11-13 04:00 前）；同窗并行=取回落地后 8 件 blob 复跑结案（最迟 11-13 20:00）+ B-CITY3D-02 判据帧复渲维持门控 vram_free>=6144MiB（source=declared）",
  "caps": {
   "write_lag_min": 30.0,

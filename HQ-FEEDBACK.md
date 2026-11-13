@@ -944,3 +944,8 @@ P0 提醒（@HQ 取回腿·18:00 前）：D-02 指定取回源 `backup/bm-a-2026
 - 实跑读数（账本级、零估算）：12 行 / 演练行 10 / **真实营收行 0** → `REV-NO-REAL-DATA`（`state/cost-ledger.jsonl` 不存在＝真实成交轨未开）。两条真缺陷：3 张演练成交单 `MOCK-20261019-R1/R2/R3` 全员 `CALIBER-UNLABELED`（无 settlement_caliber）＋ `CHANNEL-UNASSIGNED`（无 channel）——**当前不是「没有营收」，而是「有营收也分不出三线」**。
 - 诚实：①本表只读账本，不含任何估算或外推；②mock 行无 channel 是数据面缺口，工具不猜渠道；③演练台账里的 mock 行属预期态、不判红（首版按行判会结构性常红，已改 file-level expect 并加 S15/S16 双向夹具）。
 - 日清：P2 新派生＝mock 成交轨补 `channel`+`settlement_caliber`（走 regen 面、禁手改历史行）→ M200；集团双台账 11-12 无本司新派单（D-20261112-05 已由 D-07 核销，D-13/D-14 属 @HQ/机队侧）。队列水位如实：本轮 open −1（M154 结案）、补 1（M200 为本轮真派生），净 0——不制造假关闭凑净减。
+
+## 2026-11-13 19:2x 令牌轮（M200：演练行也能回答「哪条线卖了多少」）
+- 产品（产品优先律 2 分件）：`unit_cost_drill.regen_mock_rows` 现在同时派生 `channel` / `settlement_caliber` / `channel_note`（lane→渠道表：subscription/gacha=store、b2b_direct=private 附 `b2b-direct-signed` 记号），口径恒 B；**未知 lane 拒写并点名**，不默认 store。selftest 13→**32/32**。`revenue_caliber` 增**演练面矩阵**（与实面矩阵并列、永不合并），md/文本两处渲染都显式列出。
+- 实跑读数：`MOCK-RAIL-REGEN-OK rows=3` → `revenue_caliber run` **FINDINGS none**（`CALIBER-UNLABELED` 与 `CHANNEL-UNASSIGNED` 双双归零）；演练面 store gmv=52.9 / private gmv=349.0；真实营收仍 0 行 → `REV-NO-REAL-DATA` 照实不印 0.00。下游回归：sku_ledger_join 10/10、refund_rate_calibration 25/25、rails_schema_check **45/45** + 实跑 `RAILS-SCHEMA-GREEN violations=0`。产物 `docs/ops/revenue-caliber-table-v1.md` 已重生成。
+- 日清：P2 新派生＝直签大额与私域同列（channel 词表只有三线）→ M201（两候选方案待选，先出真数：带 b2b 记号 1/3 演练行）；集团双台账自 11-12 18:10 无新行（不涉本司）；队列 open −1（M200 结案）补 1（M201），净 0 如实。
