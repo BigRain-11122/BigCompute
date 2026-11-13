@@ -260,7 +260,11 @@ ARTIFACT_DIRS = ("state", "qa", "docs", "Tools")
 # they must never become the "latest artifact" line.
 ARTIFACT_EXCLUDE = {"state/rounds.log", "state/heartbeat.txt",
                     "docs/status-export.json", "docs/status-export-overrides.json",
-                    "state/proposals.md", "HQ-FEEDBACK.md"}
+                    "state/proposals.md", "HQ-FEEDBACK.md",
+                    # M202: 风险台账与里程碑声明都是维护面（行级 upkeep / 单字段声明），
+                    # 不能当「最近实物」——否则加一条风险或改一次里程碑就让 CEO 面
+                    # 显示「最近交付=台账/状态文件」。
+                    "docs/risk-register.md", "state/milestone.json"}
 # Queue files are planning bookkeeping too: score-zero by the mandate,
 # so they can never be "the latest artifact".
 # M181 finding: a checker's own output (patrol json, registry/probe reports,
@@ -406,27 +410,37 @@ def pool_note(heartbeat_text, now=None, max_age_min=HEARTBEAT_MAX_AGE_MIN):
 
 
 def compose_activity(rounds_text):
-    """Last round's queue segment, with its timestamp."""
+    """Last round's queue segment, with its timestamp.
+
+    M202: the ledger allows a trailing "更正" line with no `queue:` segment.
+    Reading `lines[-1]` blindly turned "the last line is a correction" into
+    "the summary is unreadable" — the wrong line, not a broken ledger. So scan
+    from the end for the newest line that actually carries a queue segment.
+    """
     lines = [l for l in (rounds_text or "").splitlines() if l.strip()]
     if not lines:
         return "state/rounds.log 无轮记录"
-    last = lines[-1]
-    ts = parse_ts(last)
-    stamp = ts.strftime("%Y-%m-%d %H:%M") if ts else "未知轮次"
-    seg = ""
-    # Newer rounds use " | " section separators; older ones put queue:
-    # inline after the tokens fields, so both shapes are accepted.
-    for part in last.split(" | "):
-        part = part.strip()
-        if part.startswith("queue:"):
-            seg = _clean(part[len("queue:"):], 220)
+
+    def _queue_seg(line):
+        # Newer rounds use " | " section separators; older ones put queue:
+        # inline after the tokens fields, so both shapes are accepted.
+        for part in line.split(" | "):
+            part = part.strip()
+            if part.startswith("queue:"):
+                return _clean(part[len("queue:"):], 220)
+        m = re.search(r"queue:(.*)", line)
+        return _clean(m.group(1), 220) if m else ""
+
+    last, seg = lines[-1], ""
+    for line in reversed(lines):
+        seg = _queue_seg(line)
+        if seg:
+            last = line
             break
     if not seg:
-        m = re.search(r"queue:(.*)", last)
-        if m:
-            seg = _clean(m.group(1), 220)
-    if not seg:
-        seg = "账本行摘要不可用（非 UTF-8 或空，原行见 state/rounds.log）"
+        seg = "账本行摘要不可用（既有行均无 queue: 段，原行见 state/rounds.log）"
+    ts = parse_ts(last)
+    stamp = ts.strftime("%Y-%m-%d %H:%M") if ts else "未知轮次"
     return "%s 轮：%s" % (stamp, seg)
 
 
@@ -1049,6 +1063,25 @@ def selftest():
     z4_ok = (z4[CAPS_KEY] == caps_block() and z4[FRESHNESS_KEY] == caps_line())
     cases.append(z4_ok)
     print("  [%s] Z4 overrides 不得改写 caps/freshness" % ("PASS" if z4_ok else "FAIL"))
+
+    # M202: 尾部「更正」行不得把上一条轮行的摘要读成不可用（读错行≠账坏了）
+    tail_correction = ("2026-11-13 19:2x tokens: local=0 api=0 | queue:M201 done(x)\n"
+                       "2026-11-13 19:3x 更正：上条轮账本基线写错\n")
+    a1 = compose_activity(tail_correction)
+    a1_ok = "M201 done" in a1 and "不可用" not in a1
+    cases.append(a1_ok)
+    print("  [%s] A1 尾部更正行不影响轮摘要 (%s)" % ("PASS" if a1_ok else "FAIL", a1))
+
+    # M202: 全无 queue 段时仍要明说「读不到」，不许空着冒充有摘要
+    a2 = compose_activity("2026-11-13 19:3x 更正：写错\n")
+    a2_ok = "不可用" in a2
+    cases.append(a2_ok)
+    print("  [%s] A2 无任何 queue 段判不可用 (%s)" % ("PASS" if a2_ok else "FAIL", a2))
+
+    # M202: 风险台账是维护面，不能成为「最近实物」
+    a3_ok = "docs/risk-register.md" in ARTIFACT_EXCLUDE
+    cases.append(a3_ok)
+    print("  [%s] A3 风险台账不进最近实物" % ("PASS" if a3_ok else "FAIL"))
 
     print("status_export_check selftest: %d/%d PASS" % (sum(cases), len(cases)))
     return 0 if all(cases) else 1

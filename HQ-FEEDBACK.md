@@ -949,3 +949,9 @@ P0 提醒（@HQ 取回腿·18:00 前）：D-02 指定取回源 `backup/bm-a-2026
 - 产品（产品优先律 2 分件）：`unit_cost_drill.regen_mock_rows` 现在同时派生 `channel` / `settlement_caliber` / `channel_note`（lane→渠道表：subscription/gacha=store、b2b_direct=private 附 `b2b-direct-signed` 记号），口径恒 B；**未知 lane 拒写并点名**，不默认 store。selftest 28→**32/32**（基线 28/28 经改动前版本实跑复核）。`revenue_caliber` 增**演练面矩阵**（与实面矩阵并列、永不合并），md/文本两处渲染都显式列出。
 - 实跑读数：`MOCK-RAIL-REGEN-OK rows=3` → `revenue_caliber run` **FINDINGS none**（`CALIBER-UNLABELED` 与 `CHANNEL-UNASSIGNED` 双双归零）；演练面 store gmv=52.9 / private gmv=349.0；真实营收仍 0 行 → `REV-NO-REAL-DATA` 照实不印 0.00。下游回归：sku_ledger_join 10/10、refund_rate_calibration 25/25、rails_schema_check **45/45** + 实跑 `RAILS-SCHEMA-GREEN violations=0`。产物 `docs/ops/revenue-caliber-table-v1.md` 已重生成。
 - 日清：P2 新派生＝直签大额与私域同列（channel 词表只有三线）→ M201（两候选方案待选，先出真数：带 b2b 记号 1/3 演练行）；集团双台账自 11-12 18:10 无新行（不涉本司）；队列 open −1（M200 结案）补 1（M201），净 0 如实。
+
+## 2026-11-13 21:5x 令牌轮（M201：直签不再和私域小额同列）
+- 产品（产品优先律 2 分件）：`revenue_caliber` 渠道面拆行——三线词表不动，`private` 行带 `channel_note=b2b` 记号时读数拆到派生行 `private/b2b`（写侧日后直接声明 `channel=b2b` 也落同一行，不另起键）；四处硬编码的渠道循环收成单源 `CHANNEL_ORDER`；md/文本两处渲染都显式列出该行并写「金额不进 private 合计」。selftest 16→**22/22**（S18 拆出且来源可追／S19 普通私域不被吞／S20 直接声明同键／S21 非私域备注不夺主／S22 核心负控：349 元不进私域合计）。
+- 实跑读数（先出真数再动刀）：3 张演练单里 **1 行**（`MOCK-20261020-R3`，GMV 349.0）是 `channel=private` + `b2b-direct-signed`；改后演练面 `store gmv=52.9000` / `private/b2b gmv=349.0000`——矩阵里不再有把两者加在一起的 private 行。真实营收仍 0 行 → `REV-NO-REAL-DATA`（不印 0.00）。下游回归：unit_cost_drill 32/32、sku_ledger_join 10/10、refund_rate_calibration 25/25、rails_schema_check 45/45。
+- 诚实：①拆行是读侧派生，账本行 `channel=private` 原值一字未改（历史行不改写、可回溯）；②改判来源写进读数 `channel_src=note|field`，静默搬钱不可能；③选②不选①=写侧 M200 的 `unit_cost_drill` 与其夹具 S31 已把「不发明第四渠道」定为设计，推翻它要动两个工具两套夹具且不多给信息；④真正长期解在写侧直声明（BC-P-248），note 推断只是兼容兜底，已按 E3 登 R-074。
+- 日清：集团 orders 21:54 新行属 BigStream mv0001 开工（不涉本司，零动作）、decisions 11-12 18:10 后无新增；队列 open −1（M201 结案），本窗新立项 2（BC-P-248/R-074）不占 P1 位。

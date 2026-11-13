@@ -25,6 +25,10 @@
 退出码：0=GREEN / 2=FINDINGS / 3=NO-REAL-DATA / 1=用法错误
 """
 
+# M201 渠道拆行：消费线仍三条（livestream/store/private），但 private 行若带
+# channel_note=b2b 记号（年报直签等），读数拆到派生行 private/b2b 单列——
+# 它与私域小额不是一个量级，合并后「私域每单多少钱」永远答不对。
+
 import argparse
 import json
 import os
@@ -58,12 +62,24 @@ RAILS = {
                   "files": [{"path": "state/mock-aftersale-ledger.jsonl", "expect": "drill"}]},
 }
 
-CHANNELS = ("livestream", "store", "private")  # 三线
+CHANNELS = ("livestream", "store", "private")  # 三线（消费线）不变
+# M201：私域里的 B2B 直签（年报 349 元等）与私域小额不是同一门生意——
+# 单笔额差一到两个数量级，并成一行后「私域每单多少钱」永远答不对。
+# 词表不发明第四消费线，而是在渲染面上把它拆成 private 的派生行；
+# 金额出这一行就不再进 private 合计（判据不许并回）。
+CHANNEL_SPLIT = "private/b2b"
+# 渲染顺序单源：四处硬编码循环统一走这里，新增行只改一处
+CHANNEL_ORDER = ("livestream", "store", "private", CHANNEL_SPLIT, "unassigned")
 CHANNEL_ALIAS = {
     "livestream": "livestream", "直播": "livestream",
     "store": "store", "小店": "store", "shop": "store",
     "private": "private", "私域": "private", "community": "private",
+    # 写侧若日后直接声明直签渠道，也落到同一派生行，不另起键
+    "b2b": CHANNEL_SPLIT, "b2b_direct": CHANNEL_SPLIT, "b2b-direct": CHANNEL_SPLIT,
+    "直签": CHANNEL_SPLIT, "b2b_direct_signed": CHANNEL_SPLIT,
 }
+# 只有 channel=private 且 channel_note 带直签记号时才拆（其它渠道的备注不夺主）。
+CHANNEL_NOTE_SPLIT = {"private": (("b2b", CHANNEL_SPLIT),)}
 
 # 成本/净额算式容差（分位级）
 NET_TOL = 0.02
@@ -115,12 +131,25 @@ def channel_of(row):
     return CHANNEL_ALIAS.get(str(raw).strip().lower())
 
 
+def channel_resolution(row):
+    """返回 (渠道行, 来源)：field=行内 channel 字段 / note=channel_note 拆出 / none。
+
+    字段优先；只有 private 行带直签备注时才改判到派生行。来源必须能被读数看见——
+    静默改判等于把一条金额从一行搬到另一行而不留痕。
+    """
+    ch = channel_of(row)
+    if not ch:
+        return None, "none"
+    note = str(row.get("channel_note") or "").strip().lower()
+    for token, target in CHANNEL_NOTE_SPLIT.get(ch, ()):
+        if token in note:
+            return target, "note"
+    return ch, "field"
+
+
 def row_channel_or_lane(row):
     """channel 字段优先；distr 的 lane 是渠道（bilibili 等），成交轨的 lane 是 SKU 线，不当渠道用。"""
-    ch = channel_of(row)
-    if ch:
-        return ch
-    return None
+    return channel_resolution(row)[0]
 
 
 def classify_row(rail, row, expect="real"):
@@ -137,6 +166,7 @@ def classify_row(rail, row, expect="real"):
         "drill": bool(_truthy_marker(row)),
         "caliber_tagged": bool(row.get("settlement_caliber") or row.get("caliber_note")),
         "channel": row_channel_or_lane(row),
+        "channel_src": channel_resolution(row)[1],
         "flags": [],
     }
     for c in CALIBERS:
@@ -282,6 +312,13 @@ def build_payload(root):
     totals_drill, _ = aggregate([r for r in classified if r["drill"]])
     matrix_drill = _matrix_by_channel(totals_drill)
 
+    # M201：拆行必须可数——多少行是从 channel_note 拆出的、搬了多少钱，
+    # 实面与演练面分列（演练行永远不入结算）。
+    def _split_stat(rows):
+        hit = [r for r in rows if r.get("channel_src") == "note"]
+        return {"rows": len(hit), "gmv": round(sum(r.get("gmv") or 0.0 for r in hit), 6)}
+    channel_split = {"real": _split_stat(real), "drill": _split_stat(drill)}
+
     findings = findings_for(classified)
     per_code = {}
     for f in findings:
@@ -300,6 +337,7 @@ def build_payload(root):
         "non_revenue_rows_with_amount": non_rev_amount_rows,
         "matrix": matrix,
         "matrix_drill": matrix_drill,
+        "channel_split": channel_split,
         "totals_by_caliber": {c: round(sum(r.get(c) or 0.0 for r in real), 6) for c in CALIBERS},
         "findings": findings,
         "findings_by_code": per_code,
@@ -323,11 +361,12 @@ def render(payload, as_md=False):
         lines.append("| COGS | Σ amount（口径 B 内部成本锚） | 不能（成本） |")
         lines.append("| GROSS | Σ gross（= NET − COGS） | 能，须与 NET 分列 |")
         lines.append("")
-        lines.append("## 二、三线 × 口径矩阵（真实行，演练行不计入）")
+        lines.append("## 二、渠道 × 口径矩阵（真实行，演练行不计入；"
+                     "`%s` = 直签从私域拆出的派生行，不并入 private 合计）" % CHANNEL_SPLIT)
         lines.append("")
         lines.append("| 渠道 | GMV 下单金额 | NET 净额 | COGS 成本 | GROSS 毛利 |")
         lines.append("|---|---|---|---|---|")
-        for ch in ("livestream", "store", "private", "unassigned"):
+        for ch in CHANNEL_ORDER:
             if ch not in payload["matrix"]:
                 continue
             m = payload["matrix"][ch]
@@ -337,13 +376,13 @@ def render(payload, as_md=False):
         if not payload["matrix"]:
             lines.append("| （无营收行） | — | — | — | — |")
         lines.append("")
-        lines.append("## 二之二、演练面三线分布（drill，**不入结算、不并入上表**）")
+        lines.append("## 二之二、演练面渠道分布（drill，**不入结算、不并入上表**）")
         lines.append("")
         drill_matrix = payload.get("matrix_drill") or {}
         if drill_matrix:
             lines.append("| 渠道 | GMV 下单金额 | NET 净额 | COGS 成本 | GROSS 毛利 |")
             lines.append("|---|---|---|---|---|")
-            for ch in ("livestream", "store", "private", "unassigned"):
+            for ch in CHANNEL_ORDER:
                 if ch not in drill_matrix:
                     continue
                 m = drill_matrix[ch]
@@ -360,6 +399,16 @@ def render(payload, as_md=False):
                      % (payload["rows_total"], payload["rows_drill"], payload["rows_revenue_real"]))
         lines.append("- 非营收轨带金额字段的行：%d（单独计数，不并入营收）"
                      % payload["non_revenue_rows_with_amount"])
+        cs = payload.get("channel_split") or {}
+        split_real, split_drill = cs.get("real") or {}, cs.get("drill") or {}
+
+        def _face(d):
+            if not d.get("rows"):
+                return "无行"
+            return "%d 行 / GMV %s" % (d["rows"], _fmt(d.get("gmv")))
+        lines.append("- 拆行读数：`%s` 由 `channel_note` 拆出——实面 %s；演练面 %s。"
+                     "**该行金额不进 private 合计**（行内仍保留 `channel=private` 原值可追）"
+                     % (CHANNEL_SPLIT, _face(split_real), _face(split_drill)))
         if payload["rows_revenue_real"] == 0:
             lines.append("- **真实成交轨 0 行 → 营收面 NO-DATA**：此处不印 0.00，"
                          "因为「没有成交」与「成交额为 0」是两件事。")
@@ -414,7 +463,7 @@ def render(payload, as_md=False):
                  % "/".join(payload["revenue_calibers"]))
     if payload["rows_revenue_real"] == 0:
         lines.append("REVENUE-NO-DATA 真实成交轨 0 行 → 营收面 NO-DATA（禁印 0.00 冒充测算）")
-    for ch in ("livestream", "store", "private", "unassigned"):
+    for ch in CHANNEL_ORDER:
         if ch not in payload["matrix"]:
             continue
         m = payload["matrix"][ch]
@@ -426,7 +475,7 @@ def render(payload, as_md=False):
     drill_matrix = payload.get("matrix_drill") or {}
     if drill_matrix:
         lines.append("DRILL-FACE 演练面（mock 行，不入结算·不进上方实面矩阵）")
-        for ch in ("livestream", "store", "private", "unassigned"):
+        for ch in CHANNEL_ORDER:
             if ch not in drill_matrix:
                 continue
             m = drill_matrix[ch]
@@ -435,6 +484,13 @@ def render(payload, as_md=False):
                             _fmt(m.get("cogs")), _fmt(m.get("gross"))))
     lines.append("non_revenue_rows_with_amount=%d（非营收轨带金额字段，单独计数不并入营收）"
                  % payload["non_revenue_rows_with_amount"])
+    cs = payload.get("channel_split") or {}
+    sr, sd = cs.get("real") or {}, cs.get("drill") or {}
+    split_gmv = lambda d: _fmt(d.get("gmv")) if d.get("rows") else "—"  # noqa: E731 无行不印 0.00
+    lines.append("CHANNEL-SPLIT %s real_rows=%d real_gmv=%s drill_rows=%d drill_gmv=%s"
+                 "（channel_note 拆出·不并入 private 合计）"
+                 % (CHANNEL_SPLIT, sr.get("rows", 0), split_gmv(sr),
+                    sd.get("rows", 0), split_gmv(sd)))
     if payload["findings"]:
         for code, n in sorted(payload["findings_by_code"].items()):
             lines.append("FINDING %-28s x%-3d %s" % (code, n, FINDING_CODES.get(code, "")))
@@ -592,6 +648,49 @@ def selftest():
           set(real_m) == {"private"} and set(drill_m) == {"store"}
           and real_m["private"]["gmv"] == 49.9 and drill_m["store"]["gmv"] == 3.0,
           "real=%s drill=%s" % (real_m, drill_m))
+
+    # S18 M201：private + channel_note=b2b → 拆到派生行且来源可追（拆行不许隐形）
+    split_row = classify_row("deal", {"order_id": "A9", "price": 349.0, "net_price": 305.03,
+                                      "fee_rate": 0.05, "refund_rate": 0.08,
+                                      "settlement_caliber": "B", "channel": "private",
+                                      "channel_note": "b2b-direct-signed"})
+    check("S18 private+b2b note split out",
+          split_row["channel"] == CHANNEL_SPLIT and split_row["channel_src"] == "note",
+          "ch=%s src=%s" % (split_row["channel"], split_row["channel_src"]))
+
+    # S19 负控：普通私域行（无直签备注）仍留 private——拆行不得吞掉私域本身
+    plain_private = classify_row("deal", {"order_id": "A10", "price": 49.9,
+                                          "net_price": 43.61, "fee_rate": 0.05,
+                                          "refund_rate": 0.08, "settlement_caliber": "B",
+                                          "channel": "private"})
+    check("S19 plain private stays private",
+          plain_private["channel"] == "private" and plain_private["channel_src"] == "field",
+          "ch=%s src=%s" % (plain_private["channel"], plain_private["channel_src"]))
+
+    # S20 写侧若直接声明直签渠道，落到同一派生行（不另起键，防两张表各说各话）
+    declared_b2b = classify_row("deal", {"order_id": "A11", "price": 349.0,
+                                         "net_price": 305.03, "fee_rate": 0.05,
+                                         "refund_rate": 0.08, "settlement_caliber": "B",
+                                         "channel": "b2b"})
+    check("S20 declared b2b same line",
+          declared_b2b["channel"] == CHANNEL_SPLIT and declared_b2b["channel_src"] == "field",
+          "ch=%s src=%s" % (declared_b2b["channel"], declared_b2b["channel_src"]))
+
+    # S21 负控：非私域渠道的备注不夺主（store 行写了 b2b 字样也不许被搬走）
+    store_note = classify_row("deal", {"order_id": "A12", "price": 3.0, "net_price": 2.62,
+                                       "fee_rate": 0.05, "refund_rate": 0.08,
+                                       "settlement_caliber": "B", "channel": "store",
+                                       "channel_note": "b2b-direct-signed"})
+    check("S21 note cannot move non-private",
+          store_note["channel"] == "store", "ch=%s" % store_note["channel"])
+
+    # S22 核心判据：拆出的金额不进 private 合计（两行相加≠一行合并）
+    split_totals, _ = aggregate([plain_private, split_row])
+    split_matrix = _matrix_by_channel(split_totals)
+    check("S22 b2b not merged into private total",
+          split_matrix.get("private", {}).get("gmv") == 49.9
+          and split_matrix.get(CHANNEL_SPLIT, {}).get("gmv") == 349.0,
+          "matrix=%s" % split_matrix)
 
     passed = sum(1 for _, ok, _ in results if ok)
     for name, ok, why in results:

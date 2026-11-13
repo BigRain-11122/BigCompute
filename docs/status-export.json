@@ -1,9 +1,9 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-11-13 19:23",
- "current_activity": "2026-11-12 22:00 轮：M154 done(Tools/revenue_caliber.py 三线营收口径统一·selftest 16/16·rail 五类定性+四口径分行永不合成一个「收入」数+七类 findings 逐条点名；实跑 12 行/真实营收行 0→REV-NO-REAL-DATA，两条真缺陷=3 张演练成交单全员 CALIBER-UNLABELED+CHANNEL-UNASSIGNED〔有营收也分不出三线〕… ｜ 两池：本司备货可派 2 ／ 机队可领 4（两个不同池，本司卡未登记进机队池）",
- "latest_artifact": "docs/ops/revenue-caliber-table-v1.md（mtime 2026-11-13 19:21）",
- "next_milestone": "M198 指针可解析闸：charter §三 每行 `细节=docs/qa-probes-20261112-{a,b}.md·pN` → 逐行验「文件在盘 + 附录内确有该编号行 + 标题词对得上」三面，缺一面点名并判红（本轮派生·窗 11-13 04:00 前）；同窗并行=取回落地后 8 件 blob 复跑结案（最迟 11-13 20:00）+ B-CITY3D-02 判据帧复渲维持门控 vram_free>=6144MiB（source=declared）",
+ "updated_at": "2026-11-13 22:05",
+ "current_activity": "2026-11-13 22:00 轮：M201 done(private/b2b 拆行·先出真数=3 张演练单里 1 行带 b2b 记号〔349.0〕；选②三线词表不动·读面派生行·channel_resolution 返回行+来源 field|note·CHANNEL_ORDER 单源化四处硬编码循环·payload 增 channel_split… ｜ 两池：本司备货可派 2 ／ 机队可领 4（两个不同池，本司卡未登记进机队池）",
+ "latest_artifact": "state/revenue-caliber-20261113.json（mtime 2026-11-13 21:58）",
+ "next_milestone": "M202 承办件（BC-P-248 写侧直声明渠道）：`unit_cost_drill` 的 lane→channel 表直出 `channel=b2b`，读侧 `channel_note` 推断降级为兼容兜底并计 `inferred=`（写侧改完后该计数应归零）；判据=演练面逐行读数不变 + 夹具覆盖「note 缺失仍归对行」（窗 11-14 12:43 前）…（source=declared）",
  "caps": {
   "write_lag_min": 30.0,
   "ledger_lag_min": 120.0,
