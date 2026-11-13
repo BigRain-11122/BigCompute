@@ -49,3 +49,8 @@ __pycache__/
 !state/scene-material-census-*
 # M182: 里程碑声明是对外实况面的输入，须可审可回溯（不是运行时读数）
 !state/milestone.json
+# 渲染/烘焙产物区（pool-ignite run 目录）：只在本机，不进 git。
+# 293 件未跟踪件曾经挂满 git status，一次 add -A 就会撞大件闸。
+media/
+# T238 证据件：判据常量单源+标定帧锚点的三处 selftest 实跑输出（可复核）
+!state/t238-frame-qc-spec-*
