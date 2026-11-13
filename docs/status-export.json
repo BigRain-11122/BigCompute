@@ -1,8 +1,8 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-11-14 01:58",
- "current_activity": "2026-11-13 22:00 轮：tech T236 done（联系表自证件·`--verify` 落地：独立实现=掩膜+直方图计数，与写入侧逐字节循环零共享代码；selftest 8/8 PASS；实跑现网 B-CITY3D-02/20261113-191047 六帧全 OK，洋红 0.00%、geom 84.60/72.77/90.42/76.00/100.00/81.65 逐帧与回执相等… ｜ 两池：本司备货可派 2 ／ 机队可领 4（两个不同池，本司卡未登记进机队池）",
- "latest_artifact": "state/t238-frame-qc-spec-20261114.txt（mtime 2026-11-14 01:55）",
+ "updated_at": "2026-11-14 02:03",
+ "current_activity": "2026-11-14 02:00 轮：tech T238 done（判据常量单源+标定帧锚点：`Tools/frame_qc_spec.py` spec:37cc2286c096 落盘，两侧只共享常量、实现仍不共享代码，另加「谁再写字面量即红」静态扫描 S10；40x40 构造 10% 洋红帧须读 10.00+/-0.01 入三处 selftest，并带「阈值改 256、-1 后同帧读 0.00」负控… ｜ 两池：本司备货可派 2 ／ 机队可领 4（两个不同池，本司卡未登记进机队池）",
+ "latest_artifact": "state/round_append_out.txt（mtime 2026-11-14 02:01）",
  "next_milestone": "M202 承办件（BC-P-248 写侧直声明渠道）：`unit_cost_drill` 的 lane→channel 表直出 `channel=b2b`，读侧 `channel_note` 推断降级为兼容兜底并计 `inferred=`（写侧改完后该计数应归零）；判据=演练面逐行读数不变 + 夹具覆盖「note 缺失仍归对行」（窗 11-14 12:43 前）…（source=declared）",
  "caps": {
   "write_lag_min": 30.0,
