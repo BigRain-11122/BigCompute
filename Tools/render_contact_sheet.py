@@ -16,6 +16,12 @@ counts histograms. A label copied from the receipt is only as trustworthy as
 the receipt; if the writer's magenta rule ever breaks, a plain sheet would
 print the wrong number more legibly. Mismatch marks that cell
 `MISMATCH(live=...,receipt=...)` and exits 3.
+
+T238 / BC-P-250: the two implementations stay independent, but the four
+threshold constants now come from `Tools/frame_qc_spec.py` on both sides, and
+both selftests assert a calibration frame whose magenta share is known by
+construction. Two independent implementations of the same wrong threshold
+would agree; an anchored one cannot drift alone.
 """
 from __future__ import annotations
 
@@ -27,6 +33,12 @@ import tempfile
 
 from PIL import Image, ImageChops, ImageDraw, ImageFont
 
+HERE = os.path.dirname(os.path.abspath(__file__))
+if HERE not in sys.path:
+    sys.path.insert(0, HERE)
+
+import frame_qc_spec as qc_spec   # shared constants, not a shared implementation
+
 FRAME_ORDER = [f"frame_{i:02d}.png" for i in range(1, 7)]
 COLS = 3
 CELL_W = 640
@@ -34,12 +46,6 @@ LABEL_H = 22
 PAD = 6
 BG = (24, 24, 28)
 FG = (235, 235, 235)
-
-# Same rules as the writer's readings (the spec, not its code).
-MAGENTA_MIN_R = 200
-MAGENTA_MIN_B = 200
-MAGENTA_MAX_G = 80
-BG_TOL = 6
 
 
 def load_quality_doc(run_dir):
@@ -99,10 +105,11 @@ def live_readings(im, clear_rgb=None):
     if not n:
         return None
     r, g, b = im.split()
+    # Constants come from the spec module so neither reader can drift alone.
     mag = _mask_count(ImageChops.multiply(
-        ImageChops.multiply(_band_mask(r, lambda v: v >= MAGENTA_MIN_R),
-                            _band_mask(g, lambda v: v <= MAGENTA_MAX_G)),
-        _band_mask(b, lambda v: v >= MAGENTA_MIN_B)))
+        ImageChops.multiply(_band_mask(r, lambda v: v >= qc_spec.MAGENTA_MIN_R),
+                            _band_mask(g, lambda v: v <= qc_spec.MAGENTA_MAX_G)),
+        _band_mask(b, lambda v: v >= qc_spec.MAGENTA_MIN_B)))
     if clear_rgb:
         cr, cg, cb = clear_rgb
         source = "declared"
@@ -112,10 +119,11 @@ def live_readings(im, clear_rgb=None):
         cr, cg, cb = Counter(data[i:i + 3] for i in range(0, n * 3, 3)
                              ).most_common(1)[0][0]
         source = "modal"
+    tol = qc_spec.BG_TOL
     bg = _mask_count(ImageChops.multiply(
-        ImageChops.multiply(_band_mask(r, lambda v, c=cr: abs(v - c) <= BG_TOL),
-                            _band_mask(g, lambda v, c=cg: abs(v - c) <= BG_TOL)),
-        _band_mask(b, lambda v, c=cb: abs(v - c) <= BG_TOL)))
+        ImageChops.multiply(_band_mask(r, lambda v, c=cr: abs(v - c) <= tol),
+                            _band_mask(g, lambda v, c=cg: abs(v - c) <= tol)),
+        _band_mask(b, lambda v, c=cb: abs(v - c) <= tol)))
     return (round(100.0 * mag / n, 2), round(100.0 * (n - bg) / n, 2),
             [cr, cg, cb], source)
 
@@ -211,7 +219,7 @@ def run_selftest():
         if cond:
             ok += 1
 
-    clear = (13, 13, 15)
+    clear = tuple(qc_spec.CLEAR_RGB_DEFAULT)
     tmp = tempfile.mkdtemp(prefix="contact-sheet-st-")
     run_dir = os.path.join(tmp, "run")
     os.makedirs(os.path.join(run_dir, "frames"))
@@ -294,6 +302,27 @@ def run_selftest():
     chk("S8 a receipt frame with no PNG is MISSING-FILE",
         bad == ["frame_01.png"] and rows[0][4] == "MISSING-FILE", rows)
 
+    # T238 / BC-P-250: same calibration anchor as the writer's selftest. The
+    # two implementations stay independent, but both must reproduce a share
+    # that is known by construction - that is what makes a threshold edit
+    # visible on both sides at once instead of only on the edited one.
+    cal_im, cal_expect = qc_spec.calibration_frame()
+    cal_live = live_readings(cal_im.convert("RGB"), clear)
+    chk("S9 calibration frame (10% by construction) reads magenta=10.00",
+        cal_expect == 10.0 and abs(cal_live[0] - cal_expect) <= 0.01, cal_live)
+    saved_max_g = qc_spec.MAGENTA_MAX_G
+    qc_spec.MAGENTA_MAX_G = -1            # no pixel can satisfy g <= -1
+    try:
+        cal_narrow = live_readings(cal_im.convert("RGB"), clear)
+    finally:
+        qc_spec.MAGENTA_MAX_G = saved_max_g
+    chk("S10 the anchor is threshold-sensitive in this reader too",
+        cal_narrow[0] == 0.0
+        and live_readings(cal_im.convert("RGB"), clear)[0] == 10.0,
+        cal_narrow[0])
+    chk("S11 the verify summary names the constant group it judged by",
+        qc_spec.spec_id().startswith("spec:"), qc_spec.spec_id())
+
     for name, cond, detail in checks:
         print(("PASS " if cond else "FAIL ") + name +
               ("" if cond else "  <%r>" % (detail,)))
@@ -336,8 +365,8 @@ def main(argv=None):
                 marks[name] = state
                 print(f"verify {name}: {state}")
         rc = 3 if bad else 0
-        print("verify: frames=%d ok=%d mismatch=%d -> %s"
-              % (len(rows), len(rows) - len(bad), len(bad),
+        print("verify: frames=%d ok=%d mismatch=%d judged_by=%s -> %s"
+              % (len(rows), len(rows) - len(bad), len(bad), qc_spec.spec_id(),
                  "PASS" if rc == 0 else "FAIL"))
 
     path, n, size = build(args.run_dir, out, marks=marks)

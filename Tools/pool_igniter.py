@@ -41,6 +41,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 if HERE not in sys.path:
     sys.path.insert(0, HERE)
 
+import frame_qc_spec as qc_spec   # single source of the frame-QC constants
+
 LOG = os.path.join(ROOT, "state", "pool-igniter.log")
 LOCK = os.path.join(ROOT, "state", "pool-igniter.lock")
 RECEIPTS = os.path.join(ROOT, "state", "pool-ignitions.jsonl")
@@ -847,11 +849,10 @@ def duplicate_skips_today():
 # *seen*, not to gate: no threshold is introduced here before real numbers
 # exist on real frames (T226 判据④).  Measured from the same PNG bytes the
 # editor wrote, so no editor run is needed to read an existing frame set.
-MAGENTA_MIN_R = 200      # Unity missing-material magenta ~ (255, 0, 255)
-MAGENTA_MIN_B = 200
-MAGENTA_MAX_G = 80
-BG_TOL = 6               # per-channel tolerance when matching the clear colour
-CLEAR_RGB_DEFAULT = (13, 13, 15)   # Color(0.05, 0.05, 0.06) at 8bpc, 0-255
+# The band/tolerance constants live in `frame_qc_spec` (T238): this reader and
+# `render_contact_sheet`'s independent re-measure must agree on them without
+# either owning a copy, or both can be edited wrong together and still agree.
+CLEAR_RGB_DEFAULT = qc_spec.CLEAR_RGB_DEFAULT   # Color(0.05,0.05,0.06) @8bpc
 
 
 def frame_quality(path, clear_rgb=None):
@@ -886,18 +887,25 @@ def frame_quality(path, clear_rgb=None):
         source = "modal"
     mag = 0
     bg = 0
+    # Bind the shared constants once; the values themselves come from the spec
+    # module so a threshold edit cannot live in only one of the two readers.
+    mn_r = qc_spec.MAGENTA_MIN_R
+    mn_b = qc_spec.MAGENTA_MIN_B
+    mx_g = qc_spec.MAGENTA_MAX_G
+    tol = qc_spec.BG_TOL
     for i in range(0, n * 3, 3):
         r, g, b = data[i], data[i + 1], data[i + 2]
-        if r >= MAGENTA_MIN_R and b >= MAGENTA_MIN_B and g <= MAGENTA_MAX_G:
+        if r >= mn_r and b >= mn_b and g <= mx_g:
             mag += 1
-        if (abs(r - cr) <= BG_TOL and abs(g - cg) <= BG_TOL
-                and abs(b - cb) <= BG_TOL):
+        if (abs(r - cr) <= tol and abs(g - cg) <= tol
+                and abs(b - cb) <= tol):
             bg += 1
     return {
         "magenta_pct": round(100.0 * mag / n, 2),
         "geom_pct": round(100.0 * (n - bg) / n, 2),
         "bg_rgb": [cr, cg, cb],
         "bg_source": source,
+        "judged_by": qc_spec.spec_id(),
     }
 
 
@@ -925,6 +933,7 @@ def frame_quality_report(frames_dir, clear_rgb=CLEAR_RGB_DEFAULT):
     return {
         "frames_read": len(frames),
         "clear_rgb": list(clear_rgb) if clear_rgb else None,
+        "judged_by": qc_spec.spec_id(),
         "magenta_max_pct": worst_m["magenta_pct"],
         "magenta_max_frame": worst_m["file"],
         "geom_min_pct": worst_g["geom_pct"],
@@ -1579,11 +1588,12 @@ def status(as_json=False, out=None):
     fq = ign.get("frame_quality")
     if fq and fq.get("frames_read"):
         print("frame_quality frames=%s magenta_max=%s%%(%s) geom_min=%s%%(%s) "
-              "placeholder_frames=%s qc=%s source=%s"
+              "placeholder_frames=%s qc=%s source=%s judged_by=%s"
               % (fq["frames_read"], fq["magenta_max_pct"],
                  fq["magenta_max_frame"], fq["geom_min_pct"],
                  fq["geom_min_frame"], fq.get("placeholder_frames"),
-                 fq.get("qc_verdict"), fq.get("source")))
+                 fq.get("qc_verdict"), fq.get("source"),
+                 fq.get("judged_by", "?")))
     elif fq:
         print("frame_quality unreadable=%s" % fq.get("unreadable", "?"))
     else:
@@ -1972,6 +1982,30 @@ def selftest():
         chk("S43 clean frame set -> QC-PASS with zero placeholder",
             rep_ok["qc_verdict"] == "FRAME-QC-PASS"
             and rep_ok["placeholder_frames"] == 0, rep_ok["qc_verdict"])
+
+        # T238 / BC-P-250: a calibration frame whose magenta share is known by
+        # construction is the anchor. It pins the arithmetic against the spec
+        # constants, so a threshold edit shows up here instead of quietly
+        # changing what FRAME-QC-PASS means.
+        cal_im, cal_expect = qc_spec.calibration_frame()
+        cal_path = os.path.join(tmp, "calib-40x40-10pct.png")
+        cal_im.save(cal_path)
+        q_cal = frame_quality(cal_path, clear_rgb=CLEAR_RGB_DEFAULT)
+        chk("S43a calibration frame (10% by construction) reads magenta=10.00",
+            cal_expect == 10.0 and abs(q_cal["magenta_pct"] - cal_expect) <= 0.01,
+            q_cal)
+        chk("S43b the reading carries the constant-group id it was judged by",
+            q_cal["judged_by"] == qc_spec.spec_id(), q_cal.get("judged_by"))
+        saved_min_r = qc_spec.MAGENTA_MIN_R
+        qc_spec.MAGENTA_MIN_R = 256          # no 8-bit pixel can satisfy this
+        try:
+            q_narrow = frame_quality(cal_path, clear_rgb=CLEAR_RGB_DEFAULT)
+        finally:
+            qc_spec.MAGENTA_MIN_R = saved_min_r
+        q_back = frame_quality(cal_path, clear_rgb=CLEAR_RGB_DEFAULT)
+        chk("S43c the anchor is threshold-sensitive (band edit moves the read)",
+            q_narrow["magenta_pct"] == 0.0 and q_back["magenta_pct"] == 10.0,
+            (q_narrow["magenta_pct"], q_back["magenta_pct"]))
 
         # lightmap QC: the bake card's atlas was counted deliverable for weeks
         # without anything reading it.  These fixtures pin the four readings.
