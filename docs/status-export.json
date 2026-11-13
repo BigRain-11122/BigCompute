@@ -1,8 +1,8 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-11-13 22:38",
+ "updated_at": "2026-11-13 22:46",
  "current_activity": "2026-11-13 22:00 轮：T-20261109-7 done(洋红结案·判据③实测达成：守候器 11-13 11:11:40 与 19:12:25 两次真渲均 ok=true deliverable_ok=true，回执 frame_quality placeholder_frames=0 / magenta_max=0.00% / geom_min=72.77% / qc=FRAME-QC-PASS… ｜ 两池：本司备货可派 2 ／ 机队可领 4（两个不同池，本司卡未登记进机队池）",
- "latest_artifact": "state/no22-missing-census-20261113.txt（mtime 2026-11-13 22:34）",
+ "latest_artifact": "state/idle_selfcheck.json（mtime 2026-11-13 22:43）",
  "next_milestone": "M202 承办件（BC-P-248 写侧直声明渠道）：`unit_cost_drill` 的 lane→channel 表直出 `channel=b2b`，读侧 `channel_note` 推断降级为兼容兜底并计 `inferred=`（写侧改完后该计数应归零）；判据=演练面逐行读数不变 + 夹具覆盖「note 缺失仍归对行」（窗 11-14 12:43 前）…（source=declared）",
  "caps": {
   "write_lag_min": 30.0,
