@@ -1,0 +1,16 @@
+﻿T238 / BC-P-250 frame-QC spec single-source + calibration anchor - 2026-11-14 01:5x
+
+[spec module] Tools/frame_qc_spec.py spec_id=spec:37cc2286c096
+[frame_qc_spec selftest] SELFTEST 11/11 PASS  spec:37cc2286c096
+[pool_igniter selftest] 88/88 PASS
+[render_contact_sheet selftest] SELFTEST 11/11 PASS
+
+[live verify] media/pool-ignite/B-CITY3D-02/20261113-191047 (six frames unchanged)
+verify frame_01.png: OK live=0.00%/84.60% receipt=0.00%/84.60%
+verify frame_02.png: OK live=0.00%/72.77% receipt=0.00%/72.77%
+verify frame_03.png: OK live=0.00%/90.42% receipt=0.00%/90.42%
+verify frame_04.png: OK live=0.00%/76.00% receipt=0.00%/76.00%
+verify frame_05.png: OK live=0.00%/100.00% receipt=0.00%/100.00%
+verify frame_06.png: OK live=0.00%/81.65% receipt=0.00%/81.65%
+verify: frames=6 ok=6 mismatch=0 judged_by=spec:37cc2286c096 -> PASS
+contact-sheet: frames=6 size=1944x782 -> state/contact-sheet-t238.png

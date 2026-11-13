@@ -966,3 +966,8 @@ P0 提醒（@HQ 取回腿·18:00 前）：D-02 指定取回源 `backup/bm-a-2026
 - 产品（产品优先律 2 分件）：`Tools/render_contact_sheet.py` 加 `--verify`/`--selftest`——拼版时用**与写入侧不共享代码**的独立路径（PIL 通道掩膜相乘 + 直方图计数，写入侧是逐字节循环）现算每帧洋红/几何占比，与回执不等即该格标 `MISMATCH(live=…,receipt=…)` 并 exit 3。selftest 8/8 PASS；实跑现网 run 目录 **6/6 帧 OK**（洋红 0.00%，geom 84.60/72.77/90.42/76.00/100.00/81.65 与回执逐帧相等）→ `verify: PASS`，产物 `media/pool-ignite/B-CITY3D-02/20261113-191047/contact-sheet-verified.png`。
 - 诚实：独立的是**实现**不是**判据**——两侧仍共用 200/200/80 与 ±6 容差，规则本身写错时两张表会一起错；本工具只证「标签与像素一致」，不证「判据定义对不对」（已提 BC-P-250、登风险 R-075）。modal 分支（回执无 `clear_rgb`）平票色彩取序可能与写入侧不同，现网 runs 全为 declared，未触发。
 - 日清：集团 orders 尾行 11-13 21:55 属 BigStream 席（不涉本司，零动作），decisions 11-12 18:10 后无新增；队列 open −1（tech T236 结案）+1（T237 真派工面既有），净 0 如实；无 P0/P1。
+
+## 2026-11-14 01:5x 夜班轮（判据常量单源 + 标定帧锚点：给「双实现互证」补上阈值这一层）
+- 产品（产品优先律 2 分件）：`Tools/frame_qc_spec.py` 落盘＝judgment-frame 四常量＋清屏色单源（`spec_id=spec:37cc2286c096`）；`pool_igniter.frame_quality`（逐字节循环）与 `render_contact_sheet.live_readings`（掩膜+直方图）实现仍互不共享代码、只共享常量，且 D 面加了「谁再写字面量即红」的静态扫描；**标定帧锚点**（40×40 构造 10% 纯洋红必须读 10.00±0.01）入三处 selftest，并带「阈值改 256/−1 → 同帧读 0.00」负控。体量＝frame_qc_spec 11/11、pool_igniter 85→**88/88**、联系表 8→**11/11**；现网六帧复验 **6/6 OK** 且读数零变化（拼版件 `state/contact-sheet-t238.png`，证据 `state/t238-frame-qc-spec-20261114.txt`）。
+- 自捉（顺手）：`.gitignore` 从未覆盖 `media/`——293 个未跟踪渲染件长期挂满 `git status`，任何人一次 `git add -A` 就把整批 PNG/log 拖进库、当场撞 repo-slim 大件闸。已收 `media/`，未跟踪件 293→0（`tracked_media=0` 实证没有历史件被甩到忽略面）。
+- 日清：集团 orders 新增 11-14 01:3x 行属 BigStream 席 mv0001 v730 收口（不涉本司，零动作），decisions 仍停 11-12 18:2x 第 60 批无新增；tech 队列 open 6→6（T238 结案 −1／T239 其余判据常量普查 +1）如实；无 P0/P1。
