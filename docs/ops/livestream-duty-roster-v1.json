@@ -1,0 +1,63 @@
+{
+  "schema": "livestream-duty-roster/v1",
+  "plan_id": "M146-bili-city-duty-v1",
+  "platform": "bilibili",
+  "mode": "attended_only",
+  "updated": "2026-11-15",
+  "status": "plan_only_not_broadcast",
+  "constraints": {
+    "max_shift_min": 240,
+    "min_primary_per_shift": 1,
+    "min_deputy_per_shift": 1,
+    "handover_buffer_min": 15,
+    "aigc_badge": {
+      "always_on": true,
+      "self_proof_interval_min": 60
+    },
+    "co_guest": {
+      "enabled_after_gray_days": 7,
+      "window": ["20:00", "21:30"],
+      "max_session_min": 10,
+      "daily_max_min": 120
+    },
+    "excluded_subforms": [
+      "pure_unattended",
+      "auto_loop_replay",
+      "no_live_response",
+      "no_filing",
+      "unmanned_night"
+    ]
+  },
+  "phases": [
+    {
+      "phase": "gray-1",
+      "label": "灰度第 1-3 天·2 小时窗",
+      "days": [1, 2, 3],
+      "broadcast": ["20:00", "22:00"],
+      "shifts": [
+        {"start": "19:45", "end": "21:00", "primary": 1, "deputy": 1},
+        {"start": "21:00", "end": "22:15", "primary": 1, "deputy": 1}
+      ]
+    },
+    {
+      "phase": "gray-2",
+      "label": "灰度第 4-7 天·4 小时窗",
+      "days": [4, 5, 6, 7],
+      "broadcast": ["19:00", "23:00"],
+      "shifts": [
+        {"start": "18:45", "end": "21:00", "primary": 1, "deputy": 1},
+        {"start": "21:00", "end": "23:15", "primary": 1, "deputy": 1}
+      ]
+    },
+    {
+      "phase": "steady-8plus",
+      "label": "第 8 天起·稳态 4.5 小时窗（连麦解禁）",
+      "days": [8],
+      "broadcast": ["19:00", "23:30"],
+      "shifts": [
+        {"start": "18:45", "end": "21:15", "primary": 1, "deputy": 1},
+        {"start": "21:15", "end": "23:45", "primary": 1, "deputy": 1}
+      ]
+    }
+  ]
+}
