@@ -285,3 +285,8 @@ T187 把 rounds.log 的 text-integrity 义务钉成了写侧硬闸，但闸的�
 **现象**：`gpu_idle_collector` 五处 `text=True` 在 zh-CN Windows 上会被 GBK 字节打死读取线程，线程内异常逃出调用方 try/except，表面症状是「偶发 rc=1 / 探针静默降级」，与真正的判红无法区分。
 **判据三问**：①消费方=全部探针与车道任务；②单位经济=一次普查（grep `text=True` 全仓+批量补 encoding）对照一次静默丢采样的代价（本轮实证丢了一刻）；③合规=无。
 **建议**：全仓普查 `subprocess` 调用点，凡 `text=True` 一律补 `encoding="utf-8", errors="replace"`，并加一条静态闸（qa_smoke 探针）拦新增裸 `text=True`。判负条件=若普查后零命中，则闸降为只拦新增。
+
+## BC-P-254 渠道词表两处双写（2026-11-14 13:0x 立·M202 实施中派生）
+**现象**：`b2b` 这个渠道值今天要在两处各写一份——`rails_schema_check` 的 JSON schema enum（`["livestream","store","private"]` → 加 `"b2b"`）与 `revenue_caliber` 的 `CHANNELS`/`CHANNEL_ALIAS`（别名表另有 5 个同义写法）。漏改任一处，失败都是静默的：schema 放行而读面不认 → 行落回 unassigned；读面认了而 schema 拦 → 机检红、数据被拒在门外。两者都不会说「两份词表不同步」。
+**判据三问**：①消费方=营收口径读面／演练行派生／schema 机检；②单位经济=一次词表同步（两处手改）对照一次静默归错渠道的代价（金额被搬到错的行且读数仍「合法」）；③合规=无。
+**建议**：渠道词表收单源（`revenue_caliber` 导出 `CHANNELS`+别名，schema 侧生成 enum 或加静态断言 `schema_enum ⊆ 别名值域`），并加负控——只在任意一处新增词时普查必须红。判负条件=若 schema 必须独立分发以致无法自然收单，则退为静态一致性探针（不做运行期耦合）。

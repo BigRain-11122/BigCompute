@@ -106,10 +106,11 @@ SCHEMAS = {
             # 演练单恒 0（与 fund_3090 同律：MOCK 轨不累计金额）
             "amount": {"type": "number", "minimum": 0},
             "api_reason": {"type": "string", "minLength": 2},
-            # M200: 渠道与口径由 regen 从 lane 派生——演练行也要能回答
+            # M200/M202: 渠道与口径由 regen 从 lane 派生——演练行也要能回答
             # 「哪条线卖出去了多少」，否则三线分面在数据面永远 unassigned。
+            # b2b=直签声明值（读侧映射 private/b2b 派生行，不新增消费线）。
             "channel": {"type": "string",
-                        "enum": ["livestream", "store", "private"]},
+                        "enum": ["livestream", "store", "private", "b2b"]},
             "settlement_caliber": {"type": "string", "minLength": 1},
             "channel_note": {"type": "string", "minLength": 2},
             "route_group": {

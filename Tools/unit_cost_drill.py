@@ -57,13 +57,14 @@ MOCK_DESIGN_QUOTA_MTOK = 0.42  # M12 quota band lower bound, design value (M66)
 # question read "unassigned". Derived here for the same reason as the cost keys:
 # one rerun reproduces them, and no historical row is hand-edited.
 # Channel vocabulary is the three selling lines of revenue_caliber (store/
-# livestream/private); a direct-signed annual report is reached through our own
-# outreach, i.e. private, and keeps a b2b marker in channel_note instead of
-# inventing a fourth channel.
+# livestream/private). M202: a direct-signed annual report states `channel=b2b`
+# in the field itself -- the reader maps it to the private/b2b derived line.
+# channel_note stays as a human note only; it no longer carries the decision,
+# so renaming or dropping it cannot silently move the row back to private.
 MOCK_CHANNEL_BY_LANE = {
     "subscription": "store",   # quota monthly card -> store shelf
     "gacha": "store",          # ornament gacha -> store shelf
-    "b2b_direct": "private",   # annual report, direct-signed -> own outreach
+    "b2b_direct": "b2b",       # annual report, direct-signed -> declared channel
 }
 MOCK_CHANNEL_NOTE = {"b2b_direct": "b2b-direct-signed"}
 MOCK_SETTLEMENT_CALIBER = "B"  # caliber B (internal cost anchor) is the sole settlement caliber
@@ -490,6 +491,10 @@ def regen_mock_rows(rows, rate=MOCK_DESIGN_COST_RATE):
 
     Only the drill keys are written. Every other key is copied verbatim, so a
     rerun cannot silently move prices, dates or order ids.
+
+    M202 contract: the channel a row belongs to is carried by the `channel`
+    field only. `channel_note` is a human-readable note; readers must not
+    decide the channel from its text, so writers are free to rename or omit it.
     """
     out, issues = [], []
     for row in rows:
@@ -796,12 +801,15 @@ def _selftest():
         any("MOCK-Y" in i for i in regen_issues)
         and "channel" not in regen1[3]
         and "settlement_caliber" not in regen1[3], str(regen_issues))
-    chk("S31 b2b_direct -> private + b2b note (no fourth channel)",
-        regen1[4].get("channel") == "private"
+    chk("S31 b2b_direct -> declared channel=b2b (note is annotation only)",
+        regen1[4].get("channel") == "b2b"
         and regen1[4].get("channel_note") == "b2b-direct-signed"
         and regen1[0].get("channel_note") is None,
         "row4=%s note=%s" % (regen1[4].get("channel"),
                              regen1[4].get("channel_note")))
+    chk("S31b channel survives note removal (decision is the field, not the text)",
+        regen_mock_rows([{k: v for k, v in drill_rows[4].items() if k != "channel_note"}])[0][0]
+        .get("channel") == "b2b")
     chk("S32 channel fill does not promote drill rows to real",
         all(r.get("mock") is True for r in regen1))
 

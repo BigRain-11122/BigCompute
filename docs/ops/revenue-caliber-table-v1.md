@@ -27,7 +27,7 @@
 - verdict=`REV-NO-REAL-DATA`
 - 扫到的行：12（其中演练行 10、真实营收行 **0**）
 - 非营收轨带金额字段的行：0（单独计数，不并入营收）
-- 拆行读数：`private/b2b` 由 `channel_note` 拆出——实面 无行；演练面 1 行 / GMV 349.0000。**该行金额不进 private 合计**（行内仍保留 `channel=private` 原值可追）
+- 拆行读数：`private/b2b` 实面 无行；演练面 1 行 / GMV 349.0000（declared=1 inferred=0）。`declared`=行内 channel 字段声明（契约主路），`inferred`=channel_note 兼容推断（旧行兜底，须逐行消解）。**该行金额不进 private 合计**（行内仍保留原值可追）
 - **真实成交轨 0 行 → 营收面 NO-DATA**：此处不印 0.00，因为「没有成交」与「成交额为 0」是两件事。
 
 ## 四、扫描域自证（哪些文件读过、哪些不在盘）
