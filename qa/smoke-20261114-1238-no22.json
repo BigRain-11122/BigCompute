@@ -1,0 +1,190 @@
+{
+  "copies": [],
+  "counts": {
+    "copy": 0,
+    "missing_local": 13,
+    "missing_real": 10,
+    "missing_real_named": 10,
+    "missing_unnamed": 0,
+    "no_deliverable": 25,
+    "owner_elsewhere": 0,
+    "self_fail": 3
+  },
+  "host": "bm-a",
+  "missing_real": [
+    {
+      "declared_missing": false,
+      "deliverable": "cph4/fleet/queue-receipts/triage-bigcompute-20261110.md",
+      "error_class": "",
+      "id": "R-PLAN-BIGCOMPUTE-20261110",
+      "kind": "MISSING-LOCAL",
+      "node": "bm-a",
+      "outcome": "OK",
+      "reason": "MISSING-LOCAL",
+      "receipt": "R-PLAN-BIGCOMPUTE-20261110-bm-a.json",
+      "self_declared": []
+    },
+    {
+      "declared_missing": false,
+      "deliverable": "cph4/fleet/queue-receipts/triage-biggame-20261109.md",
+      "error_class": "",
+      "id": "R-PLAN-BIGGAME-20261109",
+      "kind": "MISSING-LOCAL",
+      "node": "bm-a",
+      "outcome": "OK",
+      "reason": "MISSING-LOCAL",
+      "receipt": "R-PLAN-BIGGAME-20261109-bm-a.json",
+      "self_declared": []
+    },
+    {
+      "declared_missing": false,
+      "deliverable": "cph4/fleet/queue-receipts/triage-biglife-20261110.md",
+      "error_class": "",
+      "id": "R-PLAN-BIGLIFE-20261110",
+      "kind": "MISSING-LOCAL",
+      "node": "bm-a",
+      "outcome": "OK",
+      "reason": "MISSING-LOCAL",
+      "receipt": "R-PLAN-BIGLIFE-20261110-bm-a.json",
+      "self_declared": []
+    },
+    {
+      "declared_missing": false,
+      "deliverable": "cph4/fleet/queue-receipts/triage-bigstream-mv-20261109.md",
+      "error_class": "",
+      "id": "R-PLAN-BIGSTREAMMV-20261109",
+      "kind": "MISSING-LOCAL",
+      "node": "bm-a",
+      "outcome": "OK",
+      "reason": "MISSING-LOCAL",
+      "receipt": "R-PLAN-BIGSTREAMMV-20261109-bm-a.json",
+      "self_declared": []
+    },
+    {
+      "declared_missing": false,
+      "deliverable": "cph4/fleet/queue-receipts/triage-biggame-bm-a-20261109.md",
+      "error_class": "",
+      "id": "R-TRIAGE-BIGGAME-BMA-20261109",
+      "kind": "MISSING-LOCAL",
+      "node": "bm-a",
+      "outcome": "OK",
+      "reason": "MISSING-LOCAL",
+      "receipt": "R-TRIAGE-BIGGAME-BMA-20261109-bm-a.json",
+      "self_declared": []
+    },
+    {
+      "declared_missing": false,
+      "deliverable": "cph4/fleet/queue-receipts/triage-biggame-bm-a-20261110.md",
+      "error_class": "",
+      "id": "R-TRIAGE-BIGGAME-BMA-20261110",
+      "kind": "MISSING-LOCAL",
+      "node": "bm-a",
+      "outcome": "OK",
+      "reason": "MISSING-LOCAL",
+      "receipt": "R-TRIAGE-BIGGAME-BMA-20261110-bm-a.json",
+      "self_declared": []
+    },
+    {
+      "declared_missing": false,
+      "deliverable": "cph4/fleet/queue-receipts/triage-bigstream-mv-bm-a-20261109.md",
+      "error_class": "",
+      "id": "R-TRIAGE-BIGSTREAMMV-BMA-20261109",
+      "kind": "MISSING-LOCAL",
+      "node": "bm-a",
+      "outcome": "OK",
+      "reason": "MISSING-LOCAL",
+      "receipt": "R-TRIAGE-BIGSTREAMMV-BMA-20261109-bm-a.json",
+      "self_declared": []
+    },
+    {
+      "declared_missing": false,
+      "deliverable": "cph4/fleet/queue-receipts/triage-bigstream-mv-bm-a-20261110.md",
+      "error_class": "",
+      "id": "R-TRIAGE-BIGSTREAMMV-BMA-20261110",
+      "kind": "MISSING-LOCAL",
+      "node": "bm-a",
+      "outcome": "OK",
+      "reason": "MISSING-LOCAL",
+      "receipt": "R-TRIAGE-BIGSTREAMMV-BMA-20261110-bm-a.json",
+      "self_declared": []
+    },
+    {
+      "declared_missing": false,
+      "deliverable": "cph4/fleet/queue-receipts/triage-fluxverse-bm-a-20261109.md",
+      "error_class": "",
+      "id": "R-TRIAGE-FLUXVERSE-BMA-20261109",
+      "kind": "MISSING-LOCAL",
+      "node": "bm-a",
+      "outcome": "OK",
+      "reason": "MISSING-LOCAL",
+      "receipt": "R-TRIAGE-FLUXVERSE-BMA-20261109-bm-a.json",
+      "self_declared": []
+    },
+    {
+      "declared_missing": false,
+      "deliverable": "cph4/fleet/queue-receipts/triage-fluxverse-bm-a-20261110.md",
+      "error_class": "",
+      "id": "R-TRIAGE-FLUXVERSE-BMA-20261110",
+      "kind": "MISSING-LOCAL",
+      "node": "bm-a",
+      "outcome": "OK",
+      "reason": "MISSING-LOCAL",
+      "receipt": "R-TRIAGE-FLUXVERSE-BMA-20261110-bm-a.json",
+      "self_declared": []
+    }
+  ],
+  "owner_elsewhere": [],
+  "probe": "no.22",
+  "self_fail": [
+    {
+      "declared_missing": true,
+      "deliverable": "cph4/fleet/reports/submit-pack-20261110/SUBMIT-PACK.md",
+      "error_class": "E-ARTIFACT",
+      "id": "BIZ-BIGGAME-SUBMITPACK-20261110",
+      "kind": "MISSING-LOCAL-self-declared",
+      "node": "bm-a",
+      "outcome": "FAIL",
+      "reason": "MISSING-LOCAL",
+      "receipt": "BIZ-BIGGAME-SUBMITPACK-20261110-bm-a.json",
+      "self_declared": [
+        "outcome=FAIL",
+        "error_class=E-ARTIFACT",
+        "deliverable_exists=false"
+      ]
+    },
+    {
+      "declared_missing": true,
+      "deliverable": "cph4/fleet/queue-receipts/review-packet-kn-20261109.md",
+      "error_class": "E-ARTIFACT",
+      "id": "MV-DIRECTOR-PACKET-20261109",
+      "kind": "MISSING-LOCAL-self-declared",
+      "node": "bm-a",
+      "outcome": "FAIL",
+      "reason": "MISSING-LOCAL",
+      "receipt": "MV-DIRECTOR-PACKET-20261109-bm-a.json",
+      "self_declared": [
+        "outcome=FAIL",
+        "error_class=E-ARTIFACT",
+        "deliverable_exists=false"
+      ]
+    },
+    {
+      "declared_missing": true,
+      "deliverable": "cph4/fleet/queue-receipts/quant-quote-2026-11-07.md",
+      "error_class": "E-ARTIFACT",
+      "id": "bigmoney-quote-2026-11-07",
+      "kind": "MISSING-LOCAL-self-declared",
+      "node": "bm-a",
+      "outcome": "FAIL",
+      "reason": "MISSING-LOCAL",
+      "receipt": "bigmoney-quote-2026-11-07-bm-a.json",
+      "self_declared": [
+        "outcome=FAIL",
+        "error_class=E-ARTIFACT",
+        "deliverable_exists=false"
+      ]
+    }
+  ],
+  "verdict": "ATTENTION",
+  "window_days": 7
+}
