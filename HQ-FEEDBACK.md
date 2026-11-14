@@ -981,3 +981,7 @@ P0 提醒（@HQ 取回腿·18:00 前）：D-02 指定取回源 `backup/bm-a-2026
 - 产品（产品优先律 2 分件）：`Tools/threshold_census.py` 落盘——AST 只扫模块级 UPPER_CASE 数值常量，跨文件同名按「应单源／同名异义／通用名」三档给判词；实跑 109 文件 / 137 常量名 / 跨文件 3 / 单文件 134，应单源点名 `HEADROOM_MIB=1536`（两处注释自承同一纪律），同名异义点名 `MAX_AGE_MIN`（30.0 车道 vs 2880.0 实况面）。selftest 11/11 PASS。
 - 自捉（轮内即修）：初版把 `pool_igniter.py:855 CLEAR_RGB_DEFAULT = qc_spec.CLEAR_RGB_DEFAULT` 判成重复定义——那是 T238 要求的合法别名再导出，值仍出自单源；已按「右值字面量=复制／Name·Attribute=别名」分流，回归面 CLEAN 并单列 reexport 行。副产发现 T238 的 S10 守卫名单漏了第五个常量，转 T241。
 - 日清：集团 orders 12:20 主控令已由 12:29 轮收口（T-125 done），其后无涉本司新行；decisions 11-14 18:00 第 61 批 3 行（D-01 撤销 BigLife 挂起／D-02 FluxVerse 供给断／D-03 bm-a 同步落后登记 no-op）均不要求本司动作，零重派。tech 队列 open 36→36（T239 结案 −1／T241 派生 +1）如实。无 P0/P1。
+## 2026-11-14 22:4x 夜班轮（守卫名单派生：闸的覆盖面不再靠手抄）
+- 产品（产品优先律 2 分件）：T241 收口——`frame_qc_spec` 的 S10 守卫名单从 `_SPEC_FIELDS` 派生（新增常量当天自动纳入），并把「别名／错指向／字面量」分成三态：`NAME = qc_spec.NAME` 放行（`pool_igniter.py:855` 即此形）、`NAME = qc_spec.<other>` 与字面量一律判重。selftest **11→16/16 PASS**；`spec_id=spec:37cc2286c096` 与改前逐字一致=阈值零改动；负控在真实消费者上做内存注入 → `injected_dupes=['pool_igniter.py:2503']` 而盘上文件 `clean_dupes=[]`（未改任何消费者文件）。证据 `state/t241-guard-derived-20261114.txt`。
+- 日清：集团 orders 12:20 主控令已由 T-125 收口，其后无涉本司新行（22:39 的 mtime 是台账同步刷新，正文止于 11-14 00:30 行）；decisions 无新增。tech 队列 open 36→35（T241 结案 −1）；main 93→94（+1 新发现 M203）；总净 0 如实，新增项来自本轮实跑派生（守卫派生性普查的测量面 BC-P-256），非重扫旧活。无 P0/P1。
+- P2（本轮刷面实测）：`docs/status-export-overrides.json` 已 93.9h 旧，`compose` 按 48h 规则**静默忽略**其补充段却仍判 `EXPORT-GREEN`（D-20「部分覆盖仍绿」同族：手工补充被丢掉，面上看不出来）——已入 main M204，本轮不改判定。

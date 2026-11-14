@@ -295,3 +295,7 @@ T187 把 rounds.log 的 text-integrity 义务钉成了写侧硬闸，但闸的�
 **现象**：`HEADROOM_MIB = 1536` 在 `bake_accept_check.py:29` 与 `vram_window_probe.py:36` 各写一份，两处注释互相指认同一条纪律（前者写「BC-P-06 same value」，后者写「T-31 J2 headroom 判据」）——注释承认了「这是同一个数」，代码却没有同一个源。改一处漏一处时，烘焙验收和显存窗口探测会各自给出自洽的绿灯，而它们判的其实是同一条物理余量。
 **判据三问**：①消费方=`bake_accept_check`（烘焙验收）与 `vram_window_probe`（显存窗口探针），以及后续任何引用 BC-P-06 的收口件；②单位经济=一次单源化的成本≈半小时，对照一次漏改的代价=一炉烘焙按错误余量验收（GPU 小时+返工）；③合规=不涉交易与内容红线。
 **建议**：新建 `Tools/vram_headroom_spec.py`（照 `frame_qc_spec` 范式：常量+`spec_id()`+标定断言），两处改 import 并标 `judged_by=spec:<hash>`；selftest 加一条「改常量即换 id」的锚点。`MAX_AGE_MIN` 同名异义不入本提案，另按改名处理。
+## BC-P-256 自检守卫名单的「派生性」普查（2026-11-14 22:4x 立·T241 实跑派生）
+**现象**：`frame_qc_spec.selftest S10` 守的是「消费者不得重写常量」，但守卫名单本身是手抄的四个名字，而同一 spec 已有第五个常量 `CLEAR_RGB_DEFAULT`——于是「守卫覆盖的集合」与「被守卫的集合」是两份，新增成员当天就失守，且闸是绿的。T241 已把这一处改成从 `_SPEC_FIELDS` 派生，但**同类结构全仓未普查**：任何「selftest 里静态列一串名字/文件/探针号」的守卫，都可能与它声称覆盖的集合不同步（`CONSUMER_FILES`、PROBE_REGISTRY 编号、schema enum、扫描根名单皆属此族）。T239 的阈值普查只扫数值字面量，扫不到这一类。
+**判据三问**：①消费方=所有含「名单型守卫」的 selftest 与其被守卫对象（本司 Tools/ 与 charter 探针表）；②单位经济=一次静态普查脚本≈一小时，对照一次漏守的代价=缺陷出生地闸静默失效（T241 这处漏了 3 天没人发现）；③合规=只读代码，不涉交易与内容。
+**建议**：建 `Tools/guard_set_derive_census.py`——AST 找出 selftest 内以元组/列表字面量硬编码的名称集合，与同文件里被守卫的源集合（如 `_SPEC_FIELDS`、`CONSUMER_FILES`、模块级常量名）比对，输出「派生 ✓／双份 ✗（file:line）」清单，逐条给处置；不改任何阈值与判定。判负条件=若多数守卫天然只能手写（如跨文件探针号），则退为只报「双份」候选供人判，不设自动红。

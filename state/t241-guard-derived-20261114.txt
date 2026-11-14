@@ -1,0 +1,33 @@
+# T241 frame_qc_spec guard derived from _SPEC_FIELDS — evidence
+# captured 2026-11-14 22:45:55
+
+## 1) Tools/frame_qc_spec.py (selftest)
+rc=0
+PASS S1 spec_id is stable and self-describing
+PASS S2 changing one constant changes the id
+PASS S2b restoring the constant restores the id
+PASS S3 pure magenta is magenta
+PASS S4 r just below the band is not magenta
+PASS S5 g just above the band is not magenta
+PASS S6 b just below the band is not magenta
+PASS S7 exact clear colour is background
+PASS S8 tolerance is per-channel and inclusive on both sides
+PASS S9 calibration frame carries the declared magenta share
+PASS S10 consumers hold no second copy of the constants
+PASS S10b both consumer files were actually scanned
+PASS S11 guard covers every _SPEC_FIELDS name
+PASS S12 alias form is not a duplicate
+PASS S13 alias pointing at a different constant is a duplicate
+PASS S14 CLEAR_RGB_DEFAULT literal is a duplicate
+SELFTEST 16/16 PASS  spec:37cc2286c096
+
+## 2) negative control on the real consumer (in-memory inject, no file touched)
+rc=0
+clean_dupes= []
+clean_aliases= ['pool_igniter.py:855']
+injected_dupes= ['pool_igniter.py:2503']
+
+## 3) consumers still import the spec (no runtime change)
+rc=0
+spec:37cc2286c096 (13, 13, 15) 6
+

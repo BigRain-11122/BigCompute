@@ -24,6 +24,7 @@ different tone-mapping chain.
 from __future__ import annotations
 
 import hashlib
+import re
 
 # Unity's missing-material magenta is ~ (255, 0, 255).  The bands are wide
 # enough to survive compression/tone-mapping drift and narrow enough not to
@@ -38,6 +39,44 @@ _SPEC_FIELDS = (
     "MAGENTA_MIN_R", "MAGENTA_MIN_B", "MAGENTA_MAX_G",
     "BG_TOL", "CLEAR_RGB_DEFAULT",
 )
+
+# The two sides that must *import* these constants.  Guarded by name, per
+# value, so adding a sixth constant cannot leave the guard behind (T241).
+CONSUMER_FILES = ("pool_igniter.py", "render_contact_sheet.py")
+
+_ASSIGN_RE = re.compile(r"^([A-Z][A-Z0-9_]*)\s*=\s*(.*)$")
+_ALIAS_RE = re.compile(r"^[A-Za-z_][\w.]*\.([A-Z][A-Z0-9_]*)$")
+
+
+def _is_alias(lhs, rhs):
+    """`NAME = <spec module>.NAME` — a reference to the same value.
+
+    An alias keeps one origin: mutate the spec and the consumer moves with it.
+    `NAME = <spec module>.<other name>` is *not* an alias — it pins the wrong
+    value under a right-sounding name, which reads green and measures another
+    threshold.
+    """
+    m = _ALIAS_RE.match(rhs)
+    return bool(m) and m.group(1) == lhs
+
+
+def scan_source(name, text):
+    """Scan one consumer source. Returns `(duplicates, aliases)` as `file:line`.
+
+    A duplicate is any assignment to a spec constant whose right-hand side is
+    not a spec-module reference — that is the second copy which lets the two
+    sides drift together.
+    """
+    duplicates, aliases = [], []
+    for lineno, line in enumerate(text.splitlines(), 1):
+        body = line.split("#", 1)[0].strip()
+        m = _ASSIGN_RE.match(body)
+        if not m or m.group(1) not in _SPEC_FIELDS:
+            continue
+        where = "%s:%d" % (name, lineno)
+        (aliases if _is_alias(m.group(1), m.group(2).strip())
+         else duplicates).append(where)
+    return duplicates, aliases
 
 
 def spec_id():
@@ -129,23 +168,53 @@ def selftest():
         total == 1600 and mag == 160 and expected == 10.0,
         (total, mag, expected))
 
-    # S10: the consumers must not re-declare the constants (that is the whole
-    # point); a copy-pasted literal would silently defeat the single source.
+    # S10-S14: the consumers must not re-declare the constants (that is the
+    # whole point); a copy-pasted literal would silently defeat the single
+    # source.  The guard list is derived from `_SPEC_FIELDS` so a new constant
+    # is covered on the day it is added (T241: `CLEAR_RGB_DEFAULT` was the
+    # fifth constant and the old hard-coded four-name list never saw it).
     import os
     here = os.path.dirname(os.path.abspath(__file__))
-    dupes = []
-    for name in ("pool_igniter.py", "render_contact_sheet.py"):
+    dupes, seen_aliases = [], []
+    scanned = []
+    for name in CONSUMER_FILES:
         path = os.path.join(here, name)
         if not os.path.exists(path):
             continue
+        scanned.append(name)
         with open(path, encoding="utf-8", errors="replace") as fh:
-            for lineno, line in enumerate(fh, 1):
-                body = line.split("#", 1)[0]
-                if any(body.strip().startswith(k + " =")
-                       for k in ("MAGENTA_MIN_R", "MAGENTA_MIN_B",
-                                 "MAGENTA_MAX_G", "BG_TOL")):
-                    dupes.append("%s:%d" % (name, lineno))
-    chk("S10 consumers hold no second copy of the constants", dupes == [], dupes)
+            d, a = scan_source(name, fh.read())
+        dupes.extend(d)
+        seen_aliases.extend(a)
+    chk("S10 consumers hold no second copy of the constants",
+        dupes == [], dupes)
+    chk("S10b both consumer files were actually scanned",
+        sorted(scanned) == sorted(CONSUMER_FILES), scanned)
+
+    # S11: every spec field is guarded — proven per name, not by trusting the
+    # list.  A field the scanner does not see would pass this test only if the
+    # test were written against a second copy of the same list.
+    missed = []
+    for field in _SPEC_FIELDS:
+        d, _a = scan_source("probe.py", "%s = 123\n" % field)
+        if not d:
+            missed.append(field)
+    chk("S11 guard covers every _SPEC_FIELDS name", missed == [], missed)
+
+    # S12/S13: alias vs literal must split, and a mis-alias is a duplicate.
+    alias_src = "CLEAR_RGB_DEFAULT = qc_spec.CLEAR_RGB_DEFAULT\n"
+    d_alias, a_alias = scan_source("alias.py", alias_src)
+    chk("S12 alias form is not a duplicate", d_alias == [] and a_alias == ["alias.py:1"],
+        (d_alias, a_alias))
+    d_mis, _a_mis = scan_source("mis.py", "CLEAR_RGB_DEFAULT = qc_spec.BG_TOL\n")
+    chk("S13 alias pointing at a different constant is a duplicate",
+        d_mis == ["mis.py:1"], d_mis)
+
+    # S14: the fifth constant is caught in literal form — the exact gap T241
+    # was opened for.  `(13, 13, 15)` pasted into a consumer is a second copy.
+    d_lit, _a_lit = scan_source("lit.py", "CLEAR_RGB_DEFAULT = (13, 13, 15)\n")
+    chk("S14 CLEAR_RGB_DEFAULT literal is a duplicate",
+        d_lit == ["lit.py:1"], d_lit)
 
     for name, cond, detail in checks:
         print(("PASS " if cond else "FAIL ") + name +
