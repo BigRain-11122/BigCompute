@@ -1,6 +1,6 @@
 {
- "next_milestone": "M202 承办件（BC-P-248 写侧直声明渠道）：`unit_cost_drill` 的 lane→channel 表直出 `channel=b2b`，读侧 `channel_note` 推断降级为兼容兜底并计 `inferred=`（写侧改完后该计数应归零）；判据=演练面逐行读数不变 + 夹具覆盖「note 缺失仍归对行」（窗 11-14 12:43 前）；同窗=B-CITY3D-02 判据帧复渲维持门控 vram_free>=6144MiB（source=declared）",
- "declared_at": "2026-11-13 22:00",
+ "next_milestone": "M146 B站有人值守城市挂播预案 v1（Phase 1 先行件 2·纯预案非开播）：值守班表形态+连麦时段边界+全程 AIGC 角标位+灰度 ≥7 天节奏+无人值守子形态排除判据；窗 11-15 12:43 前。旁支=B-CITY3D-02 判据帧复渲维持门控 vram_free>=6144MiB（source=declared）",
+ "declared_at": "2026-11-14 13:26",
  "window_h": 24,
- "basis": "M201 本轮已收口（演练面拆出 private/b2b 行、selftest 22/22、store 52.9 / b2b 349.0 不再合并）；剩余缺口=R-074——拆行唯一依据是自由文本 `channel_note` 含 b2b 字样，写侧换个词或漏写即静默回落 private 且三闸全绿；故下一件=把渠道声明成写侧一等字段。旁支=实况面两处读数口径缺陷本轮已修（尾部更正行不再把摘要读成不可用、风险台账不再冒充最近实物），B-CITY3D-02 复渲仍候 GPU 净窗。"
+ "basis": "M202 本轮已收口（写侧 channel=b2b 直声明、读侧 note 推断正名 inferred 并双计数、schema enum 同步；unit_cost_drill 33/33·revenue_caliber 24/24·下游三件全绿；演练面 store 52.9 / private-b2b 349.0 findings none 与 M201 完全一致）。P1 顺位最高可执行=M146（11-07 补 stock 首条 open，无物理件依赖）；旁支 B-CITY3D-02 复渲仍候 GPU 净窗。"
 }

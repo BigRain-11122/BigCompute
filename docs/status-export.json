@@ -1,9 +1,9 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-11-14 13:13",
- "current_activity": "2026-11-14 12:00 轮：T-20261114-126 结案后复跑（fix 提交 96e35f7 已推） | textintegrity:EXTERNAL-DAMAGED cats=7/7 files=12 damaged_files=0 damaged_lines=0 ext_damaged=1 table_mismatch=21 table_new=21 | C1C4:C1C4-GREEN 4/4 |… ｜ 两池：本司备货可派 2 ／ 机队可领 4（两个不同池，本司卡未登记进机队池）",
+ "updated_at": "2026-11-14 13:14",
+ "current_activity": "2026-11-14 13:00 轮：M202 done（写侧 lane→channel 直出 b2b／读侧 note 推断正名 inferred+declared/inferred 双计数；unit_cost_drill 33/33·revenue_caliber 24/24·下游 10/10+29/29+45/45… ｜ 两池：本司备货可派 2 ／ 机队可领 4（两个不同池，本司卡未登记进机队池）",
  "latest_artifact": "docs/ops/revenue-caliber-table-v1.md（mtime 2026-11-14 12:59）",
- "next_milestone": "M202 承办件（BC-P-248 写侧直声明渠道）：`unit_cost_drill` 的 lane→channel 表直出 `channel=b2b`，读侧 `channel_note` 推断降级为兼容兜底并计 `inferred=`（写侧改完后该计数应归零）；判据=演练面逐行读数不变 + 夹具覆盖「note 缺失仍归对行」（窗 11-14 12:43 前）…（source=declared）",
+ "next_milestone": "M146 B站有人值守城市挂播预案 v1（Phase 1 先行件 2·纯预案非开播）：值守班表形态+连麦时段边界+全程 AIGC 角标位+灰度 ≥7 天节奏+无人值守子形态排除判据；窗 11-15 12:43 前。旁支=B-CITY3D-02 判据帧复渲维持门控 vram_free>=6144MiB（source=declared）（source=declared）",
  "caps": {
   "write_lag_min": 30.0,
   "ledger_lag_min": 120.0,
