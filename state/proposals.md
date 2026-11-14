@@ -281,3 +281,7 @@ T187 把 rounds.log 的 text-integrity 义务钉成了写侧硬闸，但闸的�
 **现象**：主控令要求 `git checkout origin/main -- Tools cph4/fleet` 就地收口，而 bm-a 的 MV v729 重建进程正在 `cph4/fleet/mv0001-handover/outbound/krea2/30s-reel-v1` 内实时写盘；首次 checkout 已覆盖几份在飞文件（未被 stage、无快照，不可回滚）。
 **判据三问**：①消费方=机队收口脚本与主控；②单位经济=一次误覆盖的返工成本≈MV 重渲一轮（GPU 小时），收益是同一份代码同步；③合规=不涉交易与内容红线。
 **建议**：收口件加一道 `LIVE-WRITE GUARD`——checkout 前列出目标路径内 mtime 在 N 分钟内的文件，命中即排除该子树并改走 `reset --mixed`（只动 index），同时在回执里点名被排除的子树。判负条件=若实测排除后同步仍完整（本轮 ahead=0 behind=0 已证），则该闸零成本。
+## BC-P-253 子进程解码普查（2026-11-14 12:4x 立）
+**现象**：`gpu_idle_collector` 五处 `text=True` 在 zh-CN Windows 上会被 GBK 字节打死读取线程，线程内异常逃出调用方 try/except，表面症状是「偶发 rc=1 / 探针静默降级」，与真正的判红无法区分。
+**判据三问**：①消费方=全部探针与车道任务；②单位经济=一次普查（grep `text=True` 全仓+批量补 encoding）对照一次静默丢采样的代价（本轮实证丢了一刻）；③合规=无。
+**建议**：全仓普查 `subprocess` 调用点，凡 `text=True` 一律补 `encoding="utf-8", errors="replace"`，并加一条静态闸（qa_smoke 探针）拦新增裸 `text=True`。判负条件=若普查后零命中，则闸降为只拦新增。

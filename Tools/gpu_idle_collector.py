@@ -121,7 +121,7 @@ def query_gpu():
         ["nvidia-smi",
          "--query-gpu=utilization.gpu,memory.used,power.draw",
          "--format=csv,noheader,nounits"],
-        capture_output=True, text=True, timeout=60)
+        capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=60)
     if out.returncode != 0:
         sys.stderr.write("nvidia-smi failed: %s\n" % out.stderr.strip())
         return None
@@ -233,7 +233,7 @@ def _tasklist_llama():
     try:
         out = subprocess.run(
             ["tasklist", "/fi", "IMAGENAME eq llama-server.exe"],
-            capture_output=True, text=True, timeout=15)
+            capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=15)
         return out.stdout or ""
     except Exception:  # noqa: BLE001 - probe must never kill report
         return ""
@@ -538,7 +538,7 @@ def query_compute_apps():
         out = subprocess.run(
             ["nvidia-smi", "--query-compute-apps=pid,process_name,"
              "used_memory", "--format=csv,noheader,nounits"],
-            capture_output=True, text=True, timeout=30)
+            capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=30)
     except (OSError, subprocess.TimeoutExpired):
         return None
     if out.returncode != 0:
@@ -643,7 +643,7 @@ def read_vram_free():
         out = subprocess.run(
             ["nvidia-smi", "--query-gpu=memory.total,memory.used",
              "--format=csv,noheader,nounits"],
-            capture_output=True, text=True, timeout=30).stdout.strip()
+            capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=30).stdout.strip()
         total, used = (int(x.strip()) for x in out.split(",")[:2])
         return total, used
     except Exception:
@@ -657,7 +657,7 @@ def count_cotenants():
         out = subprocess.run(
             ["tasklist", "/FI", "IMAGENAME eq Tuanjie.exe",
              "/FO", "CSV", "/NH"],
-            capture_output=True, text=True, timeout=30).stdout
+            capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=30).stdout
     except Exception:
         return None
     n = 0

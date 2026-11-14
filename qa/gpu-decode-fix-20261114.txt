@@ -1,0 +1,32 @@
+T241 GPU 采集器子进程解码缺陷·出生地修复取证
+时间: 2026-11-14 12:3x-12:4x
+来源: 本轮收口时 `python Tools/gpu_idle_collector.py report` 一次性 rc=1，复跑 rc=0
+
+一 现象（可复现的一半不可复现）
+  同一命令 report: 第一次 rc=1，重跑 rc=0，输出读数完全相同（n=1343 → n=1344，只多一个 15min 采样）。
+  说明不是判红语义：`cmd_report` 全函数只有一条 `return 0`（L791-849 区间实测）。
+
+二 真因（取证式定位，非猜测）
+  把 stderr 单独落盘后抓到：
+    Exception in thread Thread-5 (_readerthread):
+    File "...\subprocess.py", line 1614, in _readerthread
+      buffer.append(fh.read())
+    UnicodeDecodeError: 'utf-8' codec can't decode byte 0xcf in position 4: invalid continuation byte
+  即 subprocess.run(text=True) 用 locale 解码，而本机（zh-CN Windows）子进程 tasklist 等输出 GBK 字节。
+  关键点：异常发生在 **读取线程** 内，调用方 `try/except` 兜不住；stdout 变 None →
+  探针降级为空串（fail-open）或 query_gpu 取 None → cmd_sample 返回 1（丢采样刻）。
+
+三 修复
+  Tools/gpu_idle_collector.py 五处 text=True 调用统一钉死：
+    capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=...
+  patched_sites=5 remaining_unpatched=0（无遗漏残留）
+
+四 修后验证（同一命令，前后对照）
+  report : rc=0  stderr 2224B → 0B  读数不变（7d n=1344 avg=41.5% BELOW-BENCH；rolling30 n=6 avg=0.0% IDLE）
+  selftest: PASS  rc=0  stderr 0
+  sample : rc=0  stderr 0  util=0% mem=7788MiB power=30.99W
+
+五 诚实边界
+  - 修复只保证「GBK 字节不再打死读取线程」；errors="replace" 会把非 UTF-8 中文解成替换符，
+    因此依赖中文输出的探针读数（若将来有）仍不可信——本文件现役探针只取 ASCII 数值/关键字，不受影响。
+  - 同族风险未扫：本仓其他工具若也用 text=True 调中文 Windows 命令，属同一病根（已提 BC-P-253 待普查）。
