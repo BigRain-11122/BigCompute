@@ -146,3 +146,5 @@
 > 维护注记（2026-11-14 00:0x · PATROL-FLEET 巡视席 bigcompute R53）：新立 R-076（NJ 正身断链）。**R-073 旁证加强**（v3 master_agent 真派单面 00:02:12 活·cycle=1283；DL 停写 35.7h=结构预期）。**R-072 第 2 轮**（bm-c online/hb 40.5s 仍被判 EXECUTOR-DEAD·idle_rounds=14·节点自锁理由 skipped=3 口径未裁）。**R-069 维持 mitigated**（23:13:04 真点火后 3 拍 SKIP duplicate）。R-070/R-071 维持 open。R-074/R-075 属他轮（M201/T236），本班无新证据不动。本席只登记风险行与判据，未改任何闸/卡/阈值/台账正身。
 
 > **R-076 补充（同班 00:0x）**：正身与镜像**均落在 .gitignore**（.gitignore:194=cph4/fleet/dispatcher/PATROL-FLEET/、.gitignore:163=media/logs/）→ 本域升级面**只存在于本机工作树**，跨机（主控经 git 读）完全不可见。故 R-076 不是「正身落后 5.9 天」，而是「**双份都不可传导**」。缓解追加：④升级面需一个受版本管理的收口件（建议 cph4/fleet/PATROL-DIGEST.jsonl 或并入 MASTER-STATE），否则跨机巡检永远看不到本域升级。
+
+| R-077 | **DL 文件 mtime 可被刷新而正文零新增 → 「停写」判据假绿（11-14 12:36·R54 实锚）**：`cph4/fleet/dispatcher/DISPATCH-LOG.md` mtime=2026-11-14 12:24:08，最后时间戳行仍 2026-11-12 03:21；今晨 09:30 他席记录 mtime=11-12 12:19 ⇒ 期间发生重写/回灌而非追加。影响面=一切以 file mtime 判 DL/台账「新鲜 vs 停写」的巡视面与探针（含 R-073 自身「DL 停写」结论会被读成已恢复）。 | E3 | open | @HQ/dispatcher（写面）+ 本域（登记） | 依据=mtime/尾行实测（12:24:08 vs 11-12 03:21）；缓解=①停写判定取最后时间戳行 age，禁只用 file mtime ②DL 写入侧 append-only 校验（首行 sha 前缀或行数单调）③R-073 状态改注「停写持续，mtime 不可作证」 |
