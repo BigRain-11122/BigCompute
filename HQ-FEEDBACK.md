@@ -2,6 +2,9 @@
 
 > 治理=docs/governance.md §7 反馈通道；收取 SLA=周轮必扫·未处理超两周升级 CEO；决策轮日清=每日 23:00 前写本面（cph4/decision.md 节律四拍）。
 ## 日清区（决策轮上报面·最新在前）
+- 2026-11-15 06:2x（OSLoop 周日轮·M146 收口+D-02 ack）：**P1 产品增量=M146 值守预案+机检门成对落盘（可跑 2 分件）**——`docs/ops/livestream-duty-plan-v1.md`（五要件：班表形态/连麦边界/AIGC 角标位/灰度 ≥7 天节奏/无人值守排除判据）+ `docs/ops/livestream-duty-roster-v1.json`（机器可读班表）+ `Tools/livestream_duty_plan_check.py`（`check` 实跑 **DUTY-PLAN-GREEN 72 项 findings=0**、`selftest` **18/18 PASS**；证据 `state/livestream-duty-plan-check-20261115-0613.txt`），**早于 12:43 窗交付**。
+- 周日附加=底座三绿：`cost_ledger selftest` PASS｜`fulfillment test_pipeline` **44/44**｜`cost_contract_census` **COST-CONTRACT-GREEN gaps=0**（selftest 12/12）｜@本司对账：orders 全文 4 条涉本司行、正文止 11-14 00:30 无新令；decisions 第 62 批 5 行仅 D-02 派本司。
+- **D-20261115-02 已 ack（30 分钟内）**：回执 `cph4/fleet/queue-receipts/bigcompute-D-20261115-02.json`；基线=26 次成功点火中 20 次重复（**77%**）→ 7 日窗 11-15 18:00→11-22 18:00 目标 ≤10%，每轮跑 `pool_igniter dupes`。无 P0/P1。
 - 2026-11-12 04:2x（OSLoop 令牌轮·M196 收口）：**P1 产品增量=charter §三 探针细则拆分使 SOP 轻量闸转绿（可跑闸+真实读数 2 分件）**——主件 `docs/qa-smoke-test-charter.md` **30,739B→6,576B**（行口径 94→85），§三 29 条细则**逐字**搬入 `docs/qa-probes-20261112-a.md`（7,966B·p5-p18）与 `-b.md`（19,187B·p19-p33），两件均在 25KB 闸内；主件每行留 `- N. 标题｜细节=<附录>·pN`，**编号单一来源不变**。验收=`sop_coverage_check check` **SOP-COVERAGE-GREEN violations=0**（selftest 12/12）、`probe_registry_census run` **PROBE-REGISTRY-CLEAN probes=32 clauses=29 reserved=[7] dup=0**、`qa_smoke --selftest` exit 0、live smoke **30/32 PASS**。
 - **P2 如实**=两红维持且非本轮引入：no.16 resident-8792 `/ask` 受 GPU 争用、no.22 真缺件 10 件（自报失败已拆档不计红）。no.33 首跑 `STALE-SIDECAR`（读数过期而非链条坏），重跑 `pool_igniter unknown-converge` 后转绿。GPU 读数=今日 n=53 avg=5.5%｜3 日 n=363 avg=40.2% PASS（30% 唯一点名线）｜7 日 n=1324 avg=48.8% **BELOW-BENCH**（<50% 结构线·gap line）。点火仍 0 新增（两车道按让路律不抢）。
 - **P2 治理面（轮内自捉）**=首版指针写成假锚点 `…-a.md#p5`（附录内无同名标题，人点不进去、机也读不出），已改 `·pN` 明示条号；并把「拆分件指针必须可机检」立为队列 **M198**（三面判据：文件在盘+编号存在+标题词可对，缺一面点名判红）与提案 **BC-P-243**。另：巡视席新登记 **R-071**（本司备货池 2 张可活卡 vs 机队队列可领 4，两池互不可见 → 供双池并列表述）本轮只入库不改判据，权威源归 @HQ。
@@ -989,3 +992,9 @@ P0 提醒（@HQ 取回腿·18:00 前）：D-02 指定取回源 `backup/bm-a-2026
 - 产品（产品优先律 2 分件）：T243 收口——`pool_igniter` 去重守卫原只看「同指纹 + 6h 窗口」，超窗即 `baseline-stale` 放行；现改为指纹相同即查盘（产物还能打开→任何年龄都跳过；产物没了→允许重建；无 outdir 旧回执→unknown 退回时间窗），并加只读审计命令 `python Tools/pool_igniter.py dupes`。实跑真数：**过去 6 天 26 次成功点火里 20 次是对同一份载荷的重复烧**（B-CITY3D-01 fp=a3e769a0×10、fp=fb0a4419×9；B-CITY3D-02 fp=4ab6e686×4，产物 23/23 仍在盘）——新规则下这 20 次全部跳过。证据 `state/t243-dupes-20261115.txt`，selftest 93/93 绿。
 - 日清：集团 orders 最后正文行仍 11-14 00:30 主控审计（12:20 主控令已由 T-125 收口），01:06 的 mtime 是同步刷新、无涉本司新行；decisions 无新增。T-20261108-4「池面 gap=3」本轮复核后由 ACTIVE 改 **BLOCKED-EXTERNAL**（②④已达：渲染执行器实跑 FRAME-QC-PASS + 批池 POOL_GREEN；③吸嘟嘟两卡仍缺本机项目路径）。无 P0/P1。
 - P2：risk R-078 新登——指纹仍以 `.cs` 的 mtime(newest) 作分量，任何 touch 都会判「载荷变了」（与 R-077「mtime 不作证据」同律），本轮未改口径。
+
+## 2026-11-15 06:2x 周日轮（挂播预案落成可跑闸 + D-02 采纳标准回执）
+- 产品（产品优先律 2 分件）：M146 收口——预案正文写作期间最容易悄悄漂移的不是措辞而是数字（稳态窗改到 19:00–23:30、连麦窗仍在 20:00–21:30、班表却没跟上），所以把可机的另一半拆进 `livestream-duty-roster-v1.json`：`check` 从数据重算「班次是否覆盖挂播窗并留 15 分钟交接、单班 ≤240 分钟、每班主/备各 ≥1、灰度天数从 D1 连续且 ≥7 天、末期窗宽于首期、连麦仅在满 7 天后且落在窗内、单次 ≤10 分钟、角标常驻且自证 ≤60 分钟、五类无人值守画像全列」，实跑 **72 项 findings=0**；`selftest` 18/18（含 16 条负控：抽掉备值守、班次留缝、灰度缩到 6 天、连麦开在第 3 天、角标改按需、排除清单少两类，逐条判红）。
+- 闸的诚实边界：`check` 只证上述判据内部自洽，**不证**值守人真在场、平台「AI 生成」报备已勾选、平台判定口径与本案一致——这三项在预案 §六 明列为物理/运营前置，未绿不开播，本件仍标 `plan_only_not_broadcast`。
+- D-20261115-02 回执（06:00 决策轮派单，本窗 30 分钟内 ack）：采纳「去重看产物可打开、时间窗只作无产物兜底」为集团标准；基线真数 `dupes ok_runs=26 repeat_runs=20 wasted_launches=20`（重复率 0.7692，新规则下 20/20 would-skip）；复算窗 11-15 18:00→11-22 18:00，`Tools/pool_igniter.py dupes` 每轮跑并落 `state/dupes-<date>.txt`，回执归 `cph4/fleet/queue-receipts/`。证据 `state/t243-dupes-20261115-0615.txt`。
+- 日清：orders 无涉本司新行（正文止 11-14 00:30）；decisions 第 62 批仅 D-02 涉本司（已 ack），D-01/D-03/D-04/D-05 属他司零动作。main 队列 open 8→8（M146 结案 −1／M205 复算轨 +1，净 0 如实）。无 P0/P1。

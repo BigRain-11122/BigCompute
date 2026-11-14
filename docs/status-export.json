@@ -1,9 +1,9 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-11-15 01:21",
- "current_activity": "2026-11-14 22:00 轮：T241 done（frame_qc_spec 守卫名单改从 _SPEC_FIELDS 派生：别名放行、错指向与字面量判重，selftest 11→16/16 PASS，spec_id 逐字不变=阈值零变更，负控在真实 pool_igniter 上内存注入即被抓 injected_dupes 命中 2503，证据 state/t241-guard-derived-20261114.txt… ｜ 两池：本司备货可派 2 ／ 机队可领 4（两个不同池，本司卡未登记进机队池）",
- "latest_artifact": "state/t243-dupes-20261115.txt（mtime 2026-11-15 01:20）",
- "next_milestone": "M146 B站有人值守城市挂播预案 v1（Phase 1 先行件 2·纯预案非开播）：值守班表形态+连麦时段边界+全程 AIGC 角标位+灰度 ≥7 天节奏+无人值守子形态排除判据；窗 11-15 12:43 前。旁支=B-CITY3D-02 判据帧复渲维持门控 vram_free>=6144MiB（source=declared）（source=declared）",
+ "updated_at": "2026-11-15 06:17",
+ "current_activity": "2026-11-15 01:00 轮：tech T242 立行（点火载荷指纹改内容 sha 口径·R-078 缓解步①）+ 任务号口径归一（T243 归本行·R-078 实锚改 T-20261115-129，避与 tech 队列号冲突）+ 队列补记：tech 35→36/main 30/explore 12（净 0 如实：本轮完成的是任务板行 T-129… ｜ 两池：本司备货可派 2 ／ 机队可领 4（两个不同池，本司卡未登记进机队池）",
+ "latest_artifact": "state/t243-dupes-20261115-0615.txt（mtime 2026-11-15 06:14）",
+ "next_milestone": "M205 D-20261115-02 7 日复算（决策轮派单·承诺 11-22 18:00）：11-15 18:00→11-22 18:00 窗口内点火重复率 ≤10%，回执归 cph4/fleet/queue-receipts/；前置=tech T244 给 dupes 加 --since 窗口口径。旁支=B-CITY3D-02 判据帧复渲维持门控 vram_free>=6144MiB（source=declared）（source=declared）",
  "caps": {
   "write_lag_min": 30.0,
   "ledger_lag_min": 120.0,
