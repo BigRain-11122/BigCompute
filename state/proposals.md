@@ -290,3 +290,8 @@ T187 把 rounds.log 的 text-integrity 义务钉成了写侧硬闸，但闸的�
 **现象**：`b2b` 这个渠道值今天要在两处各写一份——`rails_schema_check` 的 JSON schema enum（`["livestream","store","private"]` → 加 `"b2b"`）与 `revenue_caliber` 的 `CHANNELS`/`CHANNEL_ALIAS`（别名表另有 5 个同义写法）。漏改任一处，失败都是静默的：schema 放行而读面不认 → 行落回 unassigned；读面认了而 schema 拦 → 机检红、数据被拒在门外。两者都不会说「两份词表不同步」。
 **判据三问**：①消费方=营收口径读面／演练行派生／schema 机检；②单位经济=一次词表同步（两处手改）对照一次静默归错渠道的代价（金额被搬到错的行且读数仍「合法」）；③合规=无。
 **建议**：渠道词表收单源（`revenue_caliber` 导出 `CHANNELS`+别名，schema 侧生成 enum 或加静态断言 `schema_enum ⊆ 别名值域`），并加负控——只在任意一处新增词时普查必须红。判负条件=若 schema 必须独立分发以致无法自然收单，则退为静态一致性探针（不做运行期耦合）。
+
+## BC-P-255 显存余量门双写（2026-11-14 18:1x 立·T239 普查实跑派生）
+**现象**：`HEADROOM_MIB = 1536` 在 `bake_accept_check.py:29` 与 `vram_window_probe.py:36` 各写一份，两处注释互相指认同一条纪律（前者写「BC-P-06 same value」，后者写「T-31 J2 headroom 判据」）——注释承认了「这是同一个数」，代码却没有同一个源。改一处漏一处时，烘焙验收和显存窗口探测会各自给出自洽的绿灯，而它们判的其实是同一条物理余量。
+**判据三问**：①消费方=`bake_accept_check`（烘焙验收）与 `vram_window_probe`（显存窗口探针），以及后续任何引用 BC-P-06 的收口件；②单位经济=一次单源化的成本≈半小时，对照一次漏改的代价=一炉烘焙按错误余量验收（GPU 小时+返工）；③合规=不涉交易与内容红线。
+**建议**：新建 `Tools/vram_headroom_spec.py`（照 `frame_qc_spec` 范式：常量+`spec_id()`+标定断言），两处改 import 并标 `judged_by=spec:<hash>`；selftest 加一条「改常量即换 id」的锚点。`MAX_AGE_MIN` 同名异义不入本提案，另按改名处理。

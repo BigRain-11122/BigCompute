@@ -1,8 +1,8 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-11-14 13:14",
+ "updated_at": "2026-11-14 18:12",
  "current_activity": "2026-11-14 13:00 轮：M202 done（写侧 lane→channel 直出 b2b／读侧 note 推断正名 inferred+declared/inferred 双计数；unit_cost_drill 33/33·revenue_caliber 24/24·下游 10/10+29/29+45/45… ｜ 两池：本司备货可派 2 ／ 机队可领 4（两个不同池，本司卡未登记进机队池）",
- "latest_artifact": "docs/ops/revenue-caliber-table-v1.md（mtime 2026-11-14 12:59）",
+ "latest_artifact": "state/threshold-census-20261114-1810.json（mtime 2026-11-14 18:10）",
  "next_milestone": "M146 B站有人值守城市挂播预案 v1（Phase 1 先行件 2·纯预案非开播）：值守班表形态+连麦时段边界+全程 AIGC 角标位+灰度 ≥7 天节奏+无人值守子形态排除判据；窗 11-15 12:43 前。旁支=B-CITY3D-02 判据帧复渲维持门控 vram_free>=6144MiB（source=declared）（source=declared）",
  "caps": {
   "write_lag_min": 30.0,
