@@ -1,0 +1,47 @@
+T243 重复点火守卫改看盘 — 实跑证据
+时点 2026-11-15 01:2x（夜班轮·产品优先律 2 分件）
+
+## 1. 改动面（Tools/pool_igniter.py）
+新增 DELIVERABLE_SUFFIXES=(.png,.exr,.json) / DELIVERABLE_IGNORE=(runner.txt,)
+新增 deliverable_on_disk(row, root) -> True/False/None
+新增 duplicate_waste(rows, root) -> {totals, cards}
+新增 CLI: python Tools/pool_igniter.py dupes [--json]
+改写 duplicate_guard 判定顺序：
+  1) 无 fingerprint 回执 -> baseline-without-fingerprint（放行一次）
+  2) ts 不可读 -> baseline-ts-unreadable（放行）
+  3) 指纹不同 -> payload-changed（放行）
+  4) 指纹相同且产物在盘 -> same-payload-deliverable-present（跳过，任何年龄）
+  5) 指纹相同且产物不在盘 -> deliverable-missing（允许重建）
+  6) outdir 未记录 -> 退回 6h 时间窗（baseline-stale / same-payload-within-6h）
+
+## 2. 自检
+$ python Tools/pool_igniter.py selftest
+93/93 PASS
+新增用例：
+  PASS S39 same payload + artifacts still on disk -> skip even when old
+  PASS S40 logs are not a delivery -> rebuild allowed
+  PASS S41 artifacts gone from disk -> rebuild allowed
+  PASS S42 receipt without outdir -> presence unknown, not false
+  PASS S43 repeats with artifacts on disk count as wasted launches
+
+## 3. 实跑真数
+$ python Tools/pool_igniter.py dupes
+dupes ok_runs=26 unique_payloads=6 repeat_runs=20 wasted_launches=20
+B-CITY3D-01 ok_runs=21 payloads=4 repeated=2
+  fp=a3e769a0e23a8f8b runs=10 first=2026-11-12 06:39:06 last=2026-11-15 00:28:24 artifacts=10/10 would-skip
+  fp=fb0a4419e0f97e62 runs=9 first=2026-11-09 19:10:31 last=2026-11-12 01:42:46 artifacts=9/9 would-skip
+B-CITY3D-02 ok_runs=5 payloads=2 repeated=1
+  fp=4ab6e686b795508e runs=4 first=2026-11-12 09:55:51 last=2026-11-14 11:55:06 artifacts=4/4 would-skip
+
+读法：26 次成功点火里有 20 次是同一份载荷的重复烧（指纹逐字相同、产物 23/23 仍在盘）。
+旧规则只看 6h 窗口，这些 run 每次间隔 >=6h 全部被 baseline-stale 放行；新规则下 20 次全部跳过。
+
+## 4. 当前守卫判定（本机实读，未点火）
+$ python -c "... duplicate_guard('B-CITY3D-01') ..."
+now fp=a3e769a0e23a8f8b parts={'card':'1a96e37776f1ae57','entry':'9047ef6f51486e4a','cs_count':2,'cs_newest':1794436449}
+dup_guard (False, 'same-payload-deliverable-present(last ok 2026-11-15 00:28:24 fp=a3e769a0e23a8f8b)')
+
+## 5. 未做 / 边界（如实）
+- 未跑新一次点火做行为取证（避免再烧一次编辑器）；行为证据=selftest S39-S41 三态夹具 + 上面第 4 条当前判定实读。
+- 指纹仍以 .cs 的 mtime(newest) 为分量：任何 touch 都会改指纹（R-078 已记），本次未改该口径。
+- 产物落在 gitignored media/：一旦被清理，守卫会按 deliverable-missing 正常重建（这是设计意图，不是漏洞）。

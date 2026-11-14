@@ -641,6 +641,45 @@ def compile_stale_guard(batch_id, project_root=None, rows=None):
 DUPLICATE_WINDOW_H = 6.0
 FINGERPRINT_SCHEME = "card+entry+cs-newest"
 
+# tech T243: the window alone still re-burned identical payloads, because age
+# was standing in for a question the disk can answer directly.  B-CITY3D-01's
+# fingerprint a3e769a0e23a8f8b ran 11 times between 11-12 06:39 and 11-15
+# 00:28, each launch >=6h after the last, so `baseline-stale` waved every one
+# through and the same scene was re-baked 11 times.  Ask instead whether the
+# baseline's artifacts can still be opened: a delivery that is still here needs
+# no rebuild at any age, and a delivery that is gone needs one even if it was
+# written an hour ago.
+DELIVERABLE_SUFFIXES = (".png", ".exr", ".json")
+DELIVERABLE_IGNORE = ("runner.txt",)
+
+
+def deliverable_on_disk(row, root=ROOT):
+    """True/False/None -- can the baseline receipt's artifacts still be read?
+
+    None means the receipt recorded no outdir (rows written before T229), so
+    this reader cannot tell and must not pretend either way.
+    """
+    outdir = row.get("outdir")
+    if not outdir:
+        return None
+    path = outdir if os.path.isabs(outdir) else os.path.join(
+        root, *outdir.replace("\\", "/").split("/"))
+    if not os.path.isdir(path):
+        return False
+    for base, _dirs, files in os.walk(path):
+        for fn in files:
+            low = fn.lower()
+            if low in DELIVERABLE_IGNORE or low.endswith(".log"):
+                continue
+            if not low.endswith(DELIVERABLE_SUFFIXES):
+                continue
+            try:
+                if os.path.getsize(os.path.join(base, fn)) > 0:
+                    return True
+            except OSError:
+                continue
+    return False
+
 
 def payload_fingerprint(batch_id, project_root=None):
     """Stable hash of what decides one card's output, plus its components.
@@ -699,7 +738,10 @@ def duplicate_guard(batch_id, rows=None, hours=DUPLICATE_WINDOW_H,
     Only an `ok=true` receipt can be a baseline: re-running after a failure is
     the retry path, not a duplicate.  A baseline written before fingerprints
     existed cannot prove anything, so it lets one more run through and says so
-    instead of silently claiming the card is fresh.
+    instead of silently claiming the card is fresh.  A baseline whose artifacts
+    are still readable on disk is a delivery, so it blocks the rebuild no matter
+    how old the receipt is (T243); the age window now only decides rows whose
+    outdir was never recorded.
     """
     rows = rows if rows is not None else receipt_rows()
     fp = fingerprint
@@ -716,10 +758,16 @@ def duplicate_guard(batch_id, rows=None, hours=DUPLICATE_WINDOW_H,
             return True, "baseline-without-fingerprint(%s)" % r.get("ts")
         if age is None:
             return True, "baseline-ts-unreadable(%s)" % r.get("ts")
-        if age > hours:
-            return True, "baseline-stale(%.1fh>%gh)" % (age, hours)
         if prev != fp:
             return True, "payload-changed(%s->%s)" % (prev, fp)
+        present = deliverable_on_disk(r, root=project_root or ROOT)
+        if present is True:
+            return False, ("same-payload-deliverable-present(last ok %s fp=%s)"
+                           % (r.get("ts"), fp))
+        if present is False:
+            return True, "deliverable-missing(%s)" % r.get("ts")
+        if age > hours:
+            return True, "baseline-stale(%.1fh>%gh)" % (age, hours)
         return False, ("same-payload-within-%gh(last ok %s fp=%s)"
                        % (hours, r.get("ts"), fp))
     return True, "no-ok-baseline"
@@ -760,6 +808,48 @@ def delivery_audit(rows=None):
     for c in cards.values():
         for k in totals:
             totals[k] += c[k]
+    return {"totals": totals, "cards": cards}
+
+
+def duplicate_waste(rows=None, root=ROOT):
+    """Repeat runs of one payload whose artifacts were still on disk.
+
+    `delivery_audit` counts repeats; this says which of them bought nothing:
+    a repeat whose earlier artifact set is still readable proves the payload
+    was already delivered, so the extra launch consumed an editor and a CPU
+    window for no new bytes.  Rows without a fingerprint (pre-T224) are left
+    out rather than guessed at.
+    """
+    rows = receipt_rows() if rows is None else rows
+    cards = {}
+    for r in rows:
+        if not r.get("ok"):
+            continue
+        fp = r.get("fingerprint")
+        if not fp:
+            continue
+        bid = r.get("batch_id") or "?"
+        c = cards.setdefault(bid, {"ok_runs": 0, "payloads": {}})
+        c["ok_runs"] += 1
+        p = c["payloads"].setdefault(
+            fp, {"runs": 0, "first": None, "last": None, "present": 0})
+        p["runs"] += 1
+        if p["first"] is None:
+            p["first"] = r.get("ts")
+        p["last"] = r.get("ts")
+        if deliverable_on_disk(r, root=root) is True:
+            p["present"] += 1
+    totals = {"ok_runs": 0, "unique_payloads": 0, "repeat_runs": 0,
+              "wasted_launches": 0}
+    for c in cards.values():
+        totals["ok_runs"] += c["ok_runs"]
+        totals["unique_payloads"] += len(c["payloads"])
+        for p in c["payloads"].values():
+            if p["runs"] < 2:
+                continue
+            totals["repeat_runs"] += p["runs"] - 1
+            if p["present"]:
+                totals["wasted_launches"] += p["runs"] - 1
     return {"totals": totals, "cards": cards}
 
 
@@ -1867,6 +1957,60 @@ def selftest():
         chk("S34 legacy ok receipt without fingerprint lets one run through",
             allowed and why.startswith("baseline-without-fingerprint"), why)
 
+        # --- delivered-payload guard (tech T243) ---------------------------
+        # Age alone re-burned one payload 11 times over three days; the disk
+        # knows whether that delivery is still there.
+        old_ts = (now() - datetime.timedelta(hours=7)).strftime(
+            "%Y-%m-%d %H:%M:%S")
+        keep = os.path.join(tmp, "run-keep", "frames")
+        os.makedirs(keep, exist_ok=True)
+        with open(os.path.join(keep, "frame_01.png"), "wb") as f:
+            f.write(b"\x89PNG-not-really-but-nonzero")
+        with open(os.path.join(tmp, "run-keep", "runner.txt"), "w",
+                  encoding="utf-8", newline="\n") as f:
+            f.write("log only, not a deliverable\n")
+        kept = dict(same, outdir="run-keep", ts=old_ts)
+        allowed, why = duplicate_guard("B-CITY3D-01", rows=[kept],
+                                       project_root=tmp, fingerprint=fp)
+        chk("S39 same payload + artifacts still on disk -> skip even when old",
+            not allowed and why.startswith("same-payload-deliverable-present"),
+            why)
+
+        logs_only = os.path.join(tmp, "run-logs")
+        os.makedirs(logs_only, exist_ok=True)
+        with open(os.path.join(logs_only, "runner.txt"), "w",
+                  encoding="utf-8", newline="\n") as f:
+            f.write("no artifact here\n")
+        with open(os.path.join(logs_only, "tuanjie-render.log"), "w",
+                  encoding="utf-8", newline="\n") as f:
+            f.write("no artifact here either\n")
+        allowed, why = duplicate_guard(
+            "B-CITY3D-01", rows=[dict(same, outdir="run-logs", ts=old_ts)],
+            project_root=tmp, fingerprint=fp)
+        chk("S40 logs are not a delivery -> rebuild allowed",
+            allowed and why.startswith("deliverable-missing"), why)
+
+        allowed, why = duplicate_guard(
+            "B-CITY3D-01", rows=[dict(same, outdir="run-deleted", ts=old_ts)],
+            project_root=tmp, fingerprint=fp)
+        chk("S41 artifacts gone from disk -> rebuild allowed",
+            allowed and why.startswith("deliverable-missing"), why)
+
+        chk("S42 receipt without outdir -> presence unknown, not false",
+            deliverable_on_disk(same, root=tmp) is None)
+
+        dw = duplicate_waste([dict(same, outdir="run-keep"),
+                              dict(same, outdir="run-keep"),
+                              dict(same, outdir="run-keep"),
+                              dict(same, outdir="run-deleted"),
+                              dict(same, fingerprint=None, outdir="run-keep"),
+                              dict(same, ok=False, outdir="run-keep")], root=tmp)
+        chk("S43 repeats with artifacts on disk count as wasted launches",
+            dw["totals"]["unique_payloads"] == 1
+            and dw["totals"]["repeat_runs"] == 3
+            and dw["totals"]["wasted_launches"] == 3
+            and dw["cards"]["B-CITY3D-01"]["payloads"][fp]["present"] == 3, dw)
+
         # --- delivery audit: runs are not deliveries (tech T231) -----------
         da = delivery_audit([dict(same, fingerprint="aaaabbbbccccdddd"),
                              dict(same, fingerprint="aaaabbbbccccdddd"),
@@ -2354,11 +2498,38 @@ def selftest():
     return 0 if not failed else 1
 
 
+def dupes(as_json=False):
+    """Print which repeat ignitions bought nothing, from receipts + disk."""
+    rec = duplicate_waste()
+    if as_json:
+        print(json.dumps(rec, ensure_ascii=False, sort_keys=True))
+        return 0
+    t = rec["totals"]
+    print("dupes ok_runs=%d unique_payloads=%d repeat_runs=%d "
+          "wasted_launches=%d"
+          % (t["ok_runs"], t["unique_payloads"], t["repeat_runs"],
+             t["wasted_launches"]))
+    for bid in sorted(rec["cards"]):
+        c = rec["cards"][bid]
+        repeated = {fp: p for fp, p in c["payloads"].items() if p["runs"] > 1}
+        print("%s ok_runs=%d payloads=%d repeated=%d"
+              % (bid, c["ok_runs"], len(c["payloads"]), len(repeated)))
+        for fp in sorted(repeated, key=lambda k: -repeated[k]["runs"]):
+            p = repeated[fp]
+            verdict = ("would-skip" if p["present"] else "no-artifact-on-disk")
+            print("  fp=%s runs=%d first=%s last=%s artifacts=%s %s"
+                  % (fp, p["runs"], p["first"], p["last"],
+                     "%d/%d" % (p["present"], p["runs"]), verdict))
+    return 0
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description="gate-then-run pool igniter")
     sub = ap.add_subparsers(dest="cmd", required=True)
     sub.add_parser("tick")
     sub.add_parser("selftest")
+    p_d = sub.add_parser("dupes")
+    p_d.add_argument("--json", action="store_true", help="machine-readable")
     p_s = sub.add_parser("status")
     p_s.add_argument("--json", action="store_true", help="machine-readable")
     p_s.add_argument("--out", help="write the JSON readout to this path")
@@ -2379,6 +2550,8 @@ def main(argv=None):
         return tick()
     if args.cmd == "selftest":
         return selftest()
+    if args.cmd == "dupes":
+        return dupes(as_json=args.json)
     if args.cmd == "status":
         return status(as_json=args.json, out=args.out)
     if args.cmd == "bake-reconcile":
