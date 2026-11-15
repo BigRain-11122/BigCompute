@@ -274,10 +274,7 @@ def _selftest():
         row = [r for r in _load_rows(rail) if r["order_id"] == "MOCK-ST-03"][0]
         exp_net = round(row["price"] * (1.0 - row["refund_rate"]) * (1.0 - row["fee_rate"]), 4)
         run("F6 schema/math mirror", row["net_price"] == exp_net
-            and row["fund_3090"] == 0.0 and set(row).issuperset(
-                ("order_id", "date", "sku", "tier", "cost_item", "price", "fee_rate",
-                 "refund_rate", "net_price", "amount", "gross", "tokens_local",
-                 "tokens_api", "api_reason", "fund_3090")), "net=%s" % row["net_price"])
+            and row["fund_3090"] == 0.0 and set(row).issuperset(WRITER_KEYS), "net=%s" % row["net_price"])
         # F7 sku registry + routes resolve
         reg_ok = all(SKUS[s]["route_group"] in ROUTE_GROUPS
                      and SKUS[s]["tier"] in ("L1", "L2", "L3")

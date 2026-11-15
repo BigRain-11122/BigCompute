@@ -392,7 +392,7 @@ def selftest():
         # 9f the real probe must speak the producer's contract or say nothing
         s = live_sample()
         chk("live-sample-contract", s is None or (
-            set(s) == {"ram_free_pct", "vram_free_mb", "cpu_lane_idle"}
+            set(s) == set(CONSUMED_FIELDS)
             and str(s["cpu_lane_idle"]) in ("true", "false")))
     finally:
         if os.path.exists(tmp):

@@ -1,8 +1,8 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-11-15 12:49",
- "current_activity": "2026-11-15 12:00 轮：M203 done（自检守卫名单派生性普查器 `Tools/guard_list_census.py` 落盘·AST 只读·selftest 15/15 PASS 含负控与真树锚；实跑 109 文件/398 个函数内集合→17 站点与同文件源集合重复=13 双份/3 严格子集/1 超前，落 7 文件… ｜ 两池：本司备货可派 2 ／ 机队可领 4（两个不同池，本司卡未登记进机队池）",
- "latest_artifact": "state/sop-coverage-20261115-124802.json（mtime 2026-11-15 12:48）",
+ "updated_at": "2026-11-15 18:16",
+ "current_activity": "2026-11-15 12:00 轮：M151 done（退款/售后轨位机检 `Tools/refund_track_check.py` 落盘·八码 findings=越轨双向/履约串收入/重复退款/无主/超退/成本口径/负额/坏行·selftest 29/29·真账本 NO-DATA·负控 RED rc=1·连带修真缺陷=PS5.1 `-Encoding UTF8` 写 BOM 致整账本判不可读→读侧改 utf-8-sig 并入夹具·口径件… ｜ 两池：本司备货可派 2 ／ 机队可领 4（两个不同池，本司卡未登记进机队池）",
+ "latest_artifact": "state/m206-guard-collapse-20261115.txt（mtime 2026-11-15 18:14）",
  "next_milestone": "M206 守卫名单收口（M203 定出的 4 文件）：先 lane_gate:395 契约断言改 set(CONSUMED_FIELDS)（P1），再 first_order_consent_drill 8 站点／deal_flow_mock:278／city3d_bake_spike 2 站点（P2）；验收=guard_list_census 三数归零或只剩 4 处显式豁免（刻意场景 3+假阳 1）。…（source=declared）",
  "caps": {
   "write_lag_min": 30.0,

@@ -104,7 +104,7 @@ def selftest() -> int:
         dest = tmp / "spike"
 
         # A1 版本镜像
-        out = scaffold(dest, root, src_proj, ["AD-021", "AD-035"])
+        out = scaffold(dest, root, src_proj, list(DEFAULT_PACKS))
         check("A1 project_version mirrored", out["project_version"] == "m_EditorVersion: 2022.3.62t15")
         # A2 manifest 逐字等
         check("A2 manifest verbatim",
@@ -123,7 +123,7 @@ def selftest() -> int:
               and "BakeFillLight" in cs and "city3d_official_ad022_v1" in cs)
         # A7 确定性：重跑 scaffold 后文件集合不变
         before = sorted(str(p.relative_to(dest)) for p in dest.rglob("*") if p.is_file())
-        scaffold(dest, root, src_proj, ["AD-021", "AD-035"])
+        scaffold(dest, root, src_proj, list(DEFAULT_PACKS))
         after = sorted(str(p.relative_to(dest)) for p in dest.rglob("*") if p.is_file())
         check("A7 scaffold deterministic", before == after)
         # A8 无包外泄漏：顶层目录仅 ProjectSettings/Packages/Assets

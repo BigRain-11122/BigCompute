@@ -1004,7 +1004,10 @@ P0 提醒（@HQ 取回腿·18:00 前）：D-02 指定取回源 `backup/bm-a-2026
 - 审核：本地工作树 `docs/orders.md` 正文止于 11-14 12:20，而 **origin 已有 11-15 10:3x–11:1x 通知边界令**（禁止恢复机队自启；同一时间只允许一个会话做机队启停类操作）；本司无涉本司派单，本轮零任务注册/恢复动作以对齐。decisions 第 63 批 6 行（D-06..D-11）全属他司域；D-12 系其自纠（本地读数陈旧→漏读 origin 新令）。
 - 日清：**P2 集团台账读取面**——本窗审核步与 D-12 各踩一次同一坑（mtime 新≠行新；本地树落后 origin 新令），已按 origin 快照取证；M167 判官已具备行集判据，缺的只是编排侧先取 origin。不新增立法：下轮审核步先 `git show origin/main:docs/orders.md` 再读本地。无 P0/P1 涉本司。
 ## 2026-11-15 12:4x 午班轮（M151 退款/售后账务口径表）
-
 - 产品（产品优先律 2 分件）：`Tools/refund_track_check.py` 落盘——先查重：率偏差（`refund_rate_calibration.py`）与口径差（`quota_prepaid_liability.py`）已有工具，真缺口是「行放错轨」无机检。八码 findings：越轨双向、履约行串收入轨（`add` 单键会把同单履约行判 duplicate 而漏记收入）、重复 refund_id、无主退款、超退、成本口径退款、负额、坏行；空账本判 `NO-DATA` 禁印 0.00。实测 selftest **29/29 PASS**（含 BOM 与「恰好退满」边界）＋真账本 `NO-DATA`＋负控 `RED rc=1`。连带修真缺陷：PS5.1 `-Encoding UTF8` 写 BOM 会让整账本判不可读，读取改 `utf-8-sig` 并入夹具。口径件 `docs/ops/refund-ledger-caliber-v1.md`（三轨落点/金额口径引用不重算/三工具分工/月末校准分母纪律）。证据 `state/refund-track-20261115.txt`。
 - 审核：本轮按 D-12 判据先取 origin 快照——orders 涉本司仅第 63 批 **D-20261115-02**（已 ack，本轮续跑 `dupes` 落 `state/dupes-20261115.txt`，读数 26/6/20 与基线一致）＋**D-20261115-12**（11-15 10:3x 通知边界令：禁恢复机队自启）→本司本轮零任务注册、零恢复、零派单以对齐。decisions 其余行（D-06..D-11）全属他司域，零动作。
 - 日清：P2 新增=轨位机检目前只覆盖退款轨，配额/借用/L1 三轨仍只有散文纪律（不造活，入队列观察）；P2=编码纪律只有写侧（无 BOM），读侧容错各工具各写，已提 BC-P-260。无 P0/P1。
+## 2026-11-15 18:2x 哨兵轮（M206 守卫名单收口）
+- 产品（产品优先律 2 分件）：4 文件 12 处守卫字面表改派生源——`lane_gate:395` 契约断言语义单源化（P1·该行注释自陈「这份表就是契约」，消费侧加字段时旧字面不会跟随）＋`first_order_consent_drill` 8 站点（完整条款场景改 `list(REQUIRED_TERMS)`，刻意的缺项场景 `FO-TERMS-PARTIAL/ABSENT` 保持字面）＋`deal_flow_mock:278`（15 名字面→`WRITER_KEYS`，F6 由 15 键收紧到 18 键，M133「逐键断言」原意保留）＋`city3d_bake_spike:107/126`（→`list(DEFAULT_PACKS)`；A3/A4 夹具特定包名断言未动）。普查读数 double_copy 13→2、subset 3→2、superset 1→1，余 5 站点全为 M206 行明示的刻意场景（revenue_caliber 3／dispatch_precheck 1／knowledge_sync_audit 1）；字面数 401→389 与 12 处改动逐一对应。四件 selftest 全绿（LANE-GATE PASS／30/30／10/10／9/9）。证据 `state/m206-guard-collapse-20261115.txt`。
+- 审核：按 12:4x 轮确立的 origin 快照判据，本司无新增涉本司派单行（D-20261115-02 已 ack 本轮续跑 `dupes` 读数 26/6/20 与基线一致；D-20261115-12 禁恢复机队自启→本司零注册、零恢复、零派单）。
+- 日清：无 P0/P1。P2=派生性普查器 `--out` 参数把文件路径当目录创建（本轮误用一次已清理），且 verdict=FOUND 时 rc 仍为 0（编排侧无法当门用），两者合并提 BC-P-261、队列补 M207。

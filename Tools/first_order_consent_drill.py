@@ -147,12 +147,12 @@ def synthetic_orders():
          "accept_prompt_evidence": {
              "prompted_at": "2026-11-04T09:58:00+08:00", "significant": True,
              "channel": "in-app-checkout-banner",
-             "terms_shown": ["auto_renew", "lead_days", "cancel_path"]}},
+             "terms_shown": list(REQUIRED_TERMS)}},
         {"order_id": "FO-OK-SAME-MINUTE", "auto_renew": True,
          "accepted_at": "2026-11-04T10:00:30+08:00",
          "accept_prompt_evidence": {
              "prompted_at": "2026-11-04T10:00:00+08:00", "significant": True,
-             "channel": "sms", "terms_shown": ["auto_renew", "lead_days", "cancel_path"]}},
+             "channel": "sms", "terms_shown": list(REQUIRED_TERMS)}},
         {"order_id": "FO-NO-EVIDENCE", "auto_renew": True,
          "accepted_at": "2026-11-04T10:00:00+08:00"},
         {"order_id": "FO-AFTER-ACCEPT", "auto_renew": True,
@@ -160,19 +160,19 @@ def synthetic_orders():
          "accept_prompt_evidence": {
              "prompted_at": "2026-11-04T10:05:00+08:00", "significant": True,
              "channel": "in-app-checkout-banner",
-             "terms_shown": ["auto_renew", "lead_days", "cancel_path"]}},
+             "terms_shown": list(REQUIRED_TERMS)}},
         {"order_id": "FO-AT-ACCEPT", "auto_renew": True,
          "accepted_at": "2026-11-04T10:00:00+08:00",
          "accept_prompt_evidence": {
              "prompted_at": "2026-11-04T10:00:00+08:00", "significant": True,
              "channel": "in-app-checkout-banner",
-             "terms_shown": ["auto_renew", "lead_days", "cancel_path"]}},
+             "terms_shown": list(REQUIRED_TERMS)}},
         {"order_id": "FO-NOT-SIGNIFICANT", "auto_renew": True,
          "accepted_at": "2026-11-04T10:00:00+08:00",
          "accept_prompt_evidence": {
              "prompted_at": "2026-11-04T09:00:00+08:00", "significant": False,
              "channel": "terms-page-link",
-             "terms_shown": ["auto_renew", "lead_days", "cancel_path"]}},
+             "terms_shown": list(REQUIRED_TERMS)}},
         {"order_id": "FO-TERMS-PARTIAL", "auto_renew": True,
          "accepted_at": "2026-11-04T10:00:00+08:00",
          "accept_prompt_evidence": {
@@ -189,13 +189,13 @@ def synthetic_orders():
          "accept_prompt_evidence": {
              "prompted_at": "2026-11-04T09:50:00+08:00", "significant": True,
              "channel": "",
-             "terms_shown": ["auto_renew", "lead_days", "cancel_path"]}},
+             "terms_shown": list(REQUIRED_TERMS)}},
         {"order_id": "FO-BAD-TIME", "auto_renew": True,
          "accepted_at": "2026-11-04T10:00:00+08:00",
          "accept_prompt_evidence": {
              "prompted_at": "11/04/2026 09:50", "significant": True,
              "channel": "in-app-checkout-banner",
-             "terms_shown": ["auto_renew", "lead_days", "cancel_path"]}},
+             "terms_shown": list(REQUIRED_TERMS)}},
         {"order_id": "FO-MANUAL", "auto_renew": False,
          "accepted_at": "2026-11-04T10:00:00+08:00"},
     ]
@@ -285,7 +285,7 @@ def selftest():
                 "accept_prompt_evidence": {
                     "prompted_at": "2026-11-04T09:58:00+08:00",
                     "significant": True, "channel": "in-app-checkout-banner",
-                    "terms_shown": ["auto_renew", "lead_days", "cancel_path"]}}
+                    "terms_shown": list(REQUIRED_TERMS)}}
         base.update(kw)
         return base
 

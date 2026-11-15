@@ -319,3 +319,8 @@ T187 把 rounds.log 的 text-integrity 义务钉成了写侧硬闸，但闸的�
 **现象**：本轮负控用 PS5.1 `-Encoding UTF8` 写夹具，整账本被判「全行不可读」——D-20261102-03② 只规定了**写侧**（台账 UTF-8 无 BOM），**读侧**没有任何单源策略：每个工具自己决定用 `utf-8` 还是 `utf-8-sig`，于是同一份带 BOM 的导出件，A 工具读出数据、B 工具判成 8 行坏行。而真实来源（平台售后导出、Excel 另存、老 PS 脚本）恰恰常带 BOM。
 **判据三问**：①消费方=一切账本/台账读取器作者（cost_ledger/refund_track_check/refund_rate_calibration/quota_prepaid_liability/month_end_collect 等）与任何接平台导出的人；②单位经济=一次性普查（正则扫 `Tools/*.py` 的 `open(...encoding=` 与 `write_text(...encoding=`），<2 秒，无运行成本；修法=读用 `utf-8-sig`、写保持 `utf-8`（不写 BOM），零行为变更；③合规=无涉（纯编码，不动任何金额口径）。
 **建议**：①先做只读普查出「读侧用 utf-8 的账本读取器」清单与文件数，落 state/（不判红）；②对命中项改 `utf-8-sig` 并各补一条 BOM 夹具（照 `refund_track_check` 的做法）；③把「读 sig / 写 plain」写进 runbook 判据行一行。判负条件=普查发现读侧本就统一，则只留一行纪律不建工具。
+
+## BC-P-261 派生性普查器「可当门用」两处契约缺口（2026-11-15 18:1x 立·M206 实弹派生）
+**现象**：本轮实跑 `guard_list_census run` 两次，①`--out state/x.txt` 被按目录创建（工具把 out 当输出目录，与其余工具「--out=文件」语义相反），清理前目录残留；②`verdict=GUARD-CENSUS-FOUND` 时退出码仍是 0，编排/收尾闸无法把它当门用——本轮只能先落 JSON 再人工 parse，这正是「仪器有了但接不进流水线」的典型形态。
+**判据三问**：①消费方=一切把普查接进收尾闸的编排面（round_append 前置、patrol、周轮底座自检）与写普查脚本的人；②单位经济=一次性改参数命名与加开关（约 20 行），零运行成本；`--out-dir` 默认沿用现行为不破坏调用方，`--fail-on-found` 默认关；③合规=无涉（只读普查，不改判定）。
+**建议**：①`--out` 语义改为「文件或目录两态」（`os.path.isdir` 判定，或 splitext 为空视作目录），冲突时打印明文说明；②新增 `--fail-on-found`，FOUND 时 rc=1，并预留 `--exempt` 读取豁免表（BC-P-259 三项刻意场景+假阳一处），FOUND 但全在豁免表内时 rc=0；③selftest 扩三断言（两态 out、FOUND→1、豁免→0）。判负条件=若三周内无编排面真接入该开关，则退回「人工读 summary」不建门。
