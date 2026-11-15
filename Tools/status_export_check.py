@@ -41,6 +41,14 @@ gate, so an 11-03 sentence still appended itself onto an 11-08 face as
 soon as anyone ran `compose --write`. Supplements older than the export's
 own staleness cap are now ignored with a NOTE instead of being merged.
 
+M204: the M167 drop was announced only on stdout, and the verdict stayed
+EXPORT-GREEN -- so "the supplement layer was thrown away" and "nothing was
+ever written" looked identical on the CEO face (D-20 部分覆盖仍绿 family).
+The face now carries a `supplement` line with one of five states
+(ACTIVE/EMPTY/STALE/ABSENT/UNREADABLE); a stale layer names the keys that
+never landed, and an empty layer is EMPTY rather than a daily "stale" alarm
+for a file with nothing in it.
+
 T169 adds the write-side half of the same defect: the read gate could see
 a BOM but nobody asserted the *writer* produced none. An editor save or a
 PowerShell `Out-File` aimed at this file re-introduces the BOM and the face
@@ -172,6 +180,31 @@ def caps_problems(payload):
     return problems
 
 
+def supplement_problems(payload):
+    """M204: 面里的补充层读数只能是那三态之一。
+
+    键缺=compose 之前写的老面，不算坏（不追溯）；键在而状态字样不认识、
+    或过期/不可解析态不点名未落地键 = 面在自述一个没人定义的状态，比不写更糟。
+    """
+    if SUPPLEMENT_KEY not in payload:
+        return []
+    got = payload.get(SUPPLEMENT_KEY)
+    bad = _bad_value(SUPPLEMENT_KEY, got)
+    if bad:
+        return [bad]
+    state = None
+    for s in SUPPLEMENT_STATES:
+        if ("state=%s" % s) in got:
+            state = s
+            break
+    if state is None:
+        return ["%s state 不在 %s 之内"
+                % (SUPPLEMENT_KEY, "/".join(SUPPLEMENT_STATES))]
+    if state in ("STALE", "UNREADABLE") and "keys=" not in got:
+        return ["%s state=%s 未点名未落地键" % (SUPPLEMENT_KEY, state)]
+    return []
+
+
 def export_verdict(raw_bytes, now=None, rounds_text="", exists=True):
     """Pure: verdict + detail for the export face.
 
@@ -210,6 +243,9 @@ def export_verdict(raw_bytes, now=None, rounds_text="", exists=True):
     cap_problems = caps_problems(payload)
     if cap_problems:
         return "EXPORT-BAD", "; ".join(cap_problems)
+    sup_problems = supplement_problems(payload)
+    if sup_problems:
+        return "EXPORT-BAD", "; ".join(sup_problems)
     updated = parse_ts(payload.get("updated_at"))
     if updated is None:
         return "EXPORT-BAD", "updated_at unparsable: %r" % (payload.get("updated_at"),)
@@ -226,9 +262,14 @@ def export_verdict(raw_bytes, now=None, rounds_text="", exists=True):
                                     "bench=rounds.log latest round)"
                                     % (latest.strftime("%Y-%m-%d %H:%M"), lag_h,
                                        updated.strftime("%Y-%m-%d %H:%M")))
+    sup_state = "n/a"
+    for s in SUPPLEMENT_STATES:
+        if ("state=%s" % s) in (payload.get(SUPPLEMENT_KEY) or ""):
+            sup_state = s
+            break
     return "EXPORT-GREEN", ("three lines present, updated_at=%s age=%.1fh "
-                            "(bench=now+rounds.log latest round)"
-                            % (updated.strftime("%Y-%m-%d %H:%M"), age_h))
+                            "supplement=%s (bench=now+rounds.log latest round)"
+                            % (updated.strftime("%Y-%m-%d %H:%M"), age_h, sup_state))
 
 
 def check(root=None, now=None):
@@ -307,6 +348,18 @@ POOL_FIELD_RE = re.compile(r"\b(stock_dispatchable|pool_effective)=(\S+)")
 # M167: a supplement older than the export's own cap is stale by the same
 # argument the export itself is -- it describes a round nobody can verify.
 OVERRIDE_MAX_AGE_H = MAX_AGE_H
+
+# M204: "expired and ignored" must not live only in stdout.  The face has to
+# say which of the three supplement states is in effect and, when the layer
+# was dropped, which keys never landed -- otherwise "补充层整层蒸发" looks
+# exactly like "本来就没写" (same family as D-20 部分覆盖仍绿).
+SUPPLEMENT_KEY = "supplement"
+# EMPTY（M204 实跑发现）：本仓 overrides 是 `{}`，过期后每轮都印一次
+# 「supplements ignored as stale」——什么都没丢却报「整层被丢」，是告警噪声。
+# 空层与「有键但过期」必须分开读。
+SUPPLEMENT_STATES = ("ACTIVE", "EMPTY", "STALE", "ABSENT", "UNREADABLE")
+# 判据只能来自单源：这三键禁被补充层改写。
+SINGLE_SOURCE_KEYS = (CAPS_KEY, FRESHNESS_KEY, SUPPLEMENT_KEY)
 
 # M182: the queue-derived milestone can only ever name the oldest unfinished
 # row, so the CEO face kept reporting M25 (opened 2026-09-29) as "next" for
@@ -563,13 +616,15 @@ def load_declared_milestone(root=None, now=None, max_age_h=MILESTONE_MAX_AGE_H):
 
 
 def compose_lines(rounds_text, queue_text, files, now=None, overrides=None,
-                  pool_line=None, declared_milestone=None):
+                  pool_line=None, declared_milestone=None, supplement=None):
     """Pure: three machine lines + overrides appended, never replacing.
 
     `pool_line` (M166) is appended to current_activity so the two-pool
     reading reaches the CEO face without being retyped each round.
     `declared_milestone` (M182) wins over the queue-derived row, and the line
     says which one it came from so a wrong target can be traced to its author.
+    `supplement` (M204) is the freshness state of the override layer; it is
+    written into the face because a dropped layer is otherwise invisible.
     """
     now = now or datetime.datetime.now()
     activity = compose_activity(rounds_text)
@@ -587,13 +642,15 @@ def compose_lines(rounds_text, queue_text, files, now=None, overrides=None,
         "current_activity": activity,
         "latest_artifact": compose_artifact(files),
         "next_milestone": milestone,
-        # BC-P-241：判据与定标日期写进面自身。两个键由代码独占生成，
+        # BC-P-241：判据与定标日期写进面自身。三个键由代码独占生成，
         # 不在下面的 overrides 循环里可被覆盖——面只能投影单源，不能改写它。
         CAPS_KEY: caps_block(),
         FRESHNESS_KEY: caps_line(),
+        # M204：补充层的生效/过期/缺失三态进面，过期层点名未落地键。
+        SUPPLEMENT_KEY: supplement or supplement_line({"state": "ABSENT"}),
     }
     for key, value in (overrides or {}).items():
-        if key in (CAPS_KEY, FRESHNESS_KEY):
+        if key in SINGLE_SOURCE_KEYS:
             _print_safe("NOTE overrides 试图改写 %s，已忽略（判据只能来自单源）" % key)
             continue
         if not isinstance(value, str) or not value.strip():
@@ -684,24 +741,24 @@ def guarded_write(path, payload_lines):
 
 
 def _read_overrides(path):
-    """(dict, warning) -- BOM tolerated on read, but never silently dropped."""
+    """(dict, warning, parsed_ok) -- BOM tolerated on read, never silently dropped."""
     try:
         with open(path, "rb") as f:
             raw = f.read()
     except OSError:
-        return {}, None
+        return {}, None, False
     has_bom = raw.startswith(BOM)
     try:
         payload = json.loads(raw.decode("utf-8-sig"))
     except ValueError as e:
-        return {}, "%s unparsable: %s" % (OVERRIDES_PATH, e)
+        return {}, "%s unparsable: %s" % (OVERRIDES_PATH, e), False
     if not isinstance(payload, dict):
-        return {}, "%s top level is not an object" % OVERRIDES_PATH
+        return {}, "%s top level is not an object" % OVERRIDES_PATH, False
     warn = None
     if has_bom:
         warn = ("%s carries a UTF-8 BOM (tolerated on read; the writer must "
                 "save it BOM-free)" % OVERRIDES_PATH)
-    return payload, warn
+    return payload, warn, True
 
 
 def overrides_freshness(path, now=None, max_age_h=OVERRIDE_MAX_AGE_H):
@@ -725,6 +782,70 @@ def overrides_freshness(path, now=None, max_age_h=OVERRIDE_MAX_AGE_H):
     return True, None
 
 
+def supplement_report(path, now=None, max_age_h=OVERRIDE_MAX_AGE_H):
+    """(report, payload) -- 补充层三态，含「过期时到底哪些键没落地」。
+
+    M204: overrides_freshness only answers "usable or not"; the NOTE goes to
+    stdout and compose --write still returned EXPORT-GREEN, so neither the
+    face nor the verdict showed that the whole layer had been dropped.  A
+    stale layer is therefore still *read* here -- not to merge it, but to
+    name the keys that never landed.
+    """
+    now = now or datetime.datetime.now()
+    report = {"state": "ABSENT", "age_h": None, "keys": [], "note": None}
+    try:
+        mtime = os.path.getmtime(path)
+    except OSError:
+        return report, {}
+    age_h = (now - datetime.datetime.fromtimestamp(mtime)).total_seconds() / 3600.0
+    report["age_h"] = age_h
+    payload, warn, ok = _read_overrides(path)
+    report["keys"] = sorted(payload.keys())
+    if not ok:
+        report["state"] = "UNREADABLE"
+        report["note"] = warn
+        return report, {}
+    if not payload:
+        # 空层：过期也没有任何键会丢，过期告警在这里是误报。
+        report["state"] = "EMPTY"
+        report["note"] = warn
+        return report, {}
+    if warn:
+        # BOM 容读：内容可用，但写侧待修，面里点名。
+        report["state"] = "ACTIVE"
+        report["note"] = warn
+        return report, payload
+    if age_h > max_age_h:
+        report["state"] = "STALE"
+        report["note"] = ("%s is %.1fh old (> %.0fh), supplements ignored as stale"
+                          % (OVERRIDES_PATH, age_h, max_age_h))
+        return report, {}
+    report["state"] = "ACTIVE"
+    return report, payload
+
+
+def supplement_line(report):
+    """Pure: 补充层一行读数（进面）。
+
+    过期态把人读行的「被忽略」与未落地键写在一起——补一条也没生效、
+    补了十条也没生效，必须在面上一眼分得开；空层单列，免得天天报「整层被丢」。
+    """
+    state = (report or {}).get("state") or "ABSENT"
+    if state not in SUPPLEMENT_STATES:
+        state = "UNREADABLE"
+    if state == "ABSENT":
+        return "state=ABSENT 无补充层"
+    age = report.get("age_h")
+    keys = report.get("keys") or []
+    tail = {"ACTIVE": "补充层生效",
+            "EMPTY": "补充层为空·无可落地键",
+            "STALE": "补充层已过期·整层未落地",
+            "UNREADABLE": "补充层不可解析·整层未落地"}[state]
+    return "state=%s age_h=%s keys=%s（%s）" % (
+        state, "n/a" if age is None else "%.1f" % age,
+        ",".join(keys) if keys else "0", tail)
+
+
 def compose(root=None, now=None, write=False):
     """Live compose; --write also gates the result through check()."""
     root = root or ROOT
@@ -733,21 +854,19 @@ def compose(root=None, now=None, write=False):
     heartbeat_text = _read_text(os.path.join(root, *HEARTBEAT_PATH.split("/")))
     overrides = {}
     ov_path = os.path.join(root, *OVERRIDES_PATH.split("/"))
-    if os.path.exists(ov_path):
-        fresh, warn = overrides_freshness(ov_path, now=now)
-        if warn:
-            _print_safe("NOTE %s" % warn)
-        if fresh:
-            overrides, read_warn = _read_overrides(ov_path)
-            if read_warn:
-                _print_safe("NOTE %s" % read_warn)
+    ov_report, ov_payload = supplement_report(ov_path, now=now)
+    if ov_report.get("note"):
+        _print_safe("NOTE %s" % ov_report["note"])
+    if ov_report["state"] == "ACTIVE":
+        overrides = ov_payload
     declared, ms_note = load_declared_milestone(root, now=now)
     if ms_note:
         _print_safe("NOTE %s" % ms_note)
     lines = compose_lines(rounds_text, queue_text, collect_files(root),
                           now=now, overrides=overrides,
                           pool_line=pool_note(heartbeat_text, now=now),
-                          declared_milestone=declared)
+                          declared_milestone=declared,
+                          supplement=supplement_line(ov_report))
     if write:
         path = os.path.join(root, *EXPORT_PATH.split("/"))
         problems, first3 = guarded_write(path, lines)
@@ -1115,6 +1234,70 @@ def selftest():
     a6_ok = any(p.startswith("state/round_append_") for p in ARTIFACT_SKIP_PREFIX)
     cases.append(a6_ok)
     print("  [%s] A6 轮账本抓取件不进最近实物" % ("PASS" if a6_ok else "FAIL"))
+
+    # M204：补充层三态必须各说各话——「过期所以整层没用」这件事只印在 stdout
+    # 时，面与判定都看不出来，与「本来就没写」长得一样。
+    with tempfile.TemporaryDirectory() as td:
+        ovp = os.path.join(td, "ov.json")
+        b_absent, _ = supplement_report(ovp, now=now)
+        with open(ovp, "w", encoding="utf-8") as f:
+            f.write('{"next_milestone": "11-03 旧窗口"}')
+        b_fresh, b_fresh_pay = supplement_report(ovp, now=now)
+        old_ts = (now - datetime.timedelta(days=4)).timestamp()
+        os.utime(ovp, (old_ts, old_ts))
+        b_stale, b_stale_pay = supplement_report(ovp, now=now)
+    b_stale_line = supplement_line(b_stale)
+    b1_ok = (b_absent["state"] == "ABSENT"
+             and b_fresh["state"] == "ACTIVE"
+             and "next_milestone" in b_fresh_pay
+             and b_stale["state"] == "STALE" and b_stale_pay == {}
+             and "next_milestone" in b_stale_line and "未落地" in b_stale_line)
+    cases.append(b1_ok)
+    print("  [%s] B1 补充层三态 ABSENT/ACTIVE/STALE 且过期层点名未落地键 (%s)"
+          % ("PASS" if b1_ok else "FAIL", b_stale_line))
+
+    b2_lines = compose_lines(base_round, q_one, files_a, now=now,
+                             supplement=b_stale_line)
+    b2_plain = compose_lines(base_round, q_one, files_a, now=now)
+    b2_ok = ("state=STALE" in b2_lines[SUPPLEMENT_KEY]
+             and "next_milestone" in b2_lines[SUPPLEMENT_KEY]
+             and b2_lines["next_milestone"] == b2_plain["next_milestone"])
+    cases.append(b2_ok)
+    print("  [%s] B2 过期态进面且不改三行取数语义" % ("PASS" if b2_ok else "FAIL"))
+
+    b3_unknown = dict(good, supplement="补充层全都好")
+    b3_v1, b3_d1 = export_verdict(enc(b3_unknown), now=now, rounds_text=rounds_old)
+    b3_nokeys = dict(good, supplement="state=STALE age_h=93.9（整层未落地）")
+    b3_v2, b3_d2 = export_verdict(enc(b3_nokeys), now=now, rounds_text=rounds_old)
+    b3_v3, _ = export_verdict(enc(good), now=now, rounds_text=rounds_old)
+    b3_ok = (b3_v1 == "EXPORT-BAD" and SUPPLEMENT_KEY in b3_d1
+             and b3_v2 == "EXPORT-BAD" and "未点名" in b3_d2
+             and b3_v3 == "EXPORT-GREEN")
+    cases.append(b3_ok)
+    print("  [%s] B3 未知态/过期不点名判红，无该键的老面不追溯 (%s/%s)"
+          % ("PASS" if b3_ok else "FAIL", b3_v1, b3_v2))
+
+    b4 = compose_lines(base_round, q_one, files_a, now=now,
+                       overrides={SUPPLEMENT_KEY: "state=ACTIVE 假装生效"})
+    b4_ok = "假装" not in b4[SUPPLEMENT_KEY] and b4[SUPPLEMENT_KEY].startswith("state=")
+    cases.append(b4_ok)
+    print("  [%s] B4 补充层不得改写 supplement 键（单源）" % ("PASS" if b4_ok else "FAIL"))
+
+    # M204 实跑发现：本仓 overrides 是 `{}`，旧的过期分支每轮都报「supplements
+    # ignored as stale」——没东西可丢。空层要单列成 EMPTY，且不印告警。
+    with tempfile.TemporaryDirectory() as td:
+        ovp2 = os.path.join(td, "empty.json")
+        with open(ovp2, "w", encoding="utf-8") as f:
+            f.write("{}")
+        empty_ts = (now - datetime.timedelta(days=5)).timestamp()
+        os.utime(ovp2, (empty_ts, empty_ts))
+        b_empty, b_empty_pay = supplement_report(ovp2, now=now)
+    b5_ok = (b_empty["state"] == "EMPTY" and b_empty["note"] is None
+             and b_empty_pay == {}
+             and "无可落地键" in supplement_line(b_empty))
+    cases.append(b5_ok)
+    print("  [%s] B5 空补充层判 EMPTY 且不印过期告警 (%s)"
+          % ("PASS" if b5_ok else "FAIL", supplement_line(b_empty)))
 
     print("status_export_check selftest: %d/%d PASS" % (sum(cases), len(cases)))
     return 0 if all(cases) else 1

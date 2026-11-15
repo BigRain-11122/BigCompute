@@ -1,8 +1,8 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-11-15 22:48",
- "current_activity": "2026-11-15 18:20 轮：M206 done（守卫名单收口·4 文件 12 处字面表改派生：lane_gate:395 契约断言→set(CONSUMED_FIELDS)〔P1 单源化·注释自陈「这份表就是契约」〕/first_order_consent_drill 8 站点→list(REQUIRED_TERMS)/deal_flow_mock:278→WRITER_KEYS 15→18 键〔M133… ｜ 两池：本司备货可派 2 ／ 机队可领 4（两个不同池，本司卡未登记进机队池）",
- "latest_artifact": "state/t244-dupes-window-20261115.txt（mtime 2026-11-15 22:46）",
+ "updated_at": "2026-11-16 00:18",
+ "current_activity": "2026-11-15 22:00 轮：T244 done（dupes 窗口口径：--since 让分母只取窗口内成功点火，present 仍按全历史读→窗口内重复仍判 would-skip；时标不可读记 undated 不静默归窗；坏 --since fail-closed rc=2；selftest 93→98/98 新增 S44-S48… ｜ 两池：本司备货可派 2 ／ 机队可领 4（两个不同池，本司卡未登记进机队池）",
+ "latest_artifact": "state/sentinel.lineset.json（mtime 2026-11-16 00:10）",
  "next_milestone": "窗口内重复点火率进实况面（BC-P-262 接线：status-export 增 ignition_repeat_rate 一行 + 轮账本 dupes= 面），当前基线 76.9% 对 <=10% 标准（source=declared）",
  "caps": {
   "write_lag_min": 30.0,
@@ -11,5 +11,6 @@
   "bench_date": "2026-11-11",
   "source": "Tools/status_face_freshness.py"
  },
- "freshness": "实况面判据：本轮刷面距今≤30 分钟才准落账（写侧）／面不得落后轮账本 >120 分钟／面龄 ≤2880 分钟（合 48 小时）；定标 2026-11-11；真值源=Tools/status_face_freshness.py"
+ "freshness": "实况面判据：本轮刷面距今≤30 分钟才准落账（写侧）／面不得落后轮账本 >120 分钟／面龄 ≤2880 分钟（合 48 小时）；定标 2026-11-11；真值源=Tools/status_face_freshness.py",
+ "supplement": "state=EMPTY age_h=119.4 keys=0（补充层为空·无可落地键）"
 }
