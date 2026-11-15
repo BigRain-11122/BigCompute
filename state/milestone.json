@@ -1,6 +1,5 @@
 {
- "next_milestone": "M206 守卫名单收口（M203 定出的 4 文件）：先 lane_gate:395 契约断言改 set(CONSUMED_FIELDS)（P1），再 first_order_consent_drill 8 站点／deal_flow_mock:278／city3d_bake_spike 2 站点（P2）；验收=guard_list_census 三数归零或只剩 4 处显式豁免（刻意场景 3+假阳 1）。旁支=M205 D-20261115-02 7 日复算维持承诺 11-22 18:00（source=declared）",
- "declared_at": "2026-11-15 12:20",
- "window_h": 48,
- "basis": "M203 本轮收口：普查器落盘 selftest 15/15，实跑 17 站点重复落在 7 文件，逐条 triage 定出真收口范围 4 文件（lane_gate P1 + 三个 P2），其余 4 处属刻意场景/夹具/假阳。原 next_milestone（M205 7 日复算）承诺窗 11-22，超出 48h 面，故降为旁支保留。"
+  "next_milestone": "窗口内重复点火率进实况面（BC-P-262 接线：status-export 增 ignition_repeat_rate 一行 + 轮账本 dupes= 面），当前基线 76.9% 对 <=10% 标准",
+  "declared_at": "2026-11-15 22:45",
+  "declared_by": "BigCompute-OSLoop night round"
 }

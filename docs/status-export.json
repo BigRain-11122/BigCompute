@@ -1,9 +1,9 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-11-15 18:16",
- "current_activity": "2026-11-15 12:00 轮：M151 done（退款/售后轨位机检 `Tools/refund_track_check.py` 落盘·八码 findings=越轨双向/履约串收入/重复退款/无主/超退/成本口径/负额/坏行·selftest 29/29·真账本 NO-DATA·负控 RED rc=1·连带修真缺陷=PS5.1 `-Encoding UTF8` 写 BOM 致整账本判不可读→读侧改 utf-8-sig 并入夹具·口径件… ｜ 两池：本司备货可派 2 ／ 机队可领 4（两个不同池，本司卡未登记进机队池）",
- "latest_artifact": "state/m206-guard-collapse-20261115.txt（mtime 2026-11-15 18:14）",
- "next_milestone": "M206 守卫名单收口（M203 定出的 4 文件）：先 lane_gate:395 契约断言改 set(CONSUMED_FIELDS)（P1），再 first_order_consent_drill 8 站点／deal_flow_mock:278／city3d_bake_spike 2 站点（P2）；验收=guard_list_census 三数归零或只剩 4 处显式豁免（刻意场景 3+假阳 1）。…（source=declared）",
+ "updated_at": "2026-11-15 22:48",
+ "current_activity": "2026-11-15 18:20 轮：M206 done（守卫名单收口·4 文件 12 处字面表改派生：lane_gate:395 契约断言→set(CONSUMED_FIELDS)〔P1 单源化·注释自陈「这份表就是契约」〕/first_order_consent_drill 8 站点→list(REQUIRED_TERMS)/deal_flow_mock:278→WRITER_KEYS 15→18 键〔M133… ｜ 两池：本司备货可派 2 ／ 机队可领 4（两个不同池，本司卡未登记进机队池）",
+ "latest_artifact": "state/t244-dupes-window-20261115.txt（mtime 2026-11-15 22:46）",
+ "next_milestone": "窗口内重复点火率进实况面（BC-P-262 接线：status-export 增 ignition_repeat_rate 一行 + 轮账本 dupes= 面），当前基线 76.9% 对 <=10% 标准（source=declared）",
  "caps": {
   "write_lag_min": 30.0,
   "ledger_lag_min": 120.0,

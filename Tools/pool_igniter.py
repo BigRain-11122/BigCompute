@@ -811,7 +811,23 @@ def delivery_audit(rows=None):
     return {"totals": totals, "cards": cards}
 
 
-def duplicate_waste(rows=None, root=ROOT):
+def _parse_receipt_ts(value):
+    """Parse a receipt timestamp; None when absent or unreadable."""
+    if not value:
+        return None
+    s = str(value).strip().replace("T", " ")
+    if s.endswith("Z"):
+        s = s[:-1]
+    s = s.split("+")[0].strip()
+    for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M", "%Y-%m-%d"):
+        try:
+            return datetime.datetime.strptime(s, fmt)
+        except ValueError:
+            continue
+    return None
+
+
+def duplicate_waste(rows=None, root=ROOT, since=None):
     """Repeat runs of one payload whose artifacts were still on disk.
 
     `delivery_audit` counts repeats; this says which of them bought nothing:
@@ -819,9 +835,23 @@ def duplicate_waste(rows=None, root=ROOT):
     was already delivered, so the extra launch consumed an editor and a CPU
     window for no new bytes.  Rows without a fingerprint (pre-T224) are left
     out rather than guessed at.
+
+    `since` scopes the *denominator* to one window (the group's 7-day
+    repeat-rate recompute).  Presence is still read from all rows: a repeat
+    inside the window whose delivery was proven by an earlier run outside it
+    did buy nothing, so the verdict is unchanged — only what counts as
+    "runs" moves.  Rows without a readable ts cannot be placed in the window
+    and are counted as `undated` rather than silently included.
     """
+    since_dt = None
+    if since:
+        since_dt = _parse_receipt_ts(since)
+        if since_dt is None:
+            raise ValueError(
+                "--since must look like YYYY-MM-DD[ HH:MM[:SS]]: %r" % (since,))
     rows = receipt_rows() if rows is None else rows
     cards = {}
+    undated = 0
     for r in rows:
         if not r.get("ok"):
             continue
@@ -832,25 +862,55 @@ def duplicate_waste(rows=None, root=ROOT):
         c = cards.setdefault(bid, {"ok_runs": 0, "payloads": {}})
         c["ok_runs"] += 1
         p = c["payloads"].setdefault(
-            fp, {"runs": 0, "first": None, "last": None, "present": 0})
+            fp, {"runs": 0, "first": None, "last": None, "present": 0,
+                 "w_runs": 0})
         p["runs"] += 1
         if p["first"] is None:
             p["first"] = r.get("ts")
         p["last"] = r.get("ts")
         if deliverable_on_disk(r, root=root) is True:
             p["present"] += 1
+        if since_dt is not None:
+            ts = _parse_receipt_ts(r.get("ts"))
+            if ts is None:
+                undated += 1
+            elif ts >= since_dt:
+                p["w_runs"] += 1
     totals = {"ok_runs": 0, "unique_payloads": 0, "repeat_runs": 0,
               "wasted_launches": 0}
+    if since_dt is None:
+        for c in cards.values():
+            totals["ok_runs"] += c["ok_runs"]
+            totals["unique_payloads"] += len(c["payloads"])
+            for p in c["payloads"].values():
+                if p["runs"] < 2:
+                    continue
+                totals["repeat_runs"] += p["runs"] - 1
+                if p["present"]:
+                    totals["wasted_launches"] += p["runs"] - 1
+        return {"totals": totals, "cards": cards}
     for c in cards.values():
-        totals["ok_runs"] += c["ok_runs"]
-        totals["unique_payloads"] += len(c["payloads"])
         for p in c["payloads"].values():
-            if p["runs"] < 2:
+            w = p["w_runs"]
+            if not w:
                 continue
-            totals["repeat_runs"] += p["runs"] - 1
-            if p["present"]:
-                totals["wasted_launches"] += p["runs"] - 1
-    return {"totals": totals, "cards": cards}
+            totals["ok_runs"] += w
+            totals["unique_payloads"] += 1
+            # A payload whose first run predates the window was already
+            # delivered before it, so every in-window run is a repeat.
+            first_dt = _parse_receipt_ts(p["first"])
+            repeats = w - (1 if (first_dt is None or first_dt >= since_dt)
+                           else 0)
+            totals["repeat_runs"] += repeats
+            if repeats and p["present"]:
+                totals["wasted_launches"] += repeats
+    totals["repeat_rate"] = (round(totals["repeat_runs"]
+                                  / float(totals["ok_runs"]), 4)
+                             if totals["ok_runs"] else 0.0)
+    return {"totals": totals, "cards": cards,
+            "window": {"start": since_dt.strftime("%Y-%m-%d %H:%M:%S"),
+                       "end": now().strftime("%Y-%m-%d %H:%M:%S"),
+                       "undated_runs": undated}}
 
 
 def last_tick_age_min():
@@ -2011,6 +2071,49 @@ def selftest():
             and dw["totals"]["wasted_launches"] == 3
             and dw["cards"]["B-CITY3D-01"]["payloads"][fp]["present"] == 3, dw)
 
+        # --- duplicate waste window (tech T244 / D-20261115-02) ------------
+        # The group recompute is per window; the old readout was all-history,
+        # so its repeat rate could not be compared with the standard.
+        since_3h = (now() - datetime.timedelta(hours=3)).strftime(
+            "%Y-%m-%d %H:%M:%S")
+        dw_w = duplicate_waste(
+            [dict(old_ok, outdir="run-keep"), dict(old_ok, outdir="run-keep"),
+             dict(same, outdir="run-keep")], root=tmp, since=since_3h)
+        chk("S44 T244: --since keeps pre-window runs out of the denominator "
+            "but still reads their delivery",
+            dw_w["totals"]["ok_runs"] == 1
+            and dw_w["totals"]["unique_payloads"] == 1
+            and dw_w["totals"]["repeat_runs"] == 1
+            and dw_w["totals"]["wasted_launches"] == 1
+            and dw_w["totals"]["repeat_rate"] == 1.0
+            and dw_w["window"]["undated_runs"] == 0, dw_w)
+
+        dw_u = duplicate_waste([dict(same, ts="not-a-date",
+                                     outdir="run-keep")],
+                               root=tmp, since=since_3h)
+        chk("S45 T244: undated receipt is named, not swept into the window",
+            dw_u["totals"]["ok_runs"] == 0
+            and dw_u["window"]["undated_runs"] == 1
+            and dw_u["totals"]["repeat_rate"] == 0.0, dw_u)
+
+        try:
+            duplicate_waste([same], root=tmp, since="last week")
+            bad_since = False
+        except ValueError:
+            bad_since = True
+        chk("S46 T244: unparseable --since fails closed instead of reading "
+            "as 'all history'", bad_since)
+
+        dw_plain = duplicate_waste([dict(same, outdir="run-keep")], root=tmp)
+        chk("S47 T244: default readout keeps no window key (numbers unchanged)",
+            "window" not in dw_plain
+            and "repeat_rate" not in dw_plain["totals"], dw_plain["totals"])
+
+        chk("S48 T244: ISO 'T'/'Z' timestamps from other writers parse too",
+            _parse_receipt_ts("2026-11-13T21:47:05") is not None
+            and _parse_receipt_ts("2026-11-13Z") is not None
+            and _parse_receipt_ts("") is None)
+
         # --- delivery audit: runs are not deliveries (tech T231) -----------
         da = delivery_audit([dict(same, fingerprint="aaaabbbbccccdddd"),
                              dict(same, fingerprint="aaaabbbbccccdddd"),
@@ -2498,13 +2601,48 @@ def selftest():
     return 0 if not failed else 1
 
 
-def dupes(as_json=False):
-    """Print which repeat ignitions bought nothing, from receipts + disk."""
-    rec = duplicate_waste()
+def dupes(as_json=False, since=None):
+    """Print which repeat ignitions bought nothing, from receipts + disk.
+
+    `--since` narrows the denominator to one window (the group's 7-day
+    repeat-rate recompute).  What counts as proof a delivery happened does
+    not narrow with it, so an out-of-window run still earns `would-skip`
+    for the in-window repeats it already paid for.
+    """
+    rec = duplicate_waste(since=since)
     if as_json:
         print(json.dumps(rec, ensure_ascii=False, sort_keys=True))
         return 0
     t = rec["totals"]
+    win = rec.get("window")
+    if win:
+        print("dupes window=%s..%s ok_runs=%d unique_payloads=%d "
+              "repeat_runs=%d wasted_launches=%d repeat_rate=%.1f%% "
+              "undated=%d"
+              % (win["start"], win["end"], t["ok_runs"],
+                 t["unique_payloads"], t["repeat_runs"], t["wasted_launches"],
+                 t["repeat_rate"] * 100.0, win["undated_runs"]))
+        start = _parse_receipt_ts(win["start"])
+        for bid in sorted(rec["cards"]):
+            c = rec["cards"][bid]
+            inwin = [(fp, p) for fp, p in c["payloads"].items()
+                     if p["w_runs"]]
+            repeated = []
+            for fp, p in inwin:
+                first_dt = _parse_receipt_ts(p["first"])
+                if p["w_runs"] > 1 or (first_dt is None
+                                       or first_dt < start):
+                    repeated.append((fp, p))
+            print("%s ok_runs=%d payloads=%d repeated=%d"
+                  % (bid, sum(p["w_runs"] for _, p in inwin), len(inwin),
+                     len(repeated)))
+            for fp, p in sorted(repeated, key=lambda x: -x[1]["w_runs"]):
+                verdict = ("would-skip" if p["present"]
+                           else "no-artifact-on-disk")
+                print("  fp=%s runs=%d(w=%d) first=%s last=%s artifacts=%s %s"
+                      % (fp, p["runs"], p["w_runs"], p["first"], p["last"],
+                         "%d/%d" % (p["present"], p["runs"]), verdict))
+        return 0
     print("dupes ok_runs=%d unique_payloads=%d repeat_runs=%d "
           "wasted_launches=%d"
           % (t["ok_runs"], t["unique_payloads"], t["repeat_runs"],
@@ -2530,6 +2668,9 @@ def main(argv=None):
     sub.add_parser("selftest")
     p_d = sub.add_parser("dupes")
     p_d.add_argument("--json", action="store_true", help="machine-readable")
+    p_d.add_argument("--since",
+                     help="window start (YYYY-MM-DD[ HH:MM[:SS]]); the "
+                          "denominator counts only ok runs at/after it")
     p_s = sub.add_parser("status")
     p_s.add_argument("--json", action="store_true", help="machine-readable")
     p_s.add_argument("--out", help="write the JSON readout to this path")
@@ -2551,7 +2692,11 @@ def main(argv=None):
     if args.cmd == "selftest":
         return selftest()
     if args.cmd == "dupes":
-        return dupes(as_json=args.json)
+        try:
+            return dupes(as_json=args.json, since=args.since)
+        except ValueError as exc:
+            print("dupes: %s" % exc)
+            return 2
     if args.cmd == "status":
         return status(as_json=args.json, out=args.out)
     if args.cmd == "bake-reconcile":
