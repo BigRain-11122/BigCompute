@@ -1,8 +1,8 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-11-15 12:17",
- "current_activity": "2026-11-15 06:00 轮：M146 收口（挂播预案+roster JSON+机检门 check 72 项 findings=0·selftest 18/18·早于 12:43 窗）+M205 立行（D-20261115-02 7 日复算轨·ack 回执落 cph4/fleet/queue-receipts·基线 26/20=77%）+tech T244（dupes 窗口口径）/explore E80（B站无人值守原文核验）… ｜ 两池：本司备货可派 2 ／ 机队可领 4（两个不同池，本司卡未登记进机队池）",
- "latest_artifact": "docs/ops/m203-guard-derivation-census-20261115.md（mtime 2026-11-15 12:16）",
+ "updated_at": "2026-11-15 12:49",
+ "current_activity": "2026-11-15 12:00 轮：M203 done（自检守卫名单派生性普查器 `Tools/guard_list_census.py` 落盘·AST 只读·selftest 15/15 PASS 含负控与真树锚；实跑 109 文件/398 个函数内集合→17 站点与同文件源集合重复=13 双份/3 严格子集/1 超前，落 7 文件… ｜ 两池：本司备货可派 2 ／ 机队可领 4（两个不同池，本司卡未登记进机队池）",
+ "latest_artifact": "state/sop-coverage-20261115-124802.json（mtime 2026-11-15 12:48）",
  "next_milestone": "M206 守卫名单收口（M203 定出的 4 文件）：先 lane_gate:395 契约断言改 set(CONSUMED_FIELDS)（P1），再 first_order_consent_drill 8 站点／deal_flow_mock:278／city3d_bake_spike 2 站点（P2）；验收=guard_list_census 三数归零或只剩 4 处显式豁免（刻意场景 3+假阳 1）。…（source=declared）",
  "caps": {
   "write_lag_min": 30.0,
