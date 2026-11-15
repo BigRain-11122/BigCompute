@@ -24,11 +24,13 @@ drill_set_census.py
 e12_package_anchor_probe.py
 executor_liveness.py
 first_order_consent_drill.py
+frame_qc_spec.py
 gacha_cap_gate.py
 gacha_probability_audit.py
 gpu_energy_profile.py
 gpu_idle_collector.py
 gpu_release_valve_check.py
+guard_list_census.py
 h3_power_sampler.py
 h3_window_energy.py
 heartbeat_token_census.py
@@ -46,6 +48,7 @@ ledger_encoding_guard.py
 ledger_markers.py
 ledger_parallel_census.py
 ledger_tail_fix.py
+livestream_duty_plan_check.py
 marker_literal_census.py
 model_blob_manifest.py
 model_impact_probe.py
@@ -97,6 +100,7 @@ status_export_check.py
 status_face_freshness.py
 storm_leftover_check.py
 text_integrity_census.py
+threshold_census.py
 unit_cost_caliber.py
 unit_cost_drill.py
 vat_break_even.py

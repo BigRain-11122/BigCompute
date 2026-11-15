@@ -998,3 +998,8 @@ P0 提醒（@HQ 取回腿·18:00 前）：D-02 指定取回源 `backup/bm-a-2026
 - 闸的诚实边界：`check` 只证上述判据内部自洽，**不证**值守人真在场、平台「AI 生成」报备已勾选、平台判定口径与本案一致——这三项在预案 §六 明列为物理/运营前置，未绿不开播，本件仍标 `plan_only_not_broadcast`。
 - D-20261115-02 回执（06:00 决策轮派单，本窗 30 分钟内 ack）：采纳「去重看产物可打开、时间窗只作无产物兜底」为集团标准；基线真数 `dupes ok_runs=26 repeat_runs=20 wasted_launches=20`（重复率 0.7692，新规则下 20/20 would-skip）；复算窗 11-15 18:00→11-22 18:00，`Tools/pool_igniter.py dupes` 每轮跑并落 `state/dupes-<date>.txt`，回执归 `cph4/fleet/queue-receipts/`。证据 `state/t243-dupes-20261115-0615.txt`。
 - 日清：orders 无涉本司新行（正文止 11-14 00:30）；decisions 第 62 批仅 D-02 涉本司（已 ack），D-01/D-03/D-04/D-05 属他司零动作。main 队列 open 8→8（M146 结案 −1／M205 复算轨 +1，净 0 如实）。无 P0/P1。
+
+## 2026-11-15 12:1x 午班轮（M203 守卫名单派生性普查）
+- 产品（产品优先律 2 分件）：`Tools/guard_list_census.py` 落盘——AST 只读，把「模块级字符串集合」认作源、把「函数内同形字面」认作副本，逐站点判 DOUBLE-COPY／SUBSET-DRIFT／SUPERSET-DRIFT／STANDALONE；selftest 15/15（负控=派生测试零候选；真树锚=T241 修过的 `frame_qc_spec.py` 仍 GUARD-DERIVED）。实跑全树 109 文件 / 398 个函数内集合 → **17 站点重复（13 双份 / 3 子集 / 1 超前）**落在 7 个文件；逐条 triage 后真收口范围=**4 文件**（`lane_gate:395` P1 契约断言、`first_order_consent_drill` 8 站点、`deal_flow_mock:278`、`city3d_bake_spike` 2 站点），另 3 条属刻意场景取值、1 条夹具输入、1 条假阳（mode 词表≠lane 词表）如实不改。本轮零判定改动，收口转 M206。
+- 审核：本地工作树 `docs/orders.md` 正文止于 11-14 12:20，而 **origin 已有 11-15 10:3x–11:1x 通知边界令**（禁止恢复机队自启；同一时间只允许一个会话做机队启停类操作）；本司无涉本司派单，本轮零任务注册/恢复动作以对齐。decisions 第 63 批 6 行（D-06..D-11）全属他司域；D-12 系其自纠（本地读数陈旧→漏读 origin 新令）。
+- 日清：**P2 集团台账读取面**——本窗审核步与 D-12 各踩一次同一坑（mtime 新≠行新；本地树落后 origin 新令），已按 origin 快照取证；M167 判官已具备行集判据，缺的只是编排侧先取 origin。不新增立法：下轮审核步先 `git show origin/main:docs/orders.md` 再读本地。无 P0/P1 涉本司。
