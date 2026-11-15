@@ -1019,3 +1019,6 @@ P0 提醒（@HQ 取回腿·18:00 前）：D-02 指定取回源 `backup/bm-a-2026
 - 队列：2026-11-16 00:1x 令牌轮 **M204 done**（产品优先律 2 分件）=实况面补充层三态进面，supplement 键五态 ACTIVE/EMPTY/STALE/ABSENT/UNREADABLE；过期层点名未落地键、空层单列 EMPTY 不再每轮误报「整层被丢」；status_export_check selftest 35→40/40。
 - 审核：2026-11-16 00:0x decisions 第 65 批 4 行（D-01 交付分叉／D-02 视觉卡面／D-03 MiniGame 判活／D-04 MV 关键帧）全属他司域，@本司零新行零动作；orders 本司行 L33/35/79/220 无 11-16 新增。
 - 日清：2026-11-16 00:1x **P1 他司面（本司只报不改）**=no.16 resident QA :8792 端口在听而 /ask 超时（35B 模型冷加载窗），与 no.22 已知历史面并列为冒烟仅有的两红；建议=探针把「端口在听+首答超时」与「服务未起」分开读（同 M204 的「什么都慢≠什么都不在」族）。P2=本仓 docs/status-export-overrides.json 是空 {} 却挂了 5 天，建议要么删掉该文件（面直说 ABSENT）要么写进真补充，别留一个永远过期的空壳。无 P0。
+- 队列：2026-11-16 06:2x 令牌轮 **T246 done**（D-20261116-08 ① 回执·产品优先律 2 分件）=/ask 三态化 ASK-OK／ASK-WARMING／ASK-DOWN；预算不拍脑袋也不散在脚本=服务自陈 llm.cpu_lane.timeout_s(120)+余量 20=140s，登记 Tools/probe_config.json；实测锚=同一次 /ask 160 tok 耗 108.1s（旧 40s 窗必红），live no.16 本轮 ASK-OK 73.01s；selftest 17→26/26。
+- 审核：2026-11-16 06:0x decisions 第 66 批 4 行（D-05/D-06/D-07 他司域零动作；D-08 @本司=本两行回执）；orders 本地尾行 11-14 12:20 无 11-16 新增令。
+- 日清：2026-11-16 06:2x **D-20261116-08 ② 回执**=空壳 docs/status-export-overrides.json（内容 {}·挂 5 天）已 git rm，compose --write 实跑 supplement=ABSENT（不再每轮误报过期）；① ②两项均早于 12:00 死线落地。冒烟复核=**30/32**，两红=no.8（提案面尾形被 BC-P-263 散文段写坏，本轮已改回表格行并补 263/264 两行）/no.22（既有历史面）；no.16 红已消。无 P0。

@@ -1,0 +1,9 @@
+{
+  "_readme": "QA probe thresholds live here, not scattered in scripts (D-20261116-08 item 1). qa_smoke.py reads this file at import time; unreadable/missing -> the literals in qa_smoke.py are used and the log names the fallback.",
+  "ask_settle": {
+    "_readme": "resident_qa 8792 /ask answer budget = the server's own declared llm.cpu_lane.timeout_s (read from /health) + margin_s, clamped to [floor_s, cap_s]. Calibration anchor: 2026-11-16 06:1x measured 160 tokens answered in 108.1s on the fallback CPU lane (qwen3.5:27b) while the probe gave up at 40s -> the red was structural.",
+    "margin_s": 20,
+    "floor_s": 40,
+    "cap_s": 900
+  }
+}

@@ -41,7 +41,12 @@ Runs the four BigCompute charter checks (docs/qa-smoke-test-charter.md):
     suite still showed 8792 PASS. This probe walks the real click path
     (whitelist anchor -> persona prompt -> LLM backend -> AIGC gate)
     and names the exact false-green class; when the backend port has no
-    listener the POST is skipped (no wasted generation).
+    listener the POST is skipped (no wasted generation). Three readings
+    since T246/D-20261116-08: ASK-OK / ASK-WARMING (timed out but health + model list both
+    green -> PASS, names settle_s and model) / ASK-DOWN. The budget is
+    derived from the server's own /health declaration, never a flat
+    guess: measured 2026-11-16 06:1x, one 160-token answer took 108.1s
+    while the probe used to give up at 40s.
 
 Writes qa/smoke-<ts>.log with raw outputs + a self-judge verdict, then
 renders that exact log content to qa/smoke-<ts>.png via .NET
@@ -78,6 +83,49 @@ QA_ASK_ANCHOR = "C-00010"  # 20-anchor whitelist member since 09-30 delivery
 QA_ASK_QUESTION = "\u4eca\u5929\u751f\u610f\u600e\u4e48\u6837\uff1f"  # zh: how is business today?
 QA_BACKEND_PORT = 8090  # resident_qa_server.LLM_URL default (env override read below)
 CODER_SERVE_URL = "http://127.0.0.1:8090/v1/models"
+# T246 / D-20261116-08 (1): the /ask budget is derived from the server's own
+# declaration, not guessed. /health carries llm.cpu_lane.timeout_s (the
+# budget the server itself gives the LLM). A probe that gives up earlier
+# reports "broken" for a backend that is still computing. Measured
+# 2026-11-16 06:1x: 160 tok answered in 108.1s on the fallback CPU lane
+# while the probe budget was 40s -> the red was structural, not a fault of
+# the 8792 window. The committee required the threshold to live in config
+# rather than scattered in the script, so the three numbers below are read
+# from Tools/probe_config.json and these literals are only the fallback.
+QA_ASK_SETTLE_MARGIN_S = 20
+QA_ASK_SETTLE_FLOOR_S = 40
+QA_ASK_SETTLE_CAP_S = 900
+QA_SETTLE_CONFIG_SRC = "literals in qa_smoke.py"
+
+
+def _load_probe_config():
+    """Read Tools/probe_config.json; unreadable means the literals stand.
+
+    Returns (margin, floor, cap, source). Never raises: a broken config file
+    must not take the whole smoke suite down, and the returned source string
+    is printed so a silent fallback is visible in the round log.
+    """
+    path = os.path.join(HERE, "probe_config.json")
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            cfg = json.load(f)
+        ask = cfg.get("ask_settle") or {}
+        margin = int(ask.get("margin_s", QA_ASK_SETTLE_MARGIN_S))
+        floor = int(ask.get("floor_s", QA_ASK_SETTLE_FLOOR_S))
+        cap = int(ask.get("cap_s", QA_ASK_SETTLE_CAP_S))
+        if margin < 0 or floor <= 0 or cap < floor:
+            return (QA_ASK_SETTLE_MARGIN_S, QA_ASK_SETTLE_FLOOR_S,
+                    QA_ASK_SETTLE_CAP_S, "literals (config out of range)")
+        return margin, floor, cap, "Tools/probe_config.json"
+    except Exception as e:  # noqa: BLE001 - config must not break the suite
+        detail = "".join(ch for ch in repr(e) if 32 <= ord(ch) < 127)[:60]
+        return (QA_ASK_SETTLE_MARGIN_S, QA_ASK_SETTLE_FLOOR_S,
+                QA_ASK_SETTLE_CAP_S,
+                "literals (config unreadable: %s)" % detail)
+
+
+(QA_ASK_SETTLE_MARGIN_S, QA_ASK_SETTLE_FLOOR_S,
+ QA_ASK_SETTLE_CAP_S, QA_SETTLE_CONFIG_SRC) = _load_probe_config()
 
 PNG_PS_TEMPLATE = r"""
 $ErrorActionPreference='Stop'
@@ -466,7 +514,8 @@ def qa_lane_ports(health=None, default_port=None):
 
 
 def classify_qa_functional(health_ok, backend_listening, status=None,
-                           payload=None, err=None, port=None):
+                           payload=None, err=None, port=None,
+                           slow_evidence=None):
     """T153 (probe no.16): pure verdict for the 8792 /ask end-to-end face.
 
     Probe no.6 reads /health only, which reports that the HTTP server is
@@ -474,7 +523,13 @@ def classify_qa_functional(health_ok, backend_listening, status=None,
     2026-10-28 03:2x: health 200 status=ok, /ask 503 "\u672c\u5730\u5927\u8111\u672a\u54cd\u5e94"
     (<urlopen error [WinError 10061]>) - the CEO observation window was
     functionally dead for days while this suite showed 8792 PASS.
-    Every branch below is FAIL except a real answer; nothing softened.
+
+    T246 adds the third state: a timeout on a listening backend is only
+    broken if the backend is *also* unreachable. `slow_evidence` carries
+    that second reading (health + models, named by the caller). Present
+    and green -> ASK-WARMING (PASS, the machine is computing); absent or red
+    -> ASK-ERROR, unchanged. Every other branch below is still FAIL
+    except a real answer; nothing softened.
     """
     port = port or QA_BACKEND_PORT
     if not health_ok:
@@ -486,9 +541,18 @@ def classify_qa_functional(health_ok, backend_listening, status=None,
                 "/ask cannot answer (health-only green = false green)"
                 % port)
     if err is not None:
+        if slow_evidence and slow_evidence.get("ok"):
+            return (True, "ASK-WARMING",
+                    "8792 /ask did not answer within the derived budget "
+                    "(%s) but the lane is alive (%s) -> slow, not broken"
+                    % (_ascii_safe(err, 60),
+                       _ascii_safe(slow_evidence.get("detail"), 160)))
         return (False, "ASK-ERROR",
-                "8792 /ask failed against a listening backend: %s"
-                % _ascii_safe(err))
+                "8792 /ask failed against a listening backend: %s (lane "
+                "evidence: %s)"
+                % (_ascii_safe(err),
+                   _ascii_safe((slow_evidence or {}).get("detail")
+                               or "not collected", 120)))
     if status == 200 and isinstance(payload, dict):
         reply = str(payload.get("reply") or "")
         gate = str(payload.get("gate") or "")
@@ -512,6 +576,84 @@ def classify_qa_functional(health_ok, backend_listening, status=None,
     return (False, "ASK-HTTP-%s" % status,
             "ask unexpected status %s body=%s"
             % (status, _ascii_safe(payload)))
+
+
+def qa_declared_settle_s(health):
+    """T246: the /ask answer budget, read from the server's own declaration.
+
+    resident_qa_server reports the per-request LLM budget it gives itself
+    (`llm.cpu_lane.timeout_s`, 120 on the live box). Deriving the probe
+    budget from that value is the whole point: the probe must not give up
+    earlier than the server does, or a working-but-slow lane reads as a
+    fault. Returns (seconds, source) or (None, reason) when the health
+    payload declares nothing usable - the caller then falls back to the
+    floor budget and says so in the log.
+    """
+    if not isinstance(health, dict):
+        return None, "no-health-payload"
+    llm = health.get("llm") if isinstance(health.get("llm"), dict) else {}
+    cands = []
+    for block, key in ((llm.get("cpu_lane") or {}, "timeout_s"),
+                       (llm, "timeout_s"),
+                       (llm, "timeout")):
+        if isinstance(block, dict) and block.get(key) is not None:
+            cands.append((block.get(key), "llm.%s"
+                          % ("cpu_lane.timeout_s"
+                             if block is llm.get("cpu_lane") else key)))
+    for raw, src in cands:
+        try:
+            val = float(raw)
+        except (TypeError, ValueError):
+            continue
+        if val <= 0:
+            continue
+        if val < QA_ASK_SETTLE_FLOOR_S:
+            return QA_ASK_SETTLE_FLOOR_S, "%s=%ss(clamped-to-floor)" % (
+                src, val)
+        if val > QA_ASK_SETTLE_CAP_S:
+            return QA_ASK_SETTLE_CAP_S, "%s=%ss(clamped-to-cap)" % (src, val)
+        return val, "%s=%ss" % (src, val)
+    return None, "health declares no llm timeout"
+
+
+def qa_lane_reachability(lanes):
+    """T246 second reading: is the lane actually able to serve models?
+
+    A timeout alone cannot tell "still computing" from "wedged". This
+    reads every lane's model list (read-only, zero generation): Ollama on
+    :11434 via /api/tags, any other lane via its OpenAI-compatible
+    /v1/models. Any lane with >=1 model id is evidence the lane is up.
+    Returns {"ok": bool, "detail": str}; "not collected" is returned only
+    when no lane was given, never on an unreadable answer (that is a fail).
+    """
+    if not lanes:
+        return {"ok": False, "detail": "not collected (no lane)"}
+    tried = []
+    for port in lanes:
+        if int(port) == 11434:
+            url, kind = OLLAMA_TAGS_URL, "tags"
+        else:
+            url, kind = "http://127.0.0.1:%d/v1/models" % int(port), "models"
+        try:
+            with urllib.request.urlopen(url, timeout=10) as r:
+                body = json.loads(r.read().decode("utf-8", errors="replace"))
+            if kind == "tags":
+                names = [str(m.get("name")) for m in
+                         (body.get("models") or []) if isinstance(m, dict)]
+            else:
+                names = [str(m.get("id")) for m in
+                         (body.get("data") or []) if isinstance(m, dict)]
+            if r.status == 200 and names:
+                return {"ok": True,
+                        "detail": "lane :%d %s 200 models=%d first=%s"
+                        % (int(port), kind, len(names),
+                           _ascii_safe(names[0], 40))}
+            tried.append(":%d %s 200 but zero models" % (int(port), kind))
+        except Exception as e:  # noqa: BLE001 - probe must not crash pipeline
+            tried.append(":%d %s %s" % (int(port), kind,
+                                        _ascii_safe(e, 60)))
+    return {"ok": False, "detail": "no lane serving models (%s)"
+            % "; ".join(tried)}
 
 
 KNOWN_ENV_EVIDENCE = "state/d05-no16-gpu-contention-20261105.txt"
@@ -572,11 +714,14 @@ def probe_resident_qa_functional(port_owner=None):
     # retry with the longer budget; verdict logic is untouched, so a retry
     # that also fails still lands on ASK-ERROR (no softening).
     contended, gpu_label = gpu_contention_verdict(gpu_state())
-    # T178: the server's own backend call is GPU-bound, so under foreign
-    # contention a longer budget only burns wall clock (measured 8 tokens
-    # > 300s). One bounded attempt, and the label names GPU-CONTENDED so
-    # this FAIL is never read as "the 8792 window is broken".
-    budget = 60 if contended else 40
+    # T246: budget = the server's own declared LLM budget + transport margin
+    # (never below the old floor, never above the cap). The 2026-11-16
+    # 06:1x measurement (160 tok / 108.1s on the fallback CPU lane) is why
+    # a flat 40s reported a working window as broken. One attempt stays:
+    # a longer budget that also expires is still a real finding.
+    declared_s, declared_src = qa_declared_settle_s(health)
+    budget = int(max(QA_ASK_SETTLE_FLOOR_S,
+                     (declared_s or 0) + QA_ASK_SETTLE_MARGIN_S))
     attempts = 1
     status, payload, err = None, None, None
     for attempt in range(attempts):
@@ -598,14 +743,25 @@ def probe_resident_qa_functional(port_owner=None):
             err = e
         if err is None:
             break
+    # T246: only a timeout needs the second reading. Collecting it on a
+    # clean answer would add a network call to every green round.
+    slow_evidence = None
+    if err is not None:
+        slow_evidence = qa_lane_reachability(live)
     ok, tok, det = classify_qa_functional(health_ok, True, status, payload,
-                                          err, live[0])
-    if ok and len(lanes) > 1:
+                                          err, live[0],
+                                          slow_evidence=slow_evidence)
+    if ok and tok == "ASK-OK" and len(lanes) > 1:
         det = "%s L1-DOWN(fallback lane :%d serving)" % (det, live[0]) \
             if live[0] != lanes[0] else det
     ok, tok, det = reclassify_known_env(ok, tok, det, contended)
-    return ok, "%s: %s\ngpu: %s budget=%ss attempts=%d" % (
-        tok, det, gpu_label, budget, attempts)
+    return ok, "%s: %s\ngpu: %s budget=%ss(settle=%s via %s, cfg=%s) " \
+        "attempts=%d model=%s lanes=%s" % (
+            tok, det, gpu_label, budget,
+            ("%ss" % declared_s) if declared_s else "none",
+            declared_src, QA_SETTLE_CONFIG_SRC, attempts,
+            _ascii_safe(health.get("model"), 40),
+            ",".join(str(p) for p in lanes))
 
 
 SUPPLY_MARK_RE = re.compile(r"idle_selfcheck")
@@ -1936,6 +2092,48 @@ def selftest_qa_functional():
     k4 = reclassify_known_env(False, "HEALTH-OK-BACKEND-DOWN", "no lane", True)
     check("Q18 contended GPU never excuses a missing backend lane",
           (not k4[0]) and k4[1] == "HEALTH-OK-BACKEND-DOWN")
+
+    # Q19-Q25 (T246): "listening but slow" is a third reading, and the
+    # budget is derived from the server's own declaration.
+    s_ok = {"ok": True, "detail": "lane :11434 tags 200 models=7"}
+    r19 = classify_qa_functional(True, True, None, None, "timed out",
+                                 slow_evidence=s_ok)
+    check("Q19 timeout + live lane models -> ASK-WARMING and PASS",
+          r19[0] and r19[1] == "ASK-WARMING"
+          and "slow, not broken" in r19[2])
+
+    r20 = classify_qa_functional(True, True, None, None, "timed out",
+                                 slow_evidence={"ok": False,
+                                                "detail": "tags refused"})
+    check("Q20 timeout + dead lane models -> ASK-ERROR, names evidence",
+          (not r20[0]) and r20[1] == "ASK-ERROR"
+          and "tags refused" in r20[2])
+
+    r21 = classify_qa_functional(True, True, None, None, "timed out")
+    check("Q21 timeout with no evidence collected -> ASK-ERROR (no "
+          "silent pass)", (not r21[0]) and r21[1] == "ASK-ERROR"
+          and "not collected" in r21[2])
+
+    d22 = qa_declared_settle_s({"llm": {"cpu_lane": {"timeout_s": 120}}})
+    check("Q22 declared cpu_lane timeout is the settle source",
+          d22[0] == 120.0 and "cpu_lane.timeout_s" in d22[1])
+
+    d23 = qa_declared_settle_s({"llm": {"primary_url": "x"}})
+    check("Q23 health without a timeout declares nothing (caller uses floor)",
+          d23[0] is None and "declares no llm timeout" in d23[1])
+
+    d24a = qa_declared_settle_s({"llm": {"cpu_lane": {"timeout_s": 5}}})
+    d24b = qa_declared_settle_s({"llm": {"cpu_lane": {"timeout_s": 5000}}})
+    check("Q24 absurd declarations clamp to floor/cap (never trusted raw)",
+          d24a[0] == QA_ASK_SETTLE_FLOOR_S and d24b[0] == QA_ASK_SETTLE_CAP_S)
+
+    budget = int(max(QA_ASK_SETTLE_FLOOR_S, 120 + QA_ASK_SETTLE_MARGIN_S))
+    check("Q25 derived budget covers the measured 108.1s answer (%ss)" % budget,
+          budget > 108.1 and budget >= 120)
+
+    r26 = qa_lane_reachability([])
+    check("Q26 no lane given -> not-collected evidence, never green",
+          (not r26["ok"]) and "not collected" in r26["detail"])
 
     print("selftest qa-functional verdict: %d/%d PASS"
           % (len([r for r in results if r]), len(results)))
