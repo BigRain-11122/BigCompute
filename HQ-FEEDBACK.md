@@ -1022,3 +1022,9 @@ P0 提醒（@HQ 取回腿·18:00 前）：D-02 指定取回源 `backup/bm-a-2026
 - 队列：2026-11-16 06:2x 令牌轮 **T246 done**（D-20261116-08 ① 回执·产品优先律 2 分件）=/ask 三态化 ASK-OK／ASK-WARMING／ASK-DOWN；预算不拍脑袋也不散在脚本=服务自陈 llm.cpu_lane.timeout_s(120)+余量 20=140s，登记 Tools/probe_config.json；实测锚=同一次 /ask 160 tok 耗 108.1s（旧 40s 窗必红），live no.16 本轮 ASK-OK 73.01s；selftest 17→26/26。
 - 审核：2026-11-16 06:0x decisions 第 66 批 4 行（D-05/D-06/D-07 他司域零动作；D-08 @本司=本两行回执）；orders 本地尾行 11-14 12:20 无 11-16 新增令。
 - 日清：2026-11-16 06:2x **D-20261116-08 ② 回执**=空壳 docs/status-export-overrides.json（内容 {}·挂 5 天）已 git rm，compose --write 实跑 supplement=ABSENT（不再每轮误报过期）；① ②两项均早于 12:00 死线落地。冒烟复核=**30/32**，两红=no.8（提案面尾形被 BC-P-263 散文段写坏，本轮已改回表格行并补 263/264 两行）/no.22（既有历史面）；no.16 红已消。无 P0。
+
+- 审核：2026-11-16 19:0x decisions 第 68 批 4 行（D-20261116-16 台词落点改判 PARKED／D-17 分叉增长源三缺）全属他司域，@本司零新行零动作；orders 本地止 11-14 12:20，11-16 零新增令。
+- 日清：2026-11-16 19:1x **P1 本司面已当场修（T247）**=同一次 /ask 200+标识门+160tok 的 reply 只有「（沉吟片刻）」6 字却判 ASK-OK，探针只查非空与标识门；本轮新增第四读数 ASK-THIN（剥舞台提示后无实词即点名、不判红），live no.16 实测 
+eply_len=6 substance_len=0 stage-direction-only 已被点名且仍 PASS——即「窗口活着但在演，不在答」。P2=M205 七日复算窗内 ok_runs=0，dupes --since 此刻印 
+epeat_rate=0.0%，与「真的降到 0」同形；已按 NO-ACTIVITY 记并立 tech T248。
+- 队列：2026-11-16 19:1x 令牌轮 **T247 done + M205 窗读落盘**（产品优先律 2 分件）=探针四态 ASK-OK/ASK-WARMING/ASK-THIN/ASK-ERROR，阈值 ask_thin.substance_chars=8 进 Tools/probe_config.json，qa_smoke selftest 26→31/31；M205=state/dupes-20261116.txt + 回执 recompute_progress 追加（repeat_rate=null 不印假 0）。冒烟 31/32（唯一红 no.22 既有缺件面），C1C4-GREEN 4/4。

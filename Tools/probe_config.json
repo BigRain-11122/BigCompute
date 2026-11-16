@@ -5,5 +5,9 @@
     "margin_s": 20,
     "floor_s": 40,
     "cap_s": 900
+  },
+  "ask_thin": {
+    "_readme": "T247: a 200 + gate + tokens reply that carries no words is a thin answer, not a fault. substance_chars = minimum length of the reply left after removing bracketed stage directions (e.g. '（沉吟片刻）') and whitespace/punctuation, when the reply is also wrapped in a stage direction. Calibration anchor: 2026-11-16 06:2x the same /ask returned 200 + gate + 160 tok with reply '（沉吟片刻）' (6 chars) and still read ASK-OK.",
+    "substance_chars": 8
   }
 }

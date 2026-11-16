@@ -127,6 +127,34 @@ def _load_probe_config():
 (QA_ASK_SETTLE_MARGIN_S, QA_ASK_SETTLE_FLOOR_S,
  QA_ASK_SETTLE_CAP_S, QA_SETTLE_CONFIG_SRC) = _load_probe_config()
 
+# T247: "answered" is not "answered with something". Same /ask call on
+# 2026-11-16 06:2x returned 200 + gate + 160 tok with reply "(沉吟片刻)"
+# (6 chars, pure stage direction) and still read ASK-OK - the check only
+# asked for non-empty. Thin is a reading, not a fault (ASK-WARMING family):
+# named on the face, never red. Threshold lives in the same config file.
+QA_ASK_THIN_SUBSTANCE_CHARS = 8
+QA_THIN_CONFIG_SRC = "literals in qa_smoke.py"
+
+
+def _load_thin_config():
+    """Read ask_thin.substance_chars; unreadable means the literal stands."""
+    path = os.path.join(HERE, "probe_config.json")
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            cfg = json.load(f)
+        thin = cfg.get("ask_thin") or {}
+        n = int(thin.get("substance_chars", QA_ASK_THIN_SUBSTANCE_CHARS))
+        if n <= 0 or n > 200:
+            return QA_ASK_THIN_SUBSTANCE_CHARS, "literals (config out of range)"
+        return n, "Tools/probe_config.json"
+    except Exception as e:  # noqa: BLE001 - config must not break the suite
+        detail = "".join(ch for ch in repr(e) if 32 <= ord(ch) < 127)[:60]
+        return (QA_ASK_THIN_SUBSTANCE_CHARS,
+                "literals (config unreadable: %s)" % detail)
+
+
+QA_ASK_THIN_SUBSTANCE_CHARS, QA_THIN_CONFIG_SRC = _load_thin_config()
+
 PNG_PS_TEMPLATE = r"""
 $ErrorActionPreference='Stop'
 Add-Type -AssemblyName System.Drawing
@@ -513,6 +541,46 @@ def qa_lane_ports(health=None, default_port=None):
     return ports
 
 
+_STAGE_DIRECTION_RE = re.compile(r"[（(【\[][^（()）【\[\]】]*[）)】\]]")
+_SUBSTANCE_STRIP_RE = re.compile(
+    r"[\s\u3000-\u303f\uff00-\uff65.,!?;:\-\u2026\"'`~]+")
+
+
+def reply_substance(reply):
+    """T247: what is left of a reply once stage directions are removed.
+
+    The live defect was a reply of "(沉吟片刻)" - six characters of
+    bracketed action and zero words of answer - passing every existing
+    check. Substance removes bracketed stage directions plus whitespace
+    and punctuation, so "(沉默)" and "……" read as empty instead of as
+    content.
+    """
+    text = _STAGE_DIRECTION_RE.sub("", str(reply or ""))
+    return _SUBSTANCE_STRIP_RE.sub("", text)
+
+
+def classify_reply_thin(reply):
+    """T247: (is_thin, reason, reply_len, substance_len).
+
+    Thin = carries no substance at all (stage direction / ellipsis only),
+    or the little substance it has is wrapped in a stage direction (the
+    model performs instead of answering). A genuinely short answer with no
+    stage direction ("42。") is NOT thin: the "short but valid" fixture must
+    survive, so length alone never condemns a reply.
+    """
+    raw = str(reply or "")
+    substance = reply_substance(raw)
+    staged = bool(_STAGE_DIRECTION_RE.search(raw))
+    if not substance:
+        return True, "stage-direction-only", len(raw), 0
+    if staged and len(substance) < QA_ASK_THIN_SUBSTANCE_CHARS:
+        return (True,
+                "staged-short(substance=%d<%d)"
+                % (len(substance), QA_ASK_THIN_SUBSTANCE_CHARS),
+                len(raw), len(substance))
+    return False, "ok", len(raw), len(substance)
+
+
 def classify_qa_functional(health_ok, backend_listening, status=None,
                            payload=None, err=None, port=None,
                            slow_evidence=None):
@@ -557,9 +625,17 @@ def classify_qa_functional(health_ok, backend_listening, status=None,
         reply = str(payload.get("reply") or "")
         gate = str(payload.get("gate") or "")
         if reply and "\u672c\u5730AI\u751f\u6210" in gate:
+            thin, why, rlen, slen = classify_reply_thin(reply)
+            if thin:
+                return (True, "ASK-THIN",
+                        "ask 200 reply_len=%d substance_len=%d %s gate=%s "
+                        "-> thin answer, not a fault (T247; threshold %d "
+                        "chars via %s)"
+                        % (rlen, slen, why, _ascii_safe(gate, 40),
+                           QA_ASK_THIN_SUBSTANCE_CHARS, QA_THIN_CONFIG_SRC))
             return (True, "ASK-OK",
-                    "ask 200 reply_len=%d gate=%s"
-                    % (len(reply), _ascii_safe(gate, 60)))
+                    "ask 200 reply_len=%d substance_len=%d gate=%s"
+                    % (rlen, slen, _ascii_safe(gate, 60)))
         return (False, "ASK-BAD-BODY",
                 "ask 200 but reply/gate contract broken: %s"
                 % _ascii_safe(payload))
@@ -751,7 +827,7 @@ def probe_resident_qa_functional(port_owner=None):
     ok, tok, det = classify_qa_functional(health_ok, True, status, payload,
                                           err, live[0],
                                           slow_evidence=slow_evidence)
-    if ok and tok == "ASK-OK" and len(lanes) > 1:
+    if ok and tok in ("ASK-OK", "ASK-THIN") and len(lanes) > 1:
         det = "%s L1-DOWN(fallback lane :%d serving)" % (det, live[0]) \
             if live[0] != lanes[0] else det
     ok, tok, det = reclassify_known_env(ok, tok, det, contended)
@@ -2134,6 +2210,42 @@ def selftest_qa_functional():
     r26 = qa_lane_reachability([])
     check("Q26 no lane given -> not-collected evidence, never green",
           (not r26["ok"]) and "not collected" in r26["detail"])
+
+    # Q27-Q31 (T247): "answered" is not "answered with something".
+    gate_v = "\u672c\u5730AI\u751f\u6210" + " qwen3.6-35b 160tok/82.1s"
+    r27 = classify_qa_functional(
+        True, True, 200,
+        {"reply": "\u90a3\u5e74\u7684\u590f\u5929\u4e00\u76f4\u90fd\u5728\u3002",
+         "gate": gate_v})
+    check("Q27 real answer -> ASK-OK (no over-flagging)",
+          r27[0] and r27[1] == "ASK-OK" and "substance_len=" in r27[2])
+
+    r28 = classify_qa_functional(
+        True, True, 200, {"reply": "\uff08\u6c89\u541f\u7247\u523b\uff09",
+                          "gate": gate_v})
+    check("Q28 stage-direction-only reply -> ASK-THIN, PASS, named",
+          r28[0] and r28[1] == "ASK-THIN"
+          and "stage-direction-only" in r28[2]
+          and "substance_len=0" in r28[2])
+
+    r29 = classify_qa_functional(True, True, 200,
+                                 {"reply": "42\u3002", "gate": gate_v})
+    check("Q29 short but real answer -> ASK-OK (length alone never "
+          "condemns)", r29[0] and r29[1] == "ASK-OK")
+
+    r30 = classify_qa_functional(
+        True, True, 200,
+        {"reply": "\uff08\u6c89\u9ed8\uff09\u55ef", "gate": gate_v})
+    check("Q30 staged-short reply -> ASK-THIN (performing, not answering)",
+          r30[0] and r30[1] == "ASK-THIN"
+          and "staged-short" in r30[2])
+
+    check("Q31 thin threshold is declared in config, not only in code "
+          "(%d chars via %s)"
+          % (QA_ASK_THIN_SUBSTANCE_CHARS, QA_THIN_CONFIG_SRC),
+          QA_ASK_THIN_SUBSTANCE_CHARS > 0
+          and (QA_THIN_CONFIG_SRC == "Tools/probe_config.json"
+               or "config unreadable" in QA_THIN_CONFIG_SRC))
 
     print("selftest qa-functional verdict: %d/%d PASS"
           % (len([r for r in results if r]), len(results)))
