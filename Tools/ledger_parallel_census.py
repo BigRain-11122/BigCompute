@@ -248,7 +248,7 @@ def selftest():
         rep = scan(table, {}, 90, root)
         check("S2 fused row detected once", rep["counts"]["parallel"] == 1
               and rep["hits"][0]["markers"] == 2, rep["counts"])
-        check("S2 verdict is NEW", verdict_of(rep) == "PARALLEL-NEW", verdict_of(rep))
+        check("S10 verdict is NEW", verdict_of(rep) == "PARALLEL-NEW", verdict_of(rep))
 
         # S3 whitelist by fingerprint suppresses the confirmed row.
         sha = rep["hits"][0]["sha"]
@@ -296,7 +296,7 @@ def selftest():
         check("S8 adoption is idempotent",
               added == expected and again == 0, (added, expected, again))
         rep = scan(table, load_whitelist(wl_path), 90, root)
-        check("S8 adopted rows read clean",
+        check("S11 adopted rows read clean",
               verdict_of(rep) == "PARALLEL-CLEAN" and rep["counts"]["new"] == 0,
               rep["counts"])
 

@@ -297,7 +297,7 @@ def selftest():
     # S1 in-window reminder ok, exact first day counts (window 11-03..11-06)
     r = judge(sub(reminders=["2026-11-03"]), as_of)
     check("S1 reminder on window's first day -> OK", r["verdict"] == OK)
-    check("S1 days_before_renewal = 3", r.get("days_before_renewal") == 3)
+    check("S13 days_before_renewal = 3", r.get("days_before_renewal") == 3)
 
     # S2 window is half-open: renew date itself is late
     r = judge(sub(**{"renew_on": "2026-11-05"}, reminders=["2026-11-05"]), as_of)
@@ -324,15 +324,15 @@ def selftest():
     # S7 no consent / deep cancel path are red independently of reminders
     check("S7 consent false -> NO-CONSENT",
           judge(sub(consent_opt_in=False, reminders=["2026-11-04"]), as_of)["verdict"] == NO_CONSENT)
-    check("S7 cancel 3 steps -> CANCEL-PATH-TOO-DEEP",
+    check("S14 cancel 3 steps -> CANCEL-PATH-TOO-DEEP",
           judge(sub(cancel_path_steps=3, reminders=["2026-11-04"]), as_of)["verdict"] == CANCEL_DEEP)
-    check("S7 cancel exactly 2 steps is fine",
+    check("S15 cancel exactly 2 steps is fine",
           judge(sub(cancel_path_steps=2, reminders=["2026-11-04"]), as_of)["verdict"] == OK)
 
     # S8 obligations absent -> not ok, not red
     check("S8 manual renewal -> NOT-AUTO-RENEW",
           judge(sub(auto_renew=False), as_of)["verdict"] == NOT_AUTO_RENEW)
-    check("S8 cancelled -> SKIPPED",
+    check("S16 cancelled -> SKIPPED",
           judge(sub(status="cancelled"), as_of)["verdict"] == SKIPPED)
 
     # S9 garbage renew date cannot silently pass
@@ -352,7 +352,7 @@ def selftest():
           s["verdict"] == "RENEWAL-REMINDER-RED" and s["red"] == ["b"])
     s2 = summarize([{"sub_id": "a", "verdict": OK},
                     {"sub_id": "c", "verdict": NOT_YET_DUE}])
-    check("S11 blue-only -> GREEN", s2["verdict"] == "RENEWAL-REMINDER-GREEN")
+    check("S17 blue-only -> GREEN", s2["verdict"] == "RENEWAL-REMINDER-GREEN")
 
     # S12 determinism
     a = judge(sub(reminders=["2026-11-04"]), as_of)

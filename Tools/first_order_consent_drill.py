@@ -297,21 +297,21 @@ def selftest():
     # S1 happy path and lead minutes
     r = judge(order(), as_of)
     check("S1 prompt before acceptance -> OK", r["verdict"] == OK)
-    check("S1 lead = 2 minutes", r.get("lead_minutes") == 2)
+    check("S12 lead = 2 minutes", r.get("lead_minutes") == 2)
 
     # S2 acceptance ordering is strict: same instant is NOT before
     r = judge(with_ev(prompted_at="2026-11-04T10:00:00+08:00"), as_of)
     check("S2 prompt at acceptance instant -> PROMPT-NOT-BEFORE", r["verdict"] == PROMPT_NOT_BEFORE)
     r = judge(with_ev(prompted_at="2026-11-04T10:00:01+08:00"), as_of)
-    check("S2 prompt after acceptance -> PROMPT-NOT-BEFORE (no PK grace)", r["verdict"] == PROMPT_NOT_BEFORE)
+    check("S13 prompt after acceptance -> PROMPT-NOT-BEFORE (no PK grace)", r["verdict"] == PROMPT_NOT_BEFORE)
 
     # S3 no evidence / empty evidence
     check("S3 no evidence -> NO-PROMPT-EVIDENCE",
           judge({"order_id": "x", "auto_renew": True,
                  "accepted_at": "2026-11-04T10:00:00+08:00"}, as_of)["verdict"] == NO_PROMPT_EVIDENCE)
-    check("S3 empty evidence dict -> NO-PROMPT-EVIDENCE",
+    check("S14 empty evidence dict -> NO-PROMPT-EVIDENCE",
           judge(order(accept_prompt_evidence={}), as_of)["verdict"] == NO_PROMPT_EVIDENCE)
-    check("S3 evidence not a dict -> NO-PROMPT-EVIDENCE",
+    check("S15 evidence not a dict -> NO-PROMPT-EVIDENCE",
           judge(order(accept_prompt_evidence="shown"), as_of)["verdict"] == NO_PROMPT_EVIDENCE)
 
     # S4 prominence must be explicitly true, not "probably fine"
@@ -341,12 +341,12 @@ def selftest():
     r = judge(order(accepted_at=None), as_of)
     check("S7 accepted_at missing -> CANNOT-JUDGE", r["verdict"] == CANNOT_JUDGE)
     r = judge(order(accepted_at="2026-11-04T10:00:00"), as_of)
-    check("S7 naive vs offset -> CANNOT-JUDGE", r["verdict"] == CANNOT_JUDGE)
+    check("S16 naive vs offset -> CANNOT-JUDGE", r["verdict"] == CANNOT_JUDGE)
 
     # S8 non-auto-renew carries no obligation (and is not green)
     r = judge(order(auto_renew=False), as_of)
     check("S8 manual renewal -> NOT-AUTO-RENEW", r["verdict"] == NOT_AUTO_RENEW)
-    check("S8 auto_renew truthy string is not True",
+    check("S17 auto_renew truthy string is not True",
           judge(order(auto_renew="yes"), as_of)["verdict"] == NOT_AUTO_RENEW)
 
     # S9 summarize keeps red and blue apart
@@ -357,7 +357,7 @@ def selftest():
           and s["red"] == ["b"])
     s2 = summarize([{"order_id": "a", "verdict": OK},
                     {"order_id": "c", "verdict": NOT_AUTO_RENEW}])
-    check("S9 blue-only -> GREEN", s2["verdict"] == "FIRST-ORDER-CONSENT-GREEN")
+    check("S18 blue-only -> GREEN", s2["verdict"] == "FIRST-ORDER-CONSENT-GREEN")
 
     # S10 determinism
     a = judge(order(), as_of)

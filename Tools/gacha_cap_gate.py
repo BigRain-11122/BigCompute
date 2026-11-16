@@ -322,7 +322,7 @@ def selftest():
     # S1 under cap allowed
     out = decide([], base, 100.00)
     check("S1 under cap -> ALLOW", out["verdict"] == ALLOW and out["charged"])
-    check("S1 remaining exact", out.get("remaining_cents") == 9000)
+    check("S12 remaining exact", out.get("remaining_cents") == 9000)
 
     # S2 exact boundary charged
     rows = rows_of(("u", "2026-11", 90.00))
@@ -334,9 +334,9 @@ def selftest():
     out = decide(rows, dict(base, draw_id="S3", price_cny=10.01), 100.00)
     check("S3 one cent over -> BLOCKED_OVER_CAP",
           out["verdict"] == BLOCKED_OVER_CAP and not out["charged"])
-    check("S3 requires confirm+handoff",
+    check("S13 requires confirm+handoff",
           out.get("requires") == ["second_confirmation", "handoff_to_support"])
-    check("S3 overage named", out.get("over_cap_cents") == 1)
+    check("S14 overage named", out.get("over_cap_cents") == 1)
 
     # S4 unset cap fails closed, even with approval
     for cap in (None, 0, "abc", ""):
@@ -370,7 +370,7 @@ def selftest():
     check("S8 other user/month do not consume this cap",
           month_sum_cents(mixed, "u", "2026-11") == 9000)
     out = decide(mixed, dict(base, draw_id="S8", price_cny=10.00), 100.00)
-    check("S8 isolated spend still allowed", out["verdict"] == ALLOW)
+    check("S15 isolated spend still allowed", out["verdict"] == ALLOW)
 
     # S9 blocked rows never count toward spend
     with_blocked = [{"user": "u", "month": "2026-11", "price_cents": 9999,

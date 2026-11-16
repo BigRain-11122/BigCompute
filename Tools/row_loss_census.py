@@ -391,18 +391,18 @@ def cmd_selftest():
         rep = census(repo, [target], 10)
         t = rep["targets"][0]
         ok("S3 verdict", rep["verdict"] == "ROW-LOSS-FOUND", rep["verdict"])
-        ok("S3 lost", [i["id"] for i in t["lost_alive_ids"]] == ["C"], str(t["lost_alive_ids"]))
-        ok("S3 terminal", t["removed_terminal"] == 1, str(t["removed_terminal"]))
-        ok("S3 pairs", t["transitions"] == 2, str(t["transitions"]))
+        ok("S16 lost", [i["id"] for i in t["lost_alive_ids"]] == ["C"], str(t["lost_alive_ids"]))
+        ok("S17 terminal", t["removed_terminal"] == 1, str(t["removed_terminal"]))
+        ok("S18 pairs", t["transitions"] == 2, str(t["transitions"]))
         # 11-09: the verdict must be pinned to a commit, and render must print it.
-        ok("S3 as_of", rep["as_of"] == shas[-1][:8] and t["newest_commit"] == shas[-1][:8],
+        ok("S19 as_of", rep["as_of"] == shas[-1][:8] and t["newest_commit"] == shas[-1][:8],
            str((rep["as_of"], t["newest_commit"], shas[-1][:8])))
-        ok("S3 render as_of", "as_of=" + shas[-1][:8] in render(rep), render(rep)[:200])
+        ok("S20 render as_of", "as_of=" + shas[-1][:8] in render(rep), render(rep)[:200])
 
         # S4: window=1 has no comparable pair -> NA-ONLY, not a clean pass and not "unreadable"
         rep1 = census(repo, [target], 1)
         ok("S4 window1", rep1["verdict"] == "ROW-LOSS-NA-ONLY", rep1["verdict"])
-        ok("S4 na-not-scanned",
+        ok("S21 na-not-scanned",
            rep1["targets"][0]["verdict"] == "ROW-LOSS-NA" and rep1["scanned"] == 0
            and rep1["na_total"] == 1,
            str((rep1["targets"][0]["verdict"], rep1["scanned"], rep1["na_total"])))
@@ -411,7 +411,7 @@ def cmd_selftest():
         ok("S5 not_scanned", rep["targets"][0]["not_scanned_older"] == 0,
            str(rep["targets"][0]["not_scanned_older"]))
         rep2 = census(repo, [target], 2)
-        ok("S5 truncation", rep2["targets"][0]["not_scanned_older"] == 1,
+        ok("S22 truncation", rep2["targets"][0]["not_scanned_older"] == 1,
            str(rep2["targets"][0]["not_scanned_older"]))
 
         # S6: untracked file -> UNVERIFIED with reason, never ROW-LOSS-FREE
@@ -447,10 +447,10 @@ def cmd_selftest():
         _gitw(base4, "commit", "-q", "-m", "once")
         rn = census(base4, ["ok.jsonl", "once.jsonl"], 10)
         ok("S7c partial-na", rn["verdict"] == "ROW-LOSS-PARTIAL-NA", rn["verdict"])
-        ok("S7c scanned-excludes-na",
+        ok("S23 scanned-excludes-na",
            rn["scanned"] == 1 and rn["na_total"] == 1 and rn["unreadable"] == [],
            str((rn["scanned"], rn["na_total"], rn["unreadable"])))
-        ok("S7c render n/a", "n/a=1" in render(rn), render(rn).splitlines()[1])
+        ok("S24 render n/a", "n/a=1" in render(rn), render(rn).splitlines()[1])
 
         # S8: non-terminal state change (RUNNING -> DONE) is not a loss
         base = os.path.join(tmp, "r2")
@@ -491,11 +491,11 @@ def cmd_selftest():
             _gitw(base3, "commit", "-q", "-m", "c%d" % len(rows))
         r11 = census(base3, ["q.jsonl"], 10)
         ok("S11 transient verdict", r11["verdict"] == "ROW-LOSS-TRANSIENT", r11["verdict"])
-        ok("S11 transient tags",
+        ok("S25 transient tags",
            r11["targets"][0]["lost_transient"] == 1 and r11["targets"][0]["lost_permanent"] == 0,
            str((r11["targets"][0]["lost_transient"], r11["targets"][0]["lost_permanent"])))
         # S11 permanent tag
-        ok("S11 permanent tag", rep["targets"][0]["lost_permanent"] == 1,
+        ok("S26 permanent tag", rep["targets"][0]["lost_permanent"] == 1,
            str(rep["targets"][0]["lost_permanent"]))
 
         # S12: default-root resolution walks up to the tree that owns the target.
@@ -514,14 +514,14 @@ def cmd_selftest():
         pick = resolve_default_repo(["led.jsonl"], start=inner)
         ok("S12 ancestor-root",
            pick["repo"] == os.path.abspath(outer) and pick["source"] == "ancestor", str(pick))
-        ok("S12 reading usable",
+        ok("S27 reading usable",
            census(pick["repo"], ["led.jsonl"], 10)["targets"][0]["why"] != "not-in-git", str(pick))
         # S13: no candidate owns the target -> fallback, and the reading stays
         # UNVERIFIED (absence of a tree is not health).
         miss = resolve_default_repo(["nope.jsonl"], start=inner)
         ok("S13 fallback", miss["source"] == "fallback" and miss["repo"] == os.path.abspath(inner),
            str(miss))
-        ok("S13 not-green",
+        ok("S28 not-green",
            census(miss["repo"], ["nope.jsonl"], 10)["verdict"] == "UNVERIFIED", miss["source"])
         # S14: the rendered reading names the root it judged.
         ok("S14 render repo", ("repo=" + os.path.abspath(outer)) in render(

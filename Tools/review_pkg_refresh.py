@@ -296,7 +296,7 @@ def cmd_selftest(_args):
         face_clean_window(log_path)
         check("J3 clean-window log hash unchanged", _sha256(log_path) == before)
     else:
-        check("J3 clean-window log absent -> skip-hash ok", True)
+        check("J4 clean-window log absent -> skip-hash ok", True)
     # S5 canonical command registry (drift guard: faces stay pinned to charter tools)
     check("S5 canonical cmds pinned",
           GPU_CMD_REPORT[1].endswith("gpu_idle_collector.py") and GPU_CMD_LOADLINE[2] == "loadline"

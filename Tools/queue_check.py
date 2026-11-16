@@ -172,7 +172,7 @@ def selftest():
         f.write(hdr + "| A1 | row \u5df2\u635f\u574f | x | open |\n")
     c, r, fl = scan_file(p1)
     check("S1 assert-no-evidence flagged", len(fl) == 1 and fl[0][0] == "A1")
-    check("S1 counts open=1", c["open"] == 1 and r == 1)
+    check("S11 counts open=1", c["open"] == 1 and r == 1)
 
     # S2: same assertion but with a state/ pointer -> not flagged
     p2 = os.path.join(d, "s2.md")

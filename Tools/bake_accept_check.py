@@ -191,8 +191,8 @@ def selftest():
     d1 = fixture("s1", good_metrics,
                  ["2026-09-30T22:45:00+08:00,7315, 92", "2026-09-30T22:45:05+08:00,11176, 100"])
     r = check_run(d1)
-    check("S1 j1", r["j1"] == "PASS"); check("S1 j2 peak", r["vram_peak_mib"] == 11176 and r["samples"] == 2)
-    check("S1 j3", r["j3"] == "PASS"); check("S1 overall", r["overall"] == "PASS")
+    check("S1 j1", r["j1"] == "PASS"); check("S9 j2 peak", r["vram_peak_mib"] == 11176 and r["samples"] == 2)
+    check("S10 j3", r["j3"] == "PASS"); check("S11 overall", r["overall"] == "PASS")
     # S2 J1 over 30min
     d2 = fixture("s2", dict(good_metrics, bake_seconds=2000.0),
                  ["t,7315, 92"])
@@ -224,13 +224,13 @@ def selftest():
         code, _ = print_check([d1, d7])
     out = buf.getvalue()
     check("S7 exit0", code == 0)
-    check("S7 backfill both paths", "ProgressiveGPU" in out and "ProgressiveCPU" in out and "R-§三行3" in out)
+    check("S12 backfill both paths", "ProgressiveGPU" in out and "ProgressiveCPU" in out and "R-§三行3" in out)
     with contextlib.redirect_stdout(io.StringIO()):
         code_f, _ = print_check([d2])
-    check("S7 fail exit1", code_f == 1)
+    check("S13 fail exit1", code_f == 1)
     with contextlib.redirect_stdout(io.StringIO()):
         code_m, _ = print_check([os.path.join(tmp, "nope")])
-    check("S7 missing exit2", code_m == 2)
+    check("S14 missing exit2", code_m == 2)
     # S8 headroom NOTE prints
     buf = io.StringIO()
     with contextlib.redirect_stdout(buf):

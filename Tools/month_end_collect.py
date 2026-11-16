@@ -683,7 +683,7 @@ def cmd_selftest():
           and e6["total_kwh"] == 1.2345 and e6["mean_daily_kwh"] == 0.4115
           and e6["baseline"]["mean_daily_kwh"] == 0.4 and e6["baseline"]["days"] == 2
           and e6["baseline"]["sum_delta_displayed_kwh"] == 0.023 and e6["json"].endswith(".json"))
-    check("S6 缺件态=垃圾文本 None·空 per_day 零月窗", parse_energy_report("no energy here") is None
+    check("S10 缺件态=垃圾文本 None·空 per_day 零月窗", parse_energy_report("no energy here") is None
           and parse_energy_profile_json({"per_day": {}}, "2026-10")["month_days_n"] == 0)
     e6_prof = {"baseline_range": "2026-10-01..2026-10-02", "baseline_mean_daily_kwh": 0.4,
                "per_day": {"2026-10-01": {"kwh": 0.4, "delta_kwh": 0.0},
@@ -693,13 +693,13 @@ def cmd_selftest():
                            "2026-10-11": {"kwh": 0.0112, "delta_kwh": -0.8616},
                            "2026-09-30": {"kwh": 9.9, "delta_kwh": 9.5}}}
     ms = parse_energy_profile_json(e6_prof, "2026-10")
-    check("S6 月窗切片=月 kWh/日均/正向 delta 分列·负值零值他月排除", ms["month_days_n"] == 5
+    check("S11 月窗切片=月 kWh/日均/正向 delta 分列·负值零值他月排除", ms["month_days_n"] == 5
           and ms["month_kwh"] == 2.9178 and ms["month_mean_daily_kwh"] == 0.5836
           and len(ms["borrow_days"]) == 3 and ms["borrow_days"][0]["date"] == "2026-10-02"
           and ms["borrow_days"][-1]["delta_kwh"] == 0.5016
           and ms["sum_delta_month_kwh"] == 1.3066 and ms["baseline_mean_daily_kwh"] == 0.4)
     ms0 = parse_energy_profile_json({"per_day": {}}, "2026-10")
-    check("S6 空月窗=零日零 kWh·日均 None·borrow 空", ms0["month_kwh"] == 0
+    check("S12 空月窗=零日零 kWh·日均 None·borrow 空", ms0["month_kwh"] == 0
           and ms0["month_mean_daily_kwh"] is None and ms0["borrow_days"] == []
           and ms0["sum_delta_month_kwh"] == 0)
     s6_fix = {"available": True, "report": {"machine": "bm-a"}, "json": "fixture.json",
@@ -717,14 +717,14 @@ def cmd_selftest():
     p3 = assemble("2026-09", s1, s2, {"files": [], "generated": 0}, s4, s5, "T1", s6=s6_fix)
     check("确定性=双跑一致（含 S6 段）", p1["month_end_line"] == p3["month_end_line"])
     p4 = assemble("2026-10", s1, s2, {"files": [], "generated": 0}, s4, s5, "T1", s6=s6_fix)
-    check("S6 并入月末行=月 kWh+安静带+正向 delta 分列+机械链 6/7",
+    check("S13 并入月末行=月 kWh+安静带+正向 delta 分列+机械链 6/7",
           "S6 能耗剖面" in p4["month_end_line"] and "月 2.9178 kWh" in p4["month_end_line"]
           and "机械链 6/7 就绪" in p4["month_end_line"]
           and p4["sources"]["s6_energy"]["month_slice"]["month_kwh"] == 2.9178
           and "10-09 +0.795" in p4["month_end_line"])
     p5 = assemble("2026-10", s1, s2, {"files": [], "generated": 0}, s4, s5, "T1",
                   s6={"available": False, "note": "S6 能耗剖面源不可用（报告未解析出·采集面缺或工具失败）·月末行降级如实（N2 零编造）"})
-    check("S6 不可用=降级行+机械链 5/7（N2 零编造）", "S6 能耗剖面源=不可用" in p5["month_end_line"]
+    check("S14 不可用=降级行+机械链 5/7（N2 零编造）", "S6 能耗剖面源=不可用" in p5["month_end_line"]
           and "机械链 5/7" in p5["month_end_line"])
     sbw_fix = [{"id": "BW-001", "date_from": "2026-10-08", "date_to": "2026-10-08", "consumer": "H3 test"},
                {"id": "BW-002", "date_from": "2026-10-09", "date_to": "2026-10-10", "consumer": "KF batch"},
@@ -758,12 +758,12 @@ def cmd_selftest():
                                  "2026-10", call_pct=None)
     check("BC-P-155 阈值不可得→无 verdict（N2 零编造不默认通过）", "verdict" not in sp_nocp["self"])
     wm = windows_in_month(sbw_fix, "2026-10")
-    check("S4b 窗月窗切片=10 月内 BW-001/002·他月窗排除", [w["id"] for w in wm] == ["BW-001", "BW-002"])
+    check("S15 窗月窗切片=10 月内 BW-001/002·他月窗排除", [w["id"] for w in wm] == ["BW-001", "BW-002"])
     s4b_fix = dict(sp, windows_in_month=wm,
                    note="BC-P-62 声明台账=日级人工声明零启发式（E62 归因律同源）·self=30% 执行线读数面·借出负载不计自产·M66 月度对账供数")
     p6 = assemble("2026-10", s1, s2, {"files": [], "generated": 0}, s4, s5, "T3",
                   s6=s6_fix, s4b=s4b_fix)
-    check("S4b 并入月末行=self/借用分列+借用窗行+payload 源携带+月度 verdict 面",
+    check("S16 并入月末行=self/借用分列+借用窗行+payload 源携带+月度 verdict 面",
           "S4b GPU self/borrowed 分列" in p6["month_end_line"]
           and "SELF n=2 avg=15.0%" in p6["month_end_line"]
           and "借用 n=2 avg=80.0%" in p6["month_end_line"]
@@ -777,13 +777,13 @@ def cmd_selftest():
                                   "self": {"n": 3, "avg_pct": 12.0, "days": ["2026-10-01"]},
                                   "borrowed": {"n": 0, "avg_pct": None, "days": []},
                                   "windows_in_month": [], "note": "zero"})
-    check("S4b 零声明借用窗=全月 SELF 口径行（borrowed n=0 avg=-）",
+    check("S17 零声明借用窗=全月 SELF 口径行（borrowed n=0 avg=-）",
           "零声明借用窗=全月 SELF 口径" in p7["month_end_line"]
           and "借用 n=0 avg=-" in p7["month_end_line"])
     p8 = assemble("2026-10", s1, s2, {"files": [], "generated": 0}, s4, s5, "T3",
                   s6=s6_fix, s4b={"available": False,
                                   "note": "S4b 分列源不可用（collector 模块导入失败·N2 零编造）"})
-    check("S4b 源不可用=降级行如实（N2 零编造）",
+    check("S18 源不可用=降级行如实（N2 零编造）",
           "S4b GPU self/borrowed 分列=源不可用降级如实" in p8["month_end_line"])
     p9 = assemble("2026-10", s1, s2, {"files": [], "generated": 0}, s4, s5, "T3",
                   s6=s6_fix, s4b=s4b_fix)
@@ -803,7 +803,7 @@ def cmd_selftest():
     s7_fix = s7_l1("2026-10", summary_text=l1_fix)
     p10 = assemble("2026-10", s1, s2, {"files": [], "generated": 0}, s4, s5, "T4",
                    s6=s6_fix, s4b=s4b_fix, s7=s7_fix)
-    check("S7 并入月末行=rows/amount/月闸+机械链 7/7 就绪",
+    check("S19 并入月末行=rows/amount/月闸+机械链 7/7 就绪",
           "S7 L1 本地推理轨" in p10["month_end_line"]
           and "rows 1" in p10["month_end_line"]
           and "amount 0.000021 Mtok" in p10["month_end_line"]
@@ -813,14 +813,14 @@ def cmd_selftest():
     p11 = assemble("2026-10", s1, s2, {"files": [], "generated": 0}, s4, s5, "T4",
                    s6=s6_fix, s4b=s4b_fix,
                    s7={"available": False, "note": "S7 L1 轨源不可用（l1-summary 未解析出·N2 零编造）"})
-    check("S7 源不可用=降级行如实+机械链不增（N2 零编造）",
+    check("S20 源不可用=降级行如实+机械链不增（N2 零编造）",
           "S7 L1 本地推理轨=源不可用降级如实" in p11["month_end_line"]
           and "机械链 6/7 就绪" in p11["month_end_line"]
           and "S7 未采" not in p11["month_end_line"])
     p12 = assemble("2026-10", s1, s2, {"files": [], "generated": 0}, s4, s5, "T4",
                    s6=s6_fix, s4b=s4b_fix, s7=s7_fix)
     check("确定性=S7 段双跑一致", p10["month_end_line"] == p12["month_end_line"])
-    check("S7 垃圾文本=解析失败降级 available False",
+    check("S21 垃圾文本=解析失败降级 available False",
           s7_l1("2026-10", summary_text="not json")["available"] is False)
     s8_rows_fix = [
         {"tx_id": "D-20261025-1", "ts": "2026-10-25T12:45:51", "lane": "bilibili",
@@ -871,7 +871,7 @@ def cmd_selftest():
     p14 = assemble("2026-10", s1, s2, {"files": [], "generated": 0}, s4, s5, "T5",
                    s6=s6_fix, s4b=s4b_fix, s7=s7_fix,
                    s8={"available": False, "note": "S8 台账件不存在·N2 零编造"}, s9=s9)
-    check("S8 源不可用=降级行如实+机械链 8/9（S9 照常计入）",
+    check("S22 源不可用=降级行如实+机械链 8/9（S9 照常计入）",
           "S8 私域分发轨=源不可用降级如实" in p14["month_end_line"]
           and "机械链 8/9 就绪" in p14["month_end_line"]
           and "S9 交付调度轨" in p14["month_end_line"])
@@ -886,14 +886,14 @@ def cmd_selftest():
     _shrunk = {"distr": {"required": [k for k in rsc.SCHEMAS["distr"]["required"]],
                          "properties": {k: v for k, v in rsc.SCHEMAS["distr"]["properties"].items()
                                         if k != "reach_count"}}}
-    check("T134 负例=schema 删 reach_count 即报缺口（检出能力自证）",
+    check("T135 负例=schema 删 reach_count 即报缺口（检出能力自证）",
           schema_key_gap("distr", _shrunk) == ["reach_count"])
     _req_only = {"delivery": {"required": ["ts", "status", "delivery_id", "route_group",
                                            "order_id", "live", "attempts"],
                               "properties": {}}}
-    check("T134 required-only 键也算已声明（required∪properties 双源合并）",
+    check("T136 required-only 键也算已声明（required∪properties 双源合并）",
           schema_key_gap("delivery", _req_only) == [])
-    check("T134 schema 不可用=None 降级（不假绿）", schema_key_gap("distr", {}) is None)
+    check("T137 schema 不可用=None 降级（不假绿）", schema_key_gap("distr", {}) is None)
     total = 42
     print(f"selftest: {ok[0]}/{total} PASS" if ok[0] == total else f"selftest: FAIL ({ok[0]}/{total})")
     return 0 if ok[0] == total else 1
