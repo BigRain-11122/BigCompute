@@ -1,8 +1,8 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-11-17 00:32",
+ "updated_at": "2026-11-17 06:12",
  "current_activity": "2026-11-17 00:00 轮：T251 done（selftest 重号清零·产品优先律 2 分件）=新工具 Tools/selftest_id_fix.py（plan/apply/--map-out·自检 6/6；同作用域首现保号、后续取同前缀最大号+1，S7c 这类带字母后缀的号也不会造出非法标签… ｜ 两池：本司备货可派 2 ／ 机队可领 4（两个不同池，本司卡未登记进机队池）",
- "latest_artifact": "state/selftest-id-census-20261117-0031.json（mtime 2026-11-17 00:26）",
+ "latest_artifact": "state/encoding-scan-20261117-post.json（mtime 2026-11-17 06:10）",
  "next_milestone": "窗口内重复点火率进实况面（BC-P-262 接线：status-export 增 ignition_repeat_rate 一行 + 轮账本 dupes= 面），当前基线 76.9% 对 <=10% 标准（source=declared）",
  "caps": {
   "write_lag_min": 30.0,

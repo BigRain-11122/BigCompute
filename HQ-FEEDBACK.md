@@ -1037,3 +1037,6 @@ epeat_rate=0.0%，与「真的降到 0」同形；已按 NO-ACTIVITY 记并立 t
 - 日清（11-17 00:4x 令牌轮）：无 P0/P1 新待报。审核步=集团 decisions.md 第 69 批已在 00:1x 轮读完，本轮双台账 mtime（decisions 00:06／orders 22:57）均早于上轮基线，零新增令行。
 - 队列：**T251 done**（产品优先律 2 分件）=`Tools/selftest_id_fix.py` 落盘 + 九文件 55 处重编号（=普查 dup_extra 55 逐数吻合），九件 selftest 汇总逐件不变（14/30/21/11/42/11/22/12/30，FAIL=0），全仓普查转 `SELFTEST-IDS-CLEAN`（labels 938→944 的 +6 全为新工具自带，零断言增删），改后树 `--dry-run` 出 `renames=0` 幂等回证。
 - 诚实：本轮无 GPU 产能增量（R-078 上游未闭，bm-a 7 日 21.8% 仍低于 50% 结构线）；新发现=month_end_collect 源内部分中文断言标签为双重编码（同一文件两种编码并存），已立 T252 下一轮修。
+- 日清（11-17 06:1x 令牌轮）：无 P0/P1 新待报。审核步=集团 decisions.md 第 70 批（11-17 06:00）4 行全读、无本司受派（D-06 分叉到点判 FAILED 并当场收敛／D-07 交付工位三任务须 S4U 重注册／D-08 收取面／D-09 783 件差异分类）；orders 11-16 22:57 后零新增令行。
+- 队列：**T252 done**（产品优先律 2 分件）=新工具 `Tools/encoding_repair.py`（scan/apply/selftest·纯 ASCII 源）按字节判定并修复证据件编码：真实损伤面=**42 件 UTF-16LE**（PowerShell 重定向默认，全量转 UTF-8·行数逐件相等·raw 备份 `state/_encoding-backup/`）+**13 件双重编码段**按可逆规则还原；「源内双重编码」假设判负（`Tools/**/*.py` 零命中）。复扫 UTF8-OK 2186→**2232**，selftest 8/8 PASS（含「整行修会误伤正常中文」负控与幂等回证）。
+- 诚实：残余 7 件 DOUBLE-ENCODED 全为有意保留（proposals/tech 引用缺陷样例、sentinel.lineset、t251 前后对照、工具自身输出）+ 5 件 INVALID 原始启动日志未改；被 PowerShell 有损转码（`?` 占位）的行只能部分还原，残段已具名不冒充全好；`state/rounds.log` 本身 strict UTF-8 完好，先前所见的整屏乱码是 PowerShell 读取面无 `-Encoding` 所致，非账本损坏。
