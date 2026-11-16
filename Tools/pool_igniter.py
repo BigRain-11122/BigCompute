@@ -639,7 +639,13 @@ def compile_stale_guard(batch_id, project_root=None, rows=None):
 # card + same payload fingerprint inside the window = SKIP, naming the run it
 # duplicates.
 DUPLICATE_WINDOW_H = 6.0
-FINGERPRINT_SCHEME = "card+entry+cs-newest"
+# tech T242: the third component used to be the newest .cs mtime, so a checkout,
+# a re-import or a plain touch turned "the same payload" into "the payload
+# changed" and the dedupe guard waved the rebuild through.  It is now an
+# ordered content digest; mtime is still recorded for reading old receipts.
+# Receipts carrying the previous scheme are read as legacy and let exactly one
+# run through, named `payload-scheme-legacy(...)` - not as `payload-changed`.
+FINGERPRINT_SCHEME = "card+entry+cs-content"
 
 # tech T243: the window alone still re-burned identical payloads, because age
 # was standing in for a question the disk can answer directly.  B-CITY3D-01's
@@ -686,8 +692,10 @@ def payload_fingerprint(batch_id, project_root=None):
 
     Three parts, because a changed output can only come from one of them: the
     card row (what to build), the entry script bytes (where it starts), and the
-    newest .cs under Assets/ with the file count (whether how-it-builds
-    changed).  Components are returned so a mismatch stays explainable.
+    content of every .cs under Assets/ with the file count (whether
+    how-it-builds changed).  Contents, not mtimes - a checkout must not read as
+    a new payload (tech T242).  Components are returned so a mismatch stays
+    explainable, and `cs_newest` is kept so pre-T242 receipts can be read.
     """
     row = card(batch_id)
     if row is None:
@@ -698,20 +706,10 @@ def payload_fingerprint(batch_id, project_root=None):
     root = project_root or BAKE_PROJECT
     entry = find_entry_script(root, marker=marker)
     entry_sha = sha256(entry) if entry else ""
-    newest, cs_count = 0, 0
-    assets = os.path.join(root, "Assets")
-    for base, _dirs, files in os.walk(assets):
-        for fn in files:
-            if not fn.lower().endswith(".cs"):
-                continue
-            cs_count += 1
-            try:
-                newest = max(newest, int(os.path.getmtime(os.path.join(base, fn))))
-            except OSError:
-                continue
+    cs_content, cs_count, newest = cs_content_digest(root)
     h = hashlib.sha256()
     for part in (FINGERPRINT_SCHEME, batch_id, row_text, entry_sha,
-                 str(cs_count), str(newest)):
+                 str(cs_count), cs_content):
         h.update(part.encode("utf-8"))
         h.update(b"\x1f")
     return h.hexdigest()[:16], {
@@ -719,8 +717,62 @@ def payload_fingerprint(batch_id, project_root=None):
         "card": hashlib.sha256(row_text.encode("utf-8")).hexdigest()[:16],
         "entry": entry_sha[:16] if entry_sha else "absent",
         "cs_count": cs_count,
+        "cs_content": cs_content,
         "cs_newest": newest,
     }
+
+
+def cs_content_digest(root):
+    """(digest16, count, newest_mtime) over Assets/**/*.cs, order-independent.
+
+    Reads bytes in chunks so a large asset tree costs memory per file, not per
+    tree.  Unreadable files are skipped: a file we cannot open cannot prove the
+    payload changed, and inventing a digest for it would be worse than leaving
+    it out of the count.
+    """
+    files = []
+    assets = os.path.join(root, "Assets")
+    newest = 0
+    for base, _dirs, names in os.walk(assets):
+        for fn in names:
+            if not fn.lower().endswith(".cs"):
+                continue
+            full = os.path.join(base, fn)
+            digest = hashlib.sha256()
+            try:
+                with open(full, "rb") as f:
+                    for chunk in iter(lambda: f.read(65536), b""):
+                        digest.update(chunk)
+            except OSError:
+                continue
+            rel = os.path.relpath(full, root).replace("\\", "/")
+            files.append((rel, digest.hexdigest()))
+            try:
+                newest = max(newest, int(os.path.getmtime(full)))
+            except OSError:
+                continue
+    files.sort()
+    h = hashlib.sha256()
+    for rel, digest in files:
+        h.update(rel.encode("utf-8"))
+        h.update(b"\x00")
+        h.update(digest.encode("ascii"))
+        h.update(b"\x01")
+    return h.hexdigest()[:16], len(files), newest
+
+
+def fingerprint_scheme(row):
+    """Which ruler produced this receipt's fingerprint, or None if unwritten.
+
+    Receipts from before T242 carry `card+entry+cs-newest`; their numbers are
+    mtime-based and cannot be compared to a content digest.
+    """
+    parts = row.get("fingerprint_parts")
+    if isinstance(parts, dict):
+        name = parts.get("scheme")
+        if isinstance(name, str) and name:
+            return name
+    return None
 
 
 def _receipt_age_h(ts):
@@ -756,6 +808,14 @@ def duplicate_guard(batch_id, rows=None, hours=DUPLICATE_WINDOW_H,
         age = _receipt_age_h(r.get("ts"))
         if not prev:
             return True, "baseline-without-fingerprint(%s)" % r.get("ts")
+        prev_scheme = fingerprint_scheme(r)
+        if prev_scheme and prev_scheme != FINGERPRINT_SCHEME:
+            # The old number was built from mtimes, so it cannot be compared to
+            # the content digest at all - it is not "the payload changed", it is
+            # "two numbers from two rulers".  Let one run through under the new
+            # ruler and name the reason instead of blaming a change.
+            return True, "payload-scheme-legacy(%s@%s)" % (prev_scheme,
+                                                           r.get("ts"))
         if age is None:
             return True, "baseline-ts-unreadable(%s)" % r.get("ts")
         if prev != fp:
@@ -906,7 +966,10 @@ def duplicate_waste(rows=None, root=ROOT, since=None):
                 totals["wasted_launches"] += repeats
     totals["repeat_rate"] = (round(totals["repeat_runs"]
                                   / float(totals["ok_runs"]), 4)
-                             if totals["ok_runs"] else 0.0)
+                             if totals["ok_runs"] else None)
+    # T248: an empty denominator is no activity, not a perfect score.  Printing
+    # 0.0% made "nothing was ignited" indistinguishable from "nothing repeated".
+    totals["verdict"] = "NO-ACTIVITY" if not totals["ok_runs"] else "OK"
     return {"totals": totals, "cards": cards,
             "window": {"start": since_dt.strftime("%Y-%m-%d %H:%M:%S"),
                        "end": now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -2017,6 +2080,41 @@ def selftest():
         chk("S34 legacy ok receipt without fingerprint lets one run through",
             allowed and why.startswith("baseline-without-fingerprint"), why)
 
+        # --- T242: the ruler is content, not mtime -------------------------
+        fp_before, parts_before = payload_fingerprint("B-CITY3D-01",
+                                                      project_root=proj)
+        os.utime(cs, (time.time() + 3600, time.time() + 3600))
+        fp_touched, parts_touched = payload_fingerprint("B-CITY3D-01",
+                                                        project_root=proj)
+        chk("S77 T242: same bytes with a newer mtime -> same fingerprint",
+            fp_touched == fp_before
+            and parts_touched["cs_content"] == parts_before["cs_content"]
+            and parts_touched["cs_newest"] != parts_before["cs_newest"],
+            (fp_before, fp_touched))
+
+        with open(cs, "a", encoding="utf-8") as f:
+            f.write("// one more line\n")
+        fp_edited, parts_edited = payload_fingerprint("B-CITY3D-01",
+                                                      project_root=proj)
+        chk("S78 T242: one byte more -> fingerprint changes",
+            fp_edited != fp_before
+            and parts_edited["cs_content"] != parts_before["cs_content"],
+            (fp_before, fp_edited))
+
+        legacy_ok = dict(same, fingerprint="a3e769a0e23a8f8b",
+                         fingerprint_parts={"scheme": "card+entry+cs-newest"})
+        allowed, why = duplicate_guard("B-CITY3D-01", rows=[legacy_ok],
+                                       fingerprint=fp_before)
+        chk("S79 T242: old-scheme baseline lets one run through and is named",
+            allowed
+            and why.startswith("payload-scheme-legacy(card+entry+cs-newest@"),
+            why)
+
+        allowed, why = duplicate_guard("B-CITY3D-01", rows=[same],
+                                       fingerprint=fp_before)
+        chk("S80 T242: a receipt with no recorded scheme is not read as legacy",
+            not allowed and why.startswith("same-payload-within-"), why)
+
         # --- delivered-payload guard (tech T243) ---------------------------
         # Age alone re-burned one payload 11 times over three days; the disk
         # knows whether that delivery is still there.
@@ -2093,8 +2191,11 @@ def selftest():
                                root=tmp, since=since_3h)
         chk("S45 T244: undated receipt is named, not swept into the window",
             dw_u["totals"]["ok_runs"] == 0
-            and dw_u["window"]["undated_runs"] == 1
-            and dw_u["totals"]["repeat_rate"] == 0.0, dw_u)
+            and dw_u["window"]["undated_runs"] == 1, dw_u)
+
+        chk("S45b T248: empty window prints n/a + NO-ACTIVITY, never 0.0%",
+            dw_u["totals"]["repeat_rate"] is None
+            and dw_u["totals"]["verdict"] == "NO-ACTIVITY", dw_u["totals"])
 
         try:
             duplicate_waste([same], root=tmp, since="last week")
@@ -2616,12 +2717,14 @@ def dupes(as_json=False, since=None):
     t = rec["totals"]
     win = rec.get("window")
     if win:
+        rate = ("%.1f%%" % (t["repeat_rate"] * 100.0)
+                if t["repeat_rate"] is not None else "n/a")
         print("dupes window=%s..%s ok_runs=%d unique_payloads=%d "
-              "repeat_runs=%d wasted_launches=%d repeat_rate=%.1f%% "
-              "undated=%d"
+              "repeat_runs=%d wasted_launches=%d repeat_rate=%s "
+              "undated=%d verdict=%s"
               % (win["start"], win["end"], t["ok_runs"],
                  t["unique_payloads"], t["repeat_runs"], t["wasted_launches"],
-                 t["repeat_rate"] * 100.0, win["undated_runs"]))
+                 rate, win["undated_runs"], t.get("verdict", "-")))
         start = _parse_receipt_ts(win["start"])
         for bid in sorted(rec["cards"]):
             c = rec["cards"][bid]
