@@ -1,0 +1,43 @@
+PASS S1 解析=计划态四零
+PASS S2 解析=rows/pending 零·J4 在文
+PASS S3 盘点=声明台账排除（generated 0·declared 1）·真记账轨生成件计入
+PASS S4 解析=分机行+滚动基线
+PASS SLA 解析=净窗双态+JSON 指针
+PASS S5 聚合=月内 2 探针（无 eval 行不计）·eval 28·他月排除
+PASS S6 报告解析=头部+基线+JSON 指针
+PASS S10 缺件态=垃圾文本 None·空 per_day 零月窗
+PASS S11 月窗切片=月 kWh/日均/正向 delta 分列·负值零值他月排除
+PASS S12 空月窗=零日零 kWh·日均 None·borrow 空
+PASS 计划态月末行=商业 0·三要素 ⬜·单位成本 ⬜·SLA 段在
+PASS N3 双门=BLOCKED（凭证⬜+商业tokens 0）
+PASS 商业 tokens>0 机械透传·单位成本仍 ⬜ 零计算
+PASS 确定性=双跑一致（含 S6 段）
+PASS S13 并入月末行=月 kWh+安静带+正向 delta 分列+机械链 6/7
+PASS S14 不可用=降级行+机械链 5/7（N2 零编造）
+PASS BC-P-155 阈值单源接线=collector CALL_PCT（本文件零阈值字面复制）
+PASS S4b 月窗分列=self n=2 avg=15.0%·借用 n=2 avg=80.0%·他月排除·借用日分列
+PASS BC-P-155 self 月均低于点名线→verdict=CALLOUT（15.0% 对线）
+PASS BC-P-155 self 月均不低于线→verdict=OK
+PASS BC-P-155 self n=0→无 verdict（禁假判 OK/CALLOUT）
+PASS BC-P-155 阈值不可得→无 verdict（N2 零编造不默认通过）
+PASS S15 窗月窗切片=10 月内 BW-001/002·他月窗排除
+PASS S16 并入月末行=self/借用分列+借用窗行+payload 源携带+月度 verdict 面
+PASS S17 零声明借用窗=全月 SELF 口径行（borrowed n=0 avg=-）
+PASS S18 源不可用=降级行如实（N2 零编造）
+PASS 确定性=S4b 段双跑一致
+PASS S7 解析=totals/月闸/口径在文
+PASS S19 并入月末行=rows/amount/月闸+机械链 7/7 就绪
+PASS S20 源不可用=降级行如实+机械链不增（N2 零编造）
+PASS 确定性=S7 段双跑一致
+PASS S21 垃圾文本=解析失败降级 available False
+PASS S8 月窗聚合=rows 2·attribution pending/confirmed 各 1·conv 命中 1·他月排除
+PASS S9 事件链聚合=events 3·交付单 1·末态 delivered=1·max attempts 1·他月排除
+PASS S8/S9 并入月末行=两段在文+机械链 9/9 就绪+payload 源携带
+PASS S22 源不可用=降级行如实+机械链 8/9（S9 照常计入）
+PASS 确定性=S8/S9 段双跑一致
+PASS JSONL 装载缺件=None+坏行计数
+PASS T134 解析键 ⊆ schema 声明（distr/delivery 双轨 gap 空）
+PASS T135 负例=schema 删 reach_count 即报缺口（检出能力自证）
+PASS T136 required-only 键也算已声明（required∪properties 双源合并）
+PASS T137 schema 不可用=None 降级（不假绿）
+selftest: 42/42 PASS
