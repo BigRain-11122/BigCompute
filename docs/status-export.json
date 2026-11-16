@@ -1,8 +1,8 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-11-16 23:21",
- "current_activity": "2026-11-16 23:00 轮：T249 done（dupes/delivery_audit 两处读面按 fingerprint_parts.scheme 分桶：payloads_by_scheme/schemes/cross_scheme/scheme_conflicts，无 parts 回执单列 unknown-scheme，仅跨方案印 cross-scheme=no-merge… ｜ 两池：本司备货可派 2 ／ 机队可领 4（两个不同池，本司卡未登记进机队池）",
- "latest_artifact": "state/t249-scheme-split-20261116.txt（mtime 2026-11-16 23:15）",
+ "updated_at": "2026-11-17 00:16",
+ "current_activity": "2026-11-17 00:00 轮：T250 done（selftest 案例号重号普查件：Tools/selftest_id_census.py run/selftest/--json-out·AST 只读·口径=只认「检查器首参字符串」（assert 消息与行内 token 不算）·selftest 11/11… ｜ 两池：本司备货可派 2 ／ 机队可领 4（两个不同池，本司卡未登记进机队池）",
+ "latest_artifact": "state/sop-coverage-20261117-001044.json（mtime 2026-11-17 00:10）",
  "next_milestone": "窗口内重复点火率进实况面（BC-P-262 接线：status-export 增 ignition_repeat_rate 一行 + 轮账本 dupes= 面），当前基线 76.9% 对 <=10% 标准（source=declared）",
  "caps": {
   "write_lag_min": 30.0,

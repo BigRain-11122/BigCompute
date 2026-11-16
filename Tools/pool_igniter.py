@@ -2370,11 +2370,11 @@ def selftest():
         good.save(os.path.join(ok_dir, "frame_01.png"))
 
         q = frame_quality(os.path.join(fq_dir, "frame_01.png"))
-        chk("S35 all-magenta frame reads magenta=100/geom=0",
+        chk("S84 all-magenta frame reads magenta=100/geom=0",
             q["magenta_pct"] == 100.0 and q["geom_pct"] == 0.0, q)
 
         rep = frame_quality_report(fq_dir)
-        chk("S36 magenta frame and sparse frame are named by their own metric",
+        chk("S85 magenta frame and sparse frame are named by their own metric",
             rep["magenta_max_frame"] == "frame_01.png"
             and rep["magenta_max_pct"] == 100.0
             and rep["geom_min_frame"] == "frame_02.png"
@@ -2389,13 +2389,13 @@ def selftest():
 
         q_sparse = frame_quality(os.path.join(fq_dir, "frame_02.png"),
                                  clear_rgb=CLEAR_RGB_DEFAULT)
-        chk("S37 near-empty frame reads geom=1.0% against declared clear",
+        chk("S86 near-empty frame reads geom=1.0% against declared clear",
             q_sparse["geom_pct"] == 1.0 and q_sparse["bg_source"] == "declared",
             q_sparse)
 
         q_good = frame_quality(os.path.join(ok_dir, "frame_01.png"),
                                clear_rgb=CLEAR_RGB_DEFAULT)
-        chk("S38 normal frame reads geom=60.0% and magenta=0",
+        chk("S87 normal frame reads geom=60.0% and magenta=0",
             q_good["geom_pct"] == 60.0 and q_good["magenta_pct"] == 0.0, q_good)
 
         # declared vs modal must stay distinguishable: on the good frame the
@@ -2409,7 +2409,7 @@ def selftest():
         q_decl = frame_quality(os.path.join(fq_dir, "frame_03.png"),
                               clear_rgb=CLEAR_RGB_DEFAULT)
         q_modal = frame_quality(os.path.join(fq_dir, "frame_03.png"))
-        chk("S39 declared vs modal background are labelled and differ",
+        chk("S88 declared vs modal background are labelled and differ",
             q_decl["bg_source"] == "declared" and q_modal["bg_source"] == "modal"
             and q_decl["geom_pct"] == 90.0 and q_modal["geom_pct"] == 10.0,
             (q_decl, q_modal))
@@ -2417,20 +2417,20 @@ def selftest():
         bad = os.path.join(tmp, "not-a-png.png")
         with open(bad, "w", encoding="utf-8") as f:
             f.write("not a png\n")
-        chk("S40 unreadable frame returns None instead of a zero reading",
+        chk("S89 unreadable frame returns None instead of a zero reading",
             frame_quality(bad) is None)
-        chk("S41 empty frame dir -> frames_read=0 and named reason",
+        chk("S90 empty frame dir -> frames_read=0 and named reason",
             frame_quality_report(os.path.join(tmp, "empty-frames"))
             .get("unreadable") == "no-frames")
 
         # D-20261109-08: a frame set with placeholder material may not be
         # judged PASS, and the run-level ok must not be redefined silently.
         rep_bad = frame_quality_report(fq_dir)
-        chk("S42 placeholder frames -> QC-INSUFFICIENT, not PASS",
+        chk("S91 placeholder frames -> QC-INSUFFICIENT, not PASS",
             rep_bad["qc_verdict"] == "FRAME-QC-INSUFFICIENT-PLACEHOLDER"
             and rep_bad["placeholder_frames"] == 1, rep_bad["qc_verdict"])
         rep_ok = frame_quality_report(ok_dir)
-        chk("S43 clean frame set -> QC-PASS with zero placeholder",
+        chk("S92 clean frame set -> QC-PASS with zero placeholder",
             rep_ok["qc_verdict"] == "FRAME-QC-PASS"
             and rep_ok["placeholder_frames"] == 0, rep_ok["qc_verdict"])
 
@@ -2484,15 +2484,15 @@ def selftest():
                     + struct.pack("<4i", 0, 0, 1023, 1023))
         chk("S45a EXR header yields dataWindow size",
             exr_dimensions(synth) == (1024, 1024), exr_dimensions(synth))
-        chk("S45b non-EXR file -> None", exr_dimensions(bad) is None)
+        chk("S93 non-EXR file -> None", exr_dimensions(bad) is None)
 
         rep_none = lightmap_quality_report([])
-        chk("S46 no lightmaps -> QC-NO-INPUT with named reason",
+        chk("S94 no lightmaps -> QC-NO-INPUT with named reason",
             rep_none["qc_verdict"] == "LIGHTMAP-QC-NO-INPUT"
             and rep_none["unreadable"] == "no-lightmaps", rep_none["qc_verdict"])
 
         rep_unread = lightmap_quality_report([os.path.join(tmp, "nope.exr")])
-        chk("S47 unreadable atlas -> QC-UNREADABLE and named",
+        chk("S95 unreadable atlas -> QC-UNREADABLE and named",
             rep_unread["qc_verdict"] == "LIGHTMAP-QC-UNREADABLE"
             and rep_unread["files"][0]["verdict"] == "LIGHTMAP-UNREADABLE",
             rep_unread["qc_verdict"])
@@ -2509,7 +2509,7 @@ def selftest():
         rep_lit = lightmap_quality_report([os.path.join(tmp, "lit-a.exr"),
                                            os.path.join(tmp, "lit-b.exr")],
                                           reader=_fake(False))
-        chk("S48 two lit atlases -> QC-PASS with min_lit reported",
+        chk("S96 two lit atlases -> QC-PASS with min_lit reported",
             rep_lit["qc_verdict"] == "LIGHTMAP-QC-PASS"
             and rep_lit["min_lit_pct"] == 100.0, rep_lit["qc_verdict"])
 
@@ -2681,7 +2681,7 @@ def selftest():
             os.remove(shot)
             os.remove(mag)
         else:
-            chk("S63 T230: frame recompute fixture skipped (no PIL) -> not claimed",
+            chk("S97 T230: frame recompute fixture skipped (no PIL) -> not claimed",
                 True, "PIL missing")
 
         conv_gone = converge_unknown(
