@@ -775,6 +775,43 @@ def fingerprint_scheme(row):
     return None
 
 
+def _scheme_of(row):
+    """Scheme label for read-side bucketing (T249).
+
+    Receipts that carry a fingerprint but no scheme predate the parts field, so
+    they are their own bucket instead of being merged into either ruler.
+    """
+    return fingerprint_scheme(row) or "unknown-scheme"
+
+
+def _scheme_summary(cards):
+    """Per-scheme unique-payload split for a card ledger (T249)."""
+    by_scheme, conflicts = {}, 0
+    for c in cards.values():
+        for scheme, n in c.get("payloads_by_scheme", {}).items():
+            by_scheme[scheme] = by_scheme.get(scheme, 0) + n
+        conflicts += sum(1 for p in c.get("payloads", {}).values()
+                         if p.get("scheme_conflict"))
+    return {"payloads_by_scheme": by_scheme,
+            "schemes": sorted(by_scheme),
+            "cross_scheme": len(by_scheme) > 1,
+            "scheme_conflicts": conflicts}
+
+
+def _scheme_line(reading):
+    """One printable line for the T249 split; empty when nothing to say."""
+    by = reading.get("payloads_by_scheme") or {}
+    if not by:
+        return ""
+    parts = ",".join("%s:%d" % (k, by[k]) for k in sorted(by))
+    line = "payloads_by_scheme=%s" % parts
+    if reading.get("cross_scheme"):
+        line += " cross-scheme=no-merge"
+    if reading.get("scheme_conflicts"):
+        line += " scheme_conflicts=%d" % reading["scheme_conflicts"]
+    return line
+
+
 def _receipt_age_h(ts):
     try:
         return (now() - datetime.datetime.strptime(
@@ -852,7 +889,8 @@ def delivery_audit(rows=None):
             continue
         bid = r.get("batch_id") or "?"
         c = cards.setdefault(bid, {"ok_runs": 0, "unique_payloads": 0,
-                                   "pre_guard_runs": 0, "redundant_runs": 0})
+                                   "pre_guard_runs": 0, "redundant_runs": 0,
+                                   "payloads_by_scheme": {}})
         c["ok_runs"] += 1
         fp = r.get("fingerprint")
         if not fp:
@@ -863,12 +901,26 @@ def delivery_audit(rows=None):
             continue
         seen[bid].add(fp)
         c["unique_payloads"] += 1
+        scheme = _scheme_of(r)
+        c["payloads_by_scheme"][scheme] = (
+            c["payloads_by_scheme"].get(scheme, 0) + 1)
     totals = {"ok_runs": 0, "unique_payloads": 0, "pre_guard_runs": 0,
               "redundant_runs": 0}
     for c in cards.values():
         for k in totals:
             totals[k] += c[k]
-    return {"totals": totals, "cards": cards}
+    # T249: a unique count is only meaningful inside one ruler.  Receipts
+    # before T242 carry mtime-based numbers, so the same real payload can
+    # appear once per scheme (or once per touch under the old ruler).  The
+    # totals stay as they were and the split is reported next to them.
+    by_scheme = {}
+    for c in cards.values():
+        for scheme, n in c["payloads_by_scheme"].items():
+            by_scheme[scheme] = by_scheme.get(scheme, 0) + n
+    return {"totals": totals, "cards": cards,
+            "payloads_by_scheme": by_scheme,
+            "schemes": sorted(by_scheme),
+            "cross_scheme": len(by_scheme) > 1}
 
 
 def _parse_receipt_ts(value):
@@ -919,11 +971,20 @@ def duplicate_waste(rows=None, root=ROOT, since=None):
         if not fp:
             continue
         bid = r.get("batch_id") or "?"
-        c = cards.setdefault(bid, {"ok_runs": 0, "payloads": {}})
+        c = cards.setdefault(bid, {"ok_runs": 0, "payloads": {},
+                                   "payloads_by_scheme": {}})
         c["ok_runs"] += 1
+        scheme = _scheme_of(r)
         p = c["payloads"].setdefault(
             fp, {"runs": 0, "first": None, "last": None, "present": 0,
-                 "w_runs": 0})
+                 "w_runs": 0, "scheme": scheme, "scheme_conflict": False})
+        if p["scheme"] != scheme:
+            # Same fingerprint string under two rulers: keep counting it once
+            # (the numbers must not move) but say the buckets disagree.
+            p["scheme_conflict"] = True
+        if p["runs"] == 0:
+            c["payloads_by_scheme"][p["scheme"]] = (
+                c["payloads_by_scheme"].get(p["scheme"], 0) + 1)
         p["runs"] += 1
         if p["first"] is None:
             p["first"] = r.get("ts")
@@ -948,7 +1009,9 @@ def duplicate_waste(rows=None, root=ROOT, since=None):
                 totals["repeat_runs"] += p["runs"] - 1
                 if p["present"]:
                     totals["wasted_launches"] += p["runs"] - 1
-        return {"totals": totals, "cards": cards}
+        out = {"totals": totals, "cards": cards}
+        out.update(_scheme_summary(cards))
+        return out
     for c in cards.values():
         for p in c["payloads"].values():
             w = p["w_runs"]
@@ -970,10 +1033,12 @@ def duplicate_waste(rows=None, root=ROOT, since=None):
     # T248: an empty denominator is no activity, not a perfect score.  Printing
     # 0.0% made "nothing was ignited" indistinguishable from "nothing repeated".
     totals["verdict"] = "NO-ACTIVITY" if not totals["ok_runs"] else "OK"
-    return {"totals": totals, "cards": cards,
-            "window": {"start": since_dt.strftime("%Y-%m-%d %H:%M:%S"),
-                       "end": now().strftime("%Y-%m-%d %H:%M:%S"),
-                       "undated_runs": undated}}
+    out = {"totals": totals, "cards": cards,
+           "window": {"start": since_dt.strftime("%Y-%m-%d %H:%M:%S"),
+                      "end": now().strftime("%Y-%m-%d %H:%M:%S"),
+                      "undated_runs": undated}}
+    out.update(_scheme_summary(cards))
+    return out
 
 
 def last_tick_age_min():
@@ -1790,14 +1855,16 @@ def status(as_json=False, out=None):
     tot = da.get("totals") or {}
     if tot:
         print("delivery_audit runs=%s unique_payloads=%s pre_guard=%s "
-              "redundant=%s"
+              "redundant=%s %s"
               % (tot["ok_runs"], tot["unique_payloads"],
-                 tot["pre_guard_runs"], tot["redundant_runs"]))
+                 tot["pre_guard_runs"], tot["redundant_runs"],
+                 _scheme_line(da)))
         for bid in sorted(da.get("cards") or {}):
             c = da["cards"][bid]
-            print("  %s runs=%s unique=%s pre_guard=%s redundant=%s"
+            print("  %s runs=%s unique=%s pre_guard=%s redundant=%s %s"
                   % (bid, c["ok_runs"], c["unique_payloads"],
-                     c["pre_guard_runs"], c["redundant_runs"]))
+                     c["pre_guard_runs"], c["redundant_runs"],
+                     _scheme_line(c)))
     fq = ign.get("frame_quality")
     if fq and fq.get("frames_read"):
         print("frame_quality frames=%s magenta_max=%s%%(%s) geom_min=%s%%(%s) "
@@ -2214,6 +2281,42 @@ def selftest():
             _parse_receipt_ts("2026-11-13T21:47:05") is not None
             and _parse_receipt_ts("2026-11-13Z") is not None
             and _parse_receipt_ts("") is None)
+
+        # --- T249: one payload, two rulers, never merged --------------------
+        # Before T242 the third component was the newest .cs mtime, so every
+        # touch minted a new "payload"; after it the number is a content
+        # digest.  Ten old runs plus one new run must not read as eleven
+        # comparable payloads without saying which ruler produced which.
+        legacy = "card+entry+cs-newest"
+        same_fp = "aaaabbbbccccdddd"
+        legacy_rows = [dict(same, fingerprint="%016x" % i,
+                            fingerprint_parts={"scheme": legacy},
+                            outdir="run-keep") for i in range(10)]
+        content_row = dict(same, fingerprint=same_fp,
+                           fingerprint_parts={"scheme": FINGERPRINT_SCHEME},
+                           outdir="run-keep")
+        da_x = delivery_audit(legacy_rows + [content_row])
+        chk("S81 T249: legacy 10 runs + content 1 run split by scheme, and "
+            "the readout says cross-scheme=no-merge",
+            da_x["totals"]["unique_payloads"] == 11
+            and da_x["payloads_by_scheme"] == {legacy: 10,
+                                               FINGERPRINT_SCHEME: 1}
+            and da_x["cross_scheme"] is True
+            and "cross-scheme=no-merge" in _scheme_line(da_x),
+            da_x.get("payloads_by_scheme"))
+
+        dw_x = duplicate_waste(legacy_rows + [content_row], root=tmp)
+        chk("S82 T249: dupes carries the same split",
+            dw_x["totals"]["unique_payloads"] == 11
+            and dw_x["payloads_by_scheme"] == {legacy: 10,
+                                               FINGERPRINT_SCHEME: 1}
+            and dw_x["cross_scheme"] is True, dw_x["payloads_by_scheme"])
+
+        da_one = delivery_audit([content_row])
+        chk("S83 T249: a single ruler is not flagged as cross-scheme",
+            da_one["cross_scheme"] is False
+            and da_one["payloads_by_scheme"] == {FINGERPRINT_SCHEME: 1},
+            da_one["payloads_by_scheme"])
 
         # --- delivery audit: runs are not deliveries (tech T231) -----------
         da = delivery_audit([dict(same, fingerprint="aaaabbbbccccdddd"),
@@ -2721,10 +2824,11 @@ def dupes(as_json=False, since=None):
                 if t["repeat_rate"] is not None else "n/a")
         print("dupes window=%s..%s ok_runs=%d unique_payloads=%d "
               "repeat_runs=%d wasted_launches=%d repeat_rate=%s "
-              "undated=%d verdict=%s"
+              "undated=%d verdict=%s %s"
               % (win["start"], win["end"], t["ok_runs"],
                  t["unique_payloads"], t["repeat_runs"], t["wasted_launches"],
-                 rate, win["undated_runs"], t.get("verdict", "-")))
+                 rate, win["undated_runs"], t.get("verdict", "-"),
+                 _scheme_line(rec)))
         start = _parse_receipt_ts(win["start"])
         for bid in sorted(rec["cards"]):
             c = rec["cards"][bid]
@@ -2747,9 +2851,9 @@ def dupes(as_json=False, since=None):
                          "%d/%d" % (p["present"], p["runs"]), verdict))
         return 0
     print("dupes ok_runs=%d unique_payloads=%d repeat_runs=%d "
-          "wasted_launches=%d"
+          "wasted_launches=%d %s"
           % (t["ok_runs"], t["unique_payloads"], t["repeat_runs"],
-             t["wasted_launches"]))
+             t["wasted_launches"], _scheme_line(rec)))
     for bid in sorted(rec["cards"]):
         c = rec["cards"][bid]
         repeated = {fp: p for fp, p in c["payloads"].items() if p["runs"] > 1}

@@ -1,8 +1,8 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-11-16 23:06",
- "current_activity": "2026-11-16 19:00 轮：T247 done（探针第四读数 ASK-THIN：剥括号舞台提示后无实词即点名、不判红；阈值 ask_thin.substance_chars=8 进 Tools/probe_config.json；selftest 26→31/31… ｜ 两池：本司备货可派 2 ／ 机队可领 4（两个不同池，本司卡未登记进机队池）",
- "latest_artifact": "state/dupes-20261116.txt（mtime 2026-11-16 22:50）",
+ "updated_at": "2026-11-16 23:21",
+ "current_activity": "2026-11-16 23:00 轮：T249 done（dupes/delivery_audit 两处读面按 fingerprint_parts.scheme 分桶：payloads_by_scheme/schemes/cross_scheme/scheme_conflicts，无 parts 回执单列 unknown-scheme，仅跨方案印 cross-scheme=no-merge… ｜ 两池：本司备货可派 2 ／ 机队可领 4（两个不同池，本司卡未登记进机队池）",
+ "latest_artifact": "state/t249-scheme-split-20261116.txt（mtime 2026-11-16 23:15）",
  "next_milestone": "窗口内重复点火率进实况面（BC-P-262 接线：status-export 增 ignition_repeat_rate 一行 + 轮账本 dupes= 面），当前基线 76.9% 对 <=10% 标准（source=declared）",
  "caps": {
   "write_lag_min": 30.0,
