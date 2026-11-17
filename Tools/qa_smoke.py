@@ -1378,6 +1378,65 @@ def parse_serve_paths(text):
     return out
 
 
+EVIDENCE_DIRS = ("qa", "state")
+EVIDENCE_EXTS = (".log", ".txt", ".json", ".jsonl", ".md")
+EVIDENCE_SCAN_CAP = 2000
+
+
+def evidence_bom_scan(root=None, dirs=EVIDENCE_DIRS, cap=EVIDENCE_SCAN_CAP):
+    """T254: first two bytes of every evidence file, read cheaply.
+
+    Evidence lands in qa/ and state/, and a PowerShell redirect there
+    writes UTF-16LE by default - T252 found 42 such files already on disk.
+    Reading only the first two bytes keeps a full scan affordable, so this
+    covers history rather than a sample window.
+    """
+    root = root or ROOT
+    scanned, bad = 0, []
+    for d in dirs:
+        base = os.path.join(root, d)
+        if not os.path.isdir(base):
+            continue
+        for dirpath, _dirnames, filenames in os.walk(base):
+            for name in filenames:
+                if not name.lower().endswith(EVIDENCE_EXTS):
+                    continue
+                p = os.path.join(dirpath, name)
+                try:
+                    with open(p, "rb") as f:
+                        head = f.read(2)
+                except OSError:
+                    continue
+                scanned += 1
+                if head in (b"\xff\xfe", b"\xfe\xff"):
+                    bad.append(os.path.relpath(p, root).replace("\\", "/"))
+                if scanned >= cap:
+                    return scanned, bad, True
+    return scanned, bad, False
+
+
+def probe_evidence_containers(root=None):
+    """Probe no.34 (T254): evidence containers must stay plain UTF-8.
+
+    T252 repaired 55 damaged files after the fact; this is the birth-place
+    gate. A UTF-16 BOM in a .log/.json evidence file reads as text in most
+    tools while json.load and strict UTF-8 readers see garbage, so the
+    failure is silent until someone quotes the file in a report.
+    """
+    try:
+        scanned, bad, capped = evidence_bom_scan(root=root)
+    except Exception as e:  # noqa: BLE001 - probe must report, not crash
+        return False, "evidence scan raised: %r" % e
+    if not scanned:
+        return False, "EVIDENCE-NONE no evidence files under qa/ state/"
+    if bad:
+        return False, ("EVIDENCE-BOM files=%d e.g. %s (UTF-16 BOM; rewrite "
+                       "as UTF-8 - PowerShell redirect default)"
+                       % (len(bad), ", ".join(bad[:5])))
+    return True, "EVIDENCE-UTF8 files=%d bom=0 cap_hit=%s" % (
+        scanned, "yes" if capped else "no")
+
+
 ARTIFACT_MIN_BYTES = {"gguf": 1 << 20, "pe": 64 << 10}
 
 
@@ -2340,6 +2399,68 @@ def selftest_scan_roots():
     check("S6 unrecognised row verdict -> FAIL (conservative)", not r6[0])
 
     print("selftest scan-root verdict: %d/%d PASS"
+          % (len([r for r in results if r]), len(results)))
+    return 0 if all(results) else 1
+
+
+def selftest_evidence_containers():
+    """T254 fixtures: the birth-place gate for UTF-16 evidence files.
+
+    The live face is already clean (T252 repaired the 42 files), so every
+    branch here is synthetic: a clean tree must pass, and each BOM must be
+    named rather than folded into a count.
+    """
+    import tempfile
+    results = []
+
+    def check(name, cond, detail=None):
+        results.append(bool(cond))
+        print(("PASS " if cond else "FAIL ") + name
+              + ("" if detail is None or cond else " :: %s" % detail))
+
+    def build(files):
+        tmp = tempfile.mkdtemp(prefix="bom-gate-")
+        for rel, data in files.items():
+            p = os.path.join(tmp, rel)
+            os.makedirs(os.path.dirname(p), exist_ok=True)
+            with open(p, "wb") as f:
+                f.write(data)
+        return tmp
+
+    clean = build({"qa/smoke-1.log": "PASS no.1\n".encode("utf-8"),
+                   "state/evidence.txt": "证据行\n".encode("utf-8")})
+    ok, det = probe_evidence_containers(root=clean)
+    check("S1 clean evidence tree -> PASS",
+          ok and "files=2" in det and "bom=0" in det)
+
+    le = build({"qa/smoke-2.log": "PASS\n".encode("utf-16-le"),
+                "state/ok.txt": b"plain\n"})
+    # UTF-16LE body without BOM is just bytes; the gate reads the BOM only.
+    ok, det = probe_evidence_containers(root=le)
+    check("S2 BOM-less UTF-16 content is not judged (bytes look plain)",
+          ok, det)
+
+    bom = build({"qa/smoke-3.log": b"\xff\xfe" + "PASS\n".encode("utf-16-le"),
+                 "state/evidence.txt": b"fine\n"})
+    ok, det = probe_evidence_containers(root=bom)
+    check("S3 UTF-16LE BOM -> FAIL and names the file",
+          (not ok) and "qa/smoke-3.log" in det and "files=1" in det, det)
+
+    bombe = build({"state/evidence.md": b"\xfe\xff" + "ok\n".encode("utf-16-be")})
+    ok, det = probe_evidence_containers(root=bombe)
+    check("S4 UTF-16BE BOM -> FAIL", (not ok) and "evidence.md" in det, det)
+
+    ignored = build({"qa/blob.bin": b"\xff\xfe\x00\x00",
+                     "state/evidence.txt": b"fine\n"})
+    ok, det = probe_evidence_containers(root=ignored)
+    check("S5 non-evidence extension ignored", ok and "files=1" in det, det)
+
+    empty = build({})
+    ok, det = probe_evidence_containers(root=empty)
+    check("S6 nothing scanned -> FAIL (no default pass)",
+          (not ok) and "EVIDENCE-NONE" in det, det)
+
+    print("selftest evidence-container verdict: %d/%d PASS"
           % (len([r for r in results if r]), len(results)))
     return 0 if all(results) else 1
 
@@ -4625,16 +4746,23 @@ def unknown_sidecar_judge(unknown_now, sidecar, receipts_sha_now, error=""):
         return False, ("sidecar as_of=%s was computed while the receipt log "
                        "changed under it (before!=after): the split is not a "
                        "single snapshot" % sidecar.get("ts"))
-    total = ((sidecar.get("computable_count") or 0)
-             + (sidecar.get("unprovable_count") or 0)
-             + (sidecar.get("known_bad_count") or 0))
-    if total != sidecar.get("unknown"):
-        return False, ("counts do not add up: computable=%s unprovable=%s "
-                       "known_bad=%s != unknown=%s"
-                       % (sidecar.get("computable_count"),
-                          sidecar.get("unprovable_count"),
-                          sidecar.get("known_bad_count"),
-                          sidecar.get("unknown")))
+    comp = sidecar.get("computable_count") or 0
+    unpr = sidecar.get("unprovable_count") or 0
+    bad = sidecar.get("known_bad_count") or 0
+    # T254 (11-17): `known_bad` is a SUB-count, not a third bucket -
+    # converge_unknown demotes an unprovable entry in place (entry["known_bad"]
+    # = True, then known_bad = [e for e in unprovable ...]). The old closure
+    # added all three, so it read correct output as broken the moment every
+    # unprovable entry aged past the 7d policy (11-17 live: 1+24=25, bad=24).
+    if comp + unpr != sidecar.get("unknown"):
+        return False, ("counts do not add up: computable=%s + unprovable=%s "
+                       "!= unknown=%s (known_bad=%s is a sub-count of "
+                       "unprovable, not a third bucket)"
+                       % (comp, unpr, sidecar.get("unknown"), bad))
+    if bad > unpr:
+        return False, ("known_bad=%s > unprovable=%s: converge_unknown demotes "
+                       "in place, so KNOWN-BAD can never exceed UNPROVABLE - "
+                       "this split was written by a different rule" % (bad, unpr))
     try:
         ts = datetime.datetime.strptime(sidecar["ts"], "%Y-%m-%d %H:%M:%S")
         age = " age_h=%.1f" % (
@@ -4724,9 +4852,24 @@ def selftest_unknown_sidecar():
     check("receipts moved under the run -> FAIL (not a snapshot)",
           not ok and "changed under it" in det, det)
 
-    ok, det = unknown_sidecar_judge(25, doc(known_bad_count=2), "a" * 64)
+    ok, det = unknown_sidecar_judge(25, doc(computable_count=2), "a" * 64)
     check("counts do not add up -> FAIL",
           not ok and "do not add up" in det, det)
+
+    # 11-17 live shape: every unprovable entry aged past the 7d policy, so
+    # known_bad == unprovable.  This is correct output, not a broken sum.
+    ok, det = unknown_sidecar_judge(
+        25, doc(computable_count=1, computable_pass_count=1,
+                computable_fail_count=0, unprovable_count=24,
+                known_bad_count=24), "a" * 64)
+    check("known_bad counted inside unprovable -> PASS (sub-count, not bucket)",
+          ok and "known_bad=24" in det, det)
+
+    ok, det = unknown_sidecar_judge(
+        25, doc(computable_count=3, unprovable_count=22, known_bad_count=23),
+        "a" * 64)
+    check("known_bad > unprovable -> FAIL (impossible split)",
+          not ok and "can never exceed" in det, det)
 
     ok, det = unknown_sidecar_judge(25, doc(computable_fail_count=None),
                                     "a" * 64)
@@ -4785,6 +4928,7 @@ PROBE_REGISTRY = [
      probe_dispatch_reading),
     (33, "unknown-converge reading still applies (T231)",
      probe_unknown_sidecar),
+    (34, "evidence containers not UTF-16 (T254)", probe_evidence_containers),
 ]
 
 
@@ -4870,7 +5014,8 @@ def main():
                 | selftest_aftersale_rails() | selftest_drill_sets()
                 | selftest_money_guard() | selftest_igniter()
                 | selftest_frame_quality() | selftest_dispatch_reading()
-                | selftest_unknown_sidecar() | selftest_argv())
+                | selftest_unknown_sidecar()
+                | selftest_evidence_containers() | selftest_argv())
     os.makedirs(QA_DIR, exist_ok=True)
     ts = datetime.datetime.now().strftime("%Y%m%d-%H%M")
     global ROUND_STAMP

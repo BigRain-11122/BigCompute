@@ -1,8 +1,8 @@
 {
  "company": "BigCompute",
- "updated_at": "2026-11-17 06:26",
- "current_activity": "2026-11-17 06:00 轮：T252 done（产品优先律 2 分件：新工具 Tools/encoding_repair.py 按字节分类+逐段可逆修复——真损伤面=42 件 UTF-16LE 全量转 UTF-8〔行数逐件相等·raw 备份 state/_encoding-backup/〕+13 件双重编码段还原；「源内双重编码」假设在 Tools/**/*.py 零命中判负… ｜ 两池：本司备货可派 2 ／ 机队可领 4（两个不同池，本司卡未登记进机队池）",
- "latest_artifact": "state/mojibake-triage-20261117.md（mtime 2026-11-17 06:25）",
+ "updated_at": "2026-11-17 19:20",
+ "current_activity": "2026-11-17 06:00 轮：T133 done（乱码归因器 Tools/mojibake_triage.py 四态 CLEAN/MISREAD-ONLY/PS-REDIRECT-WRAPPED/WRITE-DAMAGED·selftest 10/10 PASS；两处点名源文件均判 CLEAN=month_end_collect 55823B/918行、gpu_idle_collector 61502B/1333行·zero mojibake… ｜ 两池：本司备货可派 2 ／ 机队可领 4（两个不同池，本司卡未登记进机队池）",
+ "latest_artifact": "state/unknown-converge.json（mtime 2026-11-17 19:11）",
  "next_milestone": "窗口内重复点火率进实况面（BC-P-262 接线：status-export 增 ignition_repeat_rate 一行 + 轮账本 dupes= 面），当前基线 76.9% 对 <=10% 标准（source=declared）",
  "caps": {
   "write_lag_min": 30.0,
